@@ -1,0 +1,162 @@
+{
+  "services": {
+    "microsoft365": {
+      "name": "Microsoft 365",
+      "baseURL": "https://graph.microsoft.com/v1.0",
+      "auth": {
+        "type": "oauth2_device",
+        "config": {
+          "clientId": "${MS365_CLIENT_ID}",
+          "tenantId": "${MS365_TENANT_ID}",
+          "scope": [
+            "https://graph.microsoft.com/Calendars.Read",
+            "https://graph.microsoft.com/Mail.Read"
+          ],
+          "authorizationURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/devicecode",
+          "tokenURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token"
+        }
+      },
+      "endpoints": [
+        {
+          "id": "calendar_read_summary",
+          "name": "Read Calendar Summary",
+          "description": "Get calendar events with basic information (start, end, subject)",
+          "method": "GET",
+          "path": "/me/calendarView",
+          "parameters": [
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": ".value | map({subject: .subject, start: .start.dateTime, end: .end.dateTime})"
+          }
+        },
+        {
+          "id": "calendar_read_details",
+          "name": "Read Calendar Details",
+          "description": "Get calendar events with full details",
+          "method": "GET",
+          "path": "/me/calendarView",
+          "parameters": [
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,body,bodyPreview,organizer,attendees,start,end,location"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            }
+          }
+        },
+        {
+          "id": "mail_read_inbox",
+          "name": "Read Inbox Messages",
+          "description": "Get inbox messages with basic information",
+          "method": "GET",
+          "path": "/me/messages",
+          "parameters": [
+            {
+              "name": "$top",
+              "description": "Number of messages to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,from,receivedDateTime,bodyPreview,isRead"
+            },
+            {
+              "name": "$filter",
+              "description": "Filter expression (e.g., 'isRead eq false')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            }
+          }
+        }
+      ]
+    }
+  }
+}

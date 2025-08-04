@@ -1,0 +1,273 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Fusion Configuration Schema",
+  "description": "Schema for Fusion package configuration files",
+  "type": "object",
+  "properties": {
+    "services": {
+      "type": "object",
+      "description": "Collection of service configurations",
+      "additionalProperties": {
+        "$ref": "#/definitions/ServiceConfig"
+      }
+    }
+  },
+  "required": ["services"],
+  "definitions": {
+    "ServiceConfig": {
+      "type": "object",
+      "description": "Configuration for a single service",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable name of the service"
+        },
+        "baseURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for the service API"
+        },
+        "auth": {
+          "$ref": "#/definitions/AuthConfig"
+        },
+        "endpoints": {
+          "type": "array",
+          "description": "List of API endpoints",
+          "items": {
+            "$ref": "#/definitions/EndpointConfig"
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["name", "baseURL", "auth", "endpoints"]
+    },
+    "AuthConfig": {
+      "type": "object",
+      "description": "Authentication configuration",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["oauth2_device", "bearer", "api_key", "basic"],
+          "description": "Type of authentication"
+        },
+        "config": {
+          "type": "object",
+          "description": "Authentication-specific configuration",
+          "properties": {
+            "clientId": {
+              "type": "string",
+              "description": "OAuth2 client ID"
+            },
+            "tenantId": {
+              "type": "string",
+              "description": "OAuth2 tenant ID"
+            },
+            "scope": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "OAuth2 scopes"
+            },
+            "authorizationURL": {
+              "type": "string",
+              "format": "uri",
+              "description": "OAuth2 authorization URL"
+            },
+            "tokenURL": {
+              "type": "string",
+              "format": "uri",
+              "description": "OAuth2 token URL"
+            },
+            "token": {
+              "type": "string",
+              "description": "Bearer token value"
+            },
+            "tokenEnvVar": {
+              "type": "string",
+              "description": "Environment variable containing bearer token"
+            },
+            "apiKey": {
+              "type": "string",
+              "description": "API key value"
+            },
+            "apiKeyEnvVar": {
+              "type": "string",
+              "description": "Environment variable containing API key"
+            },
+            "headerName": {
+              "type": "string",
+              "description": "Header name for API key (default: X-API-Key)"
+            },
+            "username": {
+              "type": "string",
+              "description": "Username for basic authentication"
+            },
+            "password": {
+              "type": "string",
+              "description": "Password for basic authentication"
+            }
+          }
+        }
+      },
+      "required": ["type", "config"]
+    },
+    "EndpointConfig": {
+      "type": "object",
+      "description": "Configuration for a single API endpoint",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the endpoint"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name of the endpoint"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what the endpoint does"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+          "description": "HTTP method"
+        },
+        "path": {
+          "type": "string",
+          "description": "URL path (may contain {parameter} placeholders)"
+        },
+        "parameters": {
+          "type": "array",
+          "description": "List of parameters",
+          "items": {
+            "$ref": "#/definitions/ParameterConfig"
+          }
+        },
+        "response": {
+          "$ref": "#/definitions/ResponseConfig"
+        }
+      },
+      "required": ["id", "name", "description", "method", "path", "response"]
+    },
+    "ParameterConfig": {
+      "type": "object",
+      "description": "Configuration for a parameter",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Parameter name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Parameter description"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "array", "object"],
+          "description": "Parameter data type"
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether the parameter is required"
+        },
+        "location": {
+          "type": "string",
+          "enum": ["path", "query", "body", "header"],
+          "description": "Where the parameter should be placed in the request"
+        },
+        "default": {
+          "description": "Default value for the parameter"
+        },
+        "validation": {
+          "$ref": "#/definitions/ValidationConfig"
+        },
+        "transform": {
+          "$ref": "#/definitions/TransformConfig"
+        }
+      },
+      "required": ["name", "description", "type", "required", "location"]
+    },
+    "ValidationConfig": {
+      "type": "object",
+      "description": "Validation rules for a parameter",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Regular expression pattern"
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum string length"
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum string length"
+        },
+        "enum": {
+          "type": "array",
+          "description": "List of allowed values"
+        }
+      }
+    },
+    "TransformConfig": {
+      "type": "object",
+      "description": "Transformation rules for a parameter",
+      "properties": {
+        "targetName": {
+          "type": "string",
+          "description": "Target parameter name after transformation"
+        },
+        "expression": {
+          "type": "string",
+          "description": "Transformation expression"
+        }
+      }
+    },
+    "ResponseConfig": {
+      "type": "object",
+      "description": "Response handling configuration",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["json", "text", "binary"],
+          "description": "Expected response type"
+        },
+        "transform": {
+          "type": "string",
+          "description": "JQ expression for response transformation"
+        },
+        "paginated": {
+          "type": "boolean",
+          "description": "Whether the response is paginated"
+        },
+        "paginationConfig": {
+          "$ref": "#/definitions/PaginationConfig"
+        }
+      },
+      "required": ["type"]
+    },
+    "PaginationConfig": {
+      "type": "object",
+      "description": "Pagination handling configuration",
+      "properties": {
+        "nextPageTokenPath": {
+          "type": "string",
+          "description": "JSON path to the next page token"
+        },
+        "dataPath": {
+          "type": "string",
+          "description": "JSON path to the data array"
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of items per page"
+        }
+      },
+      "required": ["nextPageTokenPath", "dataPath", "pageSize"]
+    }
+  }
+}

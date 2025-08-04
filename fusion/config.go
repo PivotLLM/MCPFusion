@@ -1,0 +1,927 @@
+// Copyright (c) 2025 Tenebris Technologies Inc.
+// Please see LICENSE for details.
+
+package fusion
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"regexp"
+	"strings"
+
+	"github.com/PivotLLM/MCPFusion/global"
+)
+
+// AuthType represents the type of authentication to use
+type AuthType string
+
+const (
+	AuthTypeOAuth2Device AuthType = "oauth2_device"
+	AuthTypeBearer       AuthType = "bearer"
+	AuthTypeAPIKey       AuthType = "api_key"
+	AuthTypeBasic        AuthType = "basic"
+)
+
+// ParameterType represents the type of a parameter
+type ParameterType string
+
+const (
+	ParameterTypeString  ParameterType = "string"
+	ParameterTypeNumber  ParameterType = "number"
+	ParameterTypeBoolean ParameterType = "boolean"
+	ParameterTypeArray   ParameterType = "array"
+	ParameterTypeObject  ParameterType = "object"
+)
+
+// ParameterLocation represents where a parameter should be placed in the request
+type ParameterLocation string
+
+const (
+	ParameterLocationPath   ParameterLocation = "path"
+	ParameterLocationQuery  ParameterLocation = "query"
+	ParameterLocationBody   ParameterLocation = "body"
+	ParameterLocationHeader ParameterLocation = "header"
+)
+
+// ResponseType represents the type of response expected
+type ResponseType string
+
+const (
+	ResponseTypeJSON   ResponseType = "json"
+	ResponseTypeText   ResponseType = "text"
+	ResponseTypeBinary ResponseType = "binary"
+)
+
+// Config holds the main configuration for the fusion package
+type Config struct {
+	Logger      global.Logger       `json:"-"`
+	Services    map[string]*ServiceConfig `json:"services"`
+	AuthManager *AuthManager       `json:"-"`
+	HTTPClient  *http.Client       `json:"-"`
+	Cache       Cache              `json:"-"`
+	ConfigPath  string             `json:"-"`
+}
+
+// ServiceConfig represents the configuration for a single service
+type ServiceConfig struct {
+	Name      string           `json:"name"`
+	BaseURL   string           `json:"baseURL"`
+	Auth      AuthConfig       `json:"auth"`
+	Endpoints []EndpointConfig `json:"endpoints"`
+}
+
+// AuthConfig represents authentication configuration
+type AuthConfig struct {
+	Type   AuthType               `json:"type"`
+	Config map[string]interface{} `json:"config"`
+}
+
+// EndpointConfig represents configuration for a single API endpoint
+type EndpointConfig struct {
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Method      string            `json:"method"`
+	Path        string            `json:"path"`
+	Parameters  []ParameterConfig `json:"parameters"`
+	Response    ResponseConfig    `json:"response"`
+}
+
+// ParameterConfig represents configuration for a parameter
+type ParameterConfig struct {
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Type        ParameterType     `json:"type"`
+	Required    bool              `json:"required"`
+	Location    ParameterLocation `json:"location"`
+	Default     interface{}       `json:"default,omitempty"`
+	Validation  *ValidationConfig `json:"validation,omitempty"`
+	Transform   *TransformConfig  `json:"transform,omitempty"`
+}
+
+// ValidationConfig represents validation rules for a parameter
+type ValidationConfig struct {
+	Pattern   string        `json:"pattern,omitempty"`
+	MinLength int           `json:"minLength,omitempty"`
+	MaxLength int           `json:"maxLength,omitempty"`
+	Enum      []interface{} `json:"enum,omitempty"`
+}
+
+// TransformConfig represents transformation rules for a parameter
+type TransformConfig struct {
+	TargetName string `json:"targetName,omitempty"`
+	Expression string `json:"expression,omitempty"`
+}
+
+// ResponseConfig represents configuration for response handling
+type ResponseConfig struct {
+	Type             ResponseType      `json:"type"`
+	Transform        string            `json:"transform,omitempty"`
+	Paginated        bool              `json:"paginated,omitempty"`
+	PaginationConfig *PaginationConfig `json:"paginationConfig,omitempty"`
+}
+
+// PaginationConfig represents configuration for paginated responses
+type PaginationConfig struct {
+	NextPageTokenPath string `json:"nextPageTokenPath"`
+	DataPath          string `json:"dataPath"`
+	PageSize          int    `json:"pageSize"`
+}
+
+// LoadConfigFromFile loads configuration from a JSON file
+func LoadConfigFromFile(filePath string) (*Config, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, NewConfigurationError("file", "", 
+			fmt.Sprintf("failed to read config file %s", filePath), err)
+	}
+
+	return LoadConfigFromJSON(data, filePath)
+}
+
+// LoadConfigFromJSONWithLogger loads configuration from JSON data with logging support
+func LoadConfigFromJSONWithLogger(data []byte, configPath string, logger global.Logger) (*Config, error) {
+	if logger != nil {
+		logger.Infof("Loading configuration from %s", configPath)
+		logger.Debugf("Configuration data size: %d bytes", len(data))
+	}
+
+	// First, expand environment variables
+	if logger != nil {
+		logger.Debug("Expanding environment variables in configuration")
+	}
+	expandedData, err := expandEnvironmentVariables(data)
+	if err != nil {
+		if logger != nil {
+			logger.Errorf("Failed to expand environment variables: %v", err)
+		}
+		return nil, NewConfigurationError("environment_variables", "", 
+			"failed to expand environment variables", err)
+	}
+
+	if logger != nil {
+		logger.Debug("Parsing JSON configuration")
+	}
+	var config Config
+	if err := json.Unmarshal(expandedData, &config); err != nil {
+		if logger != nil {
+			logger.Errorf("Failed to parse JSON configuration: %v", err)
+		}
+		return nil, NewConfigurationError("json", "", 
+			"failed to parse JSON configuration", err)
+	}
+
+	config.ConfigPath = configPath
+
+	// Validate the configuration
+	if logger != nil {
+		logger.Debug("Validating configuration")
+	}
+	if err := config.ValidateWithLogger(logger); err != nil {
+		if logger != nil {
+			logger.Errorf("Configuration validation failed: %v", err)
+		}
+		return nil, NewConfigurationError("validation", "", 
+			"configuration validation failed", err)
+	}
+
+	if logger != nil {
+		logger.Infof("Successfully loaded configuration with %d services", len(config.Services))
+		for serviceName, service := range config.Services {
+			logger.Debugf("Service '%s': %d endpoints, auth type: %s", serviceName, len(service.Endpoints), service.Auth.Type)
+		}
+	}
+
+	return &config, nil
+}
+
+// LoadConfigFromJSON loads configuration from JSON data
+func LoadConfigFromJSON(data []byte, configPath string) (*Config, error) {
+	return LoadConfigFromJSONWithLogger(data, configPath, nil)
+}
+
+// ValidateWithLogger validates the configuration with logging support
+func (c *Config) ValidateWithLogger(logger global.Logger) error {
+	if logger != nil {
+		logger.Debug("Starting configuration validation")
+	}
+
+	if len(c.Services) == 0 {
+		if logger != nil {
+			logger.Error("Configuration validation failed: no services configured")
+		}
+		return fmt.Errorf("no services configured")
+	}
+
+	if logger != nil {
+		logger.Debugf("Validating %d services", len(c.Services))
+	}
+
+	for serviceName, service := range c.Services {
+		if logger != nil {
+			logger.Debugf("Validating service: %s", serviceName)
+		}
+		if err := service.ValidateWithLogger(serviceName, logger); err != nil {
+			if logger != nil {
+				logger.Errorf("Service validation failed for %s: %v", serviceName, err)
+			}
+			return fmt.Errorf("service %s: %w", serviceName, err)
+		}
+	}
+
+	if logger != nil {
+		logger.Debug("Configuration validation completed successfully")
+	}
+
+	return nil
+}
+
+// Validate validates the configuration
+func (c *Config) Validate() error {
+	return c.ValidateWithLogger(nil)
+}
+
+// ValidateWithLogger validates a service configuration with logging support
+func (s *ServiceConfig) ValidateWithLogger(serviceName string, logger global.Logger) error {
+	if logger != nil {
+		logger.Debugf("Validating service configuration for: %s", serviceName)
+	}
+
+	if s.Name == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: name is required", serviceName)
+		}
+		return fmt.Errorf("service name is required")
+	}
+
+	if s.BaseURL == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: baseURL is required", serviceName)
+		}
+		return fmt.Errorf("service baseURL is required")
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: validating auth configuration (type: %s)", serviceName, s.Auth.Type)
+	}
+	if err := s.Auth.ValidateWithLogger(serviceName, logger); err != nil {
+		if logger != nil {
+			logger.Errorf("Service %s: auth configuration validation failed: %v", serviceName, err)
+		}
+		return fmt.Errorf("auth configuration: %w", err)
+	}
+
+	if len(s.Endpoints) == 0 {
+		if logger != nil {
+			logger.Errorf("Service %s: at least one endpoint is required", serviceName)
+		}
+		return fmt.Errorf("at least one endpoint is required")
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: validating %d endpoints", serviceName, len(s.Endpoints))
+	}
+	for i, endpoint := range s.Endpoints {
+		if logger != nil {
+			logger.Debugf("Service %s: validating endpoint %d (%s)", serviceName, i, endpoint.ID)
+		}
+		if err := endpoint.ValidateWithLogger(serviceName, logger); err != nil {
+			if logger != nil {
+				logger.Errorf("Service %s: endpoint %d validation failed: %v", serviceName, i, err)
+			}
+			return fmt.Errorf("endpoint %d: %w", i, err)
+		}
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: validation completed successfully", serviceName)
+	}
+
+	return nil
+}
+
+// Validate validates a service configuration
+func (s *ServiceConfig) Validate() error {
+	return s.ValidateWithLogger("", nil)
+}
+
+// ValidateWithLogger validates an auth configuration with logging support
+func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger) error {
+	if logger != nil {
+		logger.Debugf("Service %s: validating auth configuration (type: %s)", serviceName, a.Type)
+	}
+
+	switch a.Type {
+	case AuthTypeOAuth2Device:
+		if _, ok := a.Config["clientId"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: oauth2_device auth requires clientId", serviceName)
+			}
+			return fmt.Errorf("oauth2_device auth requires clientId")
+		}
+		if _, ok := a.Config["tokenURL"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: oauth2_device auth requires tokenURL", serviceName)
+			}
+			return fmt.Errorf("oauth2_device auth requires tokenURL")
+		}
+		if logger != nil {
+			logger.Debugf("Service %s: OAuth2 device flow configuration validated", serviceName)
+		}
+	case AuthTypeBearer:
+		if _, hasToken := a.Config["token"]; !hasToken {
+			if _, hasEnvVar := a.Config["tokenEnvVar"]; !hasEnvVar {
+				if logger != nil {
+					logger.Errorf("Service %s: bearer auth requires either token or tokenEnvVar", serviceName)
+				}
+				return fmt.Errorf("bearer auth requires either token or tokenEnvVar")
+			}
+			if logger != nil {
+				logger.Debugf("Service %s: bearer token will be loaded from environment variable", serviceName)
+			}
+		} else {
+			if logger != nil {
+				logger.Debugf("Service %s: bearer token configured directly", serviceName)
+			}
+		}
+	case AuthTypeAPIKey:
+		if _, hasKey := a.Config["apiKey"]; !hasKey {
+			if _, hasEnvVar := a.Config["apiKeyEnvVar"]; !hasEnvVar {
+				if logger != nil {
+					logger.Errorf("Service %s: api_key auth requires either apiKey or apiKeyEnvVar", serviceName)
+				}
+				return fmt.Errorf("api_key auth requires either apiKey or apiKeyEnvVar")
+			}
+			if logger != nil {
+				logger.Debugf("Service %s: API key will be loaded from environment variable", serviceName)
+			}
+		} else {
+			if logger != nil {
+				logger.Debugf("Service %s: API key configured directly", serviceName)
+			}
+		}
+	case AuthTypeBasic:
+		if _, ok := a.Config["username"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: basic auth requires username", serviceName)
+			}
+			return fmt.Errorf("basic auth requires username")
+		}
+		if _, ok := a.Config["password"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: basic auth requires password", serviceName)
+			}
+			return fmt.Errorf("basic auth requires password")
+		}
+		if logger != nil {
+			logger.Debugf("Service %s: basic auth configuration validated", serviceName)
+		}
+	default:
+		if logger != nil {
+			logger.Errorf("Service %s: unsupported auth type: %s", serviceName, a.Type)
+		}
+		return fmt.Errorf("unsupported auth type: %s", a.Type)
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: auth configuration validated successfully", serviceName)
+	}
+
+	return nil
+}
+
+// Validate validates an auth configuration
+func (a *AuthConfig) Validate() error {
+	return a.ValidateWithLogger("", nil)
+}
+
+// ValidateWithLogger validates an endpoint configuration with logging support
+func (e *EndpointConfig) ValidateWithLogger(serviceName string, logger global.Logger) error {
+	if logger != nil {
+		logger.Debugf("Service %s: validating endpoint %s (%s %s)", serviceName, e.ID, e.Method, e.Path)
+	}
+
+	if e.ID == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint ID is required", serviceName)
+		}
+		return fmt.Errorf("endpoint ID is required")
+	}
+
+	if e.Name == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s name is required", serviceName, e.ID)
+		}
+		return fmt.Errorf("endpoint name is required")
+	}
+
+	if e.Method == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s method is required", serviceName, e.ID)
+		}
+		return fmt.Errorf("endpoint method is required")
+	}
+
+	validMethods := map[string]bool{
+		"GET":    true,
+		"POST":   true,
+		"PUT":    true,
+		"DELETE": true,
+		"PATCH":  true,
+	}
+
+	if !validMethods[e.Method] {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s has invalid HTTP method: %s", serviceName, e.ID, e.Method)
+		}
+		return fmt.Errorf("invalid HTTP method: %s", e.Method)
+	}
+
+	if e.Path == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s path is required", serviceName, e.ID)
+		}
+		return fmt.Errorf("endpoint path is required")
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s has %d parameters", serviceName, e.ID, len(e.Parameters))
+	}
+	for i, param := range e.Parameters {
+		if logger != nil {
+			logger.Debugf("Service %s: endpoint %s validating parameter %d (%s)", serviceName, e.ID, i, param.Name)
+		}
+		if err := param.ValidateWithLogger(serviceName, e.ID, logger); err != nil {
+			if logger != nil {
+				logger.Errorf("Service %s: endpoint %s parameter %d validation failed: %v", serviceName, e.ID, i, err)
+			}
+			return fmt.Errorf("parameter %d: %w", i, err)
+		}
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s validating response configuration", serviceName, e.ID)
+	}
+	if err := e.Response.ValidateWithLogger(serviceName, e.ID, logger); err != nil {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s response configuration validation failed: %v", serviceName, e.ID, err)
+		}
+		return fmt.Errorf("response configuration: %w", err)
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s validation completed successfully", serviceName, e.ID)
+	}
+
+	return nil
+}
+
+// Validate validates an endpoint configuration
+func (e *EndpointConfig) Validate() error {
+	return e.ValidateWithLogger("", nil)
+}
+
+// ValidateWithLogger validates a parameter configuration with logging support
+func (p *ParameterConfig) ValidateWithLogger(serviceName, endpointID string, logger global.Logger) error {
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s validating parameter %s (type: %s, location: %s)", 
+			serviceName, endpointID, p.Name, p.Type, p.Location)
+	}
+
+	if p.Name == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s parameter name is required", serviceName, endpointID)
+		}
+		return fmt.Errorf("parameter name is required")
+	}
+
+	validTypes := map[ParameterType]bool{
+		ParameterTypeString:  true,
+		ParameterTypeNumber:  true,
+		ParameterTypeBoolean: true,
+		ParameterTypeArray:   true,
+		ParameterTypeObject:  true,
+	}
+
+	if !validTypes[p.Type] {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s parameter %s has invalid type: %s", serviceName, endpointID, p.Name, p.Type)
+		}
+		return fmt.Errorf("invalid parameter type: %s", p.Type)
+	}
+
+	validLocations := map[ParameterLocation]bool{
+		ParameterLocationPath:   true,
+		ParameterLocationQuery:  true,
+		ParameterLocationBody:   true,
+		ParameterLocationHeader: true,
+	}
+
+	if !validLocations[p.Location] {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s parameter %s has invalid location: %s", serviceName, endpointID, p.Name, p.Location)
+		}
+		return fmt.Errorf("invalid parameter location: %s", p.Location)
+	}
+
+	if p.Validation != nil {
+		if logger != nil {
+			logger.Debugf("Service %s: endpoint %s parameter %s validating validation rules", serviceName, endpointID, p.Name)
+		}
+		if err := p.Validation.ValidateWithLogger(serviceName, endpointID, p.Name, logger); err != nil {
+			if logger != nil {
+				logger.Errorf("Service %s: endpoint %s parameter %s validation config failed: %v", serviceName, endpointID, p.Name, err)
+			}
+			return fmt.Errorf("validation config: %w", err)
+		}
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s parameter %s validation completed successfully", serviceName, endpointID, p.Name)
+	}
+
+	return nil
+}
+
+// Validate validates a parameter configuration
+func (p *ParameterConfig) Validate() error {
+	return p.ValidateWithLogger("", "", nil)
+}
+
+// ValidateWithLogger validates a validation configuration with logging support
+func (v *ValidationConfig) ValidateWithLogger(serviceName, endpointID, parameterName string, logger global.Logger) error {
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s parameter %s validating validation rules", serviceName, endpointID, parameterName)
+	}
+
+	if v.Pattern != "" {
+		if logger != nil {
+			logger.Debugf("Service %s: endpoint %s parameter %s validating regex pattern: %s", serviceName, endpointID, parameterName, v.Pattern)
+		}
+		_, err := regexp.Compile(v.Pattern)
+		if err != nil {
+			if logger != nil {
+				logger.Errorf("Service %s: endpoint %s parameter %s has invalid regex pattern '%s': %v", serviceName, endpointID, parameterName, v.Pattern, err)
+			}
+			return fmt.Errorf("invalid regex pattern: %w", err)
+		}
+	}
+
+	if v.MinLength < 0 {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s parameter %s minLength cannot be negative: %d", serviceName, endpointID, parameterName, v.MinLength)
+		}
+		return fmt.Errorf("minLength cannot be negative")
+	}
+
+	if v.MaxLength > 0 && v.MinLength > v.MaxLength {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s parameter %s minLength (%d) cannot be greater than maxLength (%d)", serviceName, endpointID, parameterName, v.MinLength, v.MaxLength)
+		}
+		return fmt.Errorf("minLength cannot be greater than maxLength")
+	}
+
+	if logger != nil && len(v.Enum) > 0 {
+		logger.Debugf("Service %s: endpoint %s parameter %s has %d enum values", serviceName, endpointID, parameterName, len(v.Enum))
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s parameter %s validation rules validated successfully", serviceName, endpointID, parameterName)
+	}
+
+	return nil
+}
+
+// Validate validates a validation configuration
+func (v *ValidationConfig) Validate() error {
+	return v.ValidateWithLogger("", "", "", nil)
+}
+
+// ValidateWithLogger validates a response configuration with logging support
+func (r *ResponseConfig) ValidateWithLogger(serviceName, endpointID string, logger global.Logger) error {
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s validating response configuration (type: %s, paginated: %t)", 
+			serviceName, endpointID, r.Type, r.Paginated)
+	}
+
+	validTypes := map[ResponseType]bool{
+		ResponseTypeJSON:   true,
+		ResponseTypeText:   true,
+		ResponseTypeBinary: true,
+	}
+
+	if !validTypes[r.Type] {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s has invalid response type: %s", serviceName, endpointID, r.Type)
+		}
+		return fmt.Errorf("invalid response type: %s", r.Type)
+	}
+
+	if r.Paginated && r.PaginationConfig == nil {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s paginated response requires paginationConfig", serviceName, endpointID)
+		}
+		return fmt.Errorf("paginated response requires paginationConfig")
+	}
+
+	if r.PaginationConfig != nil {
+		if logger != nil {
+			logger.Debugf("Service %s: endpoint %s validating pagination configuration", serviceName, endpointID)
+		}
+		if err := r.PaginationConfig.ValidateWithLogger(serviceName, endpointID, logger); err != nil {
+			if logger != nil {
+				logger.Errorf("Service %s: endpoint %s pagination config validation failed: %v", serviceName, endpointID, err)
+			}
+			return fmt.Errorf("pagination config: %w", err)
+		}
+	}
+
+	if r.Transform != "" && logger != nil {
+		logger.Debugf("Service %s: endpoint %s has response transformation: %s", serviceName, endpointID, r.Transform)
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s response configuration validated successfully", serviceName, endpointID)
+	}
+
+	return nil
+}
+
+// Validate validates a response configuration
+func (r *ResponseConfig) Validate() error {
+	return r.ValidateWithLogger("", "", nil)
+}
+
+// ValidateWithLogger validates a pagination configuration with logging support
+func (p *PaginationConfig) ValidateWithLogger(serviceName, endpointID string, logger global.Logger) error {
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s validating pagination configuration (pageSize: %d)", 
+			serviceName, endpointID, p.PageSize)
+	}
+
+	if p.NextPageTokenPath == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s nextPageTokenPath is required for pagination", serviceName, endpointID)
+		}
+		return fmt.Errorf("nextPageTokenPath is required for pagination")
+	}
+
+	if p.DataPath == "" {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s dataPath is required for pagination", serviceName, endpointID)
+		}
+		return fmt.Errorf("dataPath is required for pagination")
+	}
+
+	if p.PageSize <= 0 {
+		if logger != nil {
+			logger.Errorf("Service %s: endpoint %s pageSize must be positive, got: %d", serviceName, endpointID, p.PageSize)
+		}
+		return fmt.Errorf("pageSize must be positive")
+	}
+
+	if logger != nil {
+		logger.Debugf("Service %s: endpoint %s pagination configuration validated successfully (nextToken: %s, data: %s)", 
+			serviceName, endpointID, p.NextPageTokenPath, p.DataPath)
+	}
+
+	return nil
+}
+
+// Validate validates a pagination configuration
+func (p *PaginationConfig) Validate() error {
+	return p.ValidateWithLogger("", "", nil)
+}
+
+// expandEnvironmentVariables expands ${VAR_NAME} and ${VAR_NAME:default} patterns in JSON data
+func expandEnvironmentVariables(data []byte) ([]byte, error) {
+	content := string(data)
+	
+	// Find all ${VAR_NAME} and ${VAR_NAME:default} patterns
+	re := regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
+	
+	result := re.ReplaceAllStringFunc(content, func(match string) string {
+		// Extract variable name and default value
+		matches := re.FindStringSubmatch(match)
+		if len(matches) < 2 {
+			return match
+		}
+		
+		varName := matches[1]
+		hasDefault := strings.Contains(match, ":") // Check if colon was present in original match
+		defaultValue := ""
+		if hasDefault && len(matches) > 2 {
+			defaultValue = matches[2]
+		}
+		
+		// Get environment variable value
+		if value := os.Getenv(varName); value != "" {
+			return value
+		}
+		
+		// If not found and has default (even empty), use default
+		if hasDefault {
+			return defaultValue
+		}
+		
+		// If not found and no default, return the original pattern
+		return match
+	})
+	
+	return []byte(result), nil
+}
+
+// GetEndpointByID finds an endpoint by ID within a service
+func (s *ServiceConfig) GetEndpointByID(id string) *EndpointConfig {
+	for i := range s.Endpoints {
+		if s.Endpoints[i].ID == id {
+			return &s.Endpoints[i]
+		}
+	}
+	return nil
+}
+
+// GetRequiredParameters returns all required parameters for an endpoint
+func (e *EndpointConfig) GetRequiredParameters() []ParameterConfig {
+	var required []ParameterConfig
+	for _, param := range e.Parameters {
+		if param.Required {
+			required = append(required, param)
+		}
+	}
+	return required
+}
+
+// GetParameterByName finds a parameter by name
+func (e *EndpointConfig) GetParameterByName(name string) *ParameterConfig {
+	for i := range e.Parameters {
+		if e.Parameters[i].Name == name {
+			return &e.Parameters[i]
+		}
+	}
+	return nil
+}
+
+// GetTransformedParameterName returns the target name if transform is configured, otherwise the original name
+func (p *ParameterConfig) GetTransformedParameterName() string {
+	if p.Transform != nil && p.Transform.TargetName != "" {
+		return p.Transform.TargetName
+	}
+	return p.Name
+}
+
+// IsValidEnumValue checks if a value is valid according to enum validation
+func (v *ValidationConfig) IsValidEnumValue(value interface{}) bool {
+	if len(v.Enum) == 0 {
+		return true
+	}
+	
+	for _, enumValue := range v.Enum {
+		if enumValue == value {
+			return true
+		}
+	}
+	return false
+}
+
+// MatchesPattern checks if a string value matches the validation pattern
+func (v *ValidationConfig) MatchesPattern(value string) bool {
+	if v.Pattern == "" {
+		return true
+	}
+	
+	matched, err := regexp.MatchString(v.Pattern, value)
+	if err != nil {
+		return false
+	}
+	
+	return matched
+}
+
+// IsValidLength checks if a string value meets length requirements
+func (v *ValidationConfig) IsValidLength(value string) bool {
+	length := len(value)
+	
+	if v.MinLength > 0 && length < v.MinLength {
+		return false
+	}
+	
+	if v.MaxLength > 0 && length > v.MaxLength {
+		return false
+	}
+	
+	return true
+}
+
+// GetServiceByName returns a service configuration by name
+func (c *Config) GetServiceByName(name string) *ServiceConfig {
+	for _, service := range c.Services {
+		if service.Name == name {
+			return service
+		}
+	}
+	return nil
+}
+
+// GetAllEndpoints returns all endpoints from all services with their service context
+func (c *Config) GetAllEndpoints() []EndpointWithService {
+	var endpoints []EndpointWithService
+	for serviceName, service := range c.Services {
+		for _, endpoint := range service.Endpoints {
+			endpoints = append(endpoints, EndpointWithService{
+				ServiceName: serviceName,
+				Service:     service,
+				Endpoint:    endpoint,
+			})
+		}
+	}
+	return endpoints
+}
+
+// EndpointWithService represents an endpoint with its associated service information
+type EndpointWithService struct {
+	ServiceName string
+	Service     *ServiceConfig
+	Endpoint    EndpointConfig
+}
+
+// ValidateServiceConfig validates a specific service configuration by name
+func (c *Config) ValidateServiceConfig(serviceName string) error {
+	service, exists := c.Services[serviceName]
+	if !exists {
+		return NewConfigurationError("service", serviceName, 
+			fmt.Sprintf("service '%s' not found", serviceName), nil)
+	}
+	
+	return service.Validate()
+}
+
+// GetRequiredEnvironmentVariables scans the configuration and returns all environment variables that are referenced
+func (c *Config) GetRequiredEnvironmentVariables() []string {
+	content, _ := json.Marshal(c.Services)
+	return extractEnvironmentVariables(content)
+}
+
+// extractEnvironmentVariables finds all ${VAR_NAME} patterns in data (excluding those with defaults)
+func extractEnvironmentVariables(data []byte) []string {
+	content := string(data)
+	re := regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	
+	varMap := make(map[string]bool)
+	for _, match := range matches {
+		if len(match) > 1 {
+			varName := match[1]
+			hasDefault := len(match) > 2 && strings.Contains(match[0], ":")
+			// Only include variables without defaults as "required"
+			if !hasDefault {
+				varMap[varName] = true
+			}
+		}
+	}
+	
+	var vars []string
+	for varName := range varMap {
+		vars = append(vars, varName)
+	}
+	
+	return vars
+}
+
+// Clone creates a deep copy of the configuration
+func (c *Config) Clone() (*Config, error) {
+	data, err := json.Marshal(c.Services)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config for cloning: %w", err)
+	}
+	
+	clone := &Config{
+		ConfigPath: c.ConfigPath,
+		Services:   make(map[string]*ServiceConfig),
+	}
+	
+	if err := json.Unmarshal(data, &clone.Services); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal cloned config: %w", err)
+	}
+	
+	return clone, nil
+}
+
+// MergeConfig merges another configuration into this one
+func (c *Config) MergeConfig(other *Config) error {
+	if other == nil {
+		return nil
+	}
+	
+	for serviceName, service := range other.Services {
+		if _, exists := c.Services[serviceName]; exists {
+			return NewConfigurationError("merge", serviceName, 
+				fmt.Sprintf("service '%s' already exists in target configuration", serviceName), nil)
+		}
+		c.Services[serviceName] = service
+	}
+	
+	return c.Validate()
+}

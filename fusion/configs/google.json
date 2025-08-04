@@ -1,0 +1,157 @@
+{
+  "services": {
+    "google": {
+      "name": "Google APIs",
+      "baseURL": "https://www.googleapis.com",
+      "auth": {
+        "type": "bearer",
+        "config": {
+          "tokenEnvVar": "GOOGLE_ACCESS_TOKEN"
+        }
+      },
+      "endpoints": [
+        {
+          "id": "calendar_events_list",
+          "name": "List Calendar Events",
+          "description": "List events from Google Calendar",
+          "method": "GET",
+          "path": "/calendar/v3/calendars/primary/events",
+          "parameters": [
+            {
+              "name": "timeMin",
+              "description": "Lower bound for event start time (RFC3339 format)",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "timeMax",
+              "description": "Upper bound for event start time (RFC3339 format)",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "maxResults",
+              "description": "Maximum number of events returned (1-2500)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minLength": 1,
+                "maxLength": 2500
+              }
+            },
+            {
+              "name": "singleEvents",
+              "description": "Whether to expand recurring events",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": true
+            },
+            {
+              "name": "orderBy",
+              "description": "Order of events returned",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "startTime",
+              "validation": {
+                "enum": ["startTime", "updated"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": ".items | map({summary: .summary, start: .start.dateTime // .start.date, end: .end.dateTime // .end.date, location: .location})"
+          }
+        },
+        {
+          "id": "gmail_messages_list",
+          "name": "List Gmail Messages",
+          "description": "List messages from Gmail inbox",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/messages",
+          "parameters": [
+            {
+              "name": "q",
+              "description": "Gmail search query",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "labelIds",
+              "description": "Label IDs to filter by (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "INBOX"
+            },
+            {
+              "name": "maxResults",
+              "description": "Maximum number of messages to return (1-500)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minLength": 1,
+                "maxLength": 500
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "messages",
+              "pageSize": 100
+            }
+          }
+        },
+        {
+          "id": "gmail_message_get",
+          "name": "Get Gmail Message",
+          "description": "Get a specific Gmail message by ID",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/messages/{messageId}",
+          "parameters": [
+            {
+              "name": "messageId",
+              "description": "The ID of the message to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "format",
+              "description": "Format of the message returned",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "metadata",
+              "validation": {
+                "enum": ["minimal", "full", "raw", "metadata"]
+              }
+            },
+            {
+              "name": "metadataHeaders",
+              "description": "Headers to include when format is metadata",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "Subject,From,To,Date"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        }
+      ]
+    }
+  }
+}
