@@ -430,9 +430,14 @@ func TestValidateParameter_Number(t *testing.T) {
 		t.Errorf("Valid int64 failed validation: %v", err)
 	}
 	
-	// Invalid type
-	if err := fusion.validateParameter(param, "123"); err == nil {
-		t.Error("Expected error for string value")
+	// String that can be converted to number - this should work with conversion
+	if err := fusion.validateParameter(param, "123"); err != nil {
+		t.Errorf("String convertible to number should be valid: %v", err)
+	}
+	
+	// Invalid type - string that cannot be converted
+	if err := fusion.validateParameter(param, "not-a-number"); err == nil {
+		t.Error("Expected error for non-numeric string value")
 	}
 }
 

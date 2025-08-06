@@ -5,9 +5,13 @@ package fusion
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -408,16 +412,327 @@ func (s *OAuth2DeviceFlowStrategy) SupportsRefresh() bool {
 
 // Authenticate performs OAuth2 device flow authentication
 func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
-	// This will be implemented in the next phase
-	return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
-		"OAuth2 device flow not yet implemented", nil)
+	if s.logger != nil {
+		s.logger.Debug("Starting OAuth2 device flow authentication")
+	}
+
+	// Extract required configuration
+	clientID, ok := config["clientId"].(string)
+	if !ok || clientID == "" {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"clientId is required for OAuth2 device flow", nil)
+	}
+
+	authorizationURL, ok := config["authorizationURL"].(string)
+	if !ok || authorizationURL == "" {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"authorizationURL is required for OAuth2 device flow", nil)
+	}
+
+	tokenURL, ok := config["tokenURL"].(string)
+	if !ok || tokenURL == "" {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"tokenURL is required for OAuth2 device flow", nil)
+	}
+
+	// Handle optional parameters
+	tenantID, _ := config["tenantId"].(string)
+	scopeInterface, _ := config["scope"]
+	
+	var scopes []string
+	switch v := scopeInterface.(type) {
+	case []string:
+		scopes = v
+	case []interface{}:
+		for _, s := range v {
+			if str, ok := s.(string); ok {
+				scopes = append(scopes, str)
+			}
+		}
+	}
+
+	// Replace {tenantId} in URLs if provided
+	if tenantID != "" {
+		authorizationURL = replaceURLPlaceholder(authorizationURL, "tenantId", tenantID)
+		tokenURL = replaceURLPlaceholder(tokenURL, "tenantId", tenantID)
+	}
+
+	// Step 1: Request device code
+	deviceCode, err := s.requestDeviceCode(ctx, authorizationURL, clientID, scopes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: Return special error that prompts user to authenticate
+	// The error includes the verification URL and user code
+	return nil, &DeviceCodeError{
+		VerificationURL: deviceCode.VerificationURI,
+		UserCode:        deviceCode.UserCode,
+		Message:         deviceCode.Message,
+		DeviceCode:      deviceCode.DeviceCode,
+		Interval:        deviceCode.Interval,
+		ExpiresIn:       deviceCode.ExpiresIn,
+		ClientID:        clientID,
+		TokenURL:        tokenURL,
+		Scopes:          scopes,
+	}
+}
+
+// requestDeviceCode requests a device code from the authorization server
+func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, authURL string, clientID string, scopes []string) (*deviceCodeResponse, error) {
+	if s.logger != nil {
+		s.logger.Debugf("Requesting device code from: %s", authURL)
+	}
+
+	data := make(map[string][]string)
+	data["client_id"] = []string{clientID}
+	if len(scopes) > 0 {
+		data["scope"] = []string{joinScopes(scopes)}
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", authURL, strings.NewReader(encodeFormData(data)))
+	if err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to create device code request", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to request device code", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		if s.logger != nil {
+			s.logger.Errorf("Device code request failed with status %d: %s", resp.StatusCode, string(body))
+		}
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			fmt.Sprintf("device code request failed with status %d", resp.StatusCode), nil)
+	}
+
+	var deviceCode deviceCodeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&deviceCode); err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to parse device code response", err)
+	}
+
+	if s.logger != nil {
+		s.logger.Infof("Device code received. User code: %s", deviceCode.UserCode)
+	}
+
+	return &deviceCode, nil
+}
+
+// PollForToken polls the token endpoint until the user completes authentication
+func (s *OAuth2DeviceFlowStrategy) PollForToken(ctx context.Context, deviceCodeErr *DeviceCodeError) (*TokenInfo, error) {
+	if s.logger != nil {
+		s.logger.Debug("Starting to poll for token")
+	}
+
+	interval := deviceCodeErr.Interval
+	if interval == 0 {
+		interval = 5 // Default to 5 seconds
+	}
+
+	expiry := time.Now().Add(time.Duration(deviceCodeErr.ExpiresIn) * time.Second)
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+				"polling cancelled", ctx.Err())
+		case <-ticker.C:
+			if time.Now().After(expiry) {
+				return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+					"device code expired", nil)
+			}
+
+			tokenInfo, err := s.exchangeDeviceCode(ctx, deviceCodeErr)
+			if err == nil {
+				return tokenInfo, nil
+			}
+
+			// Check if it's an authorization pending error
+			if authErr, ok := err.(*AuthenticationError); ok {
+				if authErr.OriginalError != nil && authErr.OriginalError.Error() == "authorization_pending" {
+					// Continue polling
+					if s.logger != nil {
+						s.logger.Debug("Authorization pending, continuing to poll")
+					}
+					continue
+				}
+			}
+
+			// Any other error stops polling
+			return nil, err
+		}
+	}
+}
+
+// exchangeDeviceCode exchanges a device code for an access token
+func (s *OAuth2DeviceFlowStrategy) exchangeDeviceCode(ctx context.Context, deviceCodeErr *DeviceCodeError) (*TokenInfo, error) {
+	data := make(map[string][]string)
+	data["client_id"] = []string{deviceCodeErr.ClientID}
+	data["device_code"] = []string{deviceCodeErr.DeviceCode}
+	data["grant_type"] = []string{"urn:ietf:params:oauth:grant-type:device_code"}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", deviceCodeErr.TokenURL, strings.NewReader(encodeFormData(data)))
+	if err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to create token request", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to exchange device code", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to read token response", err)
+	}
+
+	// Check for authorization_pending error
+	if resp.StatusCode == http.StatusBadRequest {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(body, &errorResp); err == nil && errorResp.Error == "authorization_pending" {
+			return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+				"authorization pending", fmt.Errorf("authorization_pending"))
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if s.logger != nil {
+			s.logger.Errorf("Token exchange failed with status %d: %s", resp.StatusCode, string(body))
+		}
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			fmt.Sprintf("token exchange failed with status %d", resp.StatusCode), nil)
+	}
+
+	var tokenResp tokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to parse token response", err)
+	}
+
+	tokenInfo := &TokenInfo{
+		AccessToken:  tokenResp.AccessToken,
+		TokenType:    tokenResp.TokenType,
+		RefreshToken: tokenResp.RefreshToken,
+		Scope:        splitScopes(tokenResp.Scope),
+		Metadata: map[string]string{
+			"clientID": deviceCodeErr.ClientID,
+			"tokenURL": deviceCodeErr.TokenURL,
+		},
+	}
+
+	if tokenResp.ExpiresIn > 0 {
+		expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+		tokenInfo.ExpiresAt = &expiresAt
+	}
+
+	if s.logger != nil {
+		s.logger.Info("Successfully obtained access token via device flow")
+	}
+
+	return tokenInfo, nil
 }
 
 // RefreshToken refreshes an OAuth2 token
 func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error) {
-	// This will be implemented in the next phase
-	return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
-		"OAuth2 token refresh not yet implemented", nil)
+	if s.logger != nil {
+		s.logger.Debug("Refreshing OAuth2 token")
+	}
+
+	if !tokenInfo.HasRefreshToken() {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"no refresh token available", nil)
+	}
+
+	// Get the token URL from metadata (should be stored during initial auth)
+	tokenURL, ok := tokenInfo.Metadata["tokenURL"]
+	if !ok || tokenURL == "" {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"token URL not found in token metadata", nil)
+	}
+
+	clientID, ok := tokenInfo.Metadata["clientID"]
+	if !ok || clientID == "" {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"client ID not found in token metadata", nil)
+	}
+
+	data := make(map[string][]string)
+	data["client_id"] = []string{clientID}
+	data["refresh_token"] = []string{tokenInfo.RefreshToken}
+	data["grant_type"] = []string{"refresh_token"}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL, strings.NewReader(encodeFormData(data)))
+	if err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to create refresh request", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to refresh token", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		if s.logger != nil {
+			s.logger.Errorf("Token refresh failed with status %d: %s", resp.StatusCode, string(body))
+		}
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			fmt.Sprintf("token refresh failed with status %d", resp.StatusCode), nil)
+	}
+
+	var tokenResp tokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			"failed to parse refresh response", err)
+	}
+
+	newTokenInfo := &TokenInfo{
+		AccessToken:  tokenResp.AccessToken,
+		TokenType:    tokenResp.TokenType,
+		RefreshToken: tokenResp.RefreshToken,
+		Scope:        splitScopes(tokenResp.Scope),
+		Metadata:     tokenInfo.Metadata, // Preserve metadata
+	}
+
+	// Use new refresh token if provided, otherwise keep the old one
+	if newTokenInfo.RefreshToken == "" {
+		newTokenInfo.RefreshToken = tokenInfo.RefreshToken
+	}
+
+	if tokenResp.ExpiresIn > 0 {
+		expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+		newTokenInfo.ExpiresAt = &expiresAt
+	}
+
+	if s.logger != nil {
+		s.logger.Info("Successfully refreshed OAuth2 token")
+	}
+
+	return newTokenInfo, nil
 }
 
 // ApplyAuth applies OAuth2 authentication to a request
@@ -738,4 +1053,47 @@ func (s *BasicAuthStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) e
 // getEnvVar is a helper function to get environment variables
 func getEnvVar(name string) string {
 	return os.Getenv(name)
+}
+
+// deviceCodeResponse represents the response from a device code request
+type deviceCodeResponse struct {
+	DeviceCode      string `json:"device_code"`
+	UserCode        string `json:"user_code"`
+	VerificationURI string `json:"verification_uri"`
+	ExpiresIn       int    `json:"expires_in"`
+	Interval        int    `json:"interval"`
+	Message         string `json:"message,omitempty"`
+}
+
+// tokenResponse represents the response from a token request
+type tokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	ExpiresIn    int    `json:"expires_in,omitempty"`
+	Scope        string `json:"scope,omitempty"`
+}
+
+// replaceURLPlaceholder replaces placeholders in URLs
+func replaceURLPlaceholder(urlStr, placeholder, value string) string {
+	return strings.ReplaceAll(urlStr, "{"+placeholder+"}", value)
+}
+
+// joinScopes joins OAuth2 scopes into a space-separated string
+func joinScopes(scopes []string) string {
+	return strings.Join(scopes, " ")
+}
+
+// splitScopes splits a space-separated scope string into a slice
+func splitScopes(scope string) []string {
+	if scope == "" {
+		return nil
+	}
+	return strings.Split(scope, " ")
+}
+
+// encodeFormData encodes form data for HTTP requests
+func encodeFormData(data map[string][]string) string {
+	values := url.Values(data)
+	return values.Encode()
 }

@@ -17,6 +17,9 @@ type DeviceCodeError struct {
 	ExpiresIn           int           `json:"expires_in"`
 	Interval            int           `json:"interval"`
 	Message             string        `json:"message,omitempty"`
+	ClientID            string        `json:"client_id"`
+	TokenURL            string        `json:"token_url"`
+	Scopes              []string      `json:"scopes,omitempty"`
 }
 
 // Error implements the error interface
@@ -37,10 +40,11 @@ func (e DeviceCodeError) IsExpired() bool {
 
 // AuthenticationError represents authentication-related errors
 type AuthenticationError struct {
-	Type    AuthType `json:"type"`
-	Service string   `json:"service"`
-	Message string   `json:"message"`
-	Cause   error    `json:"-"`
+	Type          AuthType `json:"type"`
+	Service       string   `json:"service"`
+	Message       string   `json:"message"`
+	Cause         error    `json:"-"`
+	OriginalError error    `json:"-"`
 }
 
 // Error implements the error interface
@@ -169,29 +173,64 @@ func (e ValidationError) GetUserFriendlyMessage() string {
 	}
 }
 
+// ErrorCategory represents the category of an error
+type ErrorCategory string
+
+const (
+	ErrorCategoryTransient  ErrorCategory = "transient"  // Temporary errors that can be retried
+	ErrorCategoryPermanent  ErrorCategory = "permanent"  // Permanent errors that should not be retried
+	ErrorCategoryAuth       ErrorCategory = "auth"       // Authentication/authorization errors
+	ErrorCategoryRateLimit  ErrorCategory = "ratelimit"  // Rate limiting errors
+	ErrorCategoryValidation ErrorCategory = "validation" // Input validation errors
+	ErrorCategoryNetwork    ErrorCategory = "network"    // Network connectivity errors
+	ErrorCategoryTimeout    ErrorCategory = "timeout"    // Timeout errors
+	ErrorCategoryServer     ErrorCategory = "server"     // Server-side errors
+	ErrorCategoryClient     ErrorCategory = "client"     // Client-side errors
+)
+
 // APIError represents errors from API calls
 type APIError struct {
-	Service    string `json:"service"`
-	Endpoint   string `json:"endpoint"`
-	StatusCode int    `json:"status_code"`
-	Message    string `json:"message"`
-	Response   string `json:"response,omitempty"`
-	Retryable  bool   `json:"retryable"`
+	Service       string        `json:"service"`
+	Endpoint      string        `json:"endpoint"`
+	StatusCode    int           `json:"status_code"`
+	Message       string        `json:"message"`
+	Response      string        `json:"response,omitempty"`
+	Retryable     bool          `json:"retryable"`
+	Category      ErrorCategory `json:"category"`
+	CorrelationID string        `json:"correlation_id,omitempty"`
+	Timestamp     time.Time     `json:"timestamp"`
 }
 
 // Error implements the error interface
 func (e APIError) Error() string {
-	if e.Response != "" {
-		return fmt.Sprintf("API error from %s:%s (HTTP %d): %s - Response: %s", 
-			e.Service, e.Endpoint, e.StatusCode, e.Message, e.Response)
+	correlationStr := ""
+	if e.CorrelationID != "" {
+		correlationStr = fmt.Sprintf(" [%s]", e.CorrelationID)
 	}
-	return fmt.Sprintf("API error from %s:%s (HTTP %d): %s", 
-		e.Service, e.Endpoint, e.StatusCode, e.Message)
+	
+	if e.Response != "" {
+		return fmt.Sprintf("API error from %s:%s (HTTP %d, %s)%s: %s - Response: %s", 
+			e.Service, e.Endpoint, e.StatusCode, e.Category, correlationStr, e.Message, e.Response)
+	}
+	return fmt.Sprintf("API error from %s:%s (HTTP %d, %s)%s: %s", 
+		e.Service, e.Endpoint, e.StatusCode, e.Category, correlationStr, e.Message)
 }
 
 // IsRetryable returns whether the error is retryable
 func (e APIError) IsRetryable() bool {
 	return e.Retryable
+}
+
+// IsTransient returns whether the error is transient
+func (e APIError) IsTransient() bool {
+	return e.Category == ErrorCategoryTransient || e.Category == ErrorCategoryTimeout || 
+		   e.Category == ErrorCategoryNetwork || e.Category == ErrorCategoryRateLimit ||
+		   e.Category == ErrorCategoryServer
+}
+
+// GetCategory returns the error category
+func (e APIError) GetCategory() ErrorCategory {
+	return e.Category
 }
 
 // TransformationError represents errors during parameter or response transformation
@@ -279,13 +318,16 @@ func (e TokenError) IsRefreshable() bool {
 
 // NetworkError represents network-related errors
 type NetworkError struct {
-	URL       string        `json:"url"`
-	Method    string        `json:"method"`
-	Message   string        `json:"message"`
-	Cause     error         `json:"-"`
-	Timeout   bool          `json:"timeout"`
-	Retryable bool          `json:"retryable"`
-	RetryAfter *time.Duration `json:"retry_after,omitempty"`
+	URL           string        `json:"url"`
+	Method        string        `json:"method"`
+	Message       string        `json:"message"`
+	Cause         error         `json:"-"`
+	Timeout       bool          `json:"timeout"`
+	Retryable     bool          `json:"retryable"`
+	RetryAfter    *time.Duration `json:"retry_after,omitempty"`
+	Category      ErrorCategory `json:"category"`
+	CorrelationID string        `json:"correlation_id,omitempty"`
+	Timestamp     time.Time     `json:"timestamp"`
 }
 
 // Error implements the error interface
@@ -335,10 +377,11 @@ func NewDeviceCodeError(verificationURL, userCode, deviceCode string, expiresIn,
 // NewAuthenticationError creates a new AuthenticationError
 func NewAuthenticationError(authType AuthType, service, message string, cause error) *AuthenticationError {
 	return &AuthenticationError{
-		Type:    authType,
-		Service: service,
-		Message: message,
-		Cause:   cause,
+		Type:          authType,
+		Service:       service,
+		Message:       message,
+		Cause:         cause,
+		OriginalError: cause,
 	}
 }
 
@@ -362,8 +405,10 @@ func NewValidationError(parameter string, value interface{}, rule, message strin
 	}
 }
 
-// NewAPIError creates a new APIError
+// NewAPIError creates a new APIError with automatic categorization
 func NewAPIError(service, endpoint string, statusCode int, message, response string, retryable bool) *APIError {
+	category := categorizeHTTPError(statusCode)
+	
 	return &APIError{
 		Service:    service,
 		Endpoint:   endpoint,
@@ -371,7 +416,16 @@ func NewAPIError(service, endpoint string, statusCode int, message, response str
 		Message:    message,
 		Response:   response,
 		Retryable:  retryable,
+		Category:   category,
+		Timestamp:  time.Now(),
 	}
+}
+
+// NewAPIErrorWithCorrelation creates a new APIError with correlation ID
+func NewAPIErrorWithCorrelation(service, endpoint string, statusCode int, message, response string, retryable bool, correlationID string) *APIError {
+	apiErr := NewAPIError(service, endpoint, statusCode, message, response, retryable)
+	apiErr.CorrelationID = correlationID
+	return apiErr
 }
 
 // NewTransformationError creates a new TransformationError
@@ -397,8 +451,13 @@ func NewTokenError(authType AuthType, service, reason, message string, cause err
 	}
 }
 
-// NewNetworkError creates a new NetworkError
+// NewNetworkError creates a new NetworkError with automatic categorization
 func NewNetworkError(url, method, message string, cause error, timeout, retryable bool) *NetworkError {
+	category := ErrorCategoryNetwork
+	if timeout {
+		category = ErrorCategoryTimeout
+	}
+	
 	return &NetworkError{
 		URL:       url,
 		Method:    method,
@@ -406,5 +465,32 @@ func NewNetworkError(url, method, message string, cause error, timeout, retryabl
 		Cause:     cause,
 		Timeout:   timeout,
 		Retryable: retryable,
+		Category:  category,
+		Timestamp: time.Now(),
+	}
+}
+
+// NewNetworkErrorWithCorrelation creates a new NetworkError with correlation ID
+func NewNetworkErrorWithCorrelation(url, method, message string, cause error, timeout, retryable bool, correlationID string) *NetworkError {
+	netErr := NewNetworkError(url, method, message, cause, timeout, retryable)
+	netErr.CorrelationID = correlationID
+	return netErr
+}
+
+// categorizeHTTPError categorizes an HTTP status code into an error category
+func categorizeHTTPError(statusCode int) ErrorCategory {
+	switch {
+	case statusCode >= 500:
+		return ErrorCategoryServer
+	case statusCode == 429:
+		return ErrorCategoryRateLimit
+	case statusCode == 408:
+		return ErrorCategoryTimeout
+	case statusCode == 401 || statusCode == 403:
+		return ErrorCategoryAuth
+	case statusCode >= 400 && statusCode < 500:
+		return ErrorCategoryClient
+	default:
+		return ErrorCategoryPermanent
 	}
 }

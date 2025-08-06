@@ -839,12 +839,12 @@ func TestLoadConfigFromFile_RealExample(t *testing.T) {
 		t.Errorf("Expected Google baseURL 'https://www.googleapis.com', got '%s'", googleService.BaseURL)
 	}
 	
-	if googleService.Auth.Type != AuthTypeBearer {
-		t.Errorf("Expected Google auth type 'bearer', got '%s'", googleService.Auth.Type)
+	if googleService.Auth.Type != AuthTypeOAuth2Device {
+		t.Errorf("Expected Google auth type 'oauth2_device', got '%s'", googleService.Auth.Type)
 	}
 	
-	if len(googleService.Endpoints) < 3 {
-		t.Errorf("Expected at least 3 Google endpoints, got %d", len(googleService.Endpoints))
+	if len(googleService.Endpoints) < 16 {
+		t.Errorf("Expected at least 16 Google endpoints, got %d", len(googleService.Endpoints))
 	}
 	
 	// Verify specific endpoints

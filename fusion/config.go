@@ -10,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
 )
@@ -66,10 +67,12 @@ type Config struct {
 
 // ServiceConfig represents the configuration for a single service
 type ServiceConfig struct {
-	Name      string           `json:"name"`
-	BaseURL   string           `json:"baseURL"`
-	Auth      AuthConfig       `json:"auth"`
-	Endpoints []EndpointConfig `json:"endpoints"`
+	Name           string                `json:"name"`
+	BaseURL        string                `json:"baseURL"`
+	Auth           AuthConfig            `json:"auth"`
+	Endpoints      []EndpointConfig      `json:"endpoints"`
+	Retry          *RetryConfig          `json:"retry,omitempty"`
+	CircuitBreaker *CircuitBreakerConfig `json:"circuitBreaker,omitempty"`
 }
 
 // AuthConfig represents authentication configuration
@@ -87,6 +90,7 @@ type EndpointConfig struct {
 	Path        string            `json:"path"`
 	Parameters  []ParameterConfig `json:"parameters"`
 	Response    ResponseConfig    `json:"response"`
+	Retry       *RetryConfig      `json:"retry,omitempty"`
 }
 
 // ParameterConfig represents configuration for a parameter
@@ -115,12 +119,181 @@ type TransformConfig struct {
 	Expression string `json:"expression,omitempty"`
 }
 
+// RetryStrategy represents different retry strategies
+type RetryStrategy string
+
+const (
+	RetryStrategyExponential RetryStrategy = "exponential"
+	RetryStrategyLinear      RetryStrategy = "linear"
+	RetryStrategyFixed       RetryStrategy = "fixed"
+)
+
+// RetryConfig represents configuration for retry logic
+type RetryConfig struct {
+	Enabled        bool          `json:"enabled"`
+	MaxAttempts    int           `json:"maxAttempts"`
+	Strategy       RetryStrategy `json:"strategy"`
+	BaseDelay      time.Duration `json:"-"`
+	BaseDelayStr   string        `json:"baseDelay"`
+	MaxDelay       time.Duration `json:"-"`
+	MaxDelayStr    string        `json:"maxDelay"`
+	Jitter         bool          `json:"jitter"`
+	BackoffFactor  float64       `json:"backoffFactor"`
+	RetryableErrors []string      `json:"retryableErrors,omitempty"`
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for RetryConfig
+func (r *RetryConfig) UnmarshalJSON(data []byte) error {
+	type Alias RetryConfig
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(r),
+	}
+	
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	
+	// Parse BaseDelay string to duration
+	if r.BaseDelayStr != "" {
+		duration, err := time.ParseDuration(r.BaseDelayStr)
+		if err != nil {
+			return fmt.Errorf("invalid baseDelay duration '%s': %w", r.BaseDelayStr, err)
+		}
+		r.BaseDelay = duration
+	}
+	
+	// Parse MaxDelay string to duration
+	if r.MaxDelayStr != "" {
+		duration, err := time.ParseDuration(r.MaxDelayStr)
+		if err != nil {
+			return fmt.Errorf("invalid maxDelay duration '%s': %w", r.MaxDelayStr, err)
+		}
+		r.MaxDelay = duration
+	}
+	
+	// Set defaults
+	if r.MaxAttempts == 0 {
+		r.MaxAttempts = 3
+	}
+	if r.Strategy == "" {
+		r.Strategy = RetryStrategyExponential
+	}
+	if r.BaseDelay == 0 {
+		r.BaseDelay = time.Second
+	}
+	if r.BackoffFactor == 0 {
+		r.BackoffFactor = 2.0
+	}
+	
+	return nil
+}
+
+// CircuitBreakerConfig represents configuration for circuit breaker pattern
+type CircuitBreakerConfig struct {
+	Enabled              bool          `json:"enabled"`
+	FailureThreshold     int           `json:"failureThreshold"`
+	SuccessThreshold     int           `json:"successThreshold"`
+	Timeout              time.Duration `json:"-"`
+	TimeoutStr           string        `json:"timeout"`
+	HalfOpenMaxCalls     int           `json:"halfOpenMaxCalls"`
+	ResetTimeout         time.Duration `json:"-"`
+	ResetTimeoutStr      string        `json:"resetTimeout"`
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for CircuitBreakerConfig
+func (c *CircuitBreakerConfig) UnmarshalJSON(data []byte) error {
+	type Alias CircuitBreakerConfig
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	
+	// Parse Timeout string to duration
+	if c.TimeoutStr != "" {
+		duration, err := time.ParseDuration(c.TimeoutStr)
+		if err != nil {
+			return fmt.Errorf("invalid circuit breaker timeout duration '%s': %w", c.TimeoutStr, err)
+		}
+		c.Timeout = duration
+	}
+	
+	// Parse ResetTimeout string to duration
+	if c.ResetTimeoutStr != "" {
+		duration, err := time.ParseDuration(c.ResetTimeoutStr)
+		if err != nil {
+			return fmt.Errorf("invalid circuit breaker resetTimeout duration '%s': %w", c.ResetTimeoutStr, err)
+		}
+		c.ResetTimeout = duration
+	}
+	
+	// Set defaults
+	if c.FailureThreshold == 0 {
+		c.FailureThreshold = 5
+	}
+	if c.SuccessThreshold == 0 {
+		c.SuccessThreshold = 3
+	}
+	if c.Timeout == 0 {
+		c.Timeout = 30 * time.Second
+	}
+	if c.HalfOpenMaxCalls == 0 {
+		c.HalfOpenMaxCalls = 3
+	}
+	if c.ResetTimeout == 0 {
+		c.ResetTimeout = 60 * time.Second
+	}
+	
+	return nil
+}
+
 // ResponseConfig represents configuration for response handling
 type ResponseConfig struct {
 	Type             ResponseType      `json:"type"`
 	Transform        string            `json:"transform,omitempty"`
 	Paginated        bool              `json:"paginated,omitempty"`
 	PaginationConfig *PaginationConfig `json:"paginationConfig,omitempty"`
+	Caching          *CachingConfig    `json:"caching,omitempty"`
+	Retry            *RetryConfig      `json:"retry,omitempty"`
+}
+
+// CachingConfig represents configuration for response caching
+type CachingConfig struct {
+	Enabled bool          `json:"enabled"`
+	TTL     time.Duration `json:"-"`
+	TTLStr  string        `json:"ttl"`
+	Key     string        `json:"key,omitempty"` // Custom cache key template
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for CachingConfig
+func (c *CachingConfig) UnmarshalJSON(data []byte) error {
+	type Alias CachingConfig
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	
+	// Parse TTL string to duration
+	if c.TTLStr != "" {
+		duration, err := time.ParseDuration(c.TTLStr)
+		if err != nil {
+			return fmt.Errorf("invalid TTL duration '%s': %w", c.TTLStr, err)
+		}
+		c.TTL = duration
+	}
+	
+	return nil
 }
 
 // PaginationConfig represents configuration for paginated responses
@@ -924,4 +1097,61 @@ func (c *Config) MergeConfig(other *Config) error {
 	}
 	
 	return c.Validate()
+}
+
+// GetEffectiveRetryConfig returns the effective retry configuration for an endpoint
+// Endpoint-level config overrides service-level config, which overrides global defaults
+func (e *EndpointConfig) GetEffectiveRetryConfig(service *ServiceConfig) *RetryConfig {
+	// Endpoint-level override takes precedence
+	if e.Retry != nil {
+		return e.Retry
+	}
+	
+	// Fall back to service-level config
+	if service != nil && service.Retry != nil {
+		return service.Retry
+	}
+	
+	// Return default config if nothing is specified
+	return &RetryConfig{
+		Enabled:       false, // Disabled by default for backward compatibility
+		MaxAttempts:   3,
+		Strategy:      RetryStrategyExponential,
+		BaseDelay:     time.Second,
+		MaxDelay:      30 * time.Second,
+		Jitter:        true,
+		BackoffFactor: 2.0,
+		RetryableErrors: []string{
+			"network_error", "timeout", "rate_limited", "server_error",
+		},
+	}
+}
+
+// GetEffectiveCircuitBreakerConfig returns the effective circuit breaker configuration for a service
+func (s *ServiceConfig) GetEffectiveCircuitBreakerConfig() *CircuitBreakerConfig {
+	if s.CircuitBreaker != nil {
+		return s.CircuitBreaker
+	}
+	
+	// Return default config if nothing is specified
+	return &CircuitBreakerConfig{
+		Enabled:          false, // Disabled by default for backward compatibility
+		FailureThreshold: 5,
+		SuccessThreshold: 3,
+		Timeout:          30 * time.Second,
+		HalfOpenMaxCalls: 3,
+		ResetTimeout:     60 * time.Second,
+	}
+}
+
+// IsRetryEnabled checks if retry is enabled for this endpoint
+func (e *EndpointConfig) IsRetryEnabled(service *ServiceConfig) bool {
+	config := e.GetEffectiveRetryConfig(service)
+	return config.Enabled
+}
+
+// IsCircuitBreakerEnabled checks if circuit breaker is enabled for this service
+func (s *ServiceConfig) IsCircuitBreakerEnabled() bool {
+	config := s.GetEffectiveCircuitBreakerConfig()
+	return config.Enabled
 }

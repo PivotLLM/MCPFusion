@@ -1,9 +1,31 @@
 // Copyright (c) 2025 Tenebris Technologies Inc.
 // Please see LICENSE for details.
 
-// Package fusion provides a dynamic, configuration-driven MCP provider that enables 
-// access to multiple APIs through JSON configuration. It supports various authentication 
-// methods and allows adding new API endpoints without code changes.
+// Package fusion provides a production-ready, configuration-driven MCP (Model Context Protocol) 
+// provider that enables seamless integration with multiple APIs through JSON configuration.
+//
+// Key Features:
+// - OAuth2 Device Flow authentication (Microsoft 365, Google APIs)
+// - Advanced retry logic with circuit breakers
+// - Response caching with intelligent TTL management
+// - Parameter validation and transformation
+// - Comprehensive error handling with correlation tracking
+// - Real-time metrics collection and monitoring
+// - Support for paginated responses with automatic multi-page fetching
+//
+// This package is production-ready and supports enterprise-grade deployments with 
+// advanced reliability features including exponential backoff retries, circuit breaker
+// patterns, and comprehensive observability.
+//
+// Example usage:
+//
+//	fusionProvider := fusion.New(
+//		fusion.WithJSONConfig("configs/microsoft365.json"),
+//		fusion.WithLogger(logger),
+//		fusion.WithInMemoryCache(),
+//		fusion.WithCircuitBreaker(true),
+//	)
+//	server.AddToolProvider(fusionProvider)
 package fusion
 
 import (
@@ -18,6 +40,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
@@ -28,19 +51,69 @@ var _ global.ToolProvider = (*Fusion)(nil)
 var _ global.ResourceProvider = (*Fusion)(nil)
 var _ global.PromptProvider = (*Fusion)(nil)
 
-// Fusion serves as the main package object and holds configuration information
+// Fusion is the main provider struct that implements the MCPFusion interfaces for
+// dynamic API integration. It manages configuration, authentication, caching, metrics,
+// and provides production-grade reliability features.
+//
+// The Fusion struct is thread-safe and can handle concurrent requests across multiple
+// API services. It implements global.ToolProvider, global.ResourceProvider, and
+// global.PromptProvider interfaces for seamless integration with MCPFusion servers.
+//
+// Key Components:
+// - config: Service and endpoint configuration loaded from JSON
+// - authManager: Handles OAuth2, bearer tokens, API keys, and basic auth
+// - httpClient: HTTP client with timeout and connection pooling
+// - cache: Token and response caching for performance optimization
+// - logger: Structured logging with correlation ID support
+// - metricsCollector: Real-time metrics and health monitoring
+// - circuitBreakers: Per-service circuit breaker protection
+//
+// Thread Safety:
+// All public methods are thread-safe and can be called concurrently from multiple
+// goroutines. Internal state is protected by appropriate synchronization primitives.
 type Fusion struct {
-	config      *Config
-	authManager *AuthManager
-	httpClient  *http.Client
-	cache       Cache
-	logger      global.Logger
+	config                  *Config                        // Service configuration and endpoints
+	authManager             *AuthManager                   // Authentication strategy manager
+	httpClient              *http.Client                   // HTTP client with timeouts
+	cache                   Cache                          // Token and response cache
+	logger                  global.Logger                  // Structured logging interface
+	metricsCollector        *MetricsCollector              // Performance and health metrics
+	correlationIDGenerator  *CorrelationIDGenerator        // Request correlation tracking
+	circuitBreakers         map[string]*CircuitBreaker     // Per-service circuit breakers
+	circuitBreakersMutex    sync.RWMutex                   // Protects circuitBreakers map
 }
 
-// Option defines a function type for configuration options
+// Option defines a functional option type for configuring Fusion instances.
+// This pattern allows for flexible and extensible configuration while maintaining
+// backward compatibility. Options are applied during Fusion initialization.
+//
+// Example usage:
+//
+//	fusion := New(
+//		WithJSONConfig("config.json"),
+//		WithLogger(logger),
+//		WithInMemoryCache(),
+//	)
 type Option func(*Fusion)
 
-// WithJSONConfig loads configuration from a JSON file
+// WithJSONConfig loads API service configuration from a JSON file.
+// This is the primary way to configure API endpoints, authentication, and service settings.
+//
+// The configuration file supports environment variable expansion using ${VAR_NAME} syntax
+// and includes comprehensive validation to ensure all required fields are present.
+//
+// Parameters:
+//   - configPath: File path to the JSON configuration file
+//
+// The configuration file should contain a "services" object with service definitions.
+// Each service can define multiple endpoints with parameters, authentication, and response handling.
+//
+// Example:
+//
+//	fusion := New(WithJSONConfig("configs/microsoft365.json"))
+//
+// If the file cannot be loaded or contains invalid configuration, the error will be
+// logged and the Fusion instance will be created without that configuration.
 func WithJSONConfig(configPath string) Option {
 	return func(f *Fusion) {
 		if f.logger != nil {
@@ -136,13 +209,75 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
-// New creates a new Fusion instance with the provided options
+// WithMetrics enables or disables metrics collection
+func WithMetrics(enabled bool) Option {
+	return func(f *Fusion) {
+		f.metricsCollector = NewMetricsCollector(f.logger, enabled)
+	}
+}
+
+// WithMetricsCollector sets a custom metrics collector
+func WithMetricsCollector(collector *MetricsCollector) Option {
+	return func(f *Fusion) {
+		f.metricsCollector = collector
+	}
+}
+
+// WithCorrelationIDGenerator sets a custom correlation ID generator
+func WithCorrelationIDGenerator(generator *CorrelationIDGenerator) Option {
+	return func(f *Fusion) {
+		f.correlationIDGenerator = generator
+	}
+}
+
+// New creates a new production-ready Fusion instance with the provided configuration options.
+// This is the primary constructor for the Fusion provider and initializes all components
+// required for API integration including authentication, caching, metrics, and circuit breakers.
+//
+// Default Configuration:
+// - HTTP Client: 30-second timeout with connection pooling
+// - Cache: In-memory cache for tokens and responses
+// - Metrics: Real-time metrics collection enabled
+// - Circuit Breakers: Per-service failure protection
+// - Correlation IDs: Request tracking for debugging
+//
+// The function applies functional options in order, allowing later options to override
+// earlier ones. This provides maximum flexibility for configuration.
+//
+// Parameters:
+//   - options: Variable number of functional options to configure the Fusion instance
+//
+// Returns:
+//   - *Fusion: Configured Fusion instance ready for use as an MCP provider
+//
+// Example Basic Usage:
+//
+//	fusion := New()  // Creates instance with defaults
+//
+// Example Production Usage:
+//
+//	fusion := New(
+//		WithJSONConfig("configs/microsoft365.json"),
+//		WithJSONConfig("configs/google.json"),
+//		WithLogger(logger),
+//		WithInMemoryCache(),
+//		WithTimeout(45*time.Second),
+//		WithCircuitBreaker(true),
+//		WithMetricsCollection(true),
+//	)
+//
+// Thread Safety:
+// The returned Fusion instance is thread-safe and can handle concurrent requests
+// from multiple goroutines without additional synchronization.
 func New(options ...Option) *Fusion {
 	fusion := &Fusion{
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		cache: NewInMemoryCache(), // Default to in-memory cache (will be updated with logger later)
+		cache:                  NewInMemoryCache(), // Default to in-memory cache (will be updated with logger later)
+		metricsCollector:       NewMetricsCollector(nil, true), // Enable metrics by default
+		correlationIDGenerator: NewCorrelationIDGenerator(),
+		circuitBreakers:        make(map[string]*CircuitBreaker),
 	}
 	
 	// Apply all options
@@ -158,6 +293,14 @@ func New(options ...Option) *Fusion {
 	// Update cache with logger if we're using the default in-memory cache
 	if _, isInMemory := fusion.cache.(*InMemoryCache); isInMemory {
 		fusion.cache = NewInMemoryCacheWithLogger(fusion.logger)
+	}
+	
+	// Update metrics collector with logger
+	if fusion.metricsCollector != nil {
+		fusion.metricsCollector.logger = fusion.logger
+		if fusion.logger != nil {
+			fusion.logger.Debug("Metrics collection enabled")
+		}
 	}
 	
 	// Initialize auth manager if we have a config
@@ -247,8 +390,40 @@ func (f *Fusion) GetLogger() global.Logger {
 	return f.logger
 }
 
-// RegisterTools implements the global.ToolProvider interface
-// This method will dynamically generate tools based on the configuration
+// RegisterTools implements the global.ToolProvider interface and dynamically generates
+// MCP tools based on the loaded JSON configuration. Each API endpoint becomes an executable
+// tool that can be called by AI clients through the MCP protocol.
+//
+// This method is called by the MCPFusion server during initialization to discover all
+// available tools. The tools are generated from endpoint configurations and include:
+// - Parameter validation based on configuration
+// - Authentication handling for the target API
+// - Request/response transformation
+// - Error handling with retry logic and circuit breakers
+// - Caching support for improved performance
+//
+// Tool Naming Convention:
+// Tools are named using the pattern: "{service_name}_{endpoint_id}"
+// For example: "microsoft365_calendar_events" or "google_list_files"
+//
+// Returns:
+//   - []global.ToolDefinition: Slice of tool definitions for MCP server registration
+//
+// The returned tools are fully functional and ready for execution. Each tool includes:
+// - Name and description from endpoint configuration
+// - Parameter schema with validation rules
+// - Handler function that executes the API call
+//
+// Thread Safety:
+// This method is thread-safe and can be called multiple times. It returns a new slice
+// each time but the underlying tool handlers share the same Fusion instance state.
+//
+// Example:
+// If configured with Microsoft 365 and Google APIs, this might return tools like:
+// - microsoft365_get_profile
+// - microsoft365_calendar_events  
+// - google_list_calendar_events
+// - google_list_files
 func (f *Fusion) RegisterTools() []global.ToolDefinition {
 	if f.config == nil {
 		if f.logger != nil {
@@ -301,99 +476,21 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 
 // createToolHandler creates a handler function for a specific endpoint
 func (f *Fusion) createToolHandler(serviceName string, service *ServiceConfig, endpoint *EndpointConfig) global.ToolHandler {
+	handler := NewHTTPHandler(f, service, endpoint)
+	
 	return func(options map[string]any) (string, error) {
-		startTime := time.Now()
-		toolName := fmt.Sprintf("%s_%s", serviceName, endpoint.ID)
-		
-		if f.logger != nil {
-			f.logger.Infof("Starting tool execution: %s", toolName)
-			f.logger.Debugf("Tool %s parameters: %v", toolName, options)
-		}
-		
 		ctx := context.Background()
 		
-		// Build the request
-		if f.logger != nil {
-			f.logger.Debugf("Building HTTP request for tool: %s", toolName)
-		}
-		req, err := f.buildRequest(ctx, serviceName, service, endpoint, options)
+		// Handle request
+		result, err := handler.Handle(ctx, options)
 		if err != nil {
-			if f.logger != nil {
-				f.logger.Errorf("Failed to build request for %s: %v", toolName, err)
+			// Check if it's a device code error
+			if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
+				// For MCP, we return the device code message and expect the client to handle it
+				// The client should display the message and call back when ready
+				return deviceCodeErr.Error(), nil
 			}
 			return "", err
-		}
-		
-		if f.logger != nil {
-			f.logger.Debugf("Built request for %s: %s %s", toolName, req.Method, req.URL.String())
-			
-			// Log sanitized headers for debugging
-			if req.Header != nil {
-				sanitizedHeaders := f.sanitizeHeaders(req.Header)
-				f.logger.Debugf("Request headers for %s: %v", toolName, sanitizedHeaders)
-			}
-		}
-		
-		// Apply authentication
-		if f.authManager != nil {
-			if f.logger != nil {
-				f.logger.Debugf("Applying authentication for tool: %s", toolName)
-			}
-			if err := f.authManager.ApplyAuthentication(ctx, req, serviceName, service.Auth); err != nil {
-				if f.logger != nil {
-					f.logger.Errorf("Failed to apply authentication for %s: %v", toolName, err)
-				}
-				return "", err
-			}
-		} else {
-			if f.logger != nil {
-				f.logger.Warning("No auth manager available for authentication")
-			}
-		}
-		
-		// Execute the request
-		if f.logger != nil {
-			f.logger.Debugf("Executing HTTP request for tool: %s", toolName)
-		}
-		
-		reqStart := time.Now()
-		resp, err := f.httpClient.Do(req)
-		reqDuration := time.Since(reqStart)
-		
-		if err != nil {
-			if f.logger != nil {
-				f.logger.Errorf("HTTP request failed for %s after %v: %v", toolName, reqDuration, err)
-			}
-			return "", NewNetworkError(req.URL.String(), req.Method, "HTTP request failed", err, false, true)
-		}
-		defer resp.Body.Close()
-		
-		if f.logger != nil {
-			f.logger.Debugf("HTTP request completed for %s: %s (%v)", toolName, resp.Status, reqDuration)
-			
-			// Log sanitized response headers for debugging
-			if resp.Header != nil {
-				sanitizedHeaders := f.sanitizeHeaders(resp.Header)
-				f.logger.Debugf("Response headers for %s: %v", toolName, sanitizedHeaders)
-			}
-		}
-		
-		// Process the response
-		if f.logger != nil {
-			f.logger.Debugf("Processing response for tool: %s", toolName)
-		}
-		result, err := f.processResponse(resp, endpoint, serviceName)
-		if err != nil {
-			if f.logger != nil {
-				f.logger.Errorf("Failed to process response for %s: %v", toolName, err)
-			}
-			return "", err
-		}
-		
-		totalDuration := time.Since(startTime)
-		if f.logger != nil {
-			f.logger.Infof("Successfully executed tool %s (total: %v, request: %v)", toolName, totalDuration, reqDuration)
-			f.logger.Debugf("Tool %s response length: %d characters", toolName, len(result))
 		}
 		
 		return result, nil
@@ -1342,4 +1439,95 @@ func (f *Fusion) sanitizeResponseBody(body []byte, maxLength int) string {
 	}
 	
 	return sanitizedStr
+}
+
+// getOrCreateCircuitBreaker gets or creates a circuit breaker for a service
+func (f *Fusion) getOrCreateCircuitBreaker(serviceName string, config *CircuitBreakerConfig) *CircuitBreaker {
+	f.circuitBreakersMutex.RLock()
+	if cb, exists := f.circuitBreakers[serviceName]; exists {
+		f.circuitBreakersMutex.RUnlock()
+		return cb
+	}
+	f.circuitBreakersMutex.RUnlock()
+
+	// Create new circuit breaker
+	f.circuitBreakersMutex.Lock()
+	defer f.circuitBreakersMutex.Unlock()
+
+	// Double-check after acquiring write lock
+	if cb, exists := f.circuitBreakers[serviceName]; exists {
+		return cb
+	}
+
+	if f.logger != nil {
+		f.logger.Infof("Creating circuit breaker for service '%s'", serviceName)
+	}
+
+	cb := NewCircuitBreaker(config, f.logger)
+	f.circuitBreakers[serviceName] = cb
+	return cb
+}
+
+// GetCircuitBreakerMetrics returns circuit breaker metrics for a service
+func (f *Fusion) GetCircuitBreakerMetrics(serviceName string) *CircuitBreakerMetrics {
+	f.circuitBreakersMutex.RLock()
+	defer f.circuitBreakersMutex.RUnlock()
+
+	if cb, exists := f.circuitBreakers[serviceName]; exists {
+		metrics := cb.GetMetrics()
+		return &metrics
+	}
+	return nil
+}
+
+// GetAllCircuitBreakerMetrics returns circuit breaker metrics for all services
+func (f *Fusion) GetAllCircuitBreakerMetrics() map[string]*CircuitBreakerMetrics {
+	f.circuitBreakersMutex.RLock()
+	defer f.circuitBreakersMutex.RUnlock()
+
+	result := make(map[string]*CircuitBreakerMetrics)
+	for serviceName, cb := range f.circuitBreakers {
+		metrics := cb.GetMetrics()
+		result[serviceName] = &metrics
+	}
+	return result
+}
+
+// GetMetrics returns metrics for all services
+func (f *Fusion) GetMetrics() map[string]*ServiceMetrics {
+	if f.metricsCollector == nil {
+		return nil
+	}
+	return f.metricsCollector.GetAllMetrics()
+}
+
+// GetServiceMetrics returns metrics for a specific service
+func (f *Fusion) GetServiceMetrics(serviceName string) *ServiceMetrics {
+	if f.metricsCollector == nil {
+		return nil
+	}
+	return f.metricsCollector.GetServiceMetrics(serviceName)
+}
+
+// GetGlobalMetrics returns global system metrics
+func (f *Fusion) GetGlobalMetrics() *GlobalMetrics {
+	if f.metricsCollector == nil {
+		return nil
+	}
+	metrics := f.metricsCollector.GetGlobalMetrics()
+	return &metrics
+}
+
+// ResetMetrics resets all collected metrics
+func (f *Fusion) ResetMetrics() {
+	if f.metricsCollector != nil {
+		f.metricsCollector.Reset()
+	}
+}
+
+// StartMetricsLogging starts periodic logging of metrics
+func (f *Fusion) StartMetricsLogging(ctx context.Context, interval time.Duration) {
+	if f.metricsCollector != nil {
+		f.metricsCollector.StartPeriodicLogging(ctx, interval)
+	}
 }

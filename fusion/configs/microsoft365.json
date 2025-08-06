@@ -16,6 +16,24 @@
           "tokenURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token"
         }
       },
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "30s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": ["network_error", "timeout", "server_error", "rate_limited"]
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 5,
+        "successThreshold": 3,
+        "timeout": "30s",
+        "halfOpenMaxCalls": 3,
+        "resetTimeout": "60s"
+      },
       "endpoints": [
         {
           "id": "calendar_read_summary",
@@ -109,6 +127,10 @@
               "nextPageTokenPath": "@odata.nextLink",
               "dataPath": "value",
               "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "10m"
             }
           }
         },
@@ -153,6 +175,82 @@
               "nextPageTokenPath": "@odata.nextLink",
               "dataPath": "value",
               "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            }
+          }
+        },
+        {
+          "id": "profile_get",
+          "name": "Get User Profile",
+          "description": "Get the current user's profile information",
+          "method": "GET",
+          "path": "/me",
+          "parameters": [
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "displayName,mail,userPrincipalName,jobTitle,department,companyName"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "30m"
+            }
+          }
+        },
+        {
+          "id": "contacts_list",
+          "name": "List Contacts",
+          "description": "Get contacts from the user's address book",
+          "method": "GET",
+          "path": "/me/contacts",
+          "parameters": [
+            {
+              "name": "$top",
+              "description": "Number of contacts to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "displayName,emailAddresses,businessPhones,jobTitle,companyName"
+            },
+            {
+              "name": "$filter",
+              "description": "Filter expression",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "15m"
             }
           }
         }

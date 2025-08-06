@@ -5,25 +5,15 @@ package fusion_test
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/PivotLLM/MCPFusion/fusion"
-	"github.com/PivotLLM/MCPFusion/mlogger"
 )
 
 // ExampleNew demonstrates how to create a new Fusion instance
 func ExampleNew() {
-	// Create a logger
-	logger, err := mlogger.New()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer logger.Close()
-
-	// Create a Fusion instance with default options
+	// Create a Fusion instance with default options (no logger to avoid output)
 	fusionProvider := fusion.New(
-		fusion.WithLogger(logger),
 		fusion.WithInMemoryCache(),
 	)
 
