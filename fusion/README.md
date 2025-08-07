@@ -349,6 +349,10 @@ The Fusion package provides **enterprise-grade API integration** with comprehens
 
 📧 **Questions?** Open an issue or check the [Configuration Guide](README_CONFIG.md)
 
+🚀 **Setup Guides:**
+- [Microsoft 365 API Setup](../SETUP_MICROSOFT365.md) - Complete Azure app registration and authentication setup
+- [Google APIs Setup](README_CONFIG.md#google-apis-setup) - Google Cloud Console configuration
+
 👍 **Contributing?** See our [Contributing Guidelines](../CONTRIBUTING.md)
 
 📚 **More Examples?** Check the [examples directory](examples/) for complete integration samples

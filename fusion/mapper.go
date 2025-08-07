@@ -252,9 +252,17 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 		return data, nil
 	}
 
-	// Handle simple field selection like ".value"
-	if strings.HasPrefix(transform, ".") {
-		parts := strings.Split(transform[1:], ".")
+	// Handle simple field selection like ".value" or "$.value"
+	if strings.HasPrefix(transform, ".") || strings.HasPrefix(transform, "$.") {
+		// Remove the leading "." or "$."
+		fieldPath := transform
+		if strings.HasPrefix(fieldPath, "$.") {
+			fieldPath = fieldPath[2:]
+		} else if strings.HasPrefix(fieldPath, ".") {
+			fieldPath = fieldPath[1:]
+		}
+		
+		parts := strings.Split(fieldPath, ".")
 		current := data
 		
 		for _, part := range parts {

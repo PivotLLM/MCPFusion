@@ -10,7 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -250,6 +252,10 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		} else {
 			// Single attempt without retry
 			resp, err = h.fusion.httpClient.Do(req)
+			if err != nil {
+				// Wrap network errors even when not using retry
+				err = h.wrapNetworkError(err, req)
+			}
 		}
 		return err
 	}
@@ -540,5 +546,42 @@ func (h *HTTPHandler) HandleDeviceCodeAuth(ctx context.Context, deviceCodeErr *D
 	h.fusion.authManager.cacheToken(h.service.Name, tokenInfo)
 
 	return tokenInfo, nil
+}
+
+// wrapNetworkError wraps network errors in NetworkError type
+func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
+	if err == nil {
+		return nil
+	}
+
+	// Check if it's already a NetworkError (avoid double wrapping)
+	if _, ok := err.(*NetworkError); ok {
+		return err
+	}
+
+	// Determine if it's a timeout error
+	timeout := false
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		timeout = true
+	}
+
+	// Determine if it's retryable
+	retryable := true
+	
+	// Check for specific error types
+	if urlErr, ok := err.(*url.Error); ok {
+		// DNS errors, connection errors, etc. are retryable
+		if strings.Contains(urlErr.Error(), "no such host") ||
+			strings.Contains(urlErr.Error(), "connection refused") ||
+			strings.Contains(urlErr.Error(), "connection reset") ||
+			strings.Contains(urlErr.Error(), "network unreachable") ||
+			strings.Contains(urlErr.Error(), "timeout") ||
+			strings.Contains(urlErr.Error(), "deadline exceeded") {
+			retryable = true
+		}
+	}
+
+	message := err.Error()
+	return NewNetworkError(req.URL.String(), req.Method, message, err, timeout, retryable)
 }
 

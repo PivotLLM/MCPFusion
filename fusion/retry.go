@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -37,7 +39,11 @@ func NewRetryExecutor(config *RetryConfig, logger global.Logger) *RetryExecutor 
 func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *http.Request) (*http.Response, error) {
 	if !r.config.Enabled {
 		// No retry, execute once
-		return client.Do(req)
+		resp, err := client.Do(req)
+		if err != nil {
+			err = r.wrapNetworkError(err, req)
+		}
+		return resp, err
 	}
 
 	var lastErr error
@@ -54,6 +60,11 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 
 		// Execute the request
 		resp, err := client.Do(clonedReq)
+		
+		// Wrap network errors in NetworkError type
+		if err != nil {
+			err = r.wrapNetworkError(err, clonedReq)
+		}
 		
 		// Check if we should retry
 		shouldRetry, retryReason := r.shouldRetry(err, resp, attempt)
@@ -260,6 +271,43 @@ func (r *RetryExecutor) cloneRequest(req *http.Request) *http.Request {
 	// For POST/PUT requests with body, the caller should handle body cloning
 	
 	return cloned
+}
+
+// wrapNetworkError wraps network errors in NetworkError type
+func (r *RetryExecutor) wrapNetworkError(err error, req *http.Request) error {
+	if err == nil {
+		return nil
+	}
+
+	// Check if it's already a NetworkError (avoid double wrapping)
+	if _, ok := err.(*NetworkError); ok {
+		return err
+	}
+
+	// Determine if it's a timeout error
+	timeout := false
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		timeout = true
+	}
+
+	// Determine if it's retryable
+	retryable := true
+	
+	// Check for specific error types
+	if urlErr, ok := err.(*url.Error); ok {
+		// DNS errors, connection errors, etc. are retryable
+		if strings.Contains(urlErr.Error(), "no such host") ||
+			strings.Contains(urlErr.Error(), "connection refused") ||
+			strings.Contains(urlErr.Error(), "connection reset") ||
+			strings.Contains(urlErr.Error(), "network unreachable") ||
+			strings.Contains(urlErr.Error(), "timeout") ||
+			strings.Contains(urlErr.Error(), "deadline exceeded") {
+			retryable = true
+		}
+	}
+
+	message := err.Error()
+	return NewNetworkError(req.URL.String(), req.Method, message, err, timeout, retryable)
 }
 
 // CircuitBreakerState represents the state of a circuit breaker

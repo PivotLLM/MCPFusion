@@ -14,6 +14,7 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/example1"
 	"github.com/PivotLLM/MCPFusion/example2"
+	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
 	"github.com/PivotLLM/MCPFusion/mlogger"
@@ -33,6 +34,7 @@ func main() {
 	debugFlag := flag.Bool("debug", true, "Enable debug mode")
 	portFlag := flag.Int("port", 8888, "Port to listen on")
 	noStreamingFlag := flag.Bool("no-streaming", false, "Disable streaming (use plain HTTP instead of SSE)")
+	fusionConfigFlag := flag.String("fusion-config", "", "Path to fusion configuration file (optional)")
 	helpFlag := flag.Bool("help", false, "Show help information")
 	versionFlag := flag.Bool("version", false, "Show version information")
 
@@ -62,6 +64,7 @@ func main() {
 	// Use the flag values
 	debug := *debugFlag
 	noStreaming := *noStreamingFlag
+	fusionConfig := *fusionConfigFlag
 	if *portFlag > 0 && *portFlag < 65536 {
 		listen = fmt.Sprintf("localhost:%d", *portFlag)
 	} else {
@@ -129,6 +132,17 @@ func main() {
 		tp2,
 	}
 
+	// Add fusion provider if configuration is provided
+	var fusionProvider *fusion.Fusion
+	if fusionConfig != "" {
+		logger.Infof("Loading fusion provider with config: %s", fusionConfig)
+		fusionProvider = fusion.New(
+			fusion.WithLogger(logger),
+			fusion.WithJSONConfig(fusionConfig),
+		)
+		providers = append(providers, fusionProvider)
+	}
+
 	// Create MCP server, passing in the logger and tool providers
 	// as well as setting other options
 	mcp, err := mcpserver.New(
@@ -142,9 +156,9 @@ func main() {
 		// Pass in the tool providers
 		mcpserver.WithToolProviders(providers),
 
-		// Example1 also provides resources and prompts
-		mcpserver.WithResourceProviders([]global.ResourceProvider{tp1}),
-		mcpserver.WithPromptProviders([]global.PromptProvider{tp1}),
+		// Setup resource and prompt providers
+		mcpserver.WithResourceProviders(getResourceProviders(tp1, fusionProvider)),
+		mcpserver.WithPromptProviders(getPromptProviders(tp1, fusionProvider)),
 	)
 	if err != nil {
 		logger.Fatalf("Unable to create MCP server: %v", err)
@@ -174,4 +188,22 @@ func main() {
 
 	// Exit with success
 	os.Exit(0)
+}
+
+// getResourceProviders returns the list of resource providers
+func getResourceProviders(tp1 *example1.Config, fusionProvider *fusion.Fusion) []global.ResourceProvider {
+	providers := []global.ResourceProvider{tp1}
+	if fusionProvider != nil {
+		providers = append(providers, fusionProvider)
+	}
+	return providers
+}
+
+// getPromptProviders returns the list of prompt providers
+func getPromptProviders(tp1 *example1.Config, fusionProvider *fusion.Fusion) []global.PromptProvider {
+	providers := []global.PromptProvider{tp1}
+	if fusionProvider != nil {
+		providers = append(providers, fusionProvider)
+	}
+	return providers
 }
