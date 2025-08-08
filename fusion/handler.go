@@ -98,11 +98,12 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 	// Apply authentication
 	if err := h.fusion.authManager.ApplyAuthentication(ctx, req, h.service.Name, h.service.Auth); err != nil {
-		// Check if it's a device code error
+		// Check if it's a device code error - return the message for user
 		if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
 			// Return the device code error message as the response
 			return deviceCodeErr.Error(), nil
 		}
+		
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Failed to apply authentication [%s]: %v", correlationID, err)
 		}
@@ -519,34 +520,6 @@ func (h *HTTPHandler) generateCacheKey(args map[string]interface{}) string {
 	return fmt.Sprintf("fusion:%s:%s:%s", h.service.Name, h.endpoint.ID, hash[:16])
 }
 
-// HandleDeviceCodeAuth handles OAuth2 device code authentication flow
-func (h *HTTPHandler) HandleDeviceCodeAuth(ctx context.Context, deviceCodeErr *DeviceCodeError) (*TokenInfo, error) {
-	if h.fusion.logger != nil {
-		h.fusion.logger.Infof("Handling device code authentication for service: %s", h.service.Name)
-	}
-
-	// Get the OAuth2 strategy
-	strategy, ok := h.fusion.authManager.strategies[AuthTypeOAuth2Device]
-	if !ok {
-		return nil, fmt.Errorf("OAuth2 device flow strategy not registered")
-	}
-
-	oauth2Strategy, ok := strategy.(*OAuth2DeviceFlowStrategy)
-	if !ok {
-		return nil, fmt.Errorf("invalid OAuth2 device flow strategy type")
-	}
-
-	// Poll for token
-	tokenInfo, err := oauth2Strategy.PollForToken(ctx, deviceCodeErr)
-	if err != nil {
-		return nil, err
-	}
-
-	// Cache the token
-	h.fusion.authManager.cacheToken(h.service.Name, tokenInfo)
-
-	return tokenInfo, nil
-}
 
 // wrapNetworkError wraps network errors in NetworkError type
 func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {

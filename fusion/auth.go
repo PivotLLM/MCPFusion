@@ -186,6 +186,14 @@ func (am *AuthManager) GetToken(ctx context.Context, serviceName string, authCon
 	
 	tokenInfo, err := strategy.Authenticate(ctx, authConfig.Config)
 	if err != nil {
+		// Check if it's a DeviceCodeError - don't wrap it
+		if _, ok := err.(*DeviceCodeError); ok {
+			if am.logger != nil {
+				am.logger.Infof("Device code authentication required for service %s", serviceName)
+			}
+			return nil, err // Return DeviceCodeError directly
+		}
+		
 		if am.logger != nil {
 			am.logger.Errorf("Authentication failed for service %s: %v", serviceName, err)
 		}
@@ -386,17 +394,32 @@ func (am *AuthManager) HasStrategy(authType AuthType) bool {
 	return exists
 }
 
+// PendingDeviceCode tracks pending device code authentication
+type PendingDeviceCode struct {
+	DeviceCodeErr *DeviceCodeError
+	CreatedAt     time.Time
+	ExpiresAt     time.Time
+}
+
+// IsExpired checks if the pending device code has expired
+func (pdc *PendingDeviceCode) IsExpired() bool {
+	return time.Now().After(pdc.ExpiresAt)
+}
+
 // OAuth2DeviceFlowStrategy implements OAuth2 device flow authentication
 type OAuth2DeviceFlowStrategy struct {
-	httpClient *http.Client
-	logger     global.Logger
+	httpClient         *http.Client
+	logger             global.Logger
+	pendingDeviceCodes map[string]*PendingDeviceCode // key: serviceName
+	mu                 sync.RWMutex
 }
 
 // NewOAuth2DeviceFlowStrategy creates a new OAuth2 device flow strategy
 func NewOAuth2DeviceFlowStrategy(httpClient *http.Client, logger global.Logger) *OAuth2DeviceFlowStrategy {
 	return &OAuth2DeviceFlowStrategy{
-		httpClient: httpClient,
-		logger:     logger,
+		httpClient:         httpClient,
+		logger:             logger,
+		pendingDeviceCodes: make(map[string]*PendingDeviceCode),
 	}
 }
 
@@ -410,7 +433,7 @@ func (s *OAuth2DeviceFlowStrategy) SupportsRefresh() bool {
 	return true
 }
 
-// Authenticate performs OAuth2 device flow authentication
+// Authenticate performs OAuth2 device flow authentication with non-blocking two-phase flow
 func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
 	if s.logger != nil {
 		s.logger.Debug("Starting OAuth2 device flow authentication")
@@ -457,15 +480,67 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 		tokenURL = replaceURLPlaceholder(tokenURL, "tenantId", tenantID)
 	}
 
-	// Step 1: Request device code
+	// Use clientID as key to track pending device codes (should be unique per service)
+	cacheKey := clientID
+
+	// Phase 1: Check for pending device code authentication
+	s.mu.RLock()
+	pendingCode, hasPending := s.pendingDeviceCodes[cacheKey]
+	s.mu.RUnlock()
+
+	if hasPending && !pendingCode.IsExpired() {
+		// Phase 2: We have a pending device code, try one poll attempt
+		if s.logger != nil {
+			s.logger.Debug("Found pending device code, checking authentication status")
+		}
+
+		// Try to exchange the device code for tokens
+		tokenInfo, err := s.exchangeDeviceCode(ctx, pendingCode.DeviceCodeErr)
+		if err == nil {
+			// Success! Clean up pending code and return token
+			s.cleanupPendingCode(cacheKey)
+			if s.logger != nil {
+				s.logger.Info("Device flow authentication completed successfully")
+			}
+			return tokenInfo, nil
+		}
+
+		// Check if it's still authorization pending
+		if authErr, ok := err.(*AuthenticationError); ok {
+			if authErr.OriginalError != nil && authErr.OriginalError.Error() == "authorization_pending" {
+				// Still pending, return the device code error again for client to display
+				if s.logger != nil {
+					s.logger.Debug("Authorization still pending, returning device code error")
+				}
+				return nil, pendingCode.DeviceCodeErr
+			}
+		}
+
+		// Other error occurred, clean up and let it fall through to request new code
+		if s.logger != nil {
+			s.logger.Warningf("Device code exchange failed, will request new code: %v", err)
+		}
+		s.cleanupPendingCode(cacheKey)
+	} else if hasPending {
+		// Pending code is expired, clean it up
+		if s.logger != nil {
+			s.logger.Debug("Pending device code expired, requesting new code")
+		}
+		s.cleanupPendingCode(cacheKey)
+	}
+
+	// Phase 1: Request new device code
+	if s.logger != nil {
+		s.logger.Debug("Requesting new device code")
+	}
+
 	deviceCode, err := s.requestDeviceCode(ctx, authorizationURL, clientID, scopes)
 	if err != nil {
 		return nil, err
 	}
 
-	// Step 2: Return special error that prompts user to authenticate
-	// The error includes the verification URL and user code
-	return nil, &DeviceCodeError{
+	// Create device code error struct
+	deviceCodeErr := &DeviceCodeError{
 		VerificationURL: deviceCode.VerificationURI,
 		UserCode:        deviceCode.UserCode,
 		Message:         deviceCode.Message,
@@ -476,6 +551,25 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 		TokenURL:        tokenURL,
 		Scopes:          scopes,
 	}
+
+	// Cache the device code information
+	pendingDeviceCode := &PendingDeviceCode{
+		DeviceCodeErr: deviceCodeErr,
+		CreatedAt:     time.Now(),
+		ExpiresAt:     time.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second),
+	}
+
+	s.mu.Lock()
+	s.pendingDeviceCodes[cacheKey] = pendingDeviceCode
+	s.mu.Unlock()
+
+	if s.logger != nil {
+		s.logger.Infof("Device code authentication initiated. Please visit %s and enter code: %s", 
+			deviceCode.VerificationURI, deviceCode.UserCode)
+	}
+
+	// Return device code error immediately so client sees it and can retry
+	return nil, deviceCodeErr
 }
 
 // requestDeviceCode requests a device code from the authorization server
@@ -739,6 +833,38 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 func (s *OAuth2DeviceFlowStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
 	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
 	return nil
+}
+
+// cleanupPendingCode removes a pending device code from the cache
+func (s *OAuth2DeviceFlowStrategy) cleanupPendingCode(cacheKey string) {
+	s.mu.Lock()
+	delete(s.pendingDeviceCodes, cacheKey)
+	s.mu.Unlock()
+
+	if s.logger != nil {
+		s.logger.Debugf("Cleaned up pending device code for key: %s", cacheKey)
+	}
+}
+
+// cleanupExpiredCodes removes expired pending device codes (should be called periodically)
+func (s *OAuth2DeviceFlowStrategy) cleanupExpiredCodes() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var expired []string
+	for key, pending := range s.pendingDeviceCodes {
+		if pending.IsExpired() {
+			expired = append(expired, key)
+		}
+	}
+
+	for _, key := range expired {
+		delete(s.pendingDeviceCodes, key)
+	}
+
+	if len(expired) > 0 && s.logger != nil {
+		s.logger.Debugf("Cleaned up %d expired device codes", len(expired))
+	}
 }
 
 // BearerTokenStrategy implements bearer token authentication
