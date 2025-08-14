@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 // Package example2 provides a simple time service to an MCP client
 package example2

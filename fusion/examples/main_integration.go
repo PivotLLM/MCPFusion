@@ -1,3 +1,8 @@
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
+
 // Package main demonstrates how to integrate the Fusion package with MCPFusion server
 // for production deployments. This example shows comprehensive configuration including
 // authentication, monitoring, error handling, and graceful shutdown.
@@ -22,9 +27,9 @@ func main() {
 	logger, err := mlogger.New(
 		mlogger.WithPrefix("FUSION"),
 		mlogger.WithDateFormat("2006-01-02 15:04:05"),
-		mlogger.WithLogFile("logs/mcpfusion.log"),    // Log to file
+		mlogger.WithLogFile("logs/mcpfusion.log"), // Log to file
 		mlogger.WithLogStdout(true),
-		mlogger.WithDebug(false),                     // Production log level
+		mlogger.WithDebug(false), // Production log level
 	)
 	if err != nil {
 		log.Fatal("Failed to create logger:", err)
@@ -39,10 +44,10 @@ func main() {
 		fusion.WithJSONConfig("configs/microsoft365.json"),
 		fusion.WithJSONConfig("configs/google.json"),
 		fusion.WithJSONConfig("configs/custom-apis.json"),
-		
+
 		// Configure production features
-		fusion.WithLogger(logger),                    // Structured logging
-		fusion.WithInMemoryCache(),                   // Token and response caching
+		fusion.WithLogger(logger),  // Structured logging
+		fusion.WithInMemoryCache(), // Token and response caching
 	)
 
 	// Validate configuration at startup
@@ -53,17 +58,17 @@ func main() {
 	// Log configuration summary
 	serviceNames := fusionProvider.GetServiceNames()
 	logger.Infof("Configured services: %v", serviceNames)
-	
+
 	tools := fusionProvider.RegisterTools()
 	logger.Infof("Generated %d API tools", len(tools))
-	
+
 	// Create MCP server with production configuration
 	server, err := mcpserver.New(
-		mcpserver.WithListen("localhost:8080"),       // Server address
-		mcpserver.WithLogger(logger),                 // Use same logger
-		mcpserver.WithDebug(false),                   // Production mode
-		mcpserver.WithName("MCPFusion"),              // Server name
-		mcpserver.WithVersion("1.0.0"),               // Server version
+		mcpserver.WithListen("localhost:8080"), // Server address
+		mcpserver.WithLogger(logger),           // Use same logger
+		mcpserver.WithDebug(false),             // Production mode
+		mcpserver.WithName("MCPFusion"),        // Server name
+		mcpserver.WithVersion("1.0.0"),         // Server version
 		mcpserver.WithToolProviders([]global.ToolProvider{fusionProvider}),
 	)
 	if err != nil {
@@ -85,7 +90,7 @@ func main() {
 	go func() {
 		logger.Info("MCPFusion server starting...")
 		logger.Infof("Server will be available at http://localhost:8080")
-		
+
 		// Log service names
 		serviceNames := fusionProvider.GetServiceNames()
 		logger.Infof("Configured services: %v", serviceNames)
@@ -129,7 +134,7 @@ func init() {
 	// Validate required environment variables
 	requiredVars := []string{
 		"MS365_CLIENT_ID",
-		"MS365_TENANT_ID", 
+		"MS365_TENANT_ID",
 		"GOOGLE_CLIENT_ID",
 		"GOOGLE_CLIENT_SECRET",
 	}

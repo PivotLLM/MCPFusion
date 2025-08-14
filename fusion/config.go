@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -57,12 +59,12 @@ const (
 
 // Config holds the main configuration for the fusion package
 type Config struct {
-	Logger      global.Logger       `json:"-"`
+	Logger      global.Logger             `json:"-"`
 	Services    map[string]*ServiceConfig `json:"services"`
-	AuthManager *AuthManager       `json:"-"`
-	HTTPClient  *http.Client       `json:"-"`
-	Cache       Cache              `json:"-"`
-	ConfigPath  string             `json:"-"`
+	AuthManager *AuthManager              `json:"-"`
+	HTTPClient  *http.Client              `json:"-"`
+	Cache       Cache                     `json:"-"`
+	ConfigPath  string                    `json:"-"`
 }
 
 // ServiceConfig represents the configuration for a single service
@@ -130,15 +132,15 @@ const (
 
 // RetryConfig represents configuration for retry logic
 type RetryConfig struct {
-	Enabled        bool          `json:"enabled"`
-	MaxAttempts    int           `json:"maxAttempts"`
-	Strategy       RetryStrategy `json:"strategy"`
-	BaseDelay      time.Duration `json:"-"`
-	BaseDelayStr   string        `json:"baseDelay"`
-	MaxDelay       time.Duration `json:"-"`
-	MaxDelayStr    string        `json:"maxDelay"`
-	Jitter         bool          `json:"jitter"`
-	BackoffFactor  float64       `json:"backoffFactor"`
+	Enabled         bool          `json:"enabled"`
+	MaxAttempts     int           `json:"maxAttempts"`
+	Strategy        RetryStrategy `json:"strategy"`
+	BaseDelay       time.Duration `json:"-"`
+	BaseDelayStr    string        `json:"baseDelay"`
+	MaxDelay        time.Duration `json:"-"`
+	MaxDelayStr     string        `json:"maxDelay"`
+	Jitter          bool          `json:"jitter"`
+	BackoffFactor   float64       `json:"backoffFactor"`
 	RetryableErrors []string      `json:"retryableErrors,omitempty"`
 }
 
@@ -150,11 +152,11 @@ func (r *RetryConfig) UnmarshalJSON(data []byte) error {
 	}{
 		Alias: (*Alias)(r),
 	}
-	
+
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	
+
 	// Parse BaseDelay string to duration
 	if r.BaseDelayStr != "" {
 		duration, err := time.ParseDuration(r.BaseDelayStr)
@@ -163,7 +165,7 @@ func (r *RetryConfig) UnmarshalJSON(data []byte) error {
 		}
 		r.BaseDelay = duration
 	}
-	
+
 	// Parse MaxDelay string to duration
 	if r.MaxDelayStr != "" {
 		duration, err := time.ParseDuration(r.MaxDelayStr)
@@ -172,7 +174,7 @@ func (r *RetryConfig) UnmarshalJSON(data []byte) error {
 		}
 		r.MaxDelay = duration
 	}
-	
+
 	// Set defaults
 	if r.MaxAttempts == 0 {
 		r.MaxAttempts = 3
@@ -186,20 +188,20 @@ func (r *RetryConfig) UnmarshalJSON(data []byte) error {
 	if r.BackoffFactor == 0 {
 		r.BackoffFactor = 2.0
 	}
-	
+
 	return nil
 }
 
 // CircuitBreakerConfig represents configuration for circuit breaker pattern
 type CircuitBreakerConfig struct {
-	Enabled              bool          `json:"enabled"`
-	FailureThreshold     int           `json:"failureThreshold"`
-	SuccessThreshold     int           `json:"successThreshold"`
-	Timeout              time.Duration `json:"-"`
-	TimeoutStr           string        `json:"timeout"`
-	HalfOpenMaxCalls     int           `json:"halfOpenMaxCalls"`
-	ResetTimeout         time.Duration `json:"-"`
-	ResetTimeoutStr      string        `json:"resetTimeout"`
+	Enabled          bool          `json:"enabled"`
+	FailureThreshold int           `json:"failureThreshold"`
+	SuccessThreshold int           `json:"successThreshold"`
+	Timeout          time.Duration `json:"-"`
+	TimeoutStr       string        `json:"timeout"`
+	HalfOpenMaxCalls int           `json:"halfOpenMaxCalls"`
+	ResetTimeout     time.Duration `json:"-"`
+	ResetTimeoutStr  string        `json:"resetTimeout"`
 }
 
 // UnmarshalJSON implements custom JSON unmarshaling for CircuitBreakerConfig
@@ -210,11 +212,11 @@ func (c *CircuitBreakerConfig) UnmarshalJSON(data []byte) error {
 	}{
 		Alias: (*Alias)(c),
 	}
-	
+
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	
+
 	// Parse Timeout string to duration
 	if c.TimeoutStr != "" {
 		duration, err := time.ParseDuration(c.TimeoutStr)
@@ -223,7 +225,7 @@ func (c *CircuitBreakerConfig) UnmarshalJSON(data []byte) error {
 		}
 		c.Timeout = duration
 	}
-	
+
 	// Parse ResetTimeout string to duration
 	if c.ResetTimeoutStr != "" {
 		duration, err := time.ParseDuration(c.ResetTimeoutStr)
@@ -232,7 +234,7 @@ func (c *CircuitBreakerConfig) UnmarshalJSON(data []byte) error {
 		}
 		c.ResetTimeout = duration
 	}
-	
+
 	// Set defaults
 	if c.FailureThreshold == 0 {
 		c.FailureThreshold = 5
@@ -249,7 +251,7 @@ func (c *CircuitBreakerConfig) UnmarshalJSON(data []byte) error {
 	if c.ResetTimeout == 0 {
 		c.ResetTimeout = 60 * time.Second
 	}
-	
+
 	return nil
 }
 
@@ -279,11 +281,11 @@ func (c *CachingConfig) UnmarshalJSON(data []byte) error {
 	}{
 		Alias: (*Alias)(c),
 	}
-	
+
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	
+
 	// Parse TTL string to duration
 	if c.TTLStr != "" {
 		duration, err := time.ParseDuration(c.TTLStr)
@@ -292,7 +294,7 @@ func (c *CachingConfig) UnmarshalJSON(data []byte) error {
 		}
 		c.TTL = duration
 	}
-	
+
 	return nil
 }
 
@@ -307,7 +309,7 @@ type PaginationConfig struct {
 func LoadConfigFromFile(filePath string) (*Config, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, NewConfigurationError("file", "", 
+		return nil, NewConfigurationError("file", "",
 			fmt.Sprintf("failed to read config file %s", filePath), err)
 	}
 
@@ -330,7 +332,7 @@ func LoadConfigFromJSONWithLogger(data []byte, configPath string, logger global.
 		if logger != nil {
 			logger.Errorf("Failed to expand environment variables: %v", err)
 		}
-		return nil, NewConfigurationError("environment_variables", "", 
+		return nil, NewConfigurationError("environment_variables", "",
 			"failed to expand environment variables", err)
 	}
 
@@ -342,7 +344,7 @@ func LoadConfigFromJSONWithLogger(data []byte, configPath string, logger global.
 		if logger != nil {
 			logger.Errorf("Failed to parse JSON configuration: %v", err)
 		}
-		return nil, NewConfigurationError("json", "", 
+		return nil, NewConfigurationError("json", "",
 			"failed to parse JSON configuration", err)
 	}
 
@@ -356,7 +358,7 @@ func LoadConfigFromJSONWithLogger(data []byte, configPath string, logger global.
 		if logger != nil {
 			logger.Errorf("Configuration validation failed: %v", err)
 		}
-		return nil, NewConfigurationError("validation", "", 
+		return nil, NewConfigurationError("validation", "",
 			"configuration validation failed", err)
 	}
 
@@ -659,7 +661,7 @@ func (e *EndpointConfig) Validate() error {
 // ValidateWithLogger validates a parameter configuration with logging support
 func (p *ParameterConfig) ValidateWithLogger(serviceName, endpointID string, logger global.Logger) error {
 	if logger != nil {
-		logger.Debugf("Service %s: endpoint %s validating parameter %s (type: %s, location: %s)", 
+		logger.Debugf("Service %s: endpoint %s validating parameter %s (type: %s, location: %s)",
 			serviceName, endpointID, p.Name, p.Type, p.Location)
 	}
 
@@ -775,7 +777,7 @@ func (v *ValidationConfig) Validate() error {
 // ValidateWithLogger validates a response configuration with logging support
 func (r *ResponseConfig) ValidateWithLogger(serviceName, endpointID string, logger global.Logger) error {
 	if logger != nil {
-		logger.Debugf("Service %s: endpoint %s validating response configuration (type: %s, paginated: %t)", 
+		logger.Debugf("Service %s: endpoint %s validating response configuration (type: %s, paginated: %t)",
 			serviceName, endpointID, r.Type, r.Paginated)
 	}
 
@@ -830,7 +832,7 @@ func (r *ResponseConfig) Validate() error {
 // ValidateWithLogger validates a pagination configuration with logging support
 func (p *PaginationConfig) ValidateWithLogger(serviceName, endpointID string, logger global.Logger) error {
 	if logger != nil {
-		logger.Debugf("Service %s: endpoint %s validating pagination configuration (pageSize: %d)", 
+		logger.Debugf("Service %s: endpoint %s validating pagination configuration (pageSize: %d)",
 			serviceName, endpointID, p.PageSize)
 	}
 
@@ -856,7 +858,7 @@ func (p *PaginationConfig) ValidateWithLogger(serviceName, endpointID string, lo
 	}
 
 	if logger != nil {
-		logger.Debugf("Service %s: endpoint %s pagination configuration validated successfully (nextToken: %s, data: %s)", 
+		logger.Debugf("Service %s: endpoint %s pagination configuration validated successfully (nextToken: %s, data: %s)",
 			serviceName, endpointID, p.NextPageTokenPath, p.DataPath)
 	}
 
@@ -871,38 +873,38 @@ func (p *PaginationConfig) Validate() error {
 // expandEnvironmentVariables expands ${VAR_NAME} and ${VAR_NAME:default} patterns in JSON data
 func expandEnvironmentVariables(data []byte) ([]byte, error) {
 	content := string(data)
-	
+
 	// Find all ${VAR_NAME} and ${VAR_NAME:default} patterns
 	re := regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
-	
+
 	result := re.ReplaceAllStringFunc(content, func(match string) string {
 		// Extract variable name and default value
 		matches := re.FindStringSubmatch(match)
 		if len(matches) < 2 {
 			return match
 		}
-		
+
 		varName := matches[1]
 		hasDefault := strings.Contains(match, ":") // Check if colon was present in original match
 		defaultValue := ""
 		if hasDefault && len(matches) > 2 {
 			defaultValue = matches[2]
 		}
-		
+
 		// Get environment variable value
 		if value := os.Getenv(varName); value != "" {
 			return value
 		}
-		
+
 		// If not found and has default (even empty), use default
 		if hasDefault {
 			return defaultValue
 		}
-		
+
 		// If not found and no default, return the original pattern
 		return match
 	})
-	
+
 	return []byte(result), nil
 }
 
@@ -950,7 +952,7 @@ func (v *ValidationConfig) IsValidEnumValue(value interface{}) bool {
 	if len(v.Enum) == 0 {
 		return true
 	}
-	
+
 	for _, enumValue := range v.Enum {
 		if enumValue == value {
 			return true
@@ -964,27 +966,27 @@ func (v *ValidationConfig) MatchesPattern(value string) bool {
 	if v.Pattern == "" {
 		return true
 	}
-	
+
 	matched, err := regexp.MatchString(v.Pattern, value)
 	if err != nil {
 		return false
 	}
-	
+
 	return matched
 }
 
 // IsValidLength checks if a string value meets length requirements
 func (v *ValidationConfig) IsValidLength(value string) bool {
 	length := len(value)
-	
+
 	if v.MinLength > 0 && length < v.MinLength {
 		return false
 	}
-	
+
 	if v.MaxLength > 0 && length > v.MaxLength {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -1024,10 +1026,10 @@ type EndpointWithService struct {
 func (c *Config) ValidateServiceConfig(serviceName string) error {
 	service, exists := c.Services[serviceName]
 	if !exists {
-		return NewConfigurationError("service", serviceName, 
+		return NewConfigurationError("service", serviceName,
 			fmt.Sprintf("service '%s' not found", serviceName), nil)
 	}
-	
+
 	return service.Validate()
 }
 
@@ -1042,7 +1044,7 @@ func extractEnvironmentVariables(data []byte) []string {
 	content := string(data)
 	re := regexp.MustCompile(`\$\{([^}:]+)(?::([^}]*))?\}`)
 	matches := re.FindAllStringSubmatch(content, -1)
-	
+
 	varMap := make(map[string]bool)
 	for _, match := range matches {
 		if len(match) > 1 {
@@ -1054,12 +1056,12 @@ func extractEnvironmentVariables(data []byte) []string {
 			}
 		}
 	}
-	
+
 	var vars []string
 	for varName := range varMap {
 		vars = append(vars, varName)
 	}
-	
+
 	return vars
 }
 
@@ -1069,16 +1071,16 @@ func (c *Config) Clone() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal config for cloning: %w", err)
 	}
-	
+
 	clone := &Config{
 		ConfigPath: c.ConfigPath,
 		Services:   make(map[string]*ServiceConfig),
 	}
-	
+
 	if err := json.Unmarshal(data, &clone.Services); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal cloned config: %w", err)
 	}
-	
+
 	return clone, nil
 }
 
@@ -1087,15 +1089,15 @@ func (c *Config) MergeConfig(other *Config) error {
 	if other == nil {
 		return nil
 	}
-	
+
 	for serviceName, service := range other.Services {
 		if _, exists := c.Services[serviceName]; exists {
-			return NewConfigurationError("merge", serviceName, 
+			return NewConfigurationError("merge", serviceName,
 				fmt.Sprintf("service '%s' already exists in target configuration", serviceName), nil)
 		}
 		c.Services[serviceName] = service
 	}
-	
+
 	return c.Validate()
 }
 
@@ -1106,12 +1108,12 @@ func (e *EndpointConfig) GetEffectiveRetryConfig(service *ServiceConfig) *RetryC
 	if e.Retry != nil {
 		return e.Retry
 	}
-	
+
 	// Fall back to service-level config
 	if service != nil && service.Retry != nil {
 		return service.Retry
 	}
-	
+
 	// Return default config if nothing is specified
 	return &RetryConfig{
 		Enabled:       false, // Disabled by default for backward compatibility
@@ -1132,7 +1134,7 @@ func (s *ServiceConfig) GetEffectiveCircuitBreakerConfig() *CircuitBreakerConfig
 	if s.CircuitBreaker != nil {
 		return s.CircuitBreaker
 	}
-	
+
 	// Return default config if nothing is specified
 	return &CircuitBreakerConfig{
 		Enabled:          false, // Disabled by default for backward compatibility

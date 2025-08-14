@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -103,7 +105,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 			// Return the device code error message as the response
 			return deviceCodeErr.Error(), nil
 		}
-		
+
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Failed to apply authentication [%s]: %v", correlationID, err)
 		}
@@ -116,14 +118,14 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Request execution failed [%s]: %v", correlationID, err)
 		}
-		
+
 		// Create API error with correlation ID if we have response details
 		if requestMetrics != nil && requestMetrics.StatusCode > 0 {
-			apiErr := NewAPIErrorWithCorrelation(h.service.Name, h.endpoint.ID, 
+			apiErr := NewAPIErrorWithCorrelation(h.service.Name, h.endpoint.ID,
 				requestMetrics.StatusCode, err.Error(), "", false, correlationID)
 			return "", apiErr
 		}
-		
+
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -143,7 +145,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		if ttl == 0 {
 			ttl = 5 * time.Minute // Default TTL
 		}
-		
+
 		if err := h.fusion.cache.Set(cacheKey, result, ttl); err != nil {
 			if h.fusion.logger != nil {
 				h.fusion.logger.Warningf("Failed to cache result for %s.%s [%s]: %v", h.service.Name, h.endpoint.ID, correlationID, err)
@@ -164,7 +166,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 // buildRequest constructs an HTTP request based on the endpoint configuration
 func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interface{}) (*http.Request, error) {
 	mapper := NewMapper(h.fusion.logger)
-	
+
 	// Build URL with path parameters
 	url, err := mapper.BuildURL(h.service.BaseURL, h.endpoint.Path, h.endpoint.Parameters, args)
 	if err != nil {
@@ -215,7 +217,7 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 // executeRequest executes an HTTP request with enhanced retry logic and circuit breaker
 func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, correlationID string) (*http.Response, *RequestMetrics, error) {
 	startTime := time.Now()
-	
+
 	// Create request metrics
 	metrics := &RequestMetrics{
 		ServiceName:   h.service.Name,
@@ -228,7 +230,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 
 	// Get effective retry configuration
 	retryConfig := h.endpoint.GetEffectiveRetryConfig(h.service)
-	
+
 	// Check if circuit breaker is enabled for this service
 	circuitBreakerConfig := h.service.GetEffectiveCircuitBreakerConfig()
 	var circuitBreaker *CircuitBreaker
@@ -240,7 +242,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 	// Execute with circuit breaker if enabled
 	var resp *http.Response
 	var err error
-	
+
 	executeFunc := func() error {
 		if retryConfig.Enabled {
 			// Use retry executor
@@ -269,7 +271,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 
 	// Calculate latency
 	metrics.Latency = time.Since(startTime)
-	
+
 	// Update metrics based on result
 	if err != nil {
 		metrics.Success = false
@@ -283,7 +285,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		} else {
 			metrics.ErrorCategory = ErrorCategoryPermanent
 		}
-		
+
 		// Enhance error with correlation ID if it's a network error
 		if netErr, ok := err.(*NetworkError); ok && netErr.CorrelationID == "" {
 			netErr.CorrelationID = correlationID
@@ -371,7 +373,7 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 func (h *HTTPHandler) handlePaginatedResponse(data interface{}) (string, error) {
 	mapper := NewMapper(h.fusion.logger)
 	config := h.endpoint.Response.PaginationConfig
-	
+
 	// Extract pagination info from the first response
 	nextPageToken, currentData, err := mapper.ExtractPaginationInfo(data, *config)
 	if err != nil {
@@ -383,7 +385,7 @@ func (h *HTTPHandler) handlePaginatedResponse(data interface{}) (string, error) 
 	maxPages := 10 // Limit to prevent infinite loops
 
 	if h.fusion.logger != nil {
-		h.fusion.logger.Debugf("Starting pagination: first page has %d items, next token: %s", 
+		h.fusion.logger.Debugf("Starting pagination: first page has %d items, next token: %s",
 			len(currentData), nextPageToken)
 	}
 
@@ -499,13 +501,13 @@ func (h *HTTPHandler) generateCacheKey(args map[string]interface{}) string {
 
 	// Generate a hash-based cache key from the arguments
 	hasher := sha256.New()
-	
+
 	// Include service and endpoint info
 	hasher.Write([]byte(h.service.Name))
 	hasher.Write([]byte(":"))
 	hasher.Write([]byte(h.endpoint.ID))
 	hasher.Write([]byte(":"))
-	
+
 	// Include all argument values in a deterministic way
 	argData, err := json.Marshal(args)
 	if err != nil {
@@ -514,12 +516,11 @@ func (h *HTTPHandler) generateCacheKey(args map[string]interface{}) string {
 	} else {
 		hasher.Write(argData)
 	}
-	
+
 	// Generate hash
 	hash := fmt.Sprintf("%x", hasher.Sum(nil))
 	return fmt.Sprintf("fusion:%s:%s:%s", h.service.Name, h.endpoint.ID, hash[:16])
 }
-
 
 // wrapNetworkError wraps network errors in NetworkError type
 func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
@@ -540,7 +541,7 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 
 	// Determine if it's retryable
 	retryable := true
-	
+
 	// Check for specific error types
 	if urlErr, ok := err.(*url.Error); ok {
 		// DNS errors, connection errors, etc. are retryable
@@ -557,4 +558,3 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 	message := err.Error()
 	return NewNetworkError(req.URL.String(), req.Method, message, err, timeout, retryable)
 }
-

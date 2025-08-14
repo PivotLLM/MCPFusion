@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -146,7 +148,7 @@ func TestMetricsCollector(t *testing.T) {
 
 		serviceMetrics := collector.GetServiceMetrics("test-service")
 		endpointStats := serviceMetrics.EndpointStats["test-endpoint"]
-		
+
 		if endpointStats.CacheHitCount != 1 {
 			t.Errorf("Expected 1 cache hit, got %d", endpointStats.CacheHitCount)
 		}
@@ -276,7 +278,7 @@ func TestCorrelationIDGenerator(t *testing.T) {
 
 	t.Run("unique IDs", func(t *testing.T) {
 		ids := make(map[string]bool)
-		
+
 		// Generate 100 IDs and check uniqueness
 		for i := 0; i < 100; i++ {
 			id := generator.Generate()
@@ -284,7 +286,7 @@ func TestCorrelationIDGenerator(t *testing.T) {
 				t.Errorf("Generated duplicate correlation ID: %s", id)
 			}
 			ids[id] = true
-			
+
 			// Check format
 			if !strings.HasPrefix(id, "mcpfusion-") {
 				t.Errorf("Expected ID to start with 'mcpfusion-', got: %s", id)

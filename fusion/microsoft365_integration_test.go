@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -25,7 +27,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 			// Mock successful authentication by setting a fake token
 			r.Header.Set("Authorization", "Bearer mock_access_token_12345")
 		}
-		
+
 		switch r.URL.Path {
 		case "/v1.0/oauth2/v2.0/devicecode":
 			handleDeviceCodeRequest(w, r, t)
@@ -47,7 +49,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 	// Create modified Microsoft 365 configuration for testing (with Bearer token for simplicity)
 	config := createTestMicrosoft365ConfigWithBearer(server.URL)
-	
+
 	// Create fusion instance
 	logger := &MockLogger{}
 	fusion := New(
@@ -58,13 +60,13 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 	// Get the tools
 	tools := fusion.RegisterTools()
-	
+
 	// Debug: Print all tool names
 	t.Logf("Found %d tools:", len(tools))
 	for i, tool := range tools {
 		t.Logf("  %d: %s", i, tool.Name)
 	}
-	
+
 	// Find tools by name
 	var profileTool, calendarSummaryTool, calendarDetailsTool, mailTool, contactsTool *global.ToolDefinition
 	for _, tool := range tools {
@@ -87,7 +89,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 		if profileTool == nil {
 			t.Fatal("Profile tool not found")
 		}
-		
+
 		result, err := profileTool.Handler(map[string]interface{}{})
 		if err != nil {
 			t.Fatalf("Profile request failed: %v", err)
@@ -108,7 +110,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 		if calendarSummaryTool == nil {
 			t.Fatal("Calendar summary tool not found")
 		}
-		
+
 		result, err := calendarSummaryTool.Handler(map[string]interface{}{
 			"startDate": "20250101",
 			"endDate":   "20250131",
@@ -133,7 +135,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 		if calendarDetailsTool == nil {
 			t.Fatal("Calendar details tool not found")
 		}
-		
+
 		result, err := calendarDetailsTool.Handler(map[string]interface{}{
 			"startDate": "20250101",
 			"endDate":   "20250131",
@@ -158,7 +160,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 		if mailTool == nil {
 			t.Fatal("Mail tool not found")
 		}
-		
+
 		result, err := mailTool.Handler(map[string]interface{}{
 			"$top": 10,
 		})
@@ -182,7 +184,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 		if contactsTool == nil {
 			t.Fatal("Contacts tool not found")
 		}
-		
+
 		result, err := contactsTool.Handler(map[string]interface{}{
 			"$top": 25,
 		})
@@ -210,7 +212,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 		if profileTool == nil {
 			t.Fatal("Profile tool not found for caching test")
 		}
-		
+
 		// First request - should hit the server
 		start := time.Now()
 		result1, err := profileTool.Handler(map[string]interface{}{})
@@ -234,7 +236,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 		// Second request should be significantly faster (cached)
 		if secondDuration > firstDuration/2 {
-			t.Logf("Warning: Second request (%v) not significantly faster than first (%v) - caching may not be working", 
+			t.Logf("Warning: Second request (%v) not significantly faster than first (%v) - caching may not be working",
 				secondDuration, firstDuration)
 		}
 	})
@@ -258,7 +260,7 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 	// Test OAuth2 device flow configuration
 	config := createTestMicrosoft365Config(server.URL)
 	logger := &MockLogger{}
-	
+
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-oauth-config.json"),
 		WithLogger(logger),
@@ -267,7 +269,7 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 
 	// Get the tools
 	tools := fusion.RegisterTools()
-	
+
 	// Find profile tool
 	var profileTool *global.ToolDefinition
 	for _, tool := range tools {
@@ -282,11 +284,11 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 		if profileTool == nil {
 			t.Fatal("Profile tool not found")
 		}
-		
+
 		// This test simulates what happens when authentication is required
 		// The device code error should be returned with user instructions
 		result, err := profileTool.Handler(map[string]interface{}{})
-		
+
 		// For a real device flow, this would return instructions for the user
 		// In our mock, we'll simulate a successful flow
 		if err != nil && !strings.Contains(err.Error(), "device") {
@@ -344,11 +346,11 @@ func handleProfileRequest(w http.ResponseWriter, r *http.Request, t *testing.T) 
 
 	response := map[string]interface{}{
 		"displayName":       "Test User",
-		"mail":             "test.user@contoso.com",
+		"mail":              "test.user@contoso.com",
 		"userPrincipalName": "test.user@contoso.com",
-		"jobTitle":         "Software Developer",
-		"department":       "Engineering",
-		"companyName":      "Contoso Ltd.",
+		"jobTitle":          "Software Developer",
+		"department":        "Engineering",
+		"companyName":       "Contoso Ltd.",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -363,11 +365,11 @@ func handleCalendarRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 	}
 
 	// Check if this is a paginated request
-	isPaginated := strings.Contains(r.URL.RawQuery, "startDateTime") && 
+	isPaginated := strings.Contains(r.URL.RawQuery, "startDateTime") &&
 		!strings.Contains(r.URL.RawQuery, "skiptoken")
 
 	var response map[string]interface{}
-	
+
 	if isPaginated {
 		// First page of results
 		response = map[string]interface{}{
@@ -437,18 +439,18 @@ func handleMessagesRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 	response := map[string]interface{}{
 		"value": []map[string]interface{}{
 			{
-				"subject":         "Project Update",
-				"from":           map[string]interface{}{"emailAddress": map[string]string{"address": "manager@contoso.com"}},
+				"subject":          "Project Update",
+				"from":             map[string]interface{}{"emailAddress": map[string]string{"address": "manager@contoso.com"}},
 				"receivedDateTime": "2025-01-10T10:30:00Z",
-				"bodyPreview":    "Here's the latest update on the project...",
-				"isRead":         false,
+				"bodyPreview":      "Here's the latest update on the project...",
+				"isRead":           false,
 			},
 			{
-				"subject":         "Meeting Reminder",
-				"from":           map[string]interface{}{"emailAddress": map[string]string{"address": "calendar@contoso.com"}},
+				"subject":          "Meeting Reminder",
+				"from":             map[string]interface{}{"emailAddress": map[string]string{"address": "calendar@contoso.com"}},
 				"receivedDateTime": "2025-01-09T08:00:00Z",
-				"bodyPreview":    "Don't forget about the team meeting tomorrow...",
-				"isRead":         true,
+				"bodyPreview":      "Don't forget about the team meeting tomorrow...",
+				"isRead":           true,
 			},
 		},
 		"@odata.nextLink": fmt.Sprintf("%s/v1.0/me/messages?skiptoken=page2", r.Host),
@@ -473,8 +475,8 @@ func handleContactsRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 					{"address": "john.smith@contoso.com"},
 				},
 				"businessPhones": []string{"+1-555-0123"},
-				"jobTitle":      "Senior Developer",
-				"companyName":   "Contoso Ltd.",
+				"jobTitle":       "Senior Developer",
+				"companyName":    "Contoso Ltd.",
 			},
 			{
 				"displayName": "Jane Doe",
@@ -482,8 +484,8 @@ func handleContactsRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 					{"address": "jane.doe@contoso.com"},
 				},
 				"businessPhones": []string{"+1-555-0124"},
-				"jobTitle":      "Product Manager",
-				"companyName":   "Contoso Ltd.",
+				"jobTitle":       "Product Manager",
+				"companyName":    "Contoso Ltd.",
 			},
 		},
 	}
@@ -550,8 +552,8 @@ func createTestMicrosoft365Config(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "startDateTime",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
+									"targetName": "startDateTime",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
 							map[string]interface{}{
@@ -564,8 +566,8 @@ func createTestMicrosoft365Config(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "endDateTime",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
+									"targetName": "endDateTime",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
@@ -591,8 +593,8 @@ func createTestMicrosoft365Config(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "startDateTime",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
+									"targetName": "startDateTime",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
 							map[string]interface{}{
@@ -605,8 +607,8 @@ func createTestMicrosoft365Config(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "endDateTime",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
+									"targetName": "endDateTime",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
@@ -733,8 +735,8 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "startDateTime",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
+									"targetName": "startDateTime",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
 							map[string]interface{}{
@@ -747,8 +749,8 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "endDateTime",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
+									"targetName": "endDateTime",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
@@ -775,8 +777,8 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "startDateTime",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
+									"targetName": "startDateTime",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
 							map[string]interface{}{
@@ -789,8 +791,8 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "endDateTime",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
+									"targetName": "endDateTime",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},

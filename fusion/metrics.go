@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -368,9 +370,9 @@ func NewCorrelationIDGenerator() *CorrelationIDGenerator {
 func (g *CorrelationIDGenerator) Generate() string {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	
+
 	g.counter++
 	timestamp := time.Now().Unix()
-	
+
 	return fmt.Sprintf("mcpfusion-%d-%d", timestamp, g.counter)
 }

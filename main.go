@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// This software is licensed under the MIT License (see LICENSE for details).
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package main
 
@@ -12,8 +14,6 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/PivotLLM/MCPFusion/example1"
-	"github.com/PivotLLM/MCPFusion/example2"
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
@@ -34,7 +34,7 @@ func main() {
 	debugFlag := flag.Bool("debug", true, "Enable debug mode")
 	portFlag := flag.Int("port", 8888, "Port to listen on")
 	noStreamingFlag := flag.Bool("no-streaming", false, "Disable streaming (use plain HTTP instead of SSE)")
-	fusionConfigFlag := flag.String("fusion-config", "", "Path to fusion configuration file (optional)")
+	configFlag := flag.String("config", "", "Path to fusion configuration file (optional)")
 	helpFlag := flag.Bool("help", false, "Show help information")
 	versionFlag := flag.Bool("version", false, "Show version information")
 
@@ -64,14 +64,9 @@ func main() {
 	// Use the flag values
 	debug := *debugFlag
 	noStreaming := *noStreamingFlag
-	fusionConfig := *fusionConfigFlag
-	if *portFlag > 0 && *portFlag < 65536 {
-		listen = fmt.Sprintf("localhost:%d", *portFlag)
-	} else {
-		listen = "localhost:8888"
-	}
 
-	logger, err := mlogger.New(
+	// Create a temporary logger for early logging (before env vars are loaded)
+	tempLogger, err := mlogger.New(
 		mlogger.WithPrefix("MCP"),
 		mlogger.WithDateFormat("2006-01-02 15:04:05"),
 		mlogger.WithLogFile("mcp.log"),
@@ -83,23 +78,57 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get the user's home directory if possible
+	// Load environment variables from config files in priority order:
+	// 1. /opt/mcpfusion/env
+	// 2. ~/.mcpfusion
+	// 3. ~/.mcp (for backwards compatibility)
+	envFiles := []string{
+		"/opt/mcpfusion/env",
+	}
+
+	// Add user-specific config files if home directory is available
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
-		envFile := homeDir + string(os.PathSeparator) + ".mcp"
-		err = godotenv.Load(envFile)
-		if err == nil {
-			logger.Infof("Loaded environment variables from %s", envFile)
+		envFiles = append(envFiles,
+			homeDir+string(os.PathSeparator)+".mcpfusion",
+			homeDir+string(os.PathSeparator)+".mcp",
+		)
+	}
+
+	// Try to load each config file in order
+	for _, envFile := range envFiles {
+		if _, err := os.Stat(envFile); err == nil {
+			err = godotenv.Load(envFile)
+			if err == nil {
+				tempLogger.Infof("Loaded environment variables from %s", envFile)
+				break // Stop after loading the first successful file
+			}
 		}
 	}
 
-	// Load BaseURL and auth key from environment variables
-	// Because this is an example, if the variables are not set we will fall back to hard-coded values
-	APIBaseURL := os.Getenv("API_BASE_URL")
-	if APIBaseURL == "" {
-		APIBaseURL = "https://api.example.com"
-		logger.Warningf("API_BASE_URL environment variable is not set, defaulting to %s", APIBaseURL)
+	// Now that env files are loaded, check for fusion config
+	fusionConfig := *configFlag
+
+	// Check for MCP_FUSION_CONFIG environment variable if no config flag was provided
+	if fusionConfig == "" {
+		if envConfig := os.Getenv("MCP_FUSION_CONFIG"); envConfig != "" {
+			fusionConfig = envConfig
+			tempLogger.Infof("Using fusion config from MCP_FUSION_CONFIG: %s", envConfig)
+		}
 	}
+
+	// Determine listen address from environment or flag
+	if envListen := os.Getenv("MCP_FUSION_LISTEN"); envListen != "" {
+		listen = envListen
+		tempLogger.Infof("Using listen address from MCP_FUSION_LISTEN: %s", envListen)
+	} else if *portFlag > 0 && *portFlag < 65536 {
+		listen = fmt.Sprintf("localhost:%d", *portFlag)
+	} else {
+		listen = "localhost:8888"
+	}
+
+	// Use the temporary logger as the main logger
+	logger := tempLogger
 
 	APIAuthHeader := os.Getenv("API_AUTH_HEADER")
 	if APIAuthHeader == "" {
@@ -113,29 +142,13 @@ func main() {
 		logger.Warningf("API_AUTH_KEY environment variable is not set, defaulting to %s", APIAuthKey)
 	}
 
-	// Create the example1 provider
-	tp1 := example1.New(
-		example1.WithBaseURL(APIBaseURL),
-		example1.WithLogger(logger),
-		example1.WithAuthHeader(APIAuthHeader),
-		example1.WithAuthKey(APIAuthKey),
-	)
-
-	// Create the example2 provider
-	tp2 := example2.New(
-		example2.WithLogger(logger),
-	)
-
 	// Create a slice (list) of tool providers
-	providers := []global.ToolProvider{
-		tp1,
-		tp2,
-	}
+	providers := []global.ToolProvider{}
 
 	// Add fusion provider if configuration is provided
 	var fusionProvider *fusion.Fusion
 	if fusionConfig != "" {
-		logger.Infof("Loading fusion provider with config: %s", fusionConfig)
+		logger.Infof("Loading fusion provider with config file: %s", fusionConfig)
 		fusionProvider = fusion.New(
 			fusion.WithLogger(logger),
 			fusion.WithJSONConfig(fusionConfig),
@@ -157,8 +170,8 @@ func main() {
 		mcpserver.WithToolProviders(providers),
 
 		// Setup resource and prompt providers
-		mcpserver.WithResourceProviders(getResourceProviders(tp1, fusionProvider)),
-		mcpserver.WithPromptProviders(getPromptProviders(tp1, fusionProvider)),
+		mcpserver.WithResourceProviders([]global.ResourceProvider{fusionProvider}),
+		mcpserver.WithPromptProviders([]global.PromptProvider{fusionProvider}),
 	)
 	if err != nil {
 		logger.Fatalf("Unable to create MCP server: %v", err)
@@ -188,22 +201,4 @@ func main() {
 
 	// Exit with success
 	os.Exit(0)
-}
-
-// getResourceProviders returns the list of resource providers
-func getResourceProviders(tp1 *example1.Config, fusionProvider *fusion.Fusion) []global.ResourceProvider {
-	providers := []global.ResourceProvider{tp1}
-	if fusionProvider != nil {
-		providers = append(providers, fusionProvider)
-	}
-	return providers
-}
-
-// getPromptProviders returns the list of prompt providers
-func getPromptProviders(tp1 *example1.Config, fusionProvider *fusion.Fusion) []global.PromptProvider {
-	providers := []global.PromptProvider{tp1}
-	if fusionProvider != nil {
-		providers = append(providers, fusionProvider)
-	}
-	return providers
 }

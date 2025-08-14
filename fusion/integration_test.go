@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -22,11 +24,11 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					{"id": 1, "name": "John Doe", "email": "john@example.com"},
 					{"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
 				}
-				
+
 				if limit == "1" {
 					users = users[:1]
 				}
-				
+
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"users": users,
@@ -36,7 +38,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				// Handle POST /users
 				var requestBody map[string]interface{}
 				json.NewDecoder(r.Body).Decode(&requestBody)
-				
+
 				// Verify auth header
 				authHeader := r.Header.Get("Authorization")
 				if authHeader != "Bearer test-token" {
@@ -44,18 +46,18 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 					return
 				}
-				
+
 				user := map[string]interface{}{
 					"id":    3,
 					"name":  requestBody["name"],
 					"email": requestBody["email"],
 				}
-				
+
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(201)
 				json.NewEncoder(w).Encode(user)
 			}
-			
+
 		case "/users/123":
 			if r.Method == "GET" {
 				// Handle GET /users/{id}
@@ -64,18 +66,18 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					"name":  "Specific User",
 					"email": "specific@example.com",
 				}
-				
+
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(user)
 			}
-			
+
 		default:
 			w.WriteHeader(404)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Not Found"})
 		}
 	}))
 	defer server.Close()
-	
+
 	// Create configuration
 	configJSON := `{
 		"services": {
@@ -166,24 +168,24 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 			}
 		}
 	}`
-	
+
 	// Create Fusion instance
 	fusion := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(&mockLogger{}),
 	)
-	
+
 	// Verify configuration loaded
 	if fusion.config == nil {
 		t.Fatal("Configuration not loaded")
 	}
-	
+
 	// Get the registered tools
 	tools := fusion.RegisterTools()
 	if len(tools) != 3 {
 		t.Fatalf("Expected 3 tools, got %d", len(tools))
 	}
-	
+
 	// Test each tool
 	for _, tool := range tools {
 		switch tool.Name {
@@ -194,60 +196,60 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
-				
+
 				// Parse result
 				var users []map[string]interface{}
 				if err := json.Unmarshal([]byte(result), &users); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}
-				
+
 				if len(users) != 2 {
 					t.Errorf("Expected 2 users, got %d", len(users))
 				}
-				
+
 				// Test with limit parameter
 				result, err = tool.Handler(map[string]any{"limit": 1})
 				if err != nil {
 					t.Fatalf("Tool execution with limit failed: %v", err)
 				}
-				
+
 				var limitedUsers []map[string]interface{}
 				if err := json.Unmarshal([]byte(result), &limitedUsers); err != nil {
 					t.Fatalf("Failed to parse limited result: %v", err)
 				}
-				
+
 				if len(limitedUsers) != 1 {
 					t.Errorf("Expected 1 user with limit, got %d", len(limitedUsers))
 				}
 			})
-			
+
 		case "testapi_get_user":
 			t.Run("get_user", func(t *testing.T) {
 				result, err := tool.Handler(map[string]any{"id": "123"})
 				if err != nil {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
-				
+
 				var user map[string]interface{}
 				if err := json.Unmarshal([]byte(result), &user); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}
-				
+
 				if user["id"].(float64) != 123 {
 					t.Errorf("Expected user ID 123, got %v", user["id"])
 				}
-				
+
 				if user["name"] != "Specific User" {
 					t.Errorf("Expected user name 'Specific User', got %v", user["name"])
 				}
-				
+
 				// Test missing required parameter
 				_, err = tool.Handler(map[string]any{})
 				if err == nil {
 					t.Error("Expected error for missing required parameter")
 				}
 			})
-			
+
 		case "testapi_create_user":
 			t.Run("create_user", func(t *testing.T) {
 				result, err := tool.Handler(map[string]any{
@@ -257,20 +259,20 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
-				
+
 				var user map[string]interface{}
 				if err := json.Unmarshal([]byte(result), &user); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}
-				
+
 				if user["name"] != "New User" {
 					t.Errorf("Expected name 'New User', got %v", user["name"])
 				}
-				
+
 				if user["email"] != "newuser@example.com" {
 					t.Errorf("Expected email 'newuser@example.com', got %v", user["email"])
 				}
-				
+
 				// Test validation - name too short
 				_, err = tool.Handler(map[string]any{
 					"name":  "X",
@@ -279,7 +281,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				if err == nil {
 					t.Error("Expected validation error for short name")
 				}
-				
+
 				// Test validation - invalid email
 				_, err = tool.Handler(map[string]any{
 					"name":  "Valid Name",
@@ -302,12 +304,12 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"message": "Success"})
 	}))
 	defer server.Close()
-	
+
 	// Create configuration with invalid token
 	configJSON := `{
 		"services": {
@@ -335,23 +337,23 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 			}
 		}
 	}`
-	
+
 	fusion := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(&mockLogger{}),
 	)
-	
+
 	tools := fusion.RegisterTools()
 	if len(tools) != 1 {
 		t.Fatalf("Expected 1 tool, got %d", len(tools))
 	}
-	
+
 	// Execute the tool - should get an API error
 	_, err := tools[0].Handler(map[string]any{})
 	if err == nil {
 		t.Fatal("Expected API error for invalid authentication")
 	}
-	
+
 	apiErr, ok := err.(*APIError)
 	if !ok {
 		t.Errorf("Expected APIError, got %T", err)
@@ -388,23 +390,23 @@ func TestFusionIntegration_NetworkError(t *testing.T) {
 			}
 		}
 	}`
-	
+
 	fusion := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(&mockLogger{}),
 	)
-	
+
 	tools := fusion.RegisterTools()
 	if len(tools) != 1 {
 		t.Fatalf("Expected 1 tool, got %d", len(tools))
 	}
-	
+
 	// Execute the tool - should get a network error
 	_, err := tools[0].Handler(map[string]any{})
 	if err == nil {
 		t.Fatal("Expected network error for invalid host")
 	}
-	
+
 	networkErr, ok := err.(*NetworkError)
 	if !ok {
 		t.Errorf("Expected NetworkError, got %T: %v", err, err)

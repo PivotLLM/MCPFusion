@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -10,25 +12,25 @@ import (
 
 // DeviceCodeError represents an error during OAuth2 device flow that requires user action
 type DeviceCodeError struct {
-	VerificationURL     string        `json:"verification_uri"`
-	VerificationURLComplete string    `json:"verification_uri_complete,omitempty"`
-	UserCode            string        `json:"user_code"`
-	DeviceCode          string        `json:"device_code"`
-	ExpiresIn           int           `json:"expires_in"`
-	Interval            int           `json:"interval"`
-	Message             string        `json:"message,omitempty"`
-	ClientID            string        `json:"client_id"`
-	TokenURL            string        `json:"token_url"`
-	Scopes              []string      `json:"scopes,omitempty"`
+	VerificationURL         string   `json:"verification_uri"`
+	VerificationURLComplete string   `json:"verification_uri_complete,omitempty"`
+	UserCode                string   `json:"user_code"`
+	DeviceCode              string   `json:"device_code"`
+	ExpiresIn               int      `json:"expires_in"`
+	Interval                int      `json:"interval"`
+	Message                 string   `json:"message,omitempty"`
+	ClientID                string   `json:"client_id"`
+	TokenURL                string   `json:"token_url"`
+	Scopes                  []string `json:"scopes,omitempty"`
 }
 
 // Error implements the error interface
 func (e DeviceCodeError) Error() string {
 	if e.Message != "" {
-		return fmt.Sprintf("OAuth2 Device Flow: %s\nPlease visit %s and enter code: %s", 
+		return fmt.Sprintf("OAuth2 Device Flow: %s\nPlease visit %s and enter code: %s",
 			e.Message, e.VerificationURL, e.UserCode)
 	}
-	return fmt.Sprintf("Please visit %s and enter code: %s", 
+	return fmt.Sprintf("Please visit %s and enter code: %s",
 		e.VerificationURL, e.UserCode)
 }
 
@@ -50,10 +52,10 @@ type AuthenticationError struct {
 // Error implements the error interface
 func (e AuthenticationError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("authentication failed for service %s (%s): %s: %v", 
+		return fmt.Sprintf("authentication failed for service %s (%s): %s: %v",
 			e.Service, e.Type, e.Message, e.Cause)
 	}
-	return fmt.Sprintf("authentication failed for service %s (%s): %s", 
+	return fmt.Sprintf("authentication failed for service %s (%s): %s",
 		e.Service, e.Type, e.Message)
 }
 
@@ -90,18 +92,18 @@ type ConfigurationError struct {
 func (e ConfigurationError) Error() string {
 	if e.Service != "" {
 		if e.Cause != nil {
-			return fmt.Sprintf("configuration error in service %s, field %s: %s: %v", 
+			return fmt.Sprintf("configuration error in service %s, field %s: %s: %v",
 				e.Service, e.Field, e.Message, e.Cause)
 		}
-		return fmt.Sprintf("configuration error in service %s, field %s: %s", 
+		return fmt.Sprintf("configuration error in service %s, field %s: %s",
 			e.Service, e.Field, e.Message)
 	}
-	
+
 	if e.Cause != nil {
-		return fmt.Sprintf("configuration error in field %s: %s: %v", 
+		return fmt.Sprintf("configuration error in field %s: %s: %v",
 			e.Field, e.Message, e.Cause)
 	}
-	return fmt.Sprintf("configuration error in field %s: %s", 
+	return fmt.Sprintf("configuration error in field %s: %s",
 		e.Field, e.Message)
 }
 
@@ -121,7 +123,7 @@ func (e ConfigurationError) GetUserFriendlyMessage() string {
 			return fmt.Sprintf("Configuration error in service '%s' for field '%s': %s Please check your configuration file and fix the indicated field.", e.Service, e.Field, e.Message)
 		}
 	}
-	
+
 	switch e.Field {
 	case "file":
 		return fmt.Sprintf("Configuration file could not be loaded: %s Please check the file path and ensure the file exists and is readable.", e.Message)
@@ -151,7 +153,7 @@ type ValidationError struct {
 
 // Error implements the error interface
 func (e ValidationError) Error() string {
-	return fmt.Sprintf("validation failed for parameter %s: %s (value: %v)", 
+	return fmt.Sprintf("validation failed for parameter %s: %s (value: %v)",
 		e.Parameter, e.Message, e.Value)
 }
 
@@ -207,12 +209,12 @@ func (e APIError) Error() string {
 	if e.CorrelationID != "" {
 		correlationStr = fmt.Sprintf(" [%s]", e.CorrelationID)
 	}
-	
+
 	if e.Response != "" {
-		return fmt.Sprintf("API error from %s:%s (HTTP %d, %s)%s: %s - Response: %s", 
+		return fmt.Sprintf("API error from %s:%s (HTTP %d, %s)%s: %s - Response: %s",
 			e.Service, e.Endpoint, e.StatusCode, e.Category, correlationStr, e.Message, e.Response)
 	}
-	return fmt.Sprintf("API error from %s:%s (HTTP %d, %s)%s: %s", 
+	return fmt.Sprintf("API error from %s:%s (HTTP %d, %s)%s: %s",
 		e.Service, e.Endpoint, e.StatusCode, e.Category, correlationStr, e.Message)
 }
 
@@ -223,9 +225,9 @@ func (e APIError) IsRetryable() bool {
 
 // IsTransient returns whether the error is transient
 func (e APIError) IsTransient() bool {
-	return e.Category == ErrorCategoryTransient || e.Category == ErrorCategoryTimeout || 
-		   e.Category == ErrorCategoryNetwork || e.Category == ErrorCategoryRateLimit ||
-		   e.Category == ErrorCategoryServer
+	return e.Category == ErrorCategoryTransient || e.Category == ErrorCategoryTimeout ||
+		e.Category == ErrorCategoryNetwork || e.Category == ErrorCategoryRateLimit ||
+		e.Category == ErrorCategoryServer
 }
 
 // GetCategory returns the error category
@@ -246,10 +248,10 @@ type TransformationError struct {
 // Error implements the error interface
 func (e TransformationError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("%s transformation failed for %s using expression '%s': %s: %v", 
+		return fmt.Sprintf("%s transformation failed for %s using expression '%s': %s: %v",
 			e.Type, e.Name, e.Expression, e.Message, e.Cause)
 	}
-	return fmt.Sprintf("%s transformation failed for %s using expression '%s': %s", 
+	return fmt.Sprintf("%s transformation failed for %s using expression '%s': %s",
 		e.Type, e.Name, e.Expression, e.Message)
 }
 
@@ -269,10 +271,10 @@ type CacheError struct {
 // Error implements the error interface
 func (e CacheError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("cache %s operation failed for key %s: %s: %v", 
+		return fmt.Sprintf("cache %s operation failed for key %s: %s: %v",
 			e.Operation, e.Key, e.Message, e.Cause)
 	}
-	return fmt.Sprintf("cache %s operation failed for key %s: %s", 
+	return fmt.Sprintf("cache %s operation failed for key %s: %s",
 		e.Operation, e.Key, e.Message)
 }
 
@@ -283,21 +285,21 @@ func (e CacheError) Unwrap() error {
 
 // TokenError represents token-related errors
 type TokenError struct {
-	Type    AuthType  `json:"type"`
-	Service string    `json:"service"`
-	Reason  string    `json:"reason"` // "expired", "invalid", "missing", "refresh_failed"
-	Message string    `json:"message"`
-	Cause   error     `json:"-"`
+	Type      AuthType   `json:"type"`
+	Service   string     `json:"service"`
+	Reason    string     `json:"reason"` // "expired", "invalid", "missing", "refresh_failed"
+	Message   string     `json:"message"`
+	Cause     error      `json:"-"`
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 }
 
 // Error implements the error interface
 func (e TokenError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("token error for service %s (%s): %s - %s: %v", 
+		return fmt.Sprintf("token error for service %s (%s): %s - %s: %v",
 			e.Service, e.Type, e.Reason, e.Message, e.Cause)
 	}
-	return fmt.Sprintf("token error for service %s (%s): %s - %s", 
+	return fmt.Sprintf("token error for service %s (%s): %s - %s",
 		e.Service, e.Type, e.Reason, e.Message)
 }
 
@@ -318,25 +320,25 @@ func (e TokenError) IsRefreshable() bool {
 
 // NetworkError represents network-related errors
 type NetworkError struct {
-	URL           string        `json:"url"`
-	Method        string        `json:"method"`
-	Message       string        `json:"message"`
-	Cause         error         `json:"-"`
-	Timeout       bool          `json:"timeout"`
-	Retryable     bool          `json:"retryable"`
+	URL           string         `json:"url"`
+	Method        string         `json:"method"`
+	Message       string         `json:"message"`
+	Cause         error          `json:"-"`
+	Timeout       bool           `json:"timeout"`
+	Retryable     bool           `json:"retryable"`
 	RetryAfter    *time.Duration `json:"retry_after,omitempty"`
-	Category      ErrorCategory `json:"category"`
-	CorrelationID string        `json:"correlation_id,omitempty"`
-	Timestamp     time.Time     `json:"timestamp"`
+	Category      ErrorCategory  `json:"category"`
+	CorrelationID string         `json:"correlation_id,omitempty"`
+	Timestamp     time.Time      `json:"timestamp"`
 }
 
 // Error implements the error interface
 func (e NetworkError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("network error for %s %s: %s: %v", 
+		return fmt.Sprintf("network error for %s %s: %s: %v",
 			e.Method, e.URL, e.Message, e.Cause)
 	}
-	return fmt.Sprintf("network error for %s %s: %s", 
+	return fmt.Sprintf("network error for %s %s: %s",
 		e.Method, e.URL, e.Message)
 }
 
@@ -408,7 +410,7 @@ func NewValidationError(parameter string, value interface{}, rule, message strin
 // NewAPIError creates a new APIError with automatic categorization
 func NewAPIError(service, endpoint string, statusCode int, message, response string, retryable bool) *APIError {
 	category := categorizeHTTPError(statusCode)
-	
+
 	return &APIError{
 		Service:    service,
 		Endpoint:   endpoint,
@@ -457,7 +459,7 @@ func NewNetworkError(url, method, message string, cause error, timeout, retryabl
 	if timeout {
 		category = ErrorCategoryTimeout
 	}
-	
+
 	return &NetworkError{
 		URL:       url,
 		Method:    method,

@@ -1,7 +1,9 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
-// Package fusion provides a production-ready, configuration-driven MCP (Model Context Protocol) 
+// Package fusion provides a production-ready, configuration-driven MCP (Model Context Protocol)
 // provider that enables seamless integration with multiple APIs through JSON configuration.
 //
 // Key Features:
@@ -13,7 +15,7 @@
 // - Real-time metrics collection and monitoring
 // - Support for paginated responses with automatic multi-page fetching
 //
-// This package is production-ready and supports enterprise-grade deployments with 
+// This package is production-ready and supports enterprise-grade deployments with
 // advanced reliability features including exponential backoff retries, circuit breaker
 // patterns, and comprehensive observability.
 //
@@ -72,15 +74,15 @@ var _ global.PromptProvider = (*Fusion)(nil)
 // All public methods are thread-safe and can be called concurrently from multiple
 // goroutines. Internal state is protected by appropriate synchronization primitives.
 type Fusion struct {
-	config                  *Config                        // Service configuration and endpoints
-	authManager             *AuthManager                   // Authentication strategy manager
-	httpClient              *http.Client                   // HTTP client with timeouts
-	cache                   Cache                          // Token and response cache
-	logger                  global.Logger                  // Structured logging interface
-	metricsCollector        *MetricsCollector              // Performance and health metrics
-	correlationIDGenerator  *CorrelationIDGenerator        // Request correlation tracking
-	circuitBreakers         map[string]*CircuitBreaker     // Per-service circuit breakers
-	circuitBreakersMutex    sync.RWMutex                   // Protects circuitBreakers map
+	config                 *Config                    // Service configuration and endpoints
+	authManager            *AuthManager               // Authentication strategy manager
+	httpClient             *http.Client               // HTTP client with timeouts
+	cache                  Cache                      // Token and response cache
+	logger                 global.Logger              // Structured logging interface
+	metricsCollector       *MetricsCollector          // Performance and health metrics
+	correlationIDGenerator *CorrelationIDGenerator    // Request correlation tracking
+	circuitBreakers        map[string]*CircuitBreaker // Per-service circuit breakers
+	circuitBreakersMutex   sync.RWMutex               // Protects circuitBreakers map
 }
 
 // Option defines a functional option type for configuring Fusion instances.
@@ -119,7 +121,7 @@ func WithJSONConfig(configPath string) Option {
 		if f.logger != nil {
 			f.logger.Infof("Loading configuration from file: %s", configPath)
 		}
-		
+
 		data, err := os.ReadFile(configPath)
 		if err != nil {
 			if f.logger != nil {
@@ -127,7 +129,7 @@ func WithJSONConfig(configPath string) Option {
 			}
 			return
 		}
-		
+
 		config, err := LoadConfigFromJSONWithLogger(data, configPath, f.logger)
 		if err != nil {
 			if f.logger != nil {
@@ -145,7 +147,7 @@ func WithJSONConfigData(jsonData []byte, configPath string) Option {
 		if f.logger != nil {
 			f.logger.Infof("Loading configuration from JSON data (path: %s)", configPath)
 		}
-		
+
 		config, err := LoadConfigFromJSONWithLogger(jsonData, configPath, f.logger)
 		if err != nil {
 			if f.logger != nil {
@@ -274,27 +276,27 @@ func New(options ...Option) *Fusion {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		cache:                  NewInMemoryCache(), // Default to in-memory cache (will be updated with logger later)
+		cache:                  NewInMemoryCache(),             // Default to in-memory cache (will be updated with logger later)
 		metricsCollector:       NewMetricsCollector(nil, true), // Enable metrics by default
 		correlationIDGenerator: NewCorrelationIDGenerator(),
 		circuitBreakers:        make(map[string]*CircuitBreaker),
 	}
-	
+
 	// Apply all options
 	for _, opt := range options {
 		opt(fusion)
 	}
-	
+
 	if fusion.logger != nil {
 		fusion.logger.Debug("Initializing Fusion instance")
 		fusion.logger.Debugf("HTTP client timeout: %v", fusion.httpClient.Timeout)
 	}
-	
+
 	// Update cache with logger if we're using the default in-memory cache
 	if _, isInMemory := fusion.cache.(*InMemoryCache); isInMemory {
 		fusion.cache = NewInMemoryCacheWithLogger(fusion.logger)
 	}
-	
+
 	// Update metrics collector with logger
 	if fusion.metricsCollector != nil {
 		fusion.metricsCollector.logger = fusion.logger
@@ -302,30 +304,30 @@ func New(options ...Option) *Fusion {
 			fusion.logger.Debug("Metrics collection enabled")
 		}
 	}
-	
+
 	// Initialize auth manager if we have a config
 	if fusion.config != nil {
 		if fusion.logger != nil {
 			fusion.logger.Debug("Initializing authentication manager")
 		}
-		
+
 		fusion.authManager = NewAuthManager(fusion.cache, fusion.logger)
-		
+
 		// Register default authentication strategies
 		fusion.registerDefaultAuthStrategies()
-		
+
 		// Set references in config
 		fusion.config.Logger = fusion.logger
 		fusion.config.AuthManager = fusion.authManager
 		fusion.config.HTTPClient = fusion.httpClient
 		fusion.config.Cache = fusion.cache
-		
+
 		if fusion.logger != nil {
 			fusion.logger.Infof("Fusion initialized with %d services", len(fusion.config.Services))
-			
+
 			// Log service summary
 			for serviceName, service := range fusion.config.Services {
-				fusion.logger.Debugf("Service '%s': baseURL=%s, auth=%s, endpoints=%d", 
+				fusion.logger.Debugf("Service '%s': baseURL=%s, auth=%s, endpoints=%d",
 					serviceName, service.BaseURL, service.Auth.Type, len(service.Endpoints))
 			}
 		}
@@ -334,11 +336,11 @@ func New(options ...Option) *Fusion {
 			fusion.logger.Warning("No configuration provided - services will need to be configured separately")
 		}
 	}
-	
+
 	if fusion.logger != nil {
 		fusion.logger.Info("Fusion instance initialization completed")
 	}
-	
+
 	return fusion
 }
 
@@ -347,19 +349,19 @@ func (f *Fusion) registerDefaultAuthStrategies() {
 	if f.authManager == nil {
 		return
 	}
-	
+
 	// Register OAuth2 device flow strategy
 	oauth2Strategy := NewOAuth2DeviceFlowStrategy(f.httpClient, f.logger)
 	f.authManager.RegisterStrategy(oauth2Strategy)
-	
+
 	// Register bearer token strategy
 	bearerStrategy := NewBearerTokenStrategy(f.logger)
 	f.authManager.RegisterStrategy(bearerStrategy)
-	
+
 	// Register API key strategy
 	apiKeyStrategy := NewAPIKeyStrategy(f.logger)
 	f.authManager.RegisterStrategy(apiKeyStrategy)
-	
+
 	// Register basic auth strategy
 	basicStrategy := NewBasicAuthStrategy(f.logger)
 	f.authManager.RegisterStrategy(basicStrategy)
@@ -421,7 +423,7 @@ func (f *Fusion) GetLogger() global.Logger {
 // Example:
 // If configured with Microsoft 365 and Google APIs, this might return tools like:
 // - microsoft365_get_profile
-// - microsoft365_calendar_events  
+// - microsoft365_calendar_events
 // - google_list_calendar_events
 // - google_list_files
 func (f *Fusion) RegisterTools() []global.ToolDefinition {
@@ -431,20 +433,20 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 		}
 		return []global.ToolDefinition{}
 	}
-	
+
 	var tools []global.ToolDefinition
-	
+
 	for serviceName, service := range f.config.Services {
 		for _, endpoint := range service.Endpoints {
 			tool := f.createToolDefinition(serviceName, service, &endpoint)
 			tools = append(tools, tool)
 		}
 	}
-	
+
 	if f.logger != nil {
 		f.logger.Infof("Registered %d dynamic tools from configuration", len(tools))
 	}
-	
+
 	return tools
 }
 
@@ -459,13 +461,13 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 			Required:    param.Required,
 		})
 	}
-	
+
 	// Create the tool handler
 	handler := f.createToolHandler(serviceName, service, endpoint)
-	
+
 	// Generate tool name by combining service and endpoint names
 	toolName := fmt.Sprintf("%s_%s", serviceName, endpoint.ID)
-	
+
 	return global.ToolDefinition{
 		Name:        toolName,
 		Description: fmt.Sprintf("%s: %s", service.Name, endpoint.Description),
@@ -477,10 +479,10 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 // createToolHandler creates a handler function for a specific endpoint
 func (f *Fusion) createToolHandler(serviceName string, service *ServiceConfig, endpoint *EndpointConfig) global.ToolHandler {
 	handler := NewHTTPHandler(f, service, endpoint)
-	
+
 	return func(options map[string]any) (string, error) {
 		ctx := context.Background()
-		
+
 		// Handle request
 		result, err := handler.Handle(ctx, options)
 		if err != nil {
@@ -492,7 +494,7 @@ func (f *Fusion) createToolHandler(serviceName string, service *ServiceConfig, e
 			}
 			return "", err
 		}
-		
+
 		return result, nil
 	}
 }
@@ -520,7 +522,7 @@ func (f *Fusion) Validate() error {
 	if f.config == nil {
 		return NewConfigurationError("config", "", "no configuration loaded", nil)
 	}
-	
+
 	return f.config.Validate()
 }
 
@@ -529,23 +531,23 @@ func (f *Fusion) ReloadConfig() error {
 	if f.config == nil || f.config.ConfigPath == "" {
 		return NewConfigurationError("configPath", "", "no config path available for reload", nil)
 	}
-	
+
 	newConfig, err := LoadConfigFromFile(f.config.ConfigPath)
 	if err != nil {
 		return NewConfigurationError("config", "", "failed to reload configuration", err)
 	}
-	
+
 	// Update configuration
 	f.config = newConfig
 	f.config.Logger = f.logger
 	f.config.AuthManager = f.authManager
 	f.config.HTTPClient = f.httpClient
 	f.config.Cache = f.cache
-	
+
 	if f.logger != nil {
 		f.logger.Info("Configuration reloaded successfully")
 	}
-	
+
 	return nil
 }
 
@@ -554,7 +556,7 @@ func (f *Fusion) GetServiceNames() []string {
 	if f.config == nil {
 		return []string{}
 	}
-	
+
 	names := make([]string, 0, len(f.config.Services))
 	for name := range f.config.Services {
 		names = append(names, name)
@@ -567,7 +569,7 @@ func (f *Fusion) GetService(name string) *ServiceConfig {
 	if f.config == nil {
 		return nil
 	}
-	
+
 	return f.config.Services[name]
 }
 
@@ -576,7 +578,7 @@ func (f *Fusion) HasService(name string) bool {
 	if f.config == nil {
 		return false
 	}
-	
+
 	_, exists := f.config.Services[name]
 	return exists
 }
@@ -587,7 +589,7 @@ func (f *Fusion) GetEndpoint(serviceName, endpointID string) *EndpointConfig {
 	if service == nil {
 		return nil
 	}
-	
+
 	return service.GetEndpointByID(endpointID)
 }
 
@@ -596,7 +598,7 @@ func (f *Fusion) GetSupportedAuthTypes() []AuthType {
 	if f.authManager == nil {
 		return []AuthType{}
 	}
-	
+
 	return f.authManager.GetRegisteredStrategies()
 }
 
@@ -605,11 +607,11 @@ func (f *Fusion) InvalidateTokens() {
 	if f.authManager == nil {
 		return
 	}
-	
+
 	for serviceName := range f.config.Services {
 		f.authManager.InvalidateToken(serviceName)
 	}
-	
+
 	if f.logger != nil {
 		f.logger.Info("All tokens invalidated")
 	}
@@ -620,9 +622,9 @@ func (f *Fusion) InvalidateServiceToken(serviceName string) {
 	if f.authManager == nil {
 		return
 	}
-	
+
 	f.authManager.InvalidateToken(serviceName)
-	
+
 	if f.logger != nil {
 		f.logger.Infof("Token invalidated for service: %s", serviceName)
 	}
@@ -639,7 +641,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 	if f.logger != nil {
 		f.logger.Debugf("Initial request URL: %s", requestURL)
 	}
-	
+
 	// Parse URL for modifications
 	parsedURL, err := url.Parse(requestURL)
 	if err != nil {
@@ -648,27 +650,27 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 		}
 		return nil, NewConfigurationError("path", serviceName, fmt.Sprintf("invalid URL: %s", requestURL), err)
 	}
-	
+
 	// Prepare request body and query parameters
 	queryParams := parsedURL.Query()
 	var requestBody interface{}
 	bodyParameters := make(map[string]interface{})
 	pathParams := make(map[string]interface{})
 	headerParams := make(map[string]interface{})
-	
+
 	if f.logger != nil {
 		f.logger.Debugf("Processing %d parameters for endpoint %s", len(endpoint.Parameters), endpoint.ID)
 	}
-	
+
 	// Process each parameter
 	for _, param := range endpoint.Parameters {
 		if f.logger != nil {
-			f.logger.Debugf("Processing parameter: %s (type: %s, location: %s, required: %t)", 
+			f.logger.Debugf("Processing parameter: %s (type: %s, location: %s, required: %t)",
 				param.Name, param.Type, param.Location, param.Required)
 		}
 
 		value, provided := options[param.Name]
-		
+
 		// Check if required parameter is missing
 		if param.Required && !provided {
 			if f.logger != nil {
@@ -676,7 +678,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 			}
 			return nil, NewValidationError(param.Name, nil, "required", "parameter is required")
 		}
-		
+
 		// Use default value if not provided
 		if !provided && param.Default != nil {
 			value = param.Default
@@ -685,7 +687,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 				f.logger.Debugf("Using default value for parameter %s: %v", param.Name, value)
 			}
 		}
-		
+
 		// Skip optional parameters that weren't provided
 		if !provided {
 			if f.logger != nil {
@@ -693,7 +695,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 			}
 			continue
 		}
-		
+
 		// Validate the parameter
 		if f.logger != nil {
 			f.logger.Debugf("Validating parameter %s with value: %v", param.Name, value)
@@ -704,7 +706,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 			}
 			return nil, err
 		}
-		
+
 		// Transform the parameter if needed
 		transformedValue, err := f.transformParameter(&param, value)
 		if err != nil {
@@ -713,11 +715,11 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 			}
 			return nil, err
 		}
-		
+
 		if transformedValue != value && f.logger != nil {
 			f.logger.Debugf("Parameter %s transformed: %v -> %v", param.Name, value, transformedValue)
 		}
-		
+
 		// Apply parameter to appropriate location
 		switch param.Location {
 		case ParameterLocationPath:
@@ -745,13 +747,13 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 			}
 		}
 	}
-	
+
 	// Set query parameters
 	parsedURL.RawQuery = queryParams.Encode()
 	if f.logger != nil && len(queryParams) > 0 {
 		f.logger.Debugf("Final query string: %s", parsedURL.RawQuery)
 	}
-	
+
 	// Prepare request body
 	var bodyReader io.Reader
 	if len(bodyParameters) > 0 {
@@ -779,7 +781,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 			}
 		}
 	}
-	
+
 	// Create the HTTP request
 	if f.logger != nil {
 		f.logger.Debugf("Creating HTTP request: %s %s", strings.ToUpper(endpoint.Method), parsedURL.String())
@@ -791,7 +793,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 		}
 		return nil, NewNetworkError(parsedURL.String(), endpoint.Method, "failed to create HTTP request", err, false, false)
 	}
-	
+
 	// Set content type for body requests
 	if requestBody != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -799,7 +801,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 			f.logger.Debug("Set Content-Type: application/json")
 		}
 	}
-	
+
 	// Set header parameters
 	headerCount := 0
 	for _, param := range endpoint.Parameters {
@@ -815,12 +817,12 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 			}
 		}
 	}
-	
+
 	if f.logger != nil {
-		f.logger.Infof("Successfully built request: %s %s (path params: %d, query params: %d, headers: %d, body params: %d)", 
+		f.logger.Infof("Successfully built request: %s %s (path params: %d, query params: %d, headers: %d, body params: %d)",
 			req.Method, req.URL.String(), len(pathParams), len(queryParams), headerCount, len(bodyParameters))
 	}
-	
+
 	return req, nil
 }
 
@@ -834,17 +836,17 @@ func (f *Fusion) processResponse(resp *http.Response, endpoint *EndpointConfig, 
 	if resp.StatusCode >= 400 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		bodyStr := string(bodyBytes)
-		
+
 		if f.logger != nil {
 			sanitizedResponse := f.sanitizeResponseBody(bodyBytes, 500)
-			f.logger.Errorf("HTTP error response for service %s, endpoint %s: %s - Body: %s", 
+			f.logger.Errorf("HTTP error response for service %s, endpoint %s: %s - Body: %s",
 				serviceName, endpoint.ID, resp.Status, sanitizedResponse)
 		}
-		
+
 		retryable := resp.StatusCode >= 500 || resp.StatusCode == 429 // Server errors and rate limiting
 		return "", NewAPIError(serviceName, endpoint.ID, resp.StatusCode, resp.Status, bodyStr, retryable)
 	}
-	
+
 	// Read response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -853,12 +855,12 @@ func (f *Fusion) processResponse(resp *http.Response, endpoint *EndpointConfig, 
 		}
 		return "", NewNetworkError("", "", "failed to read response body", err, false, false)
 	}
-	
+
 	if f.logger != nil {
 		sanitizedResponse := f.sanitizeResponseBody(bodyBytes, 1000)
 		f.logger.Debugf("Response body for service %s, endpoint %s: %s", serviceName, endpoint.ID, sanitizedResponse)
 	}
-	
+
 	// Process based on response type
 	switch endpoint.Response.Type {
 	case ResponseTypeJSON:
@@ -873,11 +875,11 @@ func (f *Fusion) processResponse(resp *http.Response, endpoint *EndpointConfig, 
 		return string(bodyBytes), nil
 	case ResponseTypeBinary:
 		if f.logger != nil {
-			f.logger.Debugf("Processing binary response for service %s, endpoint %s (%d bytes)", 
+			f.logger.Debugf("Processing binary response for service %s, endpoint %s (%d bytes)",
 				serviceName, endpoint.ID, len(bodyBytes))
 		}
 		// For binary responses, return base64 encoded data or metadata
-		return fmt.Sprintf("Binary response received (%d bytes, Content-Type: %s)", 
+		return fmt.Sprintf("Binary response received (%d bytes, Content-Type: %s)",
 			len(bodyBytes), resp.Header.Get("Content-Type")), nil
 	default:
 		if f.logger != nil {
@@ -895,7 +897,7 @@ func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig,
 	if err := json.Unmarshal(bodyBytes, &responseData); err != nil {
 		return "", NewTransformationError("response", "json", "json.Unmarshal", string(bodyBytes), "failed to parse JSON response", err)
 	}
-	
+
 	// Apply transformation if specified
 	if endpoint.Response.Transform != "" {
 		transformed, err := f.applyResponseTransform(responseData, endpoint.Response.Transform)
@@ -904,18 +906,18 @@ func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig,
 		}
 		responseData = transformed
 	}
-	
+
 	// Handle pagination if enabled
 	if endpoint.Response.Paginated && endpoint.Response.PaginationConfig != nil {
 		return f.handlePaginatedResponse(responseData, endpoint, serviceName)
 	}
-	
+
 	// Convert back to JSON string for consistent output
 	result, err := json.MarshalIndent(responseData, "", "  ")
 	if err != nil {
 		return "", NewTransformationError("response", "json", "json.MarshalIndent", responseData, "failed to marshal response", err)
 	}
-	
+
 	return string(result), nil
 }
 
@@ -936,21 +938,21 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 			}
 			strValue = fmt.Sprintf("%v", value)
 		}
-		
+
 		// Additional validation if config exists
 		if param.Validation != nil {
 			validation := param.Validation
-			
+
 			// Length validation
 			if !validation.IsValidLength(strValue) {
-				message := fmt.Sprintf("string length must be between %d and %d (actual: %d)", 
+				message := fmt.Sprintf("string length must be between %d and %d (actual: %d)",
 					validation.MinLength, validation.MaxLength, len(strValue))
 				if f.logger != nil {
 					f.logger.Errorf("Parameter %s validation failed: %s", param.Name, message)
 				}
 				return NewValidationError(param.Name, value, "length", message)
 			}
-			
+
 			// Pattern validation
 			if !validation.MatchesPattern(strValue) {
 				message := fmt.Sprintf("string must match pattern: %s", validation.Pattern)
@@ -960,12 +962,12 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 				return NewValidationError(param.Name, value, "pattern", message)
 			}
 		}
-		
+
 	case ParameterTypeNumber:
 		// Accept both int and float with better error handling
 		var numValue float64
 		var converted bool
-		
+
 		switch v := value.(type) {
 		case float64:
 			numValue = v
@@ -992,7 +994,7 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 				}
 			}
 		}
-		
+
 		if !converted {
 			message := fmt.Sprintf("parameter must be a number (received %T: %v)", value, value)
 			if f.logger != nil {
@@ -1000,7 +1002,7 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 			}
 			return NewValidationError(param.Name, value, "type", message)
 		}
-		
+
 	case ParameterTypeBoolean:
 		if _, ok := value.(bool); !ok {
 			// Try to convert string to boolean for recovery
@@ -1024,7 +1026,7 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 				return NewValidationError(param.Name, value, "type", message)
 			}
 		}
-		
+
 	case ParameterTypeArray:
 		if reflect.TypeOf(value).Kind() != reflect.Slice {
 			message := fmt.Sprintf("parameter must be an array (received %T: %v)", value, value)
@@ -1033,7 +1035,7 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 			}
 			return NewValidationError(param.Name, value, "type", message)
 		}
-		
+
 	case ParameterTypeObject:
 		if reflect.TypeOf(value).Kind() != reflect.Map {
 			message := fmt.Sprintf("parameter must be an object (received %T: %v)", value, value)
@@ -1043,7 +1045,7 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 			return NewValidationError(param.Name, value, "type", message)
 		}
 	}
-	
+
 	// Enum validation if config exists
 	if param.Validation != nil && !param.Validation.IsValidEnumValue(value) {
 		message := fmt.Sprintf("value must be one of: %v (received: %v)", param.Validation.Enum, value)
@@ -1052,11 +1054,11 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 		}
 		return NewValidationError(param.Name, value, "enum", message)
 	}
-	
+
 	if f.logger != nil {
 		f.logger.Debugf("Parameter %s validation successful", param.Name)
 	}
-	
+
 	return nil
 }
 
@@ -1065,15 +1067,15 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 	if param.Transform == nil || param.Transform.Expression == "" {
 		return value, nil
 	}
-	
+
 	if f.logger != nil {
 		f.logger.Debugf("Applying transformation to parameter %s: %s", param.Name, param.Transform.Expression)
 	}
-	
+
 	// For now, implement basic transformations
 	// This can be extended with a full expression evaluator
 	expression := param.Transform.Expression
-	
+
 	switch expression {
 	case "toString":
 		result := fmt.Sprintf("%v", value)
@@ -1081,7 +1083,7 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 			f.logger.Debugf("Parameter %s toString transformation: %v -> %s", param.Name, value, result)
 		}
 		return result, nil
-		
+
 	case "toInt":
 		switch v := value.(type) {
 		case string:
@@ -1114,7 +1116,7 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 			}
 			return value, nil
 		}
-		
+
 	case "toFloat":
 		switch v := value.(type) {
 		case string:
@@ -1147,7 +1149,7 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 			}
 			return value, nil
 		}
-		
+
 	case "toLowerCase":
 		if strValue, ok := value.(string); ok {
 			result := strings.ToLower(strValue)
@@ -1160,7 +1162,7 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 			f.logger.Warningf("Parameter %s toLowerCase transformation: value is not a string (%T), returning unchanged", param.Name, value)
 		}
 		return value, nil
-		
+
 	case "toUpperCase":
 		if strValue, ok := value.(string); ok {
 			result := strings.ToUpper(strValue)
@@ -1173,7 +1175,7 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 			f.logger.Warningf("Parameter %s toUpperCase transformation: value is not a string (%T), returning unchanged", param.Name, value)
 		}
 		return value, nil
-		
+
 	case "trim":
 		if strValue, ok := value.(string); ok {
 			result := strings.TrimSpace(strValue)
@@ -1186,7 +1188,7 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 			f.logger.Warningf("Parameter %s trim transformation: value is not a string (%T), returning unchanged", param.Name, value)
 		}
 		return value, nil
-		
+
 	default:
 		// If we don't recognize the expression, just return the value unchanged
 		if f.logger != nil {
@@ -1200,12 +1202,12 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 func (f *Fusion) applyResponseTransform(data interface{}, transform string) (interface{}, error) {
 	// For now, implement basic JSON path extraction
 	// This can be extended with a full transformation engine
-	
+
 	if strings.HasPrefix(transform, "$.") {
 		// Simple JSON path extraction
 		return f.extractJSONPath(data, transform)
 	}
-	
+
 	// If we don't recognize the transform, return data unchanged
 	return data, nil
 }
@@ -1214,28 +1216,28 @@ func (f *Fusion) applyResponseTransform(data interface{}, transform string) (int
 func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, error) {
 	// Remove the leading "$."
 	path = strings.TrimPrefix(path, "$.")
-	
+
 	// Split path into parts
 	parts := strings.Split(path, ".")
-	
+
 	current := data
 	for _, part := range parts {
 		if part == "" {
 			continue
 		}
-		
+
 		switch v := current.(type) {
 		case map[string]interface{}:
 			current = v[part]
 		default:
 			return nil, NewTransformationError("response", "json_path", path, data, fmt.Sprintf("cannot navigate to '%s' in non-object", part), nil)
 		}
-		
+
 		if current == nil {
 			return nil, NewTransformationError("response", "json_path", path, data, fmt.Sprintf("path '%s' not found", part), nil)
 		}
 	}
-	
+
 	return current, nil
 }
 
@@ -1243,34 +1245,34 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 func (f *Fusion) handlePaginatedResponse(data interface{}, endpoint *EndpointConfig, serviceName string) (string, error) {
 	// For now, just return the current page
 	// Full pagination support would require additional context and state management
-	
+
 	config := endpoint.Response.PaginationConfig
-	
+
 	// Extract the data array
 	dataArray, err := f.extractJSONPath(data, config.DataPath)
 	if err != nil {
 		return "", NewTransformationError("response", "pagination", config.DataPath, data, "failed to extract data array", err)
 	}
-	
+
 	// Check if there's a next page token
 	nextToken, _ := f.extractJSONPath(data, config.NextPageTokenPath)
-	
+
 	result := map[string]interface{}{
 		"data": dataArray,
 	}
-	
+
 	if nextToken != nil {
 		result["nextPageToken"] = nextToken
 		result["hasNextPage"] = true
 	} else {
 		result["hasNextPage"] = false
 	}
-	
+
 	jsonResult, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return "", NewTransformationError("response", "json", "json.MarshalIndent", result, "failed to marshal paginated response", err)
 	}
-	
+
 	return string(jsonResult), nil
 }
 
@@ -1288,7 +1290,7 @@ func (f *Fusion) sanitizeHeaders(headers http.Header) map[string]string {
 		"cookie":         true,
 		"set-cookie":     true,
 	}
-	
+
 	sanitized := make(map[string]string)
 	for key, values := range headers {
 		lowerKey := strings.ToLower(key)
@@ -1304,18 +1306,18 @@ func (f *Fusion) sanitizeHeaders(headers http.Header) map[string]string {
 // sanitizeQueryParams removes or masks sensitive information from query parameters for logging
 func (f *Fusion) sanitizeQueryParams(params url.Values) map[string]string {
 	sensitiveParams := map[string]bool{
-		"token":       true,
-		"access_token": true,
-		"api_key":     true,
-		"apikey":      true,
-		"key":         true,
-		"secret":      true,
-		"password":    true,
-		"pwd":         true,
-		"auth":        true,
+		"token":         true,
+		"access_token":  true,
+		"api_key":       true,
+		"apikey":        true,
+		"key":           true,
+		"secret":        true,
+		"password":      true,
+		"pwd":           true,
+		"auth":          true,
 		"authorization": true,
 	}
-	
+
 	sanitized := make(map[string]string)
 	for key, values := range params {
 		lowerKey := strings.ToLower(key)
@@ -1344,7 +1346,7 @@ func (f *Fusion) sanitizeRequestBody(body []byte) string {
 		}
 		return bodyStr
 	}
-	
+
 	// Sanitize JSON data
 	sanitized := f.sanitizeJSONData(jsonData)
 	sanitizedBytes, _ := json.Marshal(sanitized)
@@ -1367,7 +1369,7 @@ func (f *Fusion) sanitizeJSONData(data interface{}) interface{} {
 		"credential":    true,
 		"credentials":   true,
 	}
-	
+
 	switch v := data.(type) {
 	case map[string]interface{}:
 		result := make(map[string]interface{})
@@ -1397,7 +1399,7 @@ func (f *Fusion) containsSensitiveData(data string) bool {
 		"password", "token", "secret", "key", "auth", "credential",
 		"bearer", "oauth", "jwt", "api_key", "apikey",
 	}
-	
+
 	lowerData := strings.ToLower(data)
 	for _, keyword := range sensitiveKeywords {
 		if strings.Contains(lowerData, keyword) {
@@ -1412,7 +1414,7 @@ func (f *Fusion) sanitizeResponseBody(body []byte, maxLength int) string {
 	if maxLength <= 0 {
 		maxLength = 1000 // Default max length
 	}
-	
+
 	// Try to parse as JSON first
 	var jsonData interface{}
 	if err := json.Unmarshal(body, &jsonData); err != nil {
@@ -1427,17 +1429,17 @@ func (f *Fusion) sanitizeResponseBody(body []byte, maxLength int) string {
 		}
 		return bodyStr
 	}
-	
+
 	// Sanitize JSON data
 	sanitized := f.sanitizeJSONData(jsonData)
 	sanitizedBytes, _ := json.Marshal(sanitized)
 	sanitizedStr := string(sanitizedBytes)
-	
+
 	// Truncate if too long
 	if len(sanitizedStr) > maxLength {
 		return sanitizedStr[:maxLength] + fmt.Sprintf("...[truncated, %d more bytes]", len(sanitizedStr)-maxLength)
 	}
-	
+
 	return sanitizedStr
 }
 

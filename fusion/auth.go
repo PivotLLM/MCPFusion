@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -61,16 +63,16 @@ func (t *TokenInfo) GetAuthorizationHeader() string {
 type AuthStrategy interface {
 	// Authenticate performs the initial authentication and returns token info
 	Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error)
-	
+
 	// RefreshToken refreshes an existing token
 	RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error)
-	
+
 	// GetAuthType returns the authentication type this strategy handles
 	GetAuthType() AuthType
-	
+
 	// SupportsRefresh returns true if this strategy supports token refresh
 	SupportsRefresh() bool
-	
+
 	// ApplyAuth applies authentication to an HTTP request
 	ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error
 }
@@ -98,7 +100,7 @@ func NewAuthManager(cache Cache, logger global.Logger) *AuthManager {
 func (am *AuthManager) RegisterStrategy(strategy AuthStrategy) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	
+
 	am.strategies[strategy.GetAuthType()] = strategy
 	if am.logger != nil {
 		am.logger.Infof("Registered auth strategy: %s", strategy.GetAuthType())
@@ -114,12 +116,12 @@ func (am *AuthManager) GetToken(ctx context.Context, serviceName string, authCon
 	am.mu.RLock()
 	strategy, exists := am.strategies[authConfig.Type]
 	am.mu.RUnlock()
-	
+
 	if !exists {
 		if am.logger != nil {
 			am.logger.Errorf("Unsupported authentication type for service %s: %s", serviceName, authConfig.Type)
 		}
-		return nil, NewAuthenticationError(authConfig.Type, serviceName, 
+		return nil, NewAuthenticationError(authConfig.Type, serviceName,
 			"unsupported authentication type", nil)
 	}
 
@@ -131,7 +133,7 @@ func (am *AuthManager) GetToken(ctx context.Context, serviceName string, authCon
 		if am.logger != nil {
 			am.logger.Debugf("Found cached token for service %s", serviceName)
 		}
-		
+
 		// Check if token is expired (with 5-minute buffer)
 		if !tokenInfo.IsExpiredWithBuffer(5 * time.Minute) {
 			if am.logger != nil {
@@ -143,11 +145,11 @@ func (am *AuthManager) GetToken(ctx context.Context, serviceName string, authCon
 			}
 			return tokenInfo, nil
 		}
-		
+
 		if am.logger != nil {
 			am.logger.Debugf("Cached token for service %s is expired, attempting refresh", serviceName)
 		}
-		
+
 		// Try to refresh if supported and we have a refresh token
 		if strategy.SupportsRefresh() && tokenInfo.HasRefreshToken() {
 			if am.logger != nil {
@@ -183,7 +185,7 @@ func (am *AuthManager) GetToken(ctx context.Context, serviceName string, authCon
 	if am.logger != nil {
 		am.logger.Infof("Performing new authentication for service %s using %s", serviceName, authConfig.Type)
 	}
-	
+
 	tokenInfo, err := strategy.Authenticate(ctx, authConfig.Config)
 	if err != nil {
 		// Check if it's a DeviceCodeError - don't wrap it
@@ -193,17 +195,17 @@ func (am *AuthManager) GetToken(ctx context.Context, serviceName string, authCon
 			}
 			return nil, err // Return DeviceCodeError directly
 		}
-		
+
 		if am.logger != nil {
 			am.logger.Errorf("Authentication failed for service %s: %v", serviceName, err)
 		}
-		return nil, NewAuthenticationError(authConfig.Type, serviceName, 
+		return nil, NewAuthenticationError(authConfig.Type, serviceName,
 			"authentication failed", err)
 	}
 
 	// Cache the new token
 	am.cacheToken(serviceName, tokenInfo)
-	
+
 	if am.logger != nil {
 		expiryInfo := "no expiry"
 		if tokenInfo.ExpiresAt != nil {
@@ -211,18 +213,18 @@ func (am *AuthManager) GetToken(ctx context.Context, serviceName string, authCon
 		}
 		am.logger.Infof("Successfully authenticated service %s (%s)", serviceName, expiryInfo)
 	}
-	
+
 	return tokenInfo, nil
 }
 
 // ApplyAuthentication applies authentication to an HTTP request
-func (am *AuthManager) ApplyAuthentication(ctx context.Context, req *http.Request, 
+func (am *AuthManager) ApplyAuthentication(ctx context.Context, req *http.Request,
 	serviceName string, authConfig AuthConfig) error {
-	
+
 	if am.logger != nil {
 		am.logger.Debugf("Applying authentication for service %s to %s %s", serviceName, req.Method, req.URL.String())
 	}
-	
+
 	tokenInfo, err := am.GetToken(ctx, serviceName, authConfig)
 	if err != nil {
 		if am.logger != nil {
@@ -230,34 +232,34 @@ func (am *AuthManager) ApplyAuthentication(ctx context.Context, req *http.Reques
 		}
 		return err
 	}
-	
+
 	am.mu.RLock()
 	strategy, exists := am.strategies[authConfig.Type]
 	am.mu.RUnlock()
-	
+
 	if !exists {
 		if am.logger != nil {
 			am.logger.Errorf("Strategy not found for auth type %s on service %s", authConfig.Type, serviceName)
 		}
-		return NewAuthenticationError(authConfig.Type, serviceName, 
+		return NewAuthenticationError(authConfig.Type, serviceName,
 			"strategy not found", nil)
 	}
-	
+
 	if am.logger != nil {
 		am.logger.Debugf("Applying %s authentication to request for service %s", authConfig.Type, serviceName)
 	}
-	
+
 	if err := strategy.ApplyAuth(req, tokenInfo); err != nil {
 		if am.logger != nil {
 			am.logger.Errorf("Failed to apply authentication for service %s: %v", serviceName, err)
 		}
 		return err
 	}
-	
+
 	if am.logger != nil {
 		am.logger.Debugf("Successfully applied authentication for service %s", serviceName)
 	}
-	
+
 	return nil
 }
 
@@ -265,16 +267,16 @@ func (am *AuthManager) ApplyAuthentication(ctx context.Context, req *http.Reques
 func (am *AuthManager) InvalidateToken(serviceName string) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	
+
 	delete(am.tokens, serviceName)
-	
+
 	if am.cache != nil {
 		cacheKey := "token:" + serviceName
 		if err := am.cache.Delete(cacheKey); err != nil && am.logger != nil {
 			am.logger.Warningf("Failed to delete token from cache for service %s: %v", serviceName, err)
 		}
 	}
-	
+
 	if am.logger != nil {
 		am.logger.Infof("Invalidated token for service: %s", serviceName)
 	}
@@ -284,7 +286,7 @@ func (am *AuthManager) InvalidateToken(serviceName string) {
 func (am *AuthManager) getCachedToken(serviceName string) *TokenInfo {
 	am.mu.RLock()
 	defer am.mu.RUnlock()
-	
+
 	// Check in-memory cache first
 	if tokenInfo, exists := am.tokens[serviceName]; exists {
 		if am.logger != nil {
@@ -292,7 +294,7 @@ func (am *AuthManager) getCachedToken(serviceName string) *TokenInfo {
 		}
 		return tokenInfo
 	}
-	
+
 	// Check persistent cache if available
 	if am.cache != nil {
 		cacheKey := "token:" + serviceName
@@ -317,11 +319,11 @@ func (am *AuthManager) getCachedToken(serviceName string) *TokenInfo {
 			}
 		}
 	}
-	
+
 	if am.logger != nil {
 		am.logger.Debugf("No cached token found for service: %s", serviceName)
 	}
-	
+
 	return nil
 }
 
@@ -329,7 +331,7 @@ func (am *AuthManager) getCachedToken(serviceName string) *TokenInfo {
 func (am *AuthManager) cacheToken(serviceName string, tokenInfo *TokenInfo) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	
+
 	if am.logger != nil {
 		expiryInfo := "no expiry"
 		if tokenInfo.ExpiresAt != nil {
@@ -337,10 +339,10 @@ func (am *AuthManager) cacheToken(serviceName string, tokenInfo *TokenInfo) {
 		}
 		am.logger.Debugf("Caching token for service %s (%s)", serviceName, expiryInfo)
 	}
-	
+
 	// Store in memory
 	am.tokens[serviceName] = tokenInfo
-	
+
 	// Store in persistent cache if available
 	if am.cache != nil {
 		cacheKey := "token:" + serviceName
@@ -356,7 +358,7 @@ func (am *AuthManager) cacheToken(serviceName string, tokenInfo *TokenInfo) {
 				am.logger.Debugf("Using default cache TTL for service %s: %v", serviceName, ttl)
 			}
 		}
-		
+
 		if err := am.cache.Set(cacheKey, tokenInfo, ttl); err != nil {
 			if am.logger != nil {
 				am.logger.Warningf("Failed to cache token for service %s: %v", serviceName, err)
@@ -377,7 +379,7 @@ func (am *AuthManager) cacheToken(serviceName string, tokenInfo *TokenInfo) {
 func (am *AuthManager) GetRegisteredStrategies() []AuthType {
 	am.mu.RLock()
 	defer am.mu.RUnlock()
-	
+
 	types := make([]AuthType, 0, len(am.strategies))
 	for authType := range am.strategies {
 		types = append(types, authType)
@@ -389,7 +391,7 @@ func (am *AuthManager) GetRegisteredStrategies() []AuthType {
 func (am *AuthManager) HasStrategy(authType AuthType) bool {
 	am.mu.RLock()
 	defer am.mu.RUnlock()
-	
+
 	_, exists := am.strategies[authType]
 	return exists
 }
@@ -442,26 +444,26 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 	// Extract required configuration
 	clientID, ok := config["clientId"].(string)
 	if !ok || clientID == "" {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"clientId is required for OAuth2 device flow", nil)
 	}
 
 	authorizationURL, ok := config["authorizationURL"].(string)
 	if !ok || authorizationURL == "" {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"authorizationURL is required for OAuth2 device flow", nil)
 	}
 
 	tokenURL, ok := config["tokenURL"].(string)
 	if !ok || tokenURL == "" {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"tokenURL is required for OAuth2 device flow", nil)
 	}
 
 	// Handle optional parameters
 	tenantID, _ := config["tenantId"].(string)
 	scopeInterface, _ := config["scope"]
-	
+
 	var scopes []string
 	switch v := scopeInterface.(type) {
 	case []string:
@@ -564,7 +566,7 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 	s.mu.Unlock()
 
 	if s.logger != nil {
-		s.logger.Infof("Device code authentication initiated. Please visit %s and enter code: %s", 
+		s.logger.Infof("Device code authentication initiated. Please visit %s and enter code: %s",
 			deviceCode.VerificationURI, deviceCode.UserCode)
 	}
 
@@ -586,7 +588,7 @@ func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, authUR
 
 	req, err := http.NewRequestWithContext(ctx, "POST", authURL, strings.NewReader(encodeFormData(data)))
 	if err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to create device code request", err)
 	}
 
@@ -594,7 +596,7 @@ func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, authUR
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to request device code", err)
 	}
 	defer resp.Body.Close()
@@ -604,13 +606,13 @@ func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, authUR
 		if s.logger != nil {
 			s.logger.Errorf("Device code request failed with status %d: %s", resp.StatusCode, string(body))
 		}
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			fmt.Sprintf("device code request failed with status %d", resp.StatusCode), nil)
 	}
 
 	var deviceCode deviceCodeResponse
 	if err := json.NewDecoder(resp.Body).Decode(&deviceCode); err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to parse device code response", err)
 	}
 
@@ -639,11 +641,11 @@ func (s *OAuth2DeviceFlowStrategy) PollForToken(ctx context.Context, deviceCodeE
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 				"polling cancelled", ctx.Err())
 		case <-ticker.C:
 			if time.Now().After(expiry) {
-				return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+				return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 					"device code expired", nil)
 			}
 
@@ -678,7 +680,7 @@ func (s *OAuth2DeviceFlowStrategy) exchangeDeviceCode(ctx context.Context, devic
 
 	req, err := http.NewRequestWithContext(ctx, "POST", deviceCodeErr.TokenURL, strings.NewReader(encodeFormData(data)))
 	if err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to create token request", err)
 	}
 
@@ -686,14 +688,14 @@ func (s *OAuth2DeviceFlowStrategy) exchangeDeviceCode(ctx context.Context, devic
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to exchange device code", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to read token response", err)
 	}
 
@@ -703,7 +705,7 @@ func (s *OAuth2DeviceFlowStrategy) exchangeDeviceCode(ctx context.Context, devic
 			Error string `json:"error"`
 		}
 		if err := json.Unmarshal(body, &errorResp); err == nil && errorResp.Error == "authorization_pending" {
-			return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+			return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 				"authorization pending", fmt.Errorf("authorization_pending"))
 		}
 	}
@@ -712,13 +714,13 @@ func (s *OAuth2DeviceFlowStrategy) exchangeDeviceCode(ctx context.Context, devic
 		if s.logger != nil {
 			s.logger.Errorf("Token exchange failed with status %d: %s", resp.StatusCode, string(body))
 		}
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			fmt.Sprintf("token exchange failed with status %d", resp.StatusCode), nil)
 	}
 
 	var tokenResp tokenResponse
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to parse token response", err)
 	}
 
@@ -752,20 +754,20 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 	}
 
 	if !tokenInfo.HasRefreshToken() {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"no refresh token available", nil)
 	}
 
 	// Get the token URL from metadata (should be stored during initial auth)
 	tokenURL, ok := tokenInfo.Metadata["tokenURL"]
 	if !ok || tokenURL == "" {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"token URL not found in token metadata", nil)
 	}
 
 	clientID, ok := tokenInfo.Metadata["clientID"]
 	if !ok || clientID == "" {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"client ID not found in token metadata", nil)
 	}
 
@@ -776,7 +778,7 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 
 	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL, strings.NewReader(encodeFormData(data)))
 	if err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to create refresh request", err)
 	}
 
@@ -784,7 +786,7 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to refresh token", err)
 	}
 	defer resp.Body.Close()
@@ -794,13 +796,13 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 		if s.logger != nil {
 			s.logger.Errorf("Token refresh failed with status %d: %s", resp.StatusCode, string(body))
 		}
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			fmt.Sprintf("token refresh failed with status %d", resp.StatusCode), nil)
 	}
 
 	var tokenResp tokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "", 
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
 			"failed to parse refresh response", err)
 	}
 
@@ -897,7 +899,7 @@ func (s *BearerTokenStrategy) Authenticate(ctx context.Context, config map[strin
 
 	var token string
 	var tokenSource string
-	
+
 	// Try to get token directly
 	if tokenValue, ok := config["token"]; ok {
 		if tokenStr, ok := tokenValue.(string); ok && tokenStr != "" {
@@ -908,7 +910,7 @@ func (s *BearerTokenStrategy) Authenticate(ctx context.Context, config map[strin
 			}
 		}
 	}
-	
+
 	// Try to get token from environment variable
 	if token == "" {
 		if envVarName, ok := config["tokenEnvVar"]; ok {
@@ -930,19 +932,19 @@ func (s *BearerTokenStrategy) Authenticate(ctx context.Context, config map[strin
 			}
 		}
 	}
-	
+
 	if token == "" {
 		if s.logger != nil {
 			s.logger.Error("No bearer token found in config or environment")
 		}
-		return nil, NewAuthenticationError(AuthTypeBearer, "", 
+		return nil, NewAuthenticationError(AuthTypeBearer, "",
 			"no bearer token found in config or environment", nil)
 	}
-	
+
 	if s.logger != nil {
 		s.logger.Infof("Bearer token authentication successful (source: %s)", tokenSource)
 	}
-	
+
 	return &TokenInfo{
 		AccessToken: token,
 		TokenType:   "Bearer",
@@ -951,7 +953,7 @@ func (s *BearerTokenStrategy) Authenticate(ctx context.Context, config map[strin
 
 // RefreshToken is not supported for bearer tokens
 func (s *BearerTokenStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error) {
-	return nil, NewAuthenticationError(AuthTypeBearer, "", 
+	return nil, NewAuthenticationError(AuthTypeBearer, "",
 		"bearer token refresh not supported", nil)
 }
 
@@ -991,7 +993,7 @@ func (s *APIKeyStrategy) Authenticate(ctx context.Context, config map[string]int
 
 	var apiKey string
 	var keySource string
-	
+
 	// Try to get API key directly
 	if keyValue, ok := config["apiKey"]; ok {
 		if keyStr, ok := keyValue.(string); ok && keyStr != "" {
@@ -1002,7 +1004,7 @@ func (s *APIKeyStrategy) Authenticate(ctx context.Context, config map[string]int
 			}
 		}
 	}
-	
+
 	// Try to get API key from environment variable
 	if apiKey == "" {
 		if envVarName, ok := config["apiKeyEnvVar"]; ok {
@@ -1024,15 +1026,15 @@ func (s *APIKeyStrategy) Authenticate(ctx context.Context, config map[string]int
 			}
 		}
 	}
-	
+
 	if apiKey == "" {
 		if s.logger != nil {
 			s.logger.Error("No API key found in config or environment")
 		}
-		return nil, NewAuthenticationError(AuthTypeAPIKey, "", 
+		return nil, NewAuthenticationError(AuthTypeAPIKey, "",
 			"no API key found in config or environment", nil)
 	}
-	
+
 	// Store header name in metadata for later use
 	metadata := make(map[string]string)
 	if headerName, ok := config["headerName"]; ok {
@@ -1049,11 +1051,11 @@ func (s *APIKeyStrategy) Authenticate(ctx context.Context, config map[string]int
 			s.logger.Debug("Using default header name for API key: X-API-Key")
 		}
 	}
-	
+
 	if s.logger != nil {
 		s.logger.Infof("API key authentication successful (source: %s, header: %s)", keySource, metadata["headerName"])
 	}
-	
+
 	return &TokenInfo{
 		AccessToken: apiKey,
 		TokenType:   "ApiKey",
@@ -1063,7 +1065,7 @@ func (s *APIKeyStrategy) Authenticate(ctx context.Context, config map[string]int
 
 // RefreshToken is not supported for API keys
 func (s *APIKeyStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error) {
-	return nil, NewAuthenticationError(AuthTypeAPIKey, "", 
+	return nil, NewAuthenticationError(AuthTypeAPIKey, "",
 		"API key refresh not supported", nil)
 }
 
@@ -1075,7 +1077,7 @@ func (s *APIKeyStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) erro
 			headerName = name
 		}
 	}
-	
+
 	req.Header.Set(headerName, tokenInfo.AccessToken)
 	return nil
 }
@@ -1113,33 +1115,33 @@ func (s *BasicAuthStrategy) Authenticate(ctx context.Context, config map[string]
 		if s.logger != nil {
 			s.logger.Error("Username is required for basic auth but not provided")
 		}
-		return nil, NewAuthenticationError(AuthTypeBasic, "", 
+		return nil, NewAuthenticationError(AuthTypeBasic, "",
 			"username is required for basic auth", nil)
 	}
-	
+
 	password, ok := config["password"].(string)
 	if !ok || password == "" {
 		if s.logger != nil {
 			s.logger.Error("Password is required for basic auth but not provided")
 		}
-		return nil, NewAuthenticationError(AuthTypeBasic, "", 
+		return nil, NewAuthenticationError(AuthTypeBasic, "",
 			"password is required for basic auth", nil)
 	}
-	
+
 	if s.logger != nil {
 		s.logger.Debugf("Basic auth configured for username: %s", username)
 	}
-	
+
 	// Store credentials in metadata
 	metadata := map[string]string{
 		"username": username,
 		"password": password,
 	}
-	
+
 	if s.logger != nil {
 		s.logger.Infof("Basic auth authentication successful for username: %s", username)
 	}
-	
+
 	return &TokenInfo{
 		AccessToken: username + ":" + password, // This will be base64 encoded when applied
 		TokenType:   "Basic",
@@ -1149,29 +1151,29 @@ func (s *BasicAuthStrategy) Authenticate(ctx context.Context, config map[string]
 
 // RefreshToken is not supported for basic auth
 func (s *BasicAuthStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error) {
-	return nil, NewAuthenticationError(AuthTypeBasic, "", 
+	return nil, NewAuthenticationError(AuthTypeBasic, "",
 		"basic auth refresh not supported", nil)
 }
 
 // ApplyAuth applies basic authentication to a request
 func (s *BasicAuthStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
 	if tokenInfo.Metadata == nil {
-		return NewAuthenticationError(AuthTypeBasic, "", 
+		return NewAuthenticationError(AuthTypeBasic, "",
 			"basic auth credentials not found in token metadata", nil)
 	}
-	
+
 	username, ok := tokenInfo.Metadata["username"]
 	if !ok {
-		return NewAuthenticationError(AuthTypeBasic, "", 
+		return NewAuthenticationError(AuthTypeBasic, "",
 			"username not found in token metadata", nil)
 	}
-	
+
 	password, ok := tokenInfo.Metadata["password"]
 	if !ok {
-		return NewAuthenticationError(AuthTypeBasic, "", 
+		return NewAuthenticationError(AuthTypeBasic, "",
 			"password not found in token metadata", nil)
 	}
-	
+
 	req.SetBasicAuth(username, password)
 	return nil
 }

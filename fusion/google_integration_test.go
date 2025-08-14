@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -25,7 +27,7 @@ func TestGoogleIntegration(t *testing.T) {
 			// Mock successful authentication by setting a fake token
 			r.Header.Set("Authorization", "Bearer mock_google_token_12345")
 		}
-		
+
 		switch {
 		case strings.Contains(r.URL.Path, "oauth2/device/code"):
 			handleGoogleDeviceCodeRequest(w, r, t)
@@ -70,7 +72,7 @@ func TestGoogleIntegration(t *testing.T) {
 
 	// Create modified Google configuration for testing (with Bearer token for simplicity)
 	config := createTestGoogleConfigWithBearer(server.URL)
-	
+
 	// Create fusion instance
 	logger := &MockLogger{}
 	fusion := New(
@@ -81,33 +83,33 @@ func TestGoogleIntegration(t *testing.T) {
 
 	// Get the tools
 	tools := fusion.RegisterTools()
-	
+
 	// Debug: Print all tool names
 	t.Logf("Found %d Google tools:", len(tools))
 	for i, tool := range tools {
 		t.Logf("  %d: %s", i, tool.Name)
 	}
-	
+
 	// Find tools by name
 	var (
-		profileTool              *global.ToolDefinition
-		calendarListTool         *global.ToolDefinition
-		calendarCreateTool       *global.ToolDefinition
-		calendarGetTool          *global.ToolDefinition
-		calendarUpdateTool       *global.ToolDefinition
-		calendarDeleteTool       *global.ToolDefinition
-		gmailListTool            *global.ToolDefinition
-		gmailGetTool             *global.ToolDefinition
-		gmailSendTool            *global.ToolDefinition
-		gmailSearchTool          *global.ToolDefinition
-		driveListTool            *global.ToolDefinition
-		driveGetTool             *global.ToolDefinition
-		driveDownloadTool        *global.ToolDefinition
-		driveCreateTool          *global.ToolDefinition
-		driveDeleteTool          *global.ToolDefinition
-		driveShareTool           *global.ToolDefinition
+		profileTool        *global.ToolDefinition
+		calendarListTool   *global.ToolDefinition
+		calendarCreateTool *global.ToolDefinition
+		calendarGetTool    *global.ToolDefinition
+		calendarUpdateTool *global.ToolDefinition
+		calendarDeleteTool *global.ToolDefinition
+		gmailListTool      *global.ToolDefinition
+		gmailGetTool       *global.ToolDefinition
+		gmailSendTool      *global.ToolDefinition
+		gmailSearchTool    *global.ToolDefinition
+		driveListTool      *global.ToolDefinition
+		driveGetTool       *global.ToolDefinition
+		driveDownloadTool  *global.ToolDefinition
+		driveCreateTool    *global.ToolDefinition
+		driveDeleteTool    *global.ToolDefinition
+		driveShareTool     *global.ToolDefinition
 	)
-	
+
 	for _, tool := range tools {
 		switch tool.Name {
 		case "google_profile_get":
@@ -150,7 +152,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if profileTool == nil {
 			t.Fatal("Profile tool not found")
 		}
-		
+
 		result, err := profileTool.Handler(map[string]interface{}{})
 		if err != nil {
 			t.Fatalf("Profile request failed: %v", err)
@@ -171,7 +173,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if calendarListTool == nil {
 			t.Fatal("Calendar list tool not found")
 		}
-		
+
 		result, err := calendarListTool.Handler(map[string]interface{}{
 			"startDate": "20250101",
 			"endDate":   "20250131",
@@ -195,7 +197,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if calendarCreateTool == nil {
 			t.Fatal("Calendar create tool not found")
 		}
-		
+
 		result, err := calendarCreateTool.Handler(map[string]interface{}{
 			"summary":       "Test Event",
 			"description":   "This is a test event",
@@ -222,14 +224,13 @@ func TestGoogleIntegration(t *testing.T) {
 		if calendarGetTool == nil {
 			t.Fatal("Calendar get tool not found")
 		}
-		
+
 		result, err := calendarGetTool.Handler(map[string]interface{}{
 			"eventId": "test-event-123",
 		})
 		if err != nil {
 			t.Fatalf("Calendar get request failed: %v", err)
 		}
-
 
 		var event map[string]interface{}
 		if err := json.Unmarshal([]byte(result), &event); err != nil {
@@ -246,7 +247,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if calendarUpdateTool == nil {
 			t.Fatal("Calendar update tool not found")
 		}
-		
+
 		result, err := calendarUpdateTool.Handler(map[string]interface{}{
 			"eventId": "test-event-123",
 			"summary": "Updated Test Event",
@@ -270,7 +271,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if calendarDeleteTool == nil {
 			t.Fatal("Calendar delete tool not found")
 		}
-		
+
 		result, err := calendarDeleteTool.Handler(map[string]interface{}{
 			"eventId": "test-event-123",
 		})
@@ -288,7 +289,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if gmailListTool == nil {
 			t.Fatal("Gmail list tool not found")
 		}
-		
+
 		result, err := gmailListTool.Handler(map[string]interface{}{
 			"maxResults": 10,
 		})
@@ -311,7 +312,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if gmailGetTool == nil {
 			t.Fatal("Gmail get tool not found")
 		}
-		
+
 		result, err := gmailGetTool.Handler(map[string]interface{}{
 			"messageId": "test-message-123",
 		})
@@ -334,7 +335,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if gmailSendTool == nil {
 			t.Fatal("Gmail send tool not found")
 		}
-		
+
 		result, err := gmailSendTool.Handler(map[string]interface{}{
 			"to":      "test@example.com",
 			"subject": "Test Email",
@@ -359,7 +360,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if gmailSearchTool == nil {
 			t.Fatal("Gmail search tool not found")
 		}
-		
+
 		result, err := gmailSearchTool.Handler(map[string]interface{}{
 			"query": "from:test@example.com",
 		})
@@ -382,7 +383,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if driveListTool == nil {
 			t.Fatal("Drive list tool not found")
 		}
-		
+
 		result, err := driveListTool.Handler(map[string]interface{}{
 			"pageSize": 10,
 		})
@@ -405,7 +406,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if driveGetTool == nil {
 			t.Fatal("Drive get tool not found")
 		}
-		
+
 		result, err := driveGetTool.Handler(map[string]interface{}{
 			"fileId": "test-file-123",
 		})
@@ -428,7 +429,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if driveDownloadTool == nil {
 			t.Fatal("Drive download tool not found")
 		}
-		
+
 		result, err := driveDownloadTool.Handler(map[string]interface{}{
 			"fileId": "test-file-123",
 		})
@@ -447,7 +448,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if driveCreateTool == nil {
 			t.Fatal("Drive create tool not found")
 		}
-		
+
 		result, err := driveCreateTool.Handler(map[string]interface{}{
 			"name":        "test-file.txt",
 			"description": "This is a test file",
@@ -472,7 +473,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if driveDeleteTool == nil {
 			t.Fatal("Drive delete tool not found")
 		}
-		
+
 		result, err := driveDeleteTool.Handler(map[string]interface{}{
 			"fileId": "test-file-123",
 		})
@@ -490,7 +491,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if driveShareTool == nil {
 			t.Fatal("Drive share tool not found")
 		}
-		
+
 		result, err := driveShareTool.Handler(map[string]interface{}{
 			"fileId":       "test-file-123",
 			"type":         "user",
@@ -516,7 +517,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if profileTool == nil {
 			t.Fatal("Profile tool not found for caching test")
 		}
-		
+
 		// First request - should hit the server
 		start := time.Now()
 		result1, err := profileTool.Handler(map[string]interface{}{})
@@ -540,7 +541,7 @@ func TestGoogleIntegration(t *testing.T) {
 
 		// Second request should be significantly faster (cached)
 		if secondDuration > firstDuration/2 {
-			t.Logf("Warning: Second request (%v) not significantly faster than first (%v) - caching may not be working", 
+			t.Logf("Warning: Second request (%v) not significantly faster than first (%v) - caching may not be working",
 				secondDuration, firstDuration)
 		}
 	})
@@ -550,7 +551,7 @@ func TestGoogleIntegration(t *testing.T) {
 		if calendarListTool == nil {
 			t.Fatal("Calendar list tool not found for parameter transformation test")
 		}
-		
+
 		// Test date transformation from YYYYMMDD to ISO format
 		result, err := calendarListTool.Handler(map[string]interface{}{
 			"startDate": "20250115",
@@ -590,7 +591,7 @@ func TestGoogleOAuth2DeviceFlow(t *testing.T) {
 	// Test OAuth2 device flow configuration
 	config := createTestGoogleConfig(server.URL)
 	logger := &MockLogger{}
-	
+
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-google-oauth-config.json"),
 		WithLogger(logger),
@@ -599,7 +600,7 @@ func TestGoogleOAuth2DeviceFlow(t *testing.T) {
 
 	// Get the tools
 	tools := fusion.RegisterTools()
-	
+
 	// Find profile tool
 	var profileTool *global.ToolDefinition
 	for _, tool := range tools {
@@ -614,11 +615,11 @@ func TestGoogleOAuth2DeviceFlow(t *testing.T) {
 		if profileTool == nil {
 			t.Fatal("Profile tool not found")
 		}
-		
+
 		// This test simulates what happens when authentication is required
 		// The device code error should be returned with user instructions
 		result, err := profileTool.Handler(map[string]interface{}{})
-		
+
 		// For a real device flow, this would return instructions for the user
 		// In our mock, we'll simulate a successful flow
 		if err != nil && !strings.Contains(err.Error(), "device") {
@@ -675,14 +676,14 @@ func handleGoogleProfileRequest(w http.ResponseWriter, r *http.Request, t *testi
 	}
 
 	response := map[string]interface{}{
-		"id":              "12345",
-		"name":            "Test Google User",
-		"email":           "test.user@gmail.com",
-		"verified_email":  true,
-		"given_name":      "Test",
-		"family_name":     "User",
-		"picture":         "https://lh3.googleusercontent.com/test",
-		"locale":          "en",
+		"id":             "12345",
+		"name":           "Test Google User",
+		"email":          "test.user@gmail.com",
+		"verified_email": true,
+		"given_name":     "Test",
+		"family_name":    "User",
+		"picture":        "https://lh3.googleusercontent.com/test",
+		"locale":         "en",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -697,29 +698,29 @@ func handleGoogleCalendarEventsRequest(w http.ResponseWriter, r *http.Request, t
 	}
 
 	// Check if this is a paginated request
-	isPaginated := strings.Contains(r.URL.RawQuery, "timeMin") && 
+	isPaginated := strings.Contains(r.URL.RawQuery, "timeMin") &&
 		!strings.Contains(r.URL.RawQuery, "pageToken")
 
 	var response map[string]interface{}
-	
+
 	if isPaginated {
 		// First page of results
 		response = map[string]interface{}{
 			"items": []map[string]interface{}{
 				{
-					"id":      "event-1",
-					"summary": "Team Meeting",
-					"start":   map[string]string{"dateTime": "2025-01-15T09:00:00Z"},
-					"end":     map[string]string{"dateTime": "2025-01-15T10:00:00Z"},
-					"location": "Conference Room A",
+					"id":          "event-1",
+					"summary":     "Team Meeting",
+					"start":       map[string]string{"dateTime": "2025-01-15T09:00:00Z"},
+					"end":         map[string]string{"dateTime": "2025-01-15T10:00:00Z"},
+					"location":    "Conference Room A",
 					"description": "Weekly team sync",
 				},
 				{
-					"id":      "event-2", 
-					"summary": "Project Review",
-					"start":   map[string]string{"dateTime": "2025-01-16T14:00:00Z"},
-					"end":     map[string]string{"dateTime": "2025-01-16T15:00:00Z"},
-					"location": "Office",
+					"id":          "event-2",
+					"summary":     "Project Review",
+					"start":       map[string]string{"dateTime": "2025-01-16T14:00:00Z"},
+					"end":         map[string]string{"dateTime": "2025-01-16T15:00:00Z"},
+					"location":    "Office",
 					"description": "Review project status",
 				},
 			},
@@ -730,11 +731,11 @@ func handleGoogleCalendarEventsRequest(w http.ResponseWriter, r *http.Request, t
 		response = map[string]interface{}{
 			"items": []map[string]interface{}{
 				{
-					"id":      "event-3",
-					"summary": "Client Call",
-					"start":   map[string]string{"dateTime": "2025-01-17T11:00:00Z"},
-					"end":     map[string]string{"dateTime": "2025-01-17T12:00:00Z"},
-					"location": "Virtual",
+					"id":          "event-3",
+					"summary":     "Client Call",
+					"start":       map[string]string{"dateTime": "2025-01-17T11:00:00Z"},
+					"end":         map[string]string{"dateTime": "2025-01-17T12:00:00Z"},
+					"location":    "Virtual",
 					"description": "Call with client",
 				},
 			},
@@ -744,11 +745,11 @@ func handleGoogleCalendarEventsRequest(w http.ResponseWriter, r *http.Request, t
 		response = map[string]interface{}{
 			"items": []map[string]interface{}{
 				{
-					"id":      "event-1",
-					"summary": "Team Meeting",
-					"start":   map[string]string{"dateTime": "2025-01-15T09:00:00Z"},
-					"end":     map[string]string{"dateTime": "2025-01-15T10:00:00Z"},
-					"location": "Conference Room A",
+					"id":          "event-1",
+					"summary":     "Team Meeting",
+					"start":       map[string]string{"dateTime": "2025-01-15T09:00:00Z"},
+					"end":         map[string]string{"dateTime": "2025-01-15T10:00:00Z"},
+					"location":    "Conference Room A",
 					"description": "Weekly team sync",
 				},
 			},
@@ -864,7 +865,7 @@ func handleGoogleGmailMessagesRequest(w http.ResponseWriter, r *http.Request, t 
 				"threadId": "thread-1",
 			},
 			{
-				"id":       "msg-2", 
+				"id":       "msg-2",
 				"threadId": "thread-2",
 			},
 		},
@@ -948,7 +949,7 @@ func handleGoogleDriveFilesRequest(w http.ResponseWriter, r *http.Request, t *te
 			},
 			{
 				"id":           "file-2",
-				"name":         "Test Spreadsheet.xlsx", 
+				"name":         "Test Spreadsheet.xlsx",
 				"mimeType":     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 				"size":         "67890",
 				"modifiedTime": "2025-01-09T15:30:00Z",
@@ -1146,8 +1147,8 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "timeMin",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
+									"targetName": "timeMin",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
 							map[string]interface{}{
@@ -1160,8 +1161,8 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 									"pattern": "^\\d{8}$",
 								},
 								"transform": map[string]interface{}{
-									"targetName":  "timeMax",
-									"expression":  "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
+									"targetName": "timeMax",
+									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
@@ -1375,8 +1376,8 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"required":    true,
 								"location":    "query",
 								"transform": map[string]interface{}{
-									"targetName":  "q",
-									"expression":  ".",
+									"targetName": "q",
+									"expression": ".",
 								},
 							},
 						},

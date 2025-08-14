@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -32,7 +34,7 @@ func (v *Validator) ValidateParameters(params []ParameterConfig, args map[string
 
 	for _, param := range params {
 		value, exists := args[param.Name]
-		
+
 		// Check required parameters
 		if param.Required && !exists {
 			if v.logger != nil {
@@ -84,7 +86,7 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 	switch param.Type {
 	case "string":
 		if _, ok := value.(string); !ok {
-			return NewValidationError(param.Name, value, "type", 
+			return NewValidationError(param.Name, value, "type",
 				"expected string type")
 		}
 
@@ -96,11 +98,11 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 			// Try to parse string as number
 			str := value.(string)
 			if _, err := strconv.ParseFloat(str, 64); err != nil {
-				return NewValidationError(param.Name, str, "type", 
+				return NewValidationError(param.Name, str, "type",
 					"expected number type")
 			}
 		default:
-			return NewValidationError(param.Name, value, "type", 
+			return NewValidationError(param.Name, value, "type",
 				"expected number type")
 		}
 
@@ -112,11 +114,11 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 			// Try to parse string as boolean
 			str := strings.ToLower(value.(string))
 			if str != "true" && str != "false" {
-				return NewValidationError(param.Name, value, "type", 
+				return NewValidationError(param.Name, value, "type",
 					"expected boolean type")
 			}
 		default:
-			return NewValidationError(param.Name, value, "type", 
+			return NewValidationError(param.Name, value, "type",
 				"expected boolean type")
 		}
 
@@ -125,7 +127,7 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 		case []interface{}, []string, []int, []float64:
 			// Valid array types
 		default:
-			return NewValidationError(param.Name, value, "type", 
+			return NewValidationError(param.Name, value, "type",
 				"expected array type")
 		}
 
@@ -134,7 +136,7 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 		case map[string]interface{}:
 			// Valid object type
 		default:
-			return NewValidationError(param.Name, value, "type", 
+			return NewValidationError(param.Name, value, "type",
 				"expected object type")
 		}
 
@@ -160,12 +162,12 @@ func (v *Validator) applyValidationRules(param ParameterConfig, value interface{
 
 		pattern, err := regexp.Compile(validation.Pattern)
 		if err != nil {
-			return NewValidationError(param.Name, validation.Pattern, "pattern", 
+			return NewValidationError(param.Name, validation.Pattern, "pattern",
 				"invalid validation pattern")
 		}
 
 		if !pattern.MatchString(str) {
-			return NewValidationError(param.Name, str, "pattern", 
+			return NewValidationError(param.Name, str, "pattern",
 				fmt.Sprintf("value does not match pattern: %s", validation.Pattern))
 		}
 	}
@@ -173,12 +175,12 @@ func (v *Validator) applyValidationRules(param ParameterConfig, value interface{
 	// Length validation for strings
 	if str, ok := value.(string); ok {
 		if validation.MinLength > 0 && len(str) < validation.MinLength {
-			return NewValidationError(param.Name, str, "minLength", 
+			return NewValidationError(param.Name, str, "minLength",
 				fmt.Sprintf("value length %d is less than minimum %d", len(str), validation.MinLength))
 		}
 
 		if validation.MaxLength > 0 && len(str) > validation.MaxLength {
-			return NewValidationError(param.Name, str, "maxLength", 
+			return NewValidationError(param.Name, str, "maxLength",
 				fmt.Sprintf("value length %d exceeds maximum %d", len(str), validation.MaxLength))
 		}
 	}
@@ -187,7 +189,7 @@ func (v *Validator) applyValidationRules(param ParameterConfig, value interface{
 	if len(validation.Enum) > 0 {
 		found := false
 		strValue := fmt.Sprintf("%v", value)
-		
+
 		enumStrings := make([]string, len(validation.Enum))
 		for i, allowed := range validation.Enum {
 			enumStrings[i] = fmt.Sprintf("%v", allowed)
@@ -197,7 +199,7 @@ func (v *Validator) applyValidationRules(param ParameterConfig, value interface{
 		}
 
 		if !found {
-			return NewValidationError(param.Name, strValue, "enum", 
+			return NewValidationError(param.Name, strValue, "enum",
 				fmt.Sprintf("value must be one of: %s", strings.Join(enumStrings, ", ")))
 		}
 	}
@@ -223,17 +225,17 @@ func (v *Validator) ValidateEndpoint(endpoint EndpointConfig) error {
 
 	// Validate HTTP method
 	validMethods := map[string]bool{
-		"GET":    true,
-		"POST":   true,
-		"PUT":    true,
-		"DELETE": true,
-		"PATCH":  true,
-		"HEAD":   true,
+		"GET":     true,
+		"POST":    true,
+		"PUT":     true,
+		"DELETE":  true,
+		"PATCH":   true,
+		"HEAD":    true,
 		"OPTIONS": true,
 	}
 
 	if !validMethods[endpoint.Method] {
-		return NewConfigurationError("endpoint.method", endpoint.Method, 
+		return NewConfigurationError("endpoint.method", endpoint.Method,
 			"invalid HTTP method", nil)
 	}
 
@@ -244,7 +246,7 @@ func (v *Validator) ValidateEndpoint(endpoint EndpointConfig) error {
 	// Validate parameters
 	for i, param := range endpoint.Parameters {
 		if err := v.validateParameterConfig(param); err != nil {
-			return NewConfigurationError(fmt.Sprintf("endpoint.parameters[%d]", i), "", 
+			return NewConfigurationError(fmt.Sprintf("endpoint.parameters[%d]", i), "",
 				err.Error(), nil)
 		}
 	}
@@ -258,7 +260,7 @@ func (v *Validator) ValidateEndpoint(endpoint EndpointConfig) error {
 		}
 
 		if !validTypes[string(endpoint.Response.Type)] {
-			return NewConfigurationError("endpoint.response.type", string(endpoint.Response.Type), 
+			return NewConfigurationError("endpoint.response.type", string(endpoint.Response.Type),
 				"invalid response type", nil)
 		}
 	}

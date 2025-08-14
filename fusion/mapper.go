@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -90,13 +92,13 @@ func (m *Mapper) ApplyQueryParams(req *http.Request, params []ParameterConfig, a
 			if err != nil {
 				return fmt.Errorf("failed to transform query parameter %s: %w", param.Name, err)
 			}
-			
+
 			// Use the target name if specified
 			paramName := param.Transform.TargetName
 			if paramName == "" {
 				paramName = param.Name
 			}
-			
+
 			valueStr := fmt.Sprintf("%v", transformedValue)
 			query.Set(paramName, valueStr)
 		} else {
@@ -174,7 +176,7 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform body parameter %s: %w", param.Name, err)
 			}
-			
+
 			// Use the target name if specified
 			paramName := param.Transform.TargetName
 			if paramName == "" {
@@ -205,7 +207,7 @@ func (m *Mapper) transformParameter(param ParameterConfig, value interface{}) (i
 
 	// For now, we'll implement simple transformations
 	// In the future, this could use a more sophisticated expression engine
-	
+
 	valueStr := fmt.Sprintf("%v", value)
 	expression := param.Transform.Expression
 
@@ -217,7 +219,7 @@ func (m *Mapper) transformParameter(param ParameterConfig, value interface{}) (i
 			year := valueStr[0:4]
 			month := valueStr[4:6]
 			day := valueStr[6:8]
-			
+
 			if strings.Contains(expression, "T00:00:00Z") {
 				return fmt.Sprintf("%s-%s-%sT00:00:00Z", year, month, day), nil
 			} else if strings.Contains(expression, "T23:59:59Z") {
@@ -247,7 +249,7 @@ func (m *Mapper) transformParameter(param ParameterConfig, value interface{}) (i
 func (m *Mapper) TransformResponse(data interface{}, transform string) (interface{}, error) {
 	// For now, we'll implement basic transformations
 	// In the future, this could use a proper JQ library
-	
+
 	if transform == "" {
 		return data, nil
 	}
@@ -261,16 +263,16 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 		} else if strings.HasPrefix(fieldPath, ".") {
 			fieldPath = fieldPath[1:]
 		}
-		
+
 		parts := strings.Split(fieldPath, ".")
 		current := data
-		
+
 		for _, part := range parts {
 			// Handle array access like ".value[0]"
 			if strings.Contains(part, "[") && strings.Contains(part, "]") {
 				// This is simplified - a real implementation would parse properly
 				fieldName := part[:strings.Index(part, "[")]
-				
+
 				if obj, ok := current.(map[string]interface{}); ok {
 					if field, exists := obj[fieldName]; exists {
 						current = field
@@ -293,7 +295,7 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 				}
 			}
 		}
-		
+
 		return current, nil
 	}
 
@@ -302,7 +304,7 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 	if strings.Contains(transform, "| map(") {
 		// Extract the field to map over
 		fieldPart := strings.TrimSpace(strings.Split(transform, "|")[0])
-		
+
 		// Get the array to map over
 		var arrayData []interface{}
 		if fieldPart == ".value" {
@@ -318,34 +320,34 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 		// For the Microsoft calendar example specifically
 		if strings.Contains(transform, "subject: .subject") {
 			result := make([]map[string]interface{}, 0, len(arrayData))
-			
+
 			for _, item := range arrayData {
 				if obj, ok := item.(map[string]interface{}); ok {
 					mapped := make(map[string]interface{})
-					
+
 					// Extract subject
 					if subject, ok := obj["subject"].(string); ok {
 						mapped["subject"] = subject
 					}
-					
+
 					// Extract start time
 					if start, ok := obj["start"].(map[string]interface{}); ok {
 						if dateTime, ok := start["dateTime"].(string); ok {
 							mapped["start"] = dateTime
 						}
 					}
-					
+
 					// Extract end time
 					if end, ok := obj["end"].(map[string]interface{}); ok {
 						if dateTime, ok := end["dateTime"].(string); ok {
 							mapped["end"] = dateTime
 						}
 					}
-					
+
 					result = append(result, mapped)
 				}
 			}
-			
+
 			return result, nil
 		}
 	}
@@ -354,7 +356,7 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 	if m.logger != nil {
 		m.logger.Warningf("Complex transformation not fully implemented: %s", transform)
 	}
-	
+
 	return data, nil
 }
 

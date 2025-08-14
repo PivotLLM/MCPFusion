@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -52,23 +54,23 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 	for attempt := 0; attempt < r.config.MaxAttempts; attempt++ {
 		// Clone the request for retry attempts (in case body needs to be read again)
 		clonedReq := r.cloneRequest(req)
-		
+
 		if r.logger != nil && attempt > 0 {
-			r.logger.Infof("Retry attempt %d/%d for %s %s", 
+			r.logger.Infof("Retry attempt %d/%d for %s %s",
 				attempt+1, r.config.MaxAttempts, req.Method, req.URL.String())
 		}
 
 		// Execute the request
 		resp, err := client.Do(clonedReq)
-		
+
 		// Wrap network errors in NetworkError type
 		if err != nil {
 			err = r.wrapNetworkError(err, clonedReq)
 		}
-		
+
 		// Check if we should retry
 		shouldRetry, retryReason := r.shouldRetry(err, resp, attempt)
-		
+
 		if !shouldRetry {
 			if r.logger != nil && attempt > 0 {
 				r.logger.Infof("Request succeeded after %d attempts", attempt+1)
@@ -110,7 +112,7 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 
 	// All retries exhausted
 	if r.logger != nil {
-		r.logger.Errorf("All %d retry attempts exhausted for %s %s", 
+		r.logger.Errorf("All %d retry attempts exhausted for %s %s",
 			r.config.MaxAttempts, req.Method, req.URL.String())
 	}
 
@@ -160,7 +162,7 @@ func (r *RetryExecutor) categorizeError(err error) string {
 	}
 
 	errStr := strings.ToLower(err.Error())
-	
+
 	// Network connectivity issues
 	if strings.Contains(errStr, "connection refused") ||
 		strings.Contains(errStr, "connection reset") ||
@@ -228,10 +230,10 @@ func (r *RetryExecutor) calculateDelay(attempt int) time.Duration {
 	switch r.config.Strategy {
 	case RetryStrategyFixed:
 		delay = r.config.BaseDelay
-		
+
 	case RetryStrategyLinear:
 		delay = r.config.BaseDelay * time.Duration(attempt+1)
-		
+
 	case RetryStrategyExponential:
 		fallthrough
 	default:
@@ -265,11 +267,11 @@ func (r *RetryExecutor) generateJitter(delay time.Duration) float64 {
 func (r *RetryExecutor) cloneRequest(req *http.Request) *http.Request {
 	// Clone the request
 	cloned := req.Clone(req.Context())
-	
+
 	// Note: We don't clone the body here because it's more complex
 	// In practice, most retryable requests are GET requests without body
 	// For POST/PUT requests with body, the caller should handle body cloning
-	
+
 	return cloned
 }
 
@@ -292,7 +294,7 @@ func (r *RetryExecutor) wrapNetworkError(err error, req *http.Request) error {
 
 	// Determine if it's retryable
 	retryable := true
-	
+
 	// Check for specific error types
 	if urlErr, ok := err.(*url.Error); ok {
 		// DNS errors, connection errors, etc. are retryable
@@ -335,14 +337,14 @@ func (s CircuitBreakerState) String() string {
 
 // CircuitBreaker implements the circuit breaker pattern
 type CircuitBreaker struct {
-	config       *CircuitBreakerConfig
-	logger       global.Logger
-	mu           sync.RWMutex
-	state        CircuitBreakerState
-	failureCount int
-	successCount int
-	lastFailure  time.Time
-	nextRetry    time.Time
+	config        *CircuitBreakerConfig
+	logger        global.Logger
+	mu            sync.RWMutex
+	state         CircuitBreakerState
+	failureCount  int
+	successCount  int
+	lastFailure   time.Time
+	nextRetry     time.Time
 	halfOpenCalls int
 }
 
@@ -385,7 +387,7 @@ func (cb *CircuitBreaker) beforeCall() error {
 	case CircuitBreakerClosed:
 		// Calls are allowed
 		return nil
-		
+
 	case CircuitBreakerOpen:
 		// Check if we should transition to half-open
 		if time.Now().After(cb.nextRetry) {
@@ -398,7 +400,7 @@ func (cb *CircuitBreaker) beforeCall() error {
 		}
 		// Still in open state, reject the call
 		return NewCircuitBreakerError("circuit breaker is OPEN", cb.nextRetry)
-		
+
 	case CircuitBreakerHalfOpen:
 		// Allow limited calls in half-open state
 		if cb.halfOpenCalls >= cb.config.HalfOpenMaxCalls {
@@ -406,7 +408,7 @@ func (cb *CircuitBreaker) beforeCall() error {
 		}
 		cb.halfOpenCalls++
 		return nil
-		
+
 	default:
 		return fmt.Errorf("unknown circuit breaker state: %v", cb.state)
 	}
@@ -428,18 +430,18 @@ func (cb *CircuitBreaker) afterCall(err error) {
 func (cb *CircuitBreaker) recordFailure() {
 	cb.failureCount++
 	cb.lastFailure = time.Now()
-	
+
 	switch cb.state {
 	case CircuitBreakerClosed:
 		if cb.failureCount >= cb.config.FailureThreshold {
 			cb.state = CircuitBreakerOpen
 			cb.nextRetry = time.Now().Add(cb.config.ResetTimeout)
 			if cb.logger != nil {
-				cb.logger.Warningf("Circuit breaker OPENED: %d failures reached threshold (%d)", 
+				cb.logger.Warningf("Circuit breaker OPENED: %d failures reached threshold (%d)",
 					cb.failureCount, cb.config.FailureThreshold)
 			}
 		}
-		
+
 	case CircuitBreakerHalfOpen:
 		// Failure in half-open state, go back to open
 		cb.state = CircuitBreakerOpen
@@ -461,7 +463,7 @@ func (cb *CircuitBreaker) recordSuccess() {
 				cb.logger.Debugf("Circuit breaker: failure count reset after success")
 			}
 		}
-		
+
 	case CircuitBreakerHalfOpen:
 		cb.successCount++
 		if cb.successCount >= cb.config.SuccessThreshold {
@@ -470,7 +472,7 @@ func (cb *CircuitBreaker) recordSuccess() {
 			cb.failureCount = 0
 			cb.successCount = 0
 			if cb.logger != nil {
-				cb.logger.Infof("Circuit breaker CLOSED: %d consecutive successes in HALF_OPEN", 
+				cb.logger.Infof("Circuit breaker CLOSED: %d consecutive successes in HALF_OPEN",
 					cb.successCount)
 			}
 		}
@@ -488,7 +490,7 @@ func (cb *CircuitBreaker) GetState() CircuitBreakerState {
 func (cb *CircuitBreaker) GetMetrics() CircuitBreakerMetrics {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
-	
+
 	return CircuitBreakerMetrics{
 		State:        cb.state,
 		FailureCount: cb.failureCount,

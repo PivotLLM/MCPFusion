@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -335,27 +337,27 @@ func TestExpandEnvironmentVariables_WithDefaults(t *testing.T) {
 	}
 
 	resultStr := string(result)
-	
+
 	// Should expand existing variable
 	if !containsString(resultStr, "existing-value") {
 		t.Error("Expected EXISTING_VAR to be expanded")
 	}
-	
+
 	// Should use default value for missing variable
 	if !containsString(resultStr, "default-value") {
 		t.Error("Expected MISSING_VAR to use default value")
 	}
-	
+
 	// Should use empty string as default
 	if !containsString(resultStr, `"missingWithEmptyDefault": ""`) {
 		t.Errorf("Expected MISSING_VAR2 to use empty default. Got result: %s", resultStr)
 	}
-	
+
 	// Should leave unexpanded when no default provided
 	if !containsString(resultStr, "${MISSING_VAR3}") {
 		t.Errorf("Expected MISSING_VAR3 to remain unexpanded. Got result: %s", resultStr)
 	}
-	
+
 	// Should handle complex default values
 	if !containsString(resultStr, "https://api.example.com/v1") {
 		t.Error("Expected MISSING_VAR4 to use complex default")
@@ -380,12 +382,12 @@ func TestExpandEnvironmentVariables_DefaultWithColon(t *testing.T) {
 	}
 
 	resultStr := string(result)
-	
+
 	// Should handle default values that contain colons
 	if !containsString(resultStr, "http://localhost:8080") {
 		t.Error("Expected API_URL to use default with colon")
 	}
-	
+
 	if !containsString(resultStr, "2006-01-02T15:04:05Z07:00") {
 		t.Error("Expected TIME_FORMAT to use default with colon")
 	}
@@ -815,52 +817,52 @@ func TestEndpointConfig_Validate_MissingFields(t *testing.T) {
 func TestLoadConfigFromFile_RealExample(t *testing.T) {
 	// Test loading the actual Google config file
 	configPath := filepath.Join("configs", "google.json")
-	
+
 	config, err := LoadConfigFromFile(configPath)
 	if err != nil {
 		t.Fatalf("Failed to load Google config: %v", err)
 	}
-	
+
 	if config == nil {
 		t.Fatal("Config should not be nil")
 	}
-	
+
 	// Verify the Google service is loaded correctly
 	googleService, exists := config.Services["google"]
 	if !exists {
 		t.Fatal("Google service should exist")
 	}
-	
+
 	if googleService.Name != "Google APIs" {
 		t.Errorf("Expected Google service name 'Google APIs', got '%s'", googleService.Name)
 	}
-	
+
 	if googleService.BaseURL != "https://www.googleapis.com" {
 		t.Errorf("Expected Google baseURL 'https://www.googleapis.com', got '%s'", googleService.BaseURL)
 	}
-	
+
 	if googleService.Auth.Type != AuthTypeOAuth2Device {
 		t.Errorf("Expected Google auth type 'oauth2_device', got '%s'", googleService.Auth.Type)
 	}
-	
+
 	if len(googleService.Endpoints) < 16 {
 		t.Errorf("Expected at least 16 Google endpoints, got %d", len(googleService.Endpoints))
 	}
-	
+
 	// Verify specific endpoints
 	calendarEndpoint := googleService.GetEndpointByID("calendar_events_list")
 	if calendarEndpoint == nil {
 		t.Fatal("Calendar events list endpoint should exist")
 	}
-	
+
 	if calendarEndpoint.Name != "List Calendar Events" {
 		t.Errorf("Expected calendar endpoint name 'List Calendar Events', got '%s'", calendarEndpoint.Name)
 	}
-	
+
 	if calendarEndpoint.Method != "GET" {
 		t.Errorf("Expected calendar endpoint method 'GET', got '%s'", calendarEndpoint.Method)
 	}
-	
+
 	if calendarEndpoint.Path != "/calendar/v3/calendars/primary/events" {
 		t.Errorf("Expected calendar endpoint path '/calendar/v3/calendars/primary/events', got '%s'", calendarEndpoint.Path)
 	}
@@ -874,11 +876,11 @@ func TestLoadConfigFromFile_WithEnvironmentVariables(t *testing.T) {
 		os.Unsetenv("TEST_BASE_URL")
 		os.Unsetenv("TEST_TOKEN")
 	}()
-	
+
 	// Create a test config with environment variables
 	tempDir := t.TempDir()
 	configFile := filepath.Join(tempDir, "test-env-config.json")
-	
+
 	configContent := `{
 		"services": {
 			"test_service": {
@@ -906,25 +908,25 @@ func TestLoadConfigFromFile_WithEnvironmentVariables(t *testing.T) {
 			}
 		}
 	}`
-	
+
 	if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to create test config file: %v", err)
 	}
-	
+
 	config, err := LoadConfigFromFile(configFile)
 	if err != nil {
 		t.Fatalf("Failed to load config with env vars: %v", err)
 	}
-	
+
 	service := config.Services["test_service"]
 	if service.BaseURL != "https://test-api.example.com" {
 		t.Errorf("Expected baseURL to be expanded, got '%s'", service.BaseURL)
 	}
-	
+
 	if token, ok := service.Auth.Config["token"].(string); !ok || token != "test-secret-token" {
 		t.Errorf("Expected token to be expanded, got '%v'", service.Auth.Config["token"])
 	}
-	
+
 	// Should use default value for missing AUTH_HEADER env var
 	if header, ok := service.Auth.Config["header"].(string); !ok || header != "Authorization" {
 		t.Errorf("Expected header to use default value, got '%v'", service.Auth.Config["header"])
@@ -938,7 +940,7 @@ func TestConfig_GetServiceByName(t *testing.T) {
 			"service2": {Name: "Service Two"},
 		},
 	}
-	
+
 	// Test existing service
 	service := config.GetServiceByName("Service One")
 	if service == nil {
@@ -947,7 +949,7 @@ func TestConfig_GetServiceByName(t *testing.T) {
 	if service != config.Services["service1"] {
 		t.Error("Expected to get service1")
 	}
-	
+
 	// Test non-existent service
 	service = config.GetServiceByName("Non-existent")
 	if service != nil {
@@ -973,12 +975,12 @@ func TestConfig_GetAllEndpoints(t *testing.T) {
 			},
 		},
 	}
-	
+
 	endpoints := config.GetAllEndpoints()
 	if len(endpoints) != 3 {
 		t.Errorf("Expected 3 endpoints, got %d", len(endpoints))
 	}
-	
+
 	// Check that endpoints have correct service context
 	for _, ep := range endpoints {
 		if ep.ServiceName == "" {
@@ -1020,19 +1022,19 @@ func TestConfig_ValidateServiceConfig(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Test valid service
 	err := config.ValidateServiceConfig("valid_service")
 	if err != nil {
 		t.Errorf("Expected valid service to pass validation, got: %v", err)
 	}
-	
+
 	// Test invalid service
 	err = config.ValidateServiceConfig("invalid_service")
 	if err == nil {
 		t.Error("Expected invalid service to fail validation")
 	}
-	
+
 	// Test non-existent service
 	err = config.ValidateServiceConfig("non_existent")
 	if err == nil {
@@ -1072,26 +1074,26 @@ func TestConfig_GetRequiredEnvironmentVariables(t *testing.T) {
 			}
 		}
 	}`
-	
+
 	config, err := LoadConfigFromJSON([]byte(validConfig), "test-config.json")
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	
+
 	envVars := config.GetRequiredEnvironmentVariables()
-	
+
 	// AUTH_HEADER has a default, so it should not be considered "required"
 	expectedVars := []string{"API_URL", "API_TOKEN", "USER_ID"}
 	if len(envVars) != len(expectedVars) {
 		t.Errorf("Expected %d environment variables, got %d: %v", len(expectedVars), len(envVars), envVars)
 	}
-	
+
 	// Convert to map for easier checking
 	varMap := make(map[string]bool)
 	for _, v := range envVars {
 		varMap[v] = true
 	}
-	
+
 	for _, expected := range expectedVars {
 		if !varMap[expected] {
 			t.Errorf("Expected environment variable %s not found", expected)
@@ -1123,20 +1125,20 @@ func TestConfig_Clone(t *testing.T) {
 			},
 		},
 	}
-	
+
 	clone, err := original.Clone()
 	if err != nil {
 		t.Fatalf("Failed to clone config: %v", err)
 	}
-	
+
 	if clone.ConfigPath != original.ConfigPath {
 		t.Error("ConfigPath should be copied")
 	}
-	
+
 	if len(clone.Services) != len(original.Services) {
 		t.Error("Services should be copied")
 	}
-	
+
 	// Modify clone to ensure it's a deep copy
 	clone.Services["service1"].Name = "Modified Service"
 	if original.Services["service1"].Name == "Modified Service" {
@@ -1167,7 +1169,7 @@ func TestConfig_MergeConfig(t *testing.T) {
 			},
 		},
 	}
-	
+
 	other := &Config{
 		Services: map[string]*ServiceConfig{
 			"service2": {
@@ -1190,32 +1192,32 @@ func TestConfig_MergeConfig(t *testing.T) {
 			},
 		},
 	}
-	
+
 	err := base.MergeConfig(other)
 	if err != nil {
 		t.Fatalf("Failed to merge configs: %v", err)
 	}
-	
+
 	if len(base.Services) != 2 {
 		t.Errorf("Expected 2 services after merge, got %d", len(base.Services))
 	}
-	
+
 	if _, exists := base.Services["service2"]; !exists {
 		t.Error("service2 should exist after merge")
 	}
-	
+
 	// Test merging with conflict
 	conflicting := &Config{
 		Services: map[string]*ServiceConfig{
 			"service1": {Name: "Conflicting Service"},
 		},
 	}
-	
+
 	err = base.MergeConfig(conflicting)
 	if err == nil {
 		t.Error("Expected error when merging conflicting services")
 	}
-	
+
 	var configErr *ConfigurationError
 	if !errors.As(err, &configErr) {
 		t.Error("Expected ConfigurationError for merge conflict")
@@ -1228,11 +1230,11 @@ func containsError(actual, expected string) bool {
 }
 
 func containsString(haystack, needle string) bool {
-	return len(haystack) >= len(needle) && 
-		   (haystack == needle || 
-		    haystack[:len(needle)] == needle ||
-		    haystack[len(haystack)-len(needle):] == needle ||
-		    containsSubstring(haystack, needle))
+	return len(haystack) >= len(needle) &&
+		(haystack == needle ||
+			haystack[:len(needle)] == needle ||
+			haystack[len(haystack)-len(needle):] == needle ||
+			containsSubstring(haystack, needle))
 }
 
 func containsSubstring(haystack, needle string) bool {

@@ -1,5 +1,7 @@
-// Copyright (c) 2025 Tenebris Technologies Inc.
-// Please see LICENSE for details.
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
 
 package fusion
 
@@ -14,16 +16,16 @@ import (
 type Cache interface {
 	// Get retrieves a value from the cache
 	Get(key string) (interface{}, error)
-	
+
 	// Set stores a value in the cache with the given TTL
 	Set(key string, value interface{}, ttl time.Duration) error
-	
+
 	// Delete removes a value from the cache
 	Delete(key string) error
-	
+
 	// Clear removes all values from the cache
 	Clear() error
-	
+
 	// Has checks if a key exists in the cache
 	Has(key string) bool
 }
@@ -52,18 +54,18 @@ func NewInMemoryCacheWithLogger(logger global.Logger) *InMemoryCache {
 		items:  make(map[string]*cacheItem),
 		logger: logger,
 	}
-	
+
 	if logger != nil {
 		logger.Debug("Initializing in-memory cache")
 	}
-	
+
 	// Start cleanup goroutine
 	go cache.cleanup()
-	
+
 	if logger != nil {
 		logger.Debug("In-memory cache initialized successfully")
 	}
-	
+
 	return cache
 }
 
@@ -80,7 +82,7 @@ func (c *InMemoryCache) Get(key string) (interface{}, error) {
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	item, exists := c.items[key]
 	if !exists {
 		if c.logger != nil {
@@ -88,7 +90,7 @@ func (c *InMemoryCache) Get(key string) (interface{}, error) {
 		}
 		return nil, &CacheError{Operation: "get", Key: key, Message: "key not found"}
 	}
-	
+
 	if item.isExpired() {
 		if c.logger != nil {
 			c.logger.Debugf("Cache MISS - key expired: %s", key)
@@ -97,12 +99,12 @@ func (c *InMemoryCache) Get(key string) (interface{}, error) {
 		delete(c.items, key)
 		return nil, &CacheError{Operation: "get", Key: key, Message: "key expired"}
 	}
-	
+
 	if c.logger != nil {
 		timeToExpiry := time.Until(item.expiresAt)
 		c.logger.Debugf("Cache HIT for key: %s (expires in %v)", key, timeToExpiry)
 	}
-	
+
 	return item.value, nil
 }
 
@@ -114,17 +116,17 @@ func (c *InMemoryCache) Set(key string, value interface{}, ttl time.Duration) er
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	expiresAt := time.Now().Add(ttl)
 	c.items[key] = &cacheItem{
 		value:     value,
 		expiresAt: expiresAt,
 	}
-	
+
 	if c.logger != nil {
 		c.logger.Debugf("Cache SET successful for key: %s (expires at: %s)", key, expiresAt.Format(time.RFC3339))
 	}
-	
+
 	return nil
 }
 
@@ -136,10 +138,10 @@ func (c *InMemoryCache) Delete(key string) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	_, existed := c.items[key]
 	delete(c.items, key)
-	
+
 	if c.logger != nil {
 		if existed {
 			c.logger.Debugf("Cache DELETE successful for key: %s", key)
@@ -147,7 +149,7 @@ func (c *InMemoryCache) Delete(key string) error {
 			c.logger.Debugf("Cache DELETE - key did not exist: %s", key)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -155,14 +157,14 @@ func (c *InMemoryCache) Delete(key string) error {
 func (c *InMemoryCache) Clear() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	itemCount := len(c.items)
 	c.items = make(map[string]*cacheItem)
-	
+
 	if c.logger != nil {
 		c.logger.Infof("Cache CLEAR operation completed - removed %d items", itemCount)
 	}
-	
+
 	return nil
 }
 
@@ -174,7 +176,7 @@ func (c *InMemoryCache) Has(key string) bool {
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	item, exists := c.items[key]
 	if !exists {
 		if c.logger != nil {
@@ -182,7 +184,7 @@ func (c *InMemoryCache) Has(key string) bool {
 		}
 		return false
 	}
-	
+
 	if item.isExpired() {
 		if c.logger != nil {
 			c.logger.Debugf("Cache HAS result for key %s: false (expired)", key)
@@ -191,11 +193,11 @@ func (c *InMemoryCache) Has(key string) bool {
 		delete(c.items, key)
 		return false
 	}
-	
+
 	if c.logger != nil {
 		c.logger.Debugf("Cache HAS result for key %s: true", key)
 	}
-	
+
 	return true
 }
 
@@ -203,26 +205,26 @@ func (c *InMemoryCache) Has(key string) bool {
 func (c *InMemoryCache) cleanup() {
 	ticker := time.NewTicker(5 * time.Minute) // Cleanup every 5 minutes
 	defer ticker.Stop()
-	
+
 	if c.logger != nil {
 		c.logger.Debug("Cache cleanup goroutine started (runs every 5 minutes)")
 	}
-	
+
 	for range ticker.C {
 		c.mu.Lock()
-		
+
 		initialCount := len(c.items)
 		expiredCount := 0
-		
+
 		for key, item := range c.items {
 			if item.isExpired() {
 				delete(c.items, key)
 				expiredCount++
 			}
 		}
-		
+
 		c.mu.Unlock()
-		
+
 		if c.logger != nil {
 			if expiredCount > 0 {
 				c.logger.Infof("Cache cleanup completed - removed %d expired items (%d remaining)", expiredCount, initialCount-expiredCount)
@@ -237,7 +239,7 @@ func (c *InMemoryCache) cleanup() {
 func (c *InMemoryCache) Size() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	return len(c.items)
 }
 
@@ -245,14 +247,14 @@ func (c *InMemoryCache) Size() int {
 func (c *InMemoryCache) Keys() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	keys := make([]string, 0, len(c.items))
 	for key, item := range c.items {
 		if !item.isExpired() {
 			keys = append(keys, key)
 		}
 	}
-	
+
 	return keys
 }
 
