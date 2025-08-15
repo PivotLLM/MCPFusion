@@ -320,10 +320,8 @@ func New(options ...Option) *Fusion {
 					}
 				}
 			}
-		}
-		
-		// Fall back to file cache if database cache is not available
-		if _, isInMemory := fusion.cache.(*InMemoryCache); isInMemory {
+		} else {
+			// Only fall back to file cache if NOT in multi-tenant mode
 			fusion.cache = NewFileCache(fusion.logger)
 			if fusion.logger != nil {
 				fusion.logger.Info("Using file-based cache for persistent token storage")
@@ -345,6 +343,8 @@ func New(options ...Option) *Fusion {
 			fusion.logger.Debug("Initializing authentication manager")
 		}
 
+		// Always create the legacy auth manager for fusion provider
+		// Multi-tenant auth is handled at the server level via middleware
 		fusion.authManager = NewAuthManager(fusion.cache, fusion.logger)
 
 		// Register default authentication strategies

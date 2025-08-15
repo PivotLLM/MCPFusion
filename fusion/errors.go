@@ -205,17 +205,14 @@ type APIError struct {
 
 // Error implements the error interface
 func (e APIError) Error() string {
-	correlationStr := ""
-	if e.CorrelationID != "" {
-		correlationStr = fmt.Sprintf(" [%s]", e.CorrelationID)
+	// For security reasons, don't include the full response body in error messages
+	// Return a generic error message for client-facing errors
+	if e.StatusCode == 401 || e.StatusCode == 403 {
+		return "Invalid token"
 	}
 
-	if e.Response != "" {
-		return fmt.Sprintf("API error from %s:%s (HTTP %d, %s)%s: %s - Response: %s",
-			e.Service, e.Endpoint, e.StatusCode, e.Category, correlationStr, e.Message, e.Response)
-	}
-	return fmt.Sprintf("API error from %s:%s (HTTP %d, %s)%s: %s",
-		e.Service, e.Endpoint, e.StatusCode, e.Category, correlationStr, e.Message)
+	// For other errors, provide minimal information without exposing sensitive data
+	return fmt.Sprintf("API request failed (HTTP %d)", e.StatusCode)
 }
 
 // IsRetryable returns whether the error is retryable
