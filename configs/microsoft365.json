@@ -82,8 +82,9 @@
               "required": false,
               "location": "query",
               "default": 100,
-              "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+             "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -150,7 +151,8 @@
               "location": "query",
               "default": 10,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -199,7 +201,8 @@
               "location": "query",
               "default": 1000,
               "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -313,7 +316,8 @@
               "location": "query",
               "default": 100,
               "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -397,7 +401,8 @@
               "location": "query",
               "default": 10,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -438,7 +443,8 @@
               "location": "query",
               "default": 10,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -501,8 +507,9 @@
               "required": false,
               "location": "query",
               "default": 1000,
-              "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -550,7 +557,8 @@
               "location": "query",
               "default": 10,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -643,8 +651,9 @@
               "required": false,
               "location": "query",
               "default": 100,
-              "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -679,7 +688,8 @@
               "location": "query",
               "default": 25,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -814,8 +824,9 @@
               "required": false,
               "location": "query",
               "default": 50,
-              "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -895,7 +906,8 @@
               "location": "query",
               "default": 25,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -989,7 +1001,8 @@
               "location": "query",
               "default": 50,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -1066,8 +1079,9 @@
               "required": false,
               "location": "query",
               "default": 100,
-              "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {

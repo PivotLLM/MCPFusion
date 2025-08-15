@@ -8,12 +8,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 
+	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
@@ -130,16 +133,79 @@ func main() {
 	// Use the temporary logger as the main logger
 	logger := tempLogger
 
+	// Initialize database if configuration is available
+	var database db.Database
+	var multiTenantAuth *fusion.MultiTenantAuthManager
+	var serviceResolver *fusion.ServiceConfigResolver
+	
+	// Check for database configuration
+	dbDataDir := os.Getenv("MCP_DB_DATA_DIR")
+	enableDatabase := os.Getenv("MCP_ENABLE_DATABASE") == "true"
+	
+	if enableDatabase || dbDataDir != "" {
+		logger.Info("Initializing database for multi-tenant support")
+		
+		// Create database options
+		dbOpts := []db.Option{
+			db.WithLogger(logger),
+		}
+		if dbDataDir != "" {
+			dbOpts = append(dbOpts, db.WithDataDir(dbDataDir))
+		}
+		
+		// Initialize database
+		var err error
+		database, err = db.New(dbOpts...)
+		if err != nil {
+			logger.Errorf("Failed to initialize database: %v", err)
+			logger.Warning("Continuing without database - multi-tenant features disabled")
+		} else {
+			logger.Info("Database initialized successfully")
+			
+			// Initialize database-backed cache
+			dbCache := fusion.NewDatabaseCache(database.(*db.DB), logger)
+			
+			// Create multi-tenant authentication manager
+			multiTenantAuth = fusion.NewMultiTenantAuthManager(database.(*db.DB), dbCache, logger)
+			
+			// Register authentication strategies
+			oauthStrategy := fusion.NewOAuth2DeviceFlowStrategy(
+				&http.Client{Timeout: 30 * time.Second}, logger)
+			multiTenantAuth.RegisterStrategy(oauthStrategy)
+			
+			// Initialize service resolver
+			serviceResolver = fusion.NewServiceConfigResolver(
+				fusion.WithSRLogger(logger),
+				fusion.WithAutoReload(5*time.Minute),
+			)
+			
+			logger.Info("Multi-tenant authentication system initialized")
+		}
+	} else {
+		logger.Info("Database not configured - running in single-tenant mode")
+	}
+
+	// API authentication configuration (legacy support)
 	APIAuthHeader := os.Getenv("API_AUTH_HEADER")
 	if APIAuthHeader == "" {
 		APIAuthHeader = "X-API-Key"
-		logger.Warningf("API_AUTH_HEADER environment variable is not set, defaulting to %s", APIAuthHeader)
+		if database == nil {
+			logger.Warningf("API_AUTH_HEADER environment variable is not set, defaulting to %s", APIAuthHeader)
+		}
 	}
 
 	APIAuthKey := os.Getenv("API_AUTH_KEY")
 	if APIAuthKey == "" {
 		APIAuthKey = "1234567890ABCDEFGHIJKLMONPQRSTUVWXYZ"
-		logger.Warningf("API_AUTH_KEY environment variable is not set, defaulting to %s", APIAuthKey)
+		if database == nil {
+			logger.Warningf("API_AUTH_KEY environment variable is not set, defaulting to %s", APIAuthKey)
+		}
+	}
+	
+	// Multi-tenant API token support
+	bearerTokensEnabled := os.Getenv("MCP_ENABLE_BEARER_TOKENS") == "true"
+	if bearerTokensEnabled && database != nil {
+		logger.Info("Bearer token authentication enabled for multi-tenant access")
 	}
 
 	// Create a slice (list) of tool providers
@@ -149,16 +215,25 @@ func main() {
 	var fusionProvider *fusion.Fusion
 	if fusionConfig != "" {
 		logger.Infof("Loading fusion provider with config file: %s", fusionConfig)
-		fusionProvider = fusion.New(
+		
+		// Configure fusion provider based on whether multi-tenant mode is enabled
+		fusionOpts := []fusion.Option{
 			fusion.WithLogger(logger),
 			fusion.WithJSONConfig(fusionConfig),
-		)
+		}
+		
+		// Add multi-tenant support if available
+		if multiTenantAuth != nil {
+			fusionOpts = append(fusionOpts, fusion.WithMultiTenantAuth(multiTenantAuth))
+		}
+		
+		fusionProvider = fusion.New(fusionOpts...)
 		providers = append(providers, fusionProvider)
 	}
 
 	// Create MCP server, passing in the logger and tool providers
 	// as well as setting other options
-	mcp, err := mcpserver.New(
+	mcpOpts := []mcpserver.Option{
 		mcpserver.WithListen(listen),
 		mcpserver.WithDebug(debug),
 		mcpserver.WithLogger(logger),
@@ -172,7 +247,20 @@ func main() {
 		// Setup resource and prompt providers
 		mcpserver.WithResourceProviders([]global.ResourceProvider{fusionProvider}),
 		mcpserver.WithPromptProviders([]global.PromptProvider{fusionProvider}),
-	)
+	}
+	
+	// Add multi-tenant authentication middleware if enabled
+	if bearerTokensEnabled && multiTenantAuth != nil && serviceResolver != nil {
+		authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, serviceResolver,
+			mcpserver.WithAuthLogger(logger),
+			mcpserver.WithRequireAuth(true),
+			mcpserver.WithSkipPaths("/health", "/metrics", "/status", "/capabilities"),
+		)
+		mcpOpts = append(mcpOpts, mcpserver.WithAuthMiddleware(authMiddleware))
+		logger.Info("Multi-tenant authentication middleware enabled")
+	}
+	
+	mcp, err := mcpserver.New(mcpOpts...)
 	if err != nil {
 		logger.Fatalf("Unable to create MCP server: %v", err)
 		os.Exit(1)
@@ -195,6 +283,15 @@ func main() {
 	if err = mcp.Stop(); err != nil {
 		logger.Errorf("Error stopping MCP server: %s", err.Error())
 		os.Exit(1)
+	}
+
+	// Close database connection if initialized
+	if database != nil {
+		if err := database.Close(); err != nil {
+			logger.Errorf("Error closing database: %v", err)
+		} else {
+			logger.Info("Database connection closed successfully")
+		}
 	}
 
 	logger.Infof("MCP server stopped successfully")

@@ -138,6 +138,49 @@ server.AddToolProvider(provider)
 2. **Logging**: Use `mlogger` package for consistent logging
 3. **Configuration**: Use functional options for flexible configuration
 4. **Testing**: Each provider should have its own test file
+5. **Multi-Tenant Authentication**: Use database-backed token system for production deployments
+6. **Bearer Token Authentication**: Support standard Authorization: Bearer <token> headers
+
+## Multi-Tenant Authentication
+
+MCPFusion now supports multi-tenant authentication with the following components:
+
+### Database Package (`db/`)
+- BoltDB-based persistent storage (`go.etcd.io/bbolt`)
+- API token management with auto-generation
+- OAuth token storage per tenant per service
+- Service credentials management
+- Comprehensive CLI tools for token administration
+
+### Authentication Flow
+1. **API Token Generation**: Use `mcpfusion-token add` to create tenant tokens
+2. **Bearer Authentication**: Include `Authorization: Bearer <token>` in HTTP requests
+3. **Tenant Isolation**: Each API token represents a separate tenant namespace
+4. **Service Independence**: Each tenant has independent OAuth tokens for each service
+
+### Environment Variables for Multi-Tenant Mode
+```bash
+# Enable database for persistent storage
+MCP_ENABLE_DATABASE=true
+
+# Enable bearer token authentication
+MCP_ENABLE_BEARER_TOKENS=true
+
+# Optional: Set custom database directory
+MCP_DB_DATA_DIR=/path/to/data
+```
+
+### Token Management CLI
+```bash
+# Generate new API token
+mcpfusion-token add "Production environment"
+
+# List all tokens
+mcpfusion-token list
+
+# Delete token
+mcpfusion-token delete abc12345
+```
 
 ## Testing Requirements
 

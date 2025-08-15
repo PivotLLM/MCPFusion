@@ -76,6 +76,7 @@ var _ global.PromptProvider = (*Fusion)(nil)
 type Fusion struct {
 	config                 *Config                    // Service configuration and endpoints
 	authManager            *AuthManager               // Authentication strategy manager
+	multiTenantAuth        *MultiTenantAuthManager    // Multi-tenant authentication manager (optional)
 	httpClient             *http.Client               // HTTP client with timeouts
 	cache                  Cache                      // Token and response cache
 	logger                 global.Logger              // Structured logging interface
@@ -239,6 +240,13 @@ func WithCorrelationIDGenerator(generator *CorrelationIDGenerator) Option {
 	}
 }
 
+// WithMultiTenantAuth sets a multi-tenant authentication manager
+func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
+	return func(f *Fusion) {
+		f.multiTenantAuth = multiTenantAuth
+	}
+}
+
 // New creates a new production-ready Fusion instance with the provided configuration options.
 // This is the primary constructor for the Fusion provider and initializes all components
 // required for API integration including authentication, caching, metrics, and circuit breakers.
@@ -300,12 +308,26 @@ func New(options ...Option) *Fusion {
 	}
 
 	// Update cache with logger if we're using the default in-memory cache
-	// Use FileCache for persistent storage by default
+	// Use appropriate cache based on availability - prefer database cache over file cache
 	if _, isInMemory := fusion.cache.(*InMemoryCache); isInMemory {
-		// Replace default in-memory cache with file cache for persistence
-		fusion.cache = NewFileCache(fusion.logger)
-		if fusion.logger != nil {
-			fusion.logger.Info("Using file-based cache for persistent token storage")
+		// Check if multi-tenant auth is available with database cache
+		if fusion.multiTenantAuth != nil {
+			if dbCache := fusion.multiTenantAuth.cache; dbCache != nil {
+				if _, isDatabaseCache := dbCache.(*DatabaseCache); isDatabaseCache {
+					fusion.cache = dbCache
+					if fusion.logger != nil {
+						fusion.logger.Info("Using database-backed cache for persistent token storage")
+					}
+				}
+			}
+		}
+		
+		// Fall back to file cache if database cache is not available
+		if _, isInMemory := fusion.cache.(*InMemoryCache); isInMemory {
+			fusion.cache = NewFileCache(fusion.logger)
+			if fusion.logger != nil {
+				fusion.logger.Info("Using file-based cache for persistent token storage")
+			}
 		}
 	}
 

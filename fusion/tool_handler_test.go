@@ -13,6 +13,11 @@ import (
 	"testing"
 )
 
+// Helper function for creating int pointers
+func intPtr(i int) *int {
+	return &i
+}
+
 func TestBuildRequest_BasicGET(t *testing.T) {
 	fusion := New()
 
@@ -379,8 +384,8 @@ func TestValidateParameter_String(t *testing.T) {
 		Name: "test",
 		Type: ParameterTypeString,
 		Validation: &ValidationConfig{
-			MinLength: 3,
-			MaxLength: 10,
+			MinLength: intPtr(3),
+			MaxLength: intPtr(10),
 			Pattern:   "^[a-z]+$",
 		},
 	}
