@@ -133,80 +133,53 @@ func main() {
 	// Use the temporary logger as the main logger
 	logger := tempLogger
 
-	// Initialize database if configuration is available
-	var database db.Database
-	var multiTenantAuth *fusion.MultiTenantAuthManager
-	var serviceResolver *fusion.ServiceConfigResolver
+	// Initialize database (required for multi-tenant operation)
+	logger.Info("Initializing database for multi-tenant support")
 	
-	// Check for database configuration
+	// Database configuration
 	dbDataDir := os.Getenv("MCP_DB_DATA_DIR")
-	enableDatabase := os.Getenv("MCP_ENABLE_DATABASE") == "true"
-	
-	if enableDatabase || dbDataDir != "" {
-		logger.Info("Initializing database for multi-tenant support")
-		
-		// Create database options
-		dbOpts := []db.Option{
-			db.WithLogger(logger),
-		}
-		if dbDataDir != "" {
-			dbOpts = append(dbOpts, db.WithDataDir(dbDataDir))
-		}
-		
-		// Initialize database
-		var err error
-		database, err = db.New(dbOpts...)
-		if err != nil {
-			logger.Errorf("Failed to initialize database: %v", err)
-			logger.Warning("Continuing without database - multi-tenant features disabled")
-		} else {
-			logger.Info("Database initialized successfully")
-			
-			// Initialize database-backed cache
-			dbCache := fusion.NewDatabaseCache(database.(*db.DB), logger)
-			
-			// Create multi-tenant authentication manager
-			multiTenantAuth = fusion.NewMultiTenantAuthManager(database.(*db.DB), dbCache, logger)
-			
-			// Register authentication strategies
-			oauthStrategy := fusion.NewOAuth2DeviceFlowStrategy(
-				&http.Client{Timeout: 30 * time.Second}, logger)
-			multiTenantAuth.RegisterStrategy(oauthStrategy)
-			
-			// Initialize service resolver
-			serviceResolver = fusion.NewServiceConfigResolver(
-				fusion.WithSRLogger(logger),
-				fusion.WithAutoReload(5*time.Minute),
-			)
-			
-			logger.Info("Multi-tenant authentication system initialized")
-		}
-	} else {
-		logger.Info("Database not configured - running in single-tenant mode")
+	dbOpts := []db.Option{
+		db.WithLogger(logger),
 	}
-
-	// API authentication configuration (legacy support)
-	APIAuthHeader := os.Getenv("API_AUTH_HEADER")
-	if APIAuthHeader == "" {
-		APIAuthHeader = "X-API-Key"
-		if database == nil {
-			logger.Warningf("API_AUTH_HEADER environment variable is not set, defaulting to %s", APIAuthHeader)
-		}
-	}
-
-	APIAuthKey := os.Getenv("API_AUTH_KEY")
-	if APIAuthKey == "" {
-		APIAuthKey = "1234567890ABCDEFGHIJKLMONPQRSTUVWXYZ"
-		if database == nil {
-			logger.Warningf("API_AUTH_KEY environment variable is not set, defaulting to %s", APIAuthKey)
-		}
+	if dbDataDir != "" {
+		dbOpts = append(dbOpts, db.WithDataDir(dbDataDir))
 	}
 	
-	// Multi-tenant API token support
-	bearerTokensEnabled := os.Getenv("MCP_ENABLE_BEARER_TOKENS") == "true"
-	if bearerTokensEnabled && database != nil {
-		logger.Info("Bearer token authentication enabled for multi-tenant access")
+	// Initialize database (required)
+	database, err := db.New(dbOpts...)
+	if err != nil {
+		logger.Fatalf("Failed to initialize database: %v", err)
 	}
+	logger.Info("Database initialized successfully")
+	
+	// Initialize database-backed cache
+	dbCache := fusion.NewDatabaseCache(database.(*db.DB), logger)
+	
+	// Create multi-tenant authentication manager
+	multiTenantAuth := fusion.NewMultiTenantAuthManager(database.(*db.DB), dbCache, logger)
+	
+	// Register authentication strategies
+	oauthStrategy := fusion.NewOAuth2DeviceFlowStrategy(
+		&http.Client{Timeout: 30 * time.Second}, logger)
+	multiTenantAuth.RegisterStrategy(oauthStrategy)
+	
+	// Register other auth strategies
+	bearerStrategy := fusion.NewBearerTokenStrategy(logger)
+	multiTenantAuth.RegisterStrategy(bearerStrategy)
+	
+	apiKeyStrategy := fusion.NewAPIKeyStrategy(logger)
+	multiTenantAuth.RegisterStrategy(apiKeyStrategy)
+	
+	basicStrategy := fusion.NewBasicAuthStrategy(logger)
+	multiTenantAuth.RegisterStrategy(basicStrategy)
+	
+	// Initialize service resolver
+	serviceResolver := fusion.NewServiceConfigResolver(
+		fusion.WithSRLogger(logger),
+		fusion.WithAutoReload(5*time.Minute),
+	)
+	
+	logger.Info("Multi-tenant authentication system initialized")
 
 	// Create a slice (list) of tool providers
 	providers := []global.ToolProvider{}
@@ -249,16 +222,14 @@ func main() {
 		mcpserver.WithPromptProviders([]global.PromptProvider{fusionProvider}),
 	}
 	
-	// Add multi-tenant authentication middleware if enabled
-	if bearerTokensEnabled && multiTenantAuth != nil && serviceResolver != nil {
-		authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, serviceResolver,
-			mcpserver.WithAuthLogger(logger),
-			mcpserver.WithRequireAuth(true),
-			mcpserver.WithSkipPaths("/health", "/metrics", "/status", "/capabilities"),
-		)
-		mcpOpts = append(mcpOpts, mcpserver.WithAuthMiddleware(authMiddleware))
-		logger.Info("Multi-tenant authentication middleware enabled")
-	}
+	// Add multi-tenant authentication middleware (always enabled)
+	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, serviceResolver,
+		mcpserver.WithAuthLogger(logger),
+		mcpserver.WithRequireAuth(true),
+		mcpserver.WithSkipPaths("/health", "/metrics", "/status", "/capabilities"),
+	)
+	mcpOpts = append(mcpOpts, mcpserver.WithAuthMiddleware(authMiddleware))
+	logger.Info("Multi-tenant authentication middleware enabled")
 	
 	mcp, err := mcpserver.New(mcpOpts...)
 	if err != nil {

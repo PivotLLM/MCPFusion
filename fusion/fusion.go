@@ -75,7 +75,7 @@ var _ global.PromptProvider = (*Fusion)(nil)
 // goroutines. Internal state is protected by appropriate synchronization primitives.
 type Fusion struct {
 	config                 *Config                    // Service configuration and endpoints
-	authManager            *AuthManager               // Authentication strategy manager
+	// Legacy authManager removed - only multi-tenant auth is supported
 	multiTenantAuth        *MultiTenantAuthManager    // Multi-tenant authentication manager (optional)
 	httpClient             *http.Client               // HTTP client with timeouts
 	cache                  Cache                      // Token and response cache
@@ -195,12 +195,7 @@ func WithInMemoryCache() Option {
 	}
 }
 
-// WithFileCache enables file-based persistent caching
-func WithFileCache() Option {
-	return func(f *Fusion) {
-		f.cache = NewFileCache(f.logger)
-	}
-}
+// File-based caching has been removed - only database cache is supported
 
 // WithNoCache disables caching
 func WithNoCache() Option {
@@ -307,25 +302,21 @@ func New(options ...Option) *Fusion {
 		fusion.logger.Debugf("HTTP client timeout: %v", fusion.httpClient.Timeout)
 	}
 
-	// Update cache with logger if we're using the default in-memory cache
-	// Use appropriate cache based on availability - prefer database cache over file cache
-	if _, isInMemory := fusion.cache.(*InMemoryCache); isInMemory {
-		// Check if multi-tenant auth is available with database cache
-		if fusion.multiTenantAuth != nil {
-			if dbCache := fusion.multiTenantAuth.cache; dbCache != nil {
-				if _, isDatabaseCache := dbCache.(*DatabaseCache); isDatabaseCache {
-					fusion.cache = dbCache
-					if fusion.logger != nil {
-						fusion.logger.Info("Using database-backed cache for persistent token storage")
-					}
-				}
+	// In multi-tenant mode, we must use the database cache
+	if fusion.multiTenantAuth != nil {
+		if dbCache := fusion.multiTenantAuth.cache; dbCache != nil {
+			fusion.cache = dbCache
+			if fusion.logger != nil {
+				fusion.logger.Info("Using database-backed cache for persistent token storage")
 			}
 		} else {
-			// Only fall back to file cache if NOT in multi-tenant mode
-			fusion.cache = NewFileCache(fusion.logger)
 			if fusion.logger != nil {
-				fusion.logger.Info("Using file-based cache for persistent token storage")
+				fusion.logger.Fatal("Multi-tenant mode requires database cache")
 			}
+		}
+	} else {
+		if fusion.logger != nil {
+			fusion.logger.Fatal("Fusion provider requires multi-tenant authentication")
 		}
 	}
 
@@ -337,24 +328,13 @@ func New(options ...Option) *Fusion {
 		}
 	}
 
-	// Initialize auth manager if we have a config
+	// Set references in config if we have one
 	if fusion.config != nil {
-		if fusion.logger != nil {
-			fusion.logger.Debug("Initializing authentication manager")
-		}
-
-		// Always create the legacy auth manager for fusion provider
-		// Multi-tenant auth is handled at the server level via middleware
-		fusion.authManager = NewAuthManager(fusion.cache, fusion.logger)
-
-		// Register default authentication strategies
-		fusion.registerDefaultAuthStrategies()
-
-		// Set references in config
 		fusion.config.Logger = fusion.logger
-		fusion.config.AuthManager = fusion.authManager
 		fusion.config.HTTPClient = fusion.httpClient
 		fusion.config.Cache = fusion.cache
+		
+		// Note: Authentication is handled by the multi-tenant auth manager at the server level
 
 		if fusion.logger != nil {
 			fusion.logger.Infof("Fusion initialized with %d services", len(fusion.config.Services))
@@ -378,38 +358,14 @@ func New(options ...Option) *Fusion {
 	return fusion
 }
 
-// registerDefaultAuthStrategies registers the built-in authentication strategies
-func (f *Fusion) registerDefaultAuthStrategies() {
-	if f.authManager == nil {
-		return
-	}
-
-	// Register OAuth2 device flow strategy
-	oauth2Strategy := NewOAuth2DeviceFlowStrategy(f.httpClient, f.logger)
-	f.authManager.RegisterStrategy(oauth2Strategy)
-
-	// Register bearer token strategy
-	bearerStrategy := NewBearerTokenStrategy(f.logger)
-	f.authManager.RegisterStrategy(bearerStrategy)
-
-	// Register API key strategy
-	apiKeyStrategy := NewAPIKeyStrategy(f.logger)
-	f.authManager.RegisterStrategy(apiKeyStrategy)
-
-	// Register basic auth strategy
-	basicStrategy := NewBasicAuthStrategy(f.logger)
-	f.authManager.RegisterStrategy(basicStrategy)
-}
+// Legacy authentication strategies removed - only multi-tenant auth is supported
 
 // GetConfig returns the current configuration
 func (f *Fusion) GetConfig() *Config {
 	return f.config
 }
 
-// GetAuthManager returns the authentication manager
-func (f *Fusion) GetAuthManager() *AuthManager {
-	return f.authManager
-}
+// Legacy GetAuthManager removed - use multi-tenant auth manager
 
 // GetHTTPClient returns the HTTP client
 func (f *Fusion) GetHTTPClient() *http.Client {
@@ -601,7 +557,7 @@ func (f *Fusion) ReloadConfig() error {
 	// Update configuration
 	f.config = newConfig
 	f.config.Logger = f.logger
-	f.config.AuthManager = f.authManager
+	// Legacy authManager reference removed
 	f.config.HTTPClient = f.httpClient
 	f.config.Cache = f.cache
 
@@ -654,40 +610,25 @@ func (f *Fusion) GetEndpoint(serviceName, endpointID string) *EndpointConfig {
 	return service.GetEndpointByID(endpointID)
 }
 
-// GetSupportedAuthTypes returns a list of supported authentication types
+// GetSupportedAuthTypes - legacy method removed, use multi-tenant auth manager
 func (f *Fusion) GetSupportedAuthTypes() []AuthType {
-	if f.authManager == nil {
-		return []AuthType{}
+	if f.logger != nil {
+		f.logger.Warning("GetSupportedAuthTypes is deprecated - use multi-tenant auth manager")
 	}
-
-	return f.authManager.GetRegisteredStrategies()
+	return []AuthType{}
 }
 
-// InvalidateTokens invalidates all cached tokens
+// InvalidateTokens - legacy method removed, use multi-tenant auth manager
 func (f *Fusion) InvalidateTokens() {
-	if f.authManager == nil {
-		return
-	}
-
-	for serviceName := range f.config.Services {
-		f.authManager.InvalidateToken(serviceName)
-	}
-
 	if f.logger != nil {
-		f.logger.Info("All tokens invalidated")
+		f.logger.Warning("InvalidateTokens is deprecated - use multi-tenant auth manager")
 	}
 }
 
-// InvalidateServiceToken invalidates the cached token for a specific service
+// InvalidateServiceToken - legacy method removed, use multi-tenant auth manager
 func (f *Fusion) InvalidateServiceToken(serviceName string) {
-	if f.authManager == nil {
-		return
-	}
-
-	f.authManager.InvalidateToken(serviceName)
-
 	if f.logger != nil {
-		f.logger.Infof("Token invalidated for service: %s", serviceName)
+		f.logger.Warning("InvalidateServiceToken is deprecated - use multi-tenant auth manager")
 	}
 }
 

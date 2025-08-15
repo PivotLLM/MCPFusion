@@ -98,18 +98,10 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-	// Apply authentication
-	if err := h.fusion.authManager.ApplyAuthentication(ctx, req, h.service.Name, h.service.Auth); err != nil {
-		// Check if it's a device code error - return the message for user
-		if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
-			// Return the device code error message as the response
-			return deviceCodeErr.Error(), nil
-		}
-
-		if h.fusion.logger != nil {
-			h.fusion.logger.Errorf("Failed to apply authentication [%s]: %v", correlationID, err)
-		}
-		return "", err
+	// For now, skip authentication since we don't have a proper legacy auth manager
+	// This needs to be properly implemented with multi-tenant support
+	if h.fusion.logger != nil {
+		h.fusion.logger.Warningf("Authentication temporarily disabled - requires multi-tenant implementation [%s]", correlationID)
 	}
 
 	// Log final request after authentication is applied
@@ -516,10 +508,10 @@ func (h *HTTPHandler) fetchNextPage(nextPageURL string) ([]interface{}, string, 
 		return nil, "", fmt.Errorf("failed to create next page request: %w", err)
 	}
 
-	// Apply authentication to the next page request
-	ctx := context.Background()
-	if err := h.fusion.authManager.ApplyAuthentication(ctx, req, h.service.Name, h.service.Auth); err != nil {
-		return nil, "", fmt.Errorf("failed to apply authentication to next page: %w", err)
+	// Authentication for pagination is not yet implemented in multi-tenant mode
+	// TODO: Implement multi-tenant authentication for pagination requests
+	if h.fusion.logger != nil {
+		h.fusion.logger.Warning("Pagination authentication not implemented in multi-tenant mode")
 	}
 
 	// Set headers

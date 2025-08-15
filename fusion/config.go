@@ -61,7 +61,7 @@ const (
 type Config struct {
 	Logger      global.Logger             `json:"-"`
 	Services    map[string]*ServiceConfig `json:"services"`
-	AuthManager *AuthManager              `json:"-"`
+	// Legacy AuthManager field removed - use multi-tenant auth
 	HTTPClient  *http.Client              `json:"-"`
 	Cache       Cache                     `json:"-"`
 	ConfigPath  string                    `json:"-"`
