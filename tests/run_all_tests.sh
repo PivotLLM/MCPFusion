@@ -85,9 +85,13 @@ run_test "Profile API Test" \
     "$TESTS_DIR/test_profile.sh" \
     "$TESTS_DIR/profile_test_${TIMESTAMP}.log"
 
-run_test "Calendar API Test" \
-    "$TESTS_DIR/test_calendar.sh" \
-    "$TESTS_DIR/calendar_test_${TIMESTAMP}.log"
+run_test "Calendar Summary API Test" \
+    "$TESTS_DIR/test_calendar_summary.sh" \
+    "$TESTS_DIR/calendar_summary_test_${TIMESTAMP}.log"
+
+run_test "Calendar Details API Test" \
+    "$TESTS_DIR/test_calendar_details.sh" \
+    "$TESTS_DIR/calendar_details_test_${TIMESTAMP}.log"
 
 run_test "Mail API Test" \
     "$TESTS_DIR/test_mail.sh" \

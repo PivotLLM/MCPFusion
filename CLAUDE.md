@@ -38,11 +38,17 @@ go build -o mcpfusion .
 
 ### Testing
 ```bash
-# Run all tests
+# Run all Go unit tests
 go test ./...
 
 # Run tests with coverage
 go test -cover ./...
+
+# Run MCP function tests (requires running server)
+cd tests && ./run_all_tests.sh
+
+# Run individual MCP function tests
+cd tests && ./test_profile.sh > profile_output.log
 ```
 
 ## Architecture
@@ -132,6 +138,29 @@ server.AddToolProvider(provider)
 2. **Logging**: Use `mlogger` package for consistent logging
 3. **Configuration**: Use functional options for flexible configuration
 4. **Testing**: Each provider should have its own test file
+
+## Testing Requirements
+
+**IMPORTANT**: Each MCP tool provided by the server MUST have at least one separate test file in the `tests/` directory.
+
+### Test Structure
+- Each MCP tool should have its own dedicated test script (e.g., `test_toolname.sh`)
+- Test scripts should generate timestamped `.log` files with complete request/response data
+- The `run_all_tests.sh` script should include all individual test scripts
+
+### Current Test Coverage
+- `test_profile.sh` - Tests `microsoft365_profile_get`
+- `test_calendar_summary.sh` - Tests `microsoft365_calendar_read_summary`
+- `test_calendar_details.sh` - Tests `microsoft365_calendar_read_details`
+- `test_mail.sh` - Tests `microsoft365_mail_read_inbox`
+- `test_contacts.sh` - Tests `microsoft365_contacts_list`
+
+### Adding New Tool Tests
+When adding new MCP tools:
+1. Create a dedicated test script in `tests/test_newtool.sh`
+2. Add the test to `tests/run_all_tests.sh`
+3. Update the test documentation in `tests/README.md`
+4. Ensure the test covers multiple scenarios (default params, custom fields, edge cases)
 
 ## MCP Protocol Details
 
