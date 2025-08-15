@@ -129,13 +129,13 @@ go build -o mcpfusion .
 ### 3.2 Start the Server
 
 ```bash
-./mcpfusion -fusion-config fusion/configs/microsoft365.json -port 8888
+./mcpfusion -config configs/microsoft365.json -port 8888
 ```
 
 You should see output like:
 ```
-2025-01-07 10:00:00 MCP [INFO] Loading fusion provider with config: fusion/configs/microsoft365.json
-2025-01-07 10:00:00 MCP [INFO] Configuration validated successfully
+2025-01-07 10:00:00 MCP [INFO] Loading configuration from: configs/microsoft365.json
+2025-01-07 10:00:00 MCP [INFO] Registered 13 dynamic tools from configuration
 2025-01-07 10:00:00 MCP [INFO] MCP server listening on http://localhost:8888
 ```
 
@@ -166,84 +166,115 @@ After successful authentication:
 
 ## Step 5: Available Microsoft 365 Tools
 
-Once configured, these MCP tools are available:
+Once configured, these 13 MCP tools are available:
 
-### 5.1 Profile Tool
-**Name**: `microsoft365_profile`
+### 5.1 Profile Management
+**Tool**: `microsoft365_profile_get`
 **Description**: Get your Microsoft 365 profile information
-**Parameters**: None
-**Example Response**:
-```json
-{
-  "displayName": "John Doe",
-  "mail": "john.doe@company.com",
-  "jobTitle": "Software Engineer",
-  "officeLocation": "Building A"
-}
-```
+**Parameters**: 
+- `$select` (optional): Fields to include (default: displayName,mail,userPrincipalName,jobTitle,department,companyName)
 
-### 5.2 Calendar Summary Tool
-**Name**: `microsoft365_calendar_read_summary`
+### 5.2 Calendar Management
+
+**List All Calendars**
+**Tool**: `microsoft365_calendars_list`
+**Description**: Get all user calendars
+**Parameters**:
+- `$select` (optional): Fields to include (default: name,id,owner,isDefaultCalendar)
+- `$top` (optional): Number of calendars (default: 1000)
+
+**Calendar Events (All Calendars)**
+**Tool**: `microsoft365_calendar_read_summary`
 **Description**: Get calendar events with basic information
 **Parameters**:
 - `startDate` (required): Start date in YYYYMMDD format
 - `endDate` (required): End date in YYYYMMDD format
+- `$select` (optional): Fields to include (default: subject,start,end)
+- `$top` (optional): Number of events (default: 100)
 
-**Example**:
-```json
-{
-  "startDate": "20250101",
-  "endDate": "20250131"
-}
-```
-
-### 5.3 Calendar Details Tool
-**Name**: `microsoft365_calendar_read_details`
+**Tool**: `microsoft365_calendar_read_details`
 **Description**: Get calendar events with full details
 **Parameters**:
 - `startDate` (required): Start date in YYYYMMDD format
-- `endDate` (required): End date in YYYYMMDD format
-- `$select` (optional): Fields to include
+- `endDate` (required): End date in YYYYMMDD format  
+- `$select` (optional): Fields to include (default: subject,body,bodyPreview,organizer,attendees,start,end,location)
+- `$top` (optional): Number of events (default: 10)
 
-**Example**:
-```json
-{
-  "startDate": "20250101",
-  "endDate": "20250107",
-  "$select": "subject,body,location,attendees,start,end"
-}
-```
-
-### 5.4 Mail Inbox Tool
-**Name**: `microsoft365_mail_inbox`
-**Description**: Get inbox messages
+**Calendar Events (Specific Calendar)**
+**Tool**: `microsoft365_calendar_events_read_summary`
+**Description**: Get events from a specific calendar (summary)
 **Parameters**:
-- `$top` (optional): Number of messages (default: 10, max: 50)
-- `$select` (optional): Fields to include
+- `calendarId` (required): Calendar ID to retrieve events from
+- `startDate` (optional): Start date in YYYYMMDD format
+- `endDate` (optional): End date in YYYYMMDD format
+- `$select` (optional): Fields to include (default: subject,start,end)
+- `$top` (optional): Number of events (default: 100)
 
-**Example**:
-```json
-{
-  "$top": 5,
-  "$select": "subject,from,receivedDateTime,bodyPreview"
-}
-```
-
-### 5.5 Contacts Tool
-**Name**: `microsoft365_contacts`
-**Description**: Get contacts list
+**Tool**: `microsoft365_calendar_events_read_details`
+**Description**: Get events from a specific calendar (detailed)
 **Parameters**:
-- `$top` (optional): Number of contacts (default: 10)
-- `$select` (optional): Fields to include
-- `$filter` (optional): OData filter expression
+- `calendarId` (required): Calendar ID to retrieve events from
+- `startDate` (optional): Start date in YYYYMMDD format
+- `endDate` (optional): End date in YYYYMMDD format
+- `$select` (optional): Fields to include (default: subject,body,bodyPreview,organizer,attendees,start,end,location)
+- `$top` (optional): Number of events (default: 10)
 
-**Example**:
-```json
-{
-  "$top": 20,
-  "$filter": "companyName eq 'Contoso'"
-}
-```
+**Individual Calendar Event**
+**Tool**: `microsoft365_calendar_read_event`
+**Description**: Get a specific calendar event by ID
+**Parameters**:
+- `id` (required): Event ID to retrieve
+- `$select` (optional): Fields to include
+
+### 5.3 Mail Management
+
+**List Mail Folders**
+**Tool**: `microsoft365_mail_folders_list`
+**Description**: Get all mail folders for the user
+**Parameters**:
+- `$select` (optional): Fields to include (default: displayName,id,parentFolderId,childFolderCount,unreadItemCount,totalItemCount)
+- `$top` (optional): Number of folders (default: 1000)
+
+**Mail Messages (Inbox)**
+**Tool**: `microsoft365_mail_read_inbox`
+**Description**: Get inbox messages with basic information
+**Parameters**:
+- `$top` (optional): Number of messages (default: 10, max: 1000)
+- `$select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead)
+- `$filter` (optional): Filter expression (e.g., 'isRead eq false')
+
+**Mail Messages (Specific Folder)**
+**Tool**: `microsoft365_mail_folder_messages`
+**Description**: Get messages from a specific mail folder
+**Parameters**:
+- `folderId` (required): Mail folder ID to retrieve messages from
+- `$top` (optional): Number of messages (default: 10, max: 1000)
+- `$select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead)
+- `$filter` (optional): Filter expression (e.g., 'isRead eq false')
+
+**Individual Mail Message**
+**Tool**: `microsoft365_mail_read_message`
+**Description**: Get a specific email message by ID
+**Parameters**:
+- `id` (required): Message ID to retrieve
+- `$select` (optional): Fields to include
+
+### 5.4 Contacts Management
+
+**List Contacts**
+**Tool**: `microsoft365_contacts_list`
+**Description**: Get contacts from the user's address book
+**Parameters**:
+- `$top` (optional): Number of contacts (default: 25, max: 1000)
+- `$select` (optional): Fields to include (default: displayName,emailAddresses,businessPhones,jobTitle,companyName)
+- `$filter` (optional): Filter expression
+
+**Individual Contact**
+**Tool**: `microsoft365_contacts_read_contact`
+**Description**: Get a specific contact by ID
+**Parameters**:
+- `id` (required): Contact ID to retrieve
+- `$select` (optional): Fields to include
 
 ## Step 6: Testing the Integration
 
@@ -342,7 +373,7 @@ Any MCP-compatible client can connect to `http://localhost:8888` and use the Mic
 
 Enable debug logging for troubleshooting:
 ```bash
-./mcpfusion -fusion-config fusion/configs/microsoft365.json -debug
+./mcpfusion -config configs/microsoft365.json -debug
 ```
 
 ## Step 8: Security Best Practices

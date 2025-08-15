@@ -101,6 +101,26 @@ run_test "Contacts API Test" \
     "$TESTS_DIR/test_contacts.sh" \
     "$TESTS_DIR/contacts_test_${TIMESTAMP}.log"
 
+run_test "Calendars List API Test" \
+    "$TESTS_DIR/test_calendars_list.sh" \
+    "$TESTS_DIR/calendars_list_test_${TIMESTAMP}.log"
+
+run_test "Calendar Events API Test" \
+    "$TESTS_DIR/test_calendar_events.sh" \
+    "$TESTS_DIR/calendar_events_test_${TIMESTAMP}.log"
+
+run_test "Mail Folders API Test" \
+    "$TESTS_DIR/test_mail_folders.sh" \
+    "$TESTS_DIR/mail_folders_test_${TIMESTAMP}.log"
+
+run_test "Mail Folder Messages API Test" \
+    "$TESTS_DIR/test_mail_folder_messages.sh" \
+    "$TESTS_DIR/mail_folder_messages_test_${TIMESTAMP}.log"
+
+run_test "Individual Items API Test" \
+    "$TESTS_DIR/test_individual_items.sh" \
+    "$TESTS_DIR/individual_items_test_${TIMESTAMP}.log"
+
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"
 echo "Total Tests: $tests_run"
