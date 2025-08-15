@@ -194,6 +194,13 @@ func WithInMemoryCache() Option {
 	}
 }
 
+// WithFileCache enables file-based persistent caching
+func WithFileCache() Option {
+	return func(f *Fusion) {
+		f.cache = NewFileCache(f.logger)
+	}
+}
+
 // WithNoCache disables caching
 func WithNoCache() Option {
 	return func(f *Fusion) {
@@ -293,8 +300,13 @@ func New(options ...Option) *Fusion {
 	}
 
 	// Update cache with logger if we're using the default in-memory cache
+	// Use FileCache for persistent storage by default
 	if _, isInMemory := fusion.cache.(*InMemoryCache); isInMemory {
-		fusion.cache = NewInMemoryCacheWithLogger(fusion.logger)
+		// Replace default in-memory cache with file cache for persistence
+		fusion.cache = NewFileCache(fusion.logger)
+		if fusion.logger != nil {
+			fusion.logger.Info("Using file-based cache for persistent token storage")
+		}
 	}
 
 	// Update metrics collector with logger

@@ -112,11 +112,57 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
+	// Log final request after authentication is applied
+	if h.fusion.logger != nil {
+		h.fusion.logger.Debugf("\n=== Final Request (with auth) ===")
+		h.fusion.logger.Debugf("Method: %s", req.Method)
+		h.fusion.logger.Debugf("URL: %s", req.URL.String())
+		h.fusion.logger.Debugf("Headers after auth:")
+		for name, values := range req.Header {
+			// Redact sensitive headers but show they exist
+			if strings.Contains(strings.ToLower(name), "authorization") || 
+			   strings.Contains(strings.ToLower(name), "api-key") ||
+			   strings.Contains(strings.ToLower(name), "token") ||
+			   strings.Contains(strings.ToLower(name), "x-api") {
+				if len(values) > 0 {
+					h.fusion.logger.Debugf("  %s: [REDACTED - length %d]", name, len(values[0]))
+				}
+			} else {
+				for _, value := range values {
+					h.fusion.logger.Debugf("  %s: %s", name, value)
+				}
+			}
+		}
+		if req.Body != nil {
+			// Try to peek at body if possible
+			if req.GetBody != nil {
+				bodyReader, _ := req.GetBody()
+				if bodyReader != nil {
+					bodyBytes, _ := io.ReadAll(bodyReader)
+					bodyPreview := string(bodyBytes)
+					if len(bodyPreview) > 500 {
+						bodyPreview = bodyPreview[:500] + "... [truncated]"
+					}
+					h.fusion.logger.Debugf("Body: %s", bodyPreview)
+				}
+			} else {
+				h.fusion.logger.Debugf("Body: <present but not readable>")
+			}
+		} else {
+			h.fusion.logger.Debugf("Body: <none>")
+		}
+		h.fusion.logger.Debugf("=================================")
+	}
+
 	// Execute request with enhanced retry logic and metrics
 	resp, requestMetrics, err := h.executeRequest(ctx, req, correlationID)
 	if err != nil {
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Request execution failed [%s]: %v", correlationID, err)
+			if requestMetrics != nil {
+				h.fusion.logger.Debugf("Request metrics: StatusCode=%d, Latency=%v, RetryCount=%d", 
+					requestMetrics.StatusCode, requestMetrics.Latency, requestMetrics.RetryCount)
+			}
 		}
 
 		// Create API error with correlation ID if we have response details
@@ -254,10 +300,18 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 			}
 		} else {
 			// Single attempt without retry
+			if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("Executing HTTP request: %s %s", req.Method, req.URL.String())
+			}
 			resp, err = h.fusion.httpClient.Do(req)
 			if err != nil {
+				if h.fusion.logger != nil {
+					h.fusion.logger.Debugf("HTTP request failed: %v", err)
+				}
 				// Wrap network errors even when not using retry
 				err = h.wrapNetworkError(err, req)
+			} else if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("HTTP response received: Status=%d", resp.StatusCode)
 			}
 		}
 		return err
@@ -314,6 +368,25 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Debug log the response
+	if h.fusion.logger != nil {
+		h.fusion.logger.Debugf("\n=== HTTP Response Debug ===")
+		h.fusion.logger.Debugf("Status Code: %d", resp.StatusCode)
+		h.fusion.logger.Debugf("Status: %s", resp.Status)
+		h.fusion.logger.Debugf("Headers:")
+		for name, values := range resp.Header {
+			for _, value := range values {
+				h.fusion.logger.Debugf("  %s: %s", name, value)
+			}
+		}
+		bodyPreview := string(body)
+		if len(bodyPreview) > 1000 {
+			bodyPreview = bodyPreview[:1000] + "... [truncated]"
+		}
+		h.fusion.logger.Debugf("Body (%d bytes): %s", len(body), bodyPreview)
+		h.fusion.logger.Debugf("============================")
 	}
 
 	// Check for errors

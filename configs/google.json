@@ -7,12 +7,7 @@
         "type": "oauth2_device",
         "config": {
           "clientId": "${GOOGLE_CLIENT_ID}",
-          "scope": [
-            "https://www.googleapis.com/auth/calendar",
-            "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.send",
-            "https://www.googleapis.com/auth/drive"
-          ],
+          "scope": "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive",
           "authorizationURL": "https://oauth2.googleapis.com/device/code",
           "tokenURL": "https://oauth2.googleapis.com/token"
         }

@@ -460,21 +460,15 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 			"tokenURL is required for OAuth2 device flow", nil)
 	}
 
+	// Extract required scope parameter
+	scope, ok := config["scope"].(string)
+	if !ok || scope == "" {
+		return nil, NewAuthenticationError(AuthTypeOAuth2Device, "",
+			"scope is required for OAuth2 device flow", nil)
+	}
+
 	// Handle optional parameters
 	tenantID, _ := config["tenantId"].(string)
-	scopeInterface, _ := config["scope"]
-
-	var scopes []string
-	switch v := scopeInterface.(type) {
-	case []string:
-		scopes = v
-	case []interface{}:
-		for _, s := range v {
-			if str, ok := s.(string); ok {
-				scopes = append(scopes, str)
-			}
-		}
-	}
 
 	// Replace {tenantId} in URLs if provided
 	if tenantID != "" {
@@ -536,7 +530,7 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 		s.logger.Debug("Requesting new device code")
 	}
 
-	deviceCode, err := s.requestDeviceCode(ctx, authorizationURL, clientID, scopes)
+	deviceCode, err := s.requestDeviceCode(ctx, authorizationURL, clientID, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +545,7 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 		ExpiresIn:       deviceCode.ExpiresIn,
 		ClientID:        clientID,
 		TokenURL:        tokenURL,
-		Scopes:          scopes,
+		Scopes:          []string{scope}, // Convert back to array for compatibility
 	}
 
 	// Cache the device code information
@@ -575,16 +569,14 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 }
 
 // requestDeviceCode requests a device code from the authorization server
-func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, authURL string, clientID string, scopes []string) (*deviceCodeResponse, error) {
+func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, authURL string, clientID string, scope string) (*deviceCodeResponse, error) {
 	if s.logger != nil {
 		s.logger.Debugf("Requesting device code from: %s", authURL)
 	}
 
 	data := make(map[string][]string)
 	data["client_id"] = []string{clientID}
-	if len(scopes) > 0 {
-		data["scope"] = []string{joinScopes(scopes)}
-	}
+	data["scope"] = []string{scope}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", authURL, strings.NewReader(encodeFormData(data)))
 	if err != nil {
