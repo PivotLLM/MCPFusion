@@ -66,6 +66,14 @@
                 "targetName": "endDateTime",
                 "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
               }
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,start,end"
             }
           ],
           "response": {

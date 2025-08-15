@@ -103,6 +103,7 @@ type ParameterConfig struct {
 	Required    bool              `json:"required"`
 	Location    ParameterLocation `json:"location"`
 	Default     interface{}       `json:"default,omitempty"`
+	Examples    []interface{}     `json:"examples,omitempty"`
 	Validation  *ValidationConfig `json:"validation,omitempty"`
 	Transform   *TransformConfig  `json:"transform,omitempty"`
 }
@@ -110,9 +111,26 @@ type ParameterConfig struct {
 // ValidationConfig represents validation rules for a parameter
 type ValidationConfig struct {
 	Pattern   string        `json:"pattern,omitempty"`
-	MinLength int           `json:"minLength,omitempty"`
-	MaxLength int           `json:"maxLength,omitempty"`
+	MinLength *int          `json:"minLength,omitempty"`
+	MaxLength *int          `json:"maxLength,omitempty"`
+	Minimum   *float64      `json:"minimum,omitempty"`
+	Maximum   *float64      `json:"maximum,omitempty"`
 	Enum      []interface{} `json:"enum,omitempty"`
+	Format    string        `json:"format,omitempty"`
+}
+
+// IsValidEnumValue checks if a value is valid according to the enum constraints
+func (v *ValidationConfig) IsValidEnumValue(value interface{}) bool {
+	if len(v.Enum) == 0 {
+		return true // No enum constraints
+	}
+	
+	for _, allowedValue := range v.Enum {
+		if fmt.Sprintf("%v", value) == fmt.Sprintf("%v", allowedValue) {
+			return true
+		}
+	}
+	return false
 }
 
 // TransformConfig represents transformation rules for a parameter
@@ -744,16 +762,16 @@ func (v *ValidationConfig) ValidateWithLogger(serviceName, endpointID, parameter
 		}
 	}
 
-	if v.MinLength < 0 {
+	if v.MinLength != nil && *v.MinLength < 0 {
 		if logger != nil {
-			logger.Errorf("Service %s: endpoint %s parameter %s minLength cannot be negative: %d", serviceName, endpointID, parameterName, v.MinLength)
+			logger.Errorf("Service %s: endpoint %s parameter %s minLength cannot be negative: %d", serviceName, endpointID, parameterName, *v.MinLength)
 		}
 		return fmt.Errorf("minLength cannot be negative")
 	}
 
-	if v.MaxLength > 0 && v.MinLength > v.MaxLength {
+	if v.MaxLength != nil && v.MinLength != nil && *v.MaxLength > 0 && *v.MinLength > *v.MaxLength {
 		if logger != nil {
-			logger.Errorf("Service %s: endpoint %s parameter %s minLength (%d) cannot be greater than maxLength (%d)", serviceName, endpointID, parameterName, v.MinLength, v.MaxLength)
+			logger.Errorf("Service %s: endpoint %s parameter %s minLength (%d) cannot be greater than maxLength (%d)", serviceName, endpointID, parameterName, *v.MinLength, *v.MaxLength)
 		}
 		return fmt.Errorf("minLength cannot be greater than maxLength")
 	}
@@ -947,19 +965,6 @@ func (p *ParameterConfig) GetTransformedParameterName() string {
 	return p.Name
 }
 
-// IsValidEnumValue checks if a value is valid according to enum validation
-func (v *ValidationConfig) IsValidEnumValue(value interface{}) bool {
-	if len(v.Enum) == 0 {
-		return true
-	}
-
-	for _, enumValue := range v.Enum {
-		if enumValue == value {
-			return true
-		}
-	}
-	return false
-}
 
 // MatchesPattern checks if a string value matches the validation pattern
 func (v *ValidationConfig) MatchesPattern(value string) bool {
@@ -979,11 +984,11 @@ func (v *ValidationConfig) MatchesPattern(value string) bool {
 func (v *ValidationConfig) IsValidLength(value string) bool {
 	length := len(value)
 
-	if v.MinLength > 0 && length < v.MinLength {
+	if v.MinLength != nil && *v.MinLength > 0 && length < *v.MinLength {
 		return false
 	}
 
-	if v.MaxLength > 0 && length > v.MaxLength {
+	if v.MaxLength != nil && *v.MaxLength > 0 && length > *v.MaxLength {
 		return false
 	}
 

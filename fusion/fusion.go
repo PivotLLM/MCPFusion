@@ -467,11 +467,38 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 	// Create tool parameters from endpoint parameters
 	var parameters []global.Parameter
 	for _, param := range endpoint.Parameters {
-		parameters = append(parameters, global.Parameter{
+		globalParam := global.Parameter{
 			Name:        param.Name,
 			Description: param.Description,
 			Required:    param.Required,
-		})
+			Type:        string(param.Type),
+			Default:     param.Default,
+			Examples:    param.Examples,
+		}
+		
+		// Copy validation rules if present
+		if param.Validation != nil {
+			globalParam.Pattern = param.Validation.Pattern
+			globalParam.Format = param.Validation.Format
+			globalParam.Enum = param.Validation.Enum
+			if param.Validation.MinLength != nil {
+				globalParam.MinLength = param.Validation.MinLength
+			}
+			if param.Validation.MaxLength != nil {
+				globalParam.MaxLength = param.Validation.MaxLength
+			}
+			if param.Validation.Minimum != nil {
+				globalParam.Minimum = param.Validation.Minimum
+			}
+			if param.Validation.Maximum != nil {
+				globalParam.Maximum = param.Validation.Maximum
+			}
+		}
+		
+		// Use enhanced description
+		globalParam.Description = globalParam.EnhancedDescription()
+		
+		parameters = append(parameters, globalParam)
 	}
 
 	// Create the tool handler
@@ -1545,3 +1572,4 @@ func (f *Fusion) StartMetricsLogging(ctx context.Context, interval time.Duration
 		f.metricsCollector.StartPeriodicLogging(ctx, interval)
 	}
 }
+

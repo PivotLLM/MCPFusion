@@ -174,14 +174,14 @@ func (v *Validator) applyValidationRules(param ParameterConfig, value interface{
 
 	// Length validation for strings
 	if str, ok := value.(string); ok {
-		if validation.MinLength > 0 && len(str) < validation.MinLength {
+		if validation.MinLength != nil && *validation.MinLength > 0 && len(str) < *validation.MinLength {
 			return NewValidationError(param.Name, str, "minLength",
-				fmt.Sprintf("value length %d is less than minimum %d", len(str), validation.MinLength))
+				fmt.Sprintf("value length %d is less than minimum %d", len(str), *validation.MinLength))
 		}
 
-		if validation.MaxLength > 0 && len(str) > validation.MaxLength {
+		if validation.MaxLength != nil && *validation.MaxLength > 0 && len(str) > *validation.MaxLength {
 			return NewValidationError(param.Name, str, "maxLength",
-				fmt.Sprintf("value length %d exceeds maximum %d", len(str), validation.MaxLength))
+				fmt.Sprintf("value length %d exceeds maximum %d", len(str), *validation.MaxLength))
 		}
 	}
 

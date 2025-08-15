@@ -428,11 +428,11 @@ func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]int
 			if param.Validation.Pattern != "" {
 				prop["pattern"] = param.Validation.Pattern
 			}
-			if param.Validation.MinLength > 0 {
-				prop["minLength"] = param.Validation.MinLength
+			if param.Validation.MinLength != nil && *param.Validation.MinLength > 0 {
+				prop["minLength"] = *param.Validation.MinLength
 			}
-			if param.Validation.MaxLength > 0 {
-				prop["maxLength"] = param.Validation.MaxLength
+			if param.Validation.MaxLength != nil && *param.Validation.MaxLength > 0 {
+				prop["maxLength"] = *param.Validation.MaxLength
 			}
 			if len(param.Validation.Enum) > 0 {
 				prop["enum"] = param.Validation.Enum

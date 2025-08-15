@@ -5,11 +5,69 @@
 
 package global
 
-// Parameter represents a parameter for a tool, resource, or prompt
+import "fmt"
+
+// Parameter represents a parameter for a tool, resource, or prompt with rich metadata
 type Parameter struct {
-	Name        string
-	Description string
-	Required    bool
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Required    bool                   `json:"required"`
+	Type        string                 `json:"type"`           // "string", "number", "boolean", "array", "object"
+	Default     interface{}            `json:"default"`        // Default value
+	Enum        []interface{}          `json:"enum"`           // Valid values
+	Pattern     string                 `json:"pattern"`        // Validation pattern
+	Minimum     *float64               `json:"minimum"`        // Min value (numbers)
+	Maximum     *float64               `json:"maximum"`        // Max value (numbers)
+	MinLength   *int                   `json:"minLength"`      // Min length (strings/arrays)
+	MaxLength   *int                   `json:"maxLength"`      // Max length (strings/arrays)
+	Format      string                 `json:"format"`         // "date", "email", "uri", etc.
+	Examples    []interface{}          `json:"examples"`       // Example values
+	Metadata    map[string]interface{} `json:"metadata"`       // Extensible for future needs
+}
+
+// EnhancedDescription generates a rich description with constraint information
+func (p Parameter) EnhancedDescription() string {
+	desc := p.Description
+	
+	// Add default value
+	if p.Default != nil {
+		desc += fmt.Sprintf(" (default: %v)", p.Default)
+	}
+	
+	// Add valid values (limit to reasonable length)
+	if len(p.Enum) > 0 && len(p.Enum) <= 10 {
+		desc += fmt.Sprintf(" (valid: %v)", p.Enum)
+	} else if len(p.Enum) > 10 {
+		desc += fmt.Sprintf(" (valid values: %d options available)", len(p.Enum))
+	}
+	
+	// Add range constraints
+	if p.Minimum != nil && p.Maximum != nil {
+		desc += fmt.Sprintf(" (range: %v-%v)", *p.Minimum, *p.Maximum)
+	} else if p.Minimum != nil {
+		desc += fmt.Sprintf(" (min: %v)", *p.Minimum)
+	} else if p.Maximum != nil {
+		desc += fmt.Sprintf(" (max: %v)", *p.Maximum)
+	}
+	
+	// Add length constraints
+	if p.MinLength != nil && p.MaxLength != nil {
+		desc += fmt.Sprintf(" (length: %d-%d)", *p.MinLength, *p.MaxLength)
+	} else if p.MaxLength != nil {
+		desc += fmt.Sprintf(" (max length: %d)", *p.MaxLength)
+	}
+	
+	// Add format hints
+	if p.Format != "" {
+		desc += fmt.Sprintf(" (format: %s)", p.Format)
+	}
+	
+	// Add pattern hints
+	if p.Pattern != "" {
+		desc += fmt.Sprintf(" (pattern: %s)", p.Pattern)
+	}
+	
+	return desc
 }
 
 //
