@@ -69,8 +69,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "transform": ".value | map({subject: .subject, start: .start.dateTime, end: .end.dateTime})"
+            "type": "json"
           }
         },
         {
