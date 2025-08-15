@@ -101,7 +101,7 @@ func (d *DB) AddAPIToken(description string) (string, string, error) {
 		return "", "", err
 	}
 
-	d.logger.Infof("Created API token with hash %s (prefix: %s)", hash[:12]+"...", prefix)
+	d.logger.Infof("Created API token with hash %s (prefix: %s)", hash[:12], prefix)
 	return token, hash, nil
 }
 
@@ -176,7 +176,7 @@ func (d *DB) ValidateAPIToken(token string) (bool, string, error) {
 		return false, "", nil
 	}
 
-	d.logger.Debugf("Valid API token validated: %s", hash[:12]+"...")
+	d.logger.Debugf("Valid API token validated: %s", hash[:12])
 	return true, hash, nil
 }
 
@@ -277,7 +277,7 @@ func (d *DB) DeleteAPIToken(hash string) error {
 		return err
 	}
 
-	d.logger.Infof("Deleted API token with hash %s", hash[:12]+"...")
+	d.logger.Infof("Deleted API token with hash %s", hash[:12])
 	return nil
 }
 
@@ -351,7 +351,7 @@ func (d *DB) GetAPITokenMetadata(hash string) (*APITokenMetadata, error) {
 		return nil, err
 	}
 
-	d.logger.Debugf("Retrieved API token metadata for hash %s", hash[:12]+"...")
+	d.logger.Debugf("Retrieved API token metadata for hash %s", hash[:12])
 	return metadata, nil
 }
 
@@ -413,7 +413,7 @@ func (d *DB) ResolveAPIToken(identifier string) (string, error) {
 		}
 
 		if len(matches) > 1 {
-			return NewValidationError("identifier", identifier, 
+			return NewValidationError("identifier", identifier,
 				fmt.Sprintf("ambiguous identifier matches %d tokens", len(matches)))
 		}
 
@@ -429,6 +429,6 @@ func (d *DB) ResolveAPIToken(identifier string) (string, error) {
 		return "", NewTokenError("api", identifier, ErrTokenNotFound)
 	}
 
-	d.logger.Debugf("Resolved identifier %s to hash %s", identifier, resolvedHash[:12]+"...")
+	d.logger.Debugf("Resolved identifier %s to hash %s", identifier, resolvedHash[:12])
 	return resolvedHash, nil
 }

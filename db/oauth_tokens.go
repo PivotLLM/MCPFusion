@@ -80,7 +80,7 @@ func (d *DB) StoreOAuthToken(tenantHash, serviceName string, tokenData *OAuthTok
 		return err
 	}
 
-	d.logger.Infof("Stored OAuth token for tenant %s service %s", tenantHash[:12]+"...", serviceName)
+	d.logger.Infof("Stored OAuth token for tenant %s service %s", tenantHash[:12], serviceName)
 	return nil
 }
 
@@ -138,7 +138,7 @@ func (d *DB) GetOAuthToken(tenantHash, serviceName string) (*OAuthTokenData, err
 		return nil, err
 	}
 
-	d.logger.Debugf("Retrieved OAuth token for tenant %s service %s", tenantHash[:12]+"...", serviceName)
+	d.logger.Debugf("Retrieved OAuth token for tenant %s service %s", tenantHash[:12], serviceName)
 	return tokenData, nil
 }
 
@@ -192,7 +192,7 @@ func (d *DB) DeleteOAuthToken(tenantHash, serviceName string) error {
 		return err
 	}
 
-	d.logger.Infof("Deleted OAuth token for tenant %s service %s", tenantHash[:12]+"...", serviceName)
+	d.logger.Infof("Deleted OAuth token for tenant %s service %s", tenantHash[:12], serviceName)
 	return nil
 }
 
@@ -232,7 +232,7 @@ func (d *DB) ListOAuthTokens(tenantHash string) (map[string]*OAuthTokenData, err
 		// Iterate through all OAuth tokens
 		return oauthBucket.ForEach(func(k, v []byte) error {
 			serviceName := string(k)
-			
+
 			var tokenData OAuthTokenData
 			if err := json.Unmarshal(v, &tokenData); err != nil {
 				d.logger.Warningf("Failed to unmarshal OAuth token for service %s: %v", serviceName, err)
@@ -248,7 +248,7 @@ func (d *DB) ListOAuthTokens(tenantHash string) (map[string]*OAuthTokenData, err
 		return nil, err
 	}
 
-	d.logger.Debugf("Listed %d OAuth tokens for tenant %s", len(tokens), tenantHash[:12]+"...")
+	d.logger.Debugf("Listed %d OAuth tokens for tenant %s", len(tokens), tenantHash[:12])
 	return tokens, nil
 }
 
@@ -323,6 +323,6 @@ func (d *DB) RefreshOAuthToken(tenantHash, serviceName, newAccessToken string, e
 		return err
 	}
 
-	d.logger.Infof("Refreshed OAuth token for tenant %s service %s", tenantHash[:12]+"...", serviceName)
+	d.logger.Infof("Refreshed OAuth token for tenant %s service %s", tenantHash[:12], serviceName)
 	return nil
 }

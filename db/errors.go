@@ -12,16 +12,16 @@ import (
 
 // Base error types
 var (
-	ErrTenantNotFound    = errors.New("tenant not found")
-	ErrTokenNotFound     = errors.New("token not found")
-	ErrServiceNotFound   = errors.New("service not found")
-	ErrInvalidToken      = errors.New("invalid token")
-	ErrInvalidHash       = errors.New("invalid hash")
-	ErrDuplicateToken    = errors.New("duplicate token")
-	ErrDatabaseClosed    = errors.New("database is closed")
-	ErrInvalidBucket     = errors.New("invalid bucket structure")
-	ErrCorruptedData     = errors.New("corrupted data")
-	ErrPermissionDenied  = errors.New("permission denied")
+	ErrTenantNotFound   = errors.New("tenant not found")
+	ErrTokenNotFound    = errors.New("token not found")
+	ErrServiceNotFound  = errors.New("service not found")
+	ErrInvalidToken     = errors.New("invalid token")
+	ErrInvalidHash      = errors.New("invalid hash")
+	ErrDuplicateToken   = errors.New("duplicate token")
+	ErrDatabaseClosed   = errors.New("database is closed")
+	ErrInvalidBucket    = errors.New("invalid bucket structure")
+	ErrCorruptedData    = errors.New("corrupted data")
+	ErrPermissionDenied = errors.New("permission denied")
 )
 
 // DatabaseError represents a database-specific error with context
@@ -34,10 +34,10 @@ type DatabaseError struct {
 
 func (e *DatabaseError) Error() string {
 	if e.TenantID != "" && e.Service != "" {
-		return fmt.Sprintf("db %s (tenant: %s, service: %s): %v", e.Op, e.TenantID[:8]+"...", e.Service, e.Err)
+		return fmt.Sprintf("db %s (tenant: %s, service: %s): %v", e.Op, e.TenantID[:8], e.Service, e.Err)
 	}
 	if e.TenantID != "" {
-		return fmt.Sprintf("db %s (tenant: %s): %v", e.Op, e.TenantID[:8]+"...", e.Err)
+		return fmt.Sprintf("db %s (tenant: %s): %v", e.Op, e.TenantID[:8], e.Err)
 	}
 	return fmt.Sprintf("db %s: %v", e.Op, e.Err)
 }
@@ -115,10 +115,10 @@ func IsNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	return errors.Is(err, ErrTenantNotFound) ||
-		   errors.Is(err, ErrTokenNotFound) ||
-		   errors.Is(err, ErrServiceNotFound)
+		errors.Is(err, ErrTokenNotFound) ||
+		errors.Is(err, ErrServiceNotFound)
 }
 
 // IsDatabaseError checks if an error is a DatabaseError

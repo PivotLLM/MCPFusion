@@ -96,7 +96,7 @@ func (d *DB) StoreCredentials(tenantHash, serviceName string, credentials *Servi
 		return err
 	}
 
-	d.logger.Infof("Stored %s credentials for tenant %s service %s", credentials.Type, tenantHash[:12]+"...", serviceName)
+	d.logger.Infof("Stored %s credentials for tenant %s service %s", credentials.Type, tenantHash[:12], serviceName)
 	return nil
 }
 
@@ -154,7 +154,7 @@ func (d *DB) GetCredentials(tenantHash, serviceName string) (*ServiceCredentials
 		return nil, err
 	}
 
-	d.logger.Debugf("Retrieved %s credentials for tenant %s service %s", credentials.Type, tenantHash[:12]+"...", serviceName)
+	d.logger.Debugf("Retrieved %s credentials for tenant %s service %s", credentials.Type, tenantHash[:12], serviceName)
 	return credentials, nil
 }
 
@@ -208,7 +208,7 @@ func (d *DB) DeleteCredentials(tenantHash, serviceName string) error {
 		return err
 	}
 
-	d.logger.Infof("Deleted credentials for tenant %s service %s", tenantHash[:12]+"...", serviceName)
+	d.logger.Infof("Deleted credentials for tenant %s service %s", tenantHash[:12], serviceName)
 	return nil
 }
 
@@ -248,7 +248,7 @@ func (d *DB) ListCredentials(tenantHash string) (map[string]*ServiceCredentials,
 		// Iterate through all service credentials
 		return credentialsBucket.ForEach(func(k, v []byte) error {
 			serviceName := string(k)
-			
+
 			var serviceCredentials ServiceCredentials
 			if err := json.Unmarshal(v, &serviceCredentials); err != nil {
 				d.logger.Warningf("Failed to unmarshal credentials for service %s: %v", serviceName, err)
@@ -264,7 +264,7 @@ func (d *DB) ListCredentials(tenantHash string) (map[string]*ServiceCredentials,
 		return nil, err
 	}
 
-	d.logger.Debugf("Listed %d service credentials for tenant %s", len(credentials), tenantHash[:12]+"...")
+	d.logger.Debugf("Listed %d service credentials for tenant %s", len(credentials), tenantHash[:12])
 	return credentials, nil
 }
 
@@ -338,7 +338,7 @@ func (d *DB) UpdateCredentials(tenantHash, serviceName string, credentials *Serv
 		return err
 	}
 
-	d.logger.Infof("Updated %s credentials for tenant %s service %s", credentials.Type, tenantHash[:12]+"...", serviceName)
+	d.logger.Infof("Updated %s credentials for tenant %s service %s", credentials.Type, tenantHash[:12], serviceName)
 	return nil
 }
 
@@ -367,7 +367,7 @@ func (d *DB) GetCredentialsByType(tenantHash string, credType CredentialType) (m
 		}
 	}
 
-	d.logger.Debugf("Found %d %s credentials for tenant %s", len(filteredCredentials), credType, tenantHash[:12]+"...")
+	d.logger.Debugf("Found %d %s credentials for tenant %s", len(filteredCredentials), credType, tenantHash[:12])
 	return filteredCredentials, nil
 }
 

@@ -118,7 +118,7 @@ func (d *DB) GetTenantInfo(hash string) (*TenantInfo, error) {
 		return nil, err
 	}
 
-	d.logger.Debugf("Retrieved tenant info for %s (OAuth: %d, Creds: %d)", hash[:12]+"...", tenantInfo.OAuthCount, tenantInfo.CredCount)
+	d.logger.Debugf("Retrieved tenant info for %s (OAuth: %d, Creds: %d)", hash[:12], tenantInfo.OAuthCount, tenantInfo.CredCount)
 	return tenantInfo, nil
 }
 
@@ -145,7 +145,7 @@ func (d *DB) ListTenants() ([]TenantInfo, error) {
 			}
 
 			tenantHash := string(k)
-			
+
 			// Validate that this looks like a tenant hash
 			if err := internal.ValidateHash(tenantHash); err != nil {
 				// Skip invalid hashes (might be other data)
@@ -285,7 +285,7 @@ func (d *DB) UpdateTenantMetadata(tenantHash, description string) error {
 		now := time.Now()
 		metadata["description"] = description
 		metadata["updated_at"] = now.Format(time.RFC3339)
-		
+
 		// Set created_at if not already set
 		if _, exists := metadata["created_at"]; !exists {
 			metadata["created_at"] = now.Format(time.RFC3339)
@@ -308,7 +308,7 @@ func (d *DB) UpdateTenantMetadata(tenantHash, description string) error {
 		return err
 	}
 
-	d.logger.Infof("Updated metadata for tenant %s", tenantHash[:12]+"...")
+	d.logger.Infof("Updated metadata for tenant %s", tenantHash[:12])
 	return nil
 }
 
@@ -424,7 +424,7 @@ func (d *DB) DeleteTenant(tenantHash string) error {
 			return NewDatabaseError("delete_tenant", fmt.Errorf("failed to delete tenant bucket: %w", err))
 		}
 
-		d.logger.Infof("Deleted tenant %s (OAuth tokens: %d, credentials: %d)", tenantHash[:12]+"...", oauthCount, credCount)
+		d.logger.Infof("Deleted tenant %s (OAuth tokens: %d, credentials: %d)", tenantHash[:12], oauthCount, credCount)
 		return nil
 	})
 

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -41,6 +42,11 @@ func main() {
 	helpFlag := flag.Bool("help", false, "Show help information")
 	versionFlag := flag.Bool("version", false, "Show version information")
 
+	// Token management subcommands
+	tokenAddFlag := flag.String("token-add", "", "Add new API token with description")
+	tokenListFlag := flag.Bool("token-list", false, "List all API tokens")
+	tokenDeleteFlag := flag.String("token-del", "", "Delete API token by prefix or hash")
+
 	// Set custom usage message
 	flag.Usage = func() {
 		fmt.Printf("MCPFusion - Multi-Tenant Model Context Protocol Server\n\n")
@@ -59,24 +65,22 @@ func main() {
 		fmt.Printf("        Port to listen on (default 8888)\n")
 		fmt.Printf("  -version\n")
 		fmt.Printf("        Show version information\n\n")
-		fmt.Printf("Token Management:\n")
-		fmt.Printf("  MCPFusion requires API tokens for authentication. Use the token CLI:\n\n")
-		fmt.Printf("  # Build token management CLI\n")
-		fmt.Printf("  go build -o mcpfusion-token ./cmd/token\n\n")
-		fmt.Printf("  # Generate new API token\n")
-		fmt.Printf("  ./mcpfusion-token add \"Description of token\"\n\n")
-		fmt.Printf("  # List all tokens\n")
-		fmt.Printf("  ./mcpfusion-token list\n\n")
-		fmt.Printf("  # Delete token (by prefix or hash)\n")
-		fmt.Printf("  ./mcpfusion-token delete <token-prefix>\n\n")
+		fmt.Printf("Token Management Commands:\n")
+		fmt.Printf("  -token-add string\n")
+		fmt.Printf("        Add new API token with description\n")
+		fmt.Printf("  -token-list\n")
+		fmt.Printf("        List all API tokens\n")
+		fmt.Printf("  -token-del string\n")
+		fmt.Printf("        Delete API token by prefix or hash\n\n")
 		fmt.Printf("Environment Variables:\n")
-		fmt.Printf("  MCP_DB_DATA_DIR     Custom database directory (default: /opt/mcpfusion or ~/.mcpfusion)\n\n")
+		fmt.Printf("  MCP_FUSION_DB_DIR   Custom database directory (default: /opt/mcpfusion or ~/.mcpfusion)\n\n")
 		fmt.Printf("Examples:\n")
 		fmt.Printf("  # Start server with configuration\n")
 		fmt.Printf("  %s -config configs/microsoft365.json -port 8888\n\n", os.Args[0])
-		fmt.Printf("  # Use with bearer token authentication\n")
-		fmt.Printf("  curl -H \"Authorization: Bearer YOUR_TOKEN\" http://localhost:8888/api/endpoint\n\n")
-		fmt.Printf("For more information, see: https://github.com/PivotLLM/MCPFusion\n")
+		fmt.Printf("  # Token management examples\n")
+		fmt.Printf("  %s -token-add \"Production token\"\n", os.Args[0])
+		fmt.Printf("  %s -token-list\n", os.Args[0])
+		fmt.Printf("  %s -token-del abc12345\n\n", os.Args[0])
 	}
 
 	// Parse command line flags
@@ -165,50 +169,59 @@ func main() {
 
 	// Initialize database (required for multi-tenant operation)
 	logger.Info("Initializing database for multi-tenant support")
-	
+
 	// Database configuration
-	dbDataDir := os.Getenv("MCP_DB_DATA_DIR")
+	dbDataDir := os.Getenv("MCP_FUSION_DB_DIR")
 	dbOpts := []db.Option{
 		db.WithLogger(logger),
 	}
 	if dbDataDir != "" {
 		dbOpts = append(dbOpts, db.WithDataDir(dbDataDir))
 	}
-	
+
 	// Initialize database (required)
 	database, err := db.New(dbOpts...)
 	if err != nil {
 		logger.Fatalf("Failed to initialize database: %v", err)
 	}
 	logger.Info("Database initialized successfully")
-	
+
+	// Handle token management commands if specified
+	if *tokenAddFlag != "" || *tokenListFlag || *tokenDeleteFlag != "" {
+		if err := handleTokenCommands(database, *tokenAddFlag, *tokenListFlag, *tokenDeleteFlag, logger); err != nil {
+			logger.Fatalf("Token management failed: %v", err)
+		}
+		// Exit after token management - don't start server
+		os.Exit(0)
+	}
+
 	// Initialize database-backed cache
 	dbCache := fusion.NewDatabaseCache(database.(*db.DB), logger)
-	
+
 	// Create multi-tenant authentication manager
 	multiTenantAuth := fusion.NewMultiTenantAuthManager(database.(*db.DB), dbCache, logger)
-	
+
 	// Register authentication strategies
 	oauthStrategy := fusion.NewOAuth2DeviceFlowStrategy(
 		&http.Client{Timeout: 30 * time.Second}, logger)
 	multiTenantAuth.RegisterStrategy(oauthStrategy)
-	
+
 	// Register other auth strategies
 	bearerStrategy := fusion.NewBearerTokenStrategy(logger)
 	multiTenantAuth.RegisterStrategy(bearerStrategy)
-	
+
 	apiKeyStrategy := fusion.NewAPIKeyStrategy(logger)
 	multiTenantAuth.RegisterStrategy(apiKeyStrategy)
-	
+
 	basicStrategy := fusion.NewBasicAuthStrategy(logger)
 	multiTenantAuth.RegisterStrategy(basicStrategy)
-	
+
 	// Initialize service resolver
 	serviceResolver := fusion.NewServiceConfigResolver(
 		fusion.WithSRLogger(logger),
 		fusion.WithAutoReload(5*time.Minute),
 	)
-	
+
 	logger.Info("Multi-tenant authentication system initialized")
 
 	// Create a slice (list) of tool providers
@@ -218,18 +231,18 @@ func main() {
 	var fusionProvider *fusion.Fusion
 	if fusionConfig != "" {
 		logger.Infof("Loading fusion provider with config file: %s", fusionConfig)
-		
+
 		// Configure fusion provider based on whether multi-tenant mode is enabled
 		fusionOpts := []fusion.Option{
 			fusion.WithLogger(logger),
 			fusion.WithJSONConfig(fusionConfig),
 		}
-		
+
 		// Add multi-tenant support if available
 		if multiTenantAuth != nil {
 			fusionOpts = append(fusionOpts, fusion.WithMultiTenantAuth(multiTenantAuth))
 		}
-		
+
 		fusionProvider = fusion.New(fusionOpts...)
 		providers = append(providers, fusionProvider)
 	}
@@ -251,7 +264,7 @@ func main() {
 		mcpserver.WithResourceProviders([]global.ResourceProvider{fusionProvider}),
 		mcpserver.WithPromptProviders([]global.PromptProvider{fusionProvider}),
 	}
-	
+
 	// Add multi-tenant authentication middleware (always enabled)
 	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, serviceResolver,
 		mcpserver.WithAuthLogger(logger),
@@ -260,7 +273,7 @@ func main() {
 	)
 	mcpOpts = append(mcpOpts, mcpserver.WithAuthMiddleware(authMiddleware))
 	logger.Info("Multi-tenant authentication middleware enabled")
-	
+
 	mcp, err := mcpserver.New(mcpOpts...)
 	if err != nil {
 		logger.Fatalf("Unable to create MCP server: %v", err)
@@ -299,4 +312,146 @@ func main() {
 
 	// Exit with success
 	os.Exit(0)
+}
+
+// handleTokenCommands processes token management commands
+func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, tokenDelete string, logger global.Logger) error {
+	if tokenAdd != "" {
+		return handleTokenAdd(database, tokenAdd, logger)
+	}
+
+	if tokenList {
+		return handleTokenList(database, logger)
+	}
+
+	if tokenDelete != "" {
+		return handleTokenDelete(database, tokenDelete, logger)
+	}
+
+	return nil
+}
+
+// handleTokenAdd creates a new API token
+func handleTokenAdd(database db.Database, description string, logger global.Logger) error {
+	if description == "" {
+		description = "API Token"
+	}
+
+	// Validate description length
+	if len(description) > 255 {
+		return fmt.Errorf("description too long (max 255 characters)")
+	}
+
+	fmt.Printf("Generating new API token...\n")
+
+	token, hash, err := database.AddAPIToken(description)
+	if err != nil {
+		return fmt.Errorf("failed to create API token: %w", err)
+	}
+
+	// Show the token only once with security warning
+	fmt.Printf("\n")
+	fmt.Printf("API Token created successfully\n")
+	fmt.Printf("\n")
+	fmt.Printf("SECURITY WARNING: This token will only be displayed once!\n")
+	fmt.Printf("   Copy it now and store it securely.\n")
+	fmt.Printf("\n")
+	fmt.Printf("Token:       %s\n", token)
+	fmt.Printf("Hash:        %s\n", hash[:12])
+	fmt.Printf("Description: %s\n", description)
+	fmt.Printf("\n")
+	fmt.Printf("Use this token in the Authorization header:\n")
+	fmt.Printf("  Authorization: Bearer %s\n", token)
+	fmt.Printf("\n")
+
+	return nil
+}
+
+// handleTokenList displays all API tokens
+func handleTokenList(database db.Database, logger global.Logger) error {
+	tokens, err := database.ListAPITokens()
+	if err != nil {
+		return fmt.Errorf("failed to list API tokens: %w", err)
+	}
+
+	if len(tokens) == 0 {
+		fmt.Printf("No API tokens found.\n")
+		fmt.Printf("Create one with: %s -token-add \"Description\"\n", os.Args[0])
+		return nil
+	}
+
+	fmt.Printf("API Tokens:\n")
+	fmt.Printf("%-10s %-20s %-20s %-20s %s\n", "PREFIX", "HASH", "CREATED", "LAST USED", "DESCRIPTION")
+	fmt.Printf("%-10s %-20s %-20s %-20s %s\n", "------", "----", "-------", "---------", "-----------")
+
+	for _, token := range tokens {
+		prefix := token.Hash[:8]
+		shortHash := token.Hash[:12]
+
+		createdAt := token.CreatedAt.Format("2006-01-02 15:04:05")
+
+		lastUsed := "Never used"
+		if !token.LastUsed.IsZero() {
+			lastUsed = token.LastUsed.Format("2006-01-02 15:04:05")
+		}
+
+		description := token.Description
+		if len(description) > 30 {
+			description = description[:27] + "..."
+		}
+
+		fmt.Printf("%-10s %-20s %-20s %-20s %s\n", prefix, shortHash, createdAt, lastUsed, description)
+	}
+
+	fmt.Printf("\nTotal: %d tokens\n", len(tokens))
+	return nil
+}
+
+// handleTokenDelete removes an API token
+func handleTokenDelete(database db.Database, identifier string, logger global.Logger) error {
+	if identifier == "" {
+		return fmt.Errorf("token identifier is required")
+	}
+
+	// List tokens to find matching one
+	tokens, err := database.ListAPITokens()
+	if err != nil {
+		return fmt.Errorf("failed to list API tokens: %w", err)
+	}
+
+	var matchedToken *db.APITokenMetadata
+	for _, token := range tokens {
+		if token.Hash == identifier || strings.HasPrefix(token.Hash, identifier) {
+			if matchedToken != nil {
+				return fmt.Errorf("multiple tokens match '%s'. Please use a longer prefix", identifier)
+			}
+			matchedToken = &token
+		}
+	}
+
+	if matchedToken == nil {
+		return fmt.Errorf("no API token found matching '%s'", identifier)
+	}
+
+	// Show token details and confirm deletion
+	fmt.Printf("Token Details:\n")
+	fmt.Printf("  Hash: %s\n", matchedToken.Hash[:12])
+	fmt.Printf("  Description: %s\n", matchedToken.Description)
+	fmt.Printf("  Created: %s\n", matchedToken.CreatedAt.Format("2006-01-02 15:04:05"))
+
+	fmt.Printf("Are you sure you want to delete this token? (y/N): ")
+	var response string
+	fmt.Scanln(&response)
+
+	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		fmt.Printf("Token deletion cancelled.\n")
+		return nil
+	}
+
+	if err := database.DeleteAPIToken(matchedToken.Hash); err != nil {
+		return fmt.Errorf("failed to delete API token: %w", err)
+	}
+
+	fmt.Printf("Token deleted successfully.\n")
+	return nil
 }

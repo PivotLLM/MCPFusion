@@ -45,12 +45,11 @@ A production-ready, configuration-driven MCP (Model Context Protocol) server tha
 
 2. **Build and Generate API Token**:
    ```bash
-   # Build both server and token CLI
+   # Build the server
    go build -o mcpfusion .
-   go build -o mcpfusion-token ./cmd/token
    
    # Generate API token for your application
-   ./mcpfusion-token add "Production environment"
+   ./mcpfusion -token-add "Production environment"
    ```
 
 3. **Start Server and Connect**:
@@ -118,20 +117,22 @@ MCPFusion includes a comprehensive CLI for managing API tokens:
 
 ```bash
 # Generate new API token
-mcpfusion-token add "Production environment"
+./mcpfusion -token-add "Production environment"
+> ✓ API Token created successfully
+> ⚠ SECURITY WARNING: This token will only be displayed once!
 > Token: 1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
 > Hash: a1b2c3d4e5f6789...
-> IMPORTANT: Save this token securely. It cannot be retrieved later.
 
 # List all tokens
-mcpfusion-token list
-> PREFIX    HASH               CREATED             LAST USED          DESCRIPTION
-> 1a2b3c4d  a1b2c3d4e5f6...    2025-01-15 10:30:00 2025-01-15 11:45:00 Production environment
-> 9f8e7d6c  f9e8d7c6b5a4...    2025-01-14 09:15:00 Never used          Development token
+./mcpfusion -token-list
+> PREFIX     HASH                 CREATED              LAST USED           DESCRIPTION
+> 1a2b3c4d   a1b2c3d4e5f6...      2025-01-15 10:30:00  2025-01-15 11:45:00  Production environment
+> 9f8e7d6c   f9e8d7c6b5a4...      2025-01-14 09:15:00  Never used           Development token
 
 # Delete token by prefix or hash
-mcpfusion-token delete 1a2b3c4d
+./mcpfusion -token-delete 1a2b3c4d
 > Token Details:
+>   Hash: a1b2c3d4e5f6...
 >   Description: Production environment
 >   Created: 2025-01-15 10:30:00
 > Are you sure you want to delete this token? (y/N): y

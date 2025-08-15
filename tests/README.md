@@ -31,12 +31,14 @@ This directory contains comprehensive test scripts for all Microsoft 365 MCP too
 ### Run All Tests
 ```bash
 cd tests
+# Ensure .env file exists with APIKEY
 ./run_all_tests.sh
 ```
 
 ### Run Individual Tests
 ```bash
 cd tests
+# Ensure .env file exists with APIKEY
 ./test_profile.sh > profile_output.log
 ./test_calendar_summary.sh > calendar_summary_output.log
 ./test_calendar_details.sh > calendar_details_output.log
@@ -133,4 +135,29 @@ All tests include validation of:
 
 - MCPFusion server running on port 8888
 - MCPProbe tool available at `/Users/eric/source/MCPProbe/probe`
+- Valid MCPFusion API token configured in `.env` file
 - Valid Microsoft 365 OAuth authentication
+
+## Authentication Setup
+
+All tests require an MCPFusion API token for authentication:
+
+1. **Create API Token**:
+   ```bash
+   # From MCPFusion root directory
+   ./mcpfusion -token-add "Test environment"
+   ```
+
+2. **Create .env File**:
+   ```bash
+   # In the tests directory
+   cd tests
+   echo "APIKEY=your-generated-token-here" > .env
+   ```
+
+3. **Run Tests**:
+   ```bash
+   ./run_all_tests.sh
+   ```
+
+**Security Note**: The `.env` file contains sensitive authentication tokens. Never commit this file to version control.
