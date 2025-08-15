@@ -31,7 +31,26 @@ func (m *MCPServer) AddTools() {
 				if param.Required {
 					options = append(options, mcp.Required())
 				}
-				toolOptions = append(toolOptions, mcp.WithString(param.Name, options...))
+				
+				// Use appropriate MCP parameter type based on param.Type
+				var toolOption mcp.ToolOption
+				switch param.Type {
+				case "string":
+					toolOption = mcp.WithString(param.Name, options...)
+				case "number":
+					toolOption = mcp.WithNumber(param.Name, options...)
+				case "boolean":
+					toolOption = mcp.WithBoolean(param.Name, options...)
+				case "array":
+					toolOption = mcp.WithArray(param.Name, options...)
+				case "object":
+					toolOption = mcp.WithObject(param.Name, options...)
+				default:
+					// Fallback to string for unknown types
+					toolOption = mcp.WithString(param.Name, options...)
+				}
+				
+				toolOptions = append(toolOptions, toolOption)
 			}
 
 			// Create the tool with all options
