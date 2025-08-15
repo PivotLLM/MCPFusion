@@ -177,6 +177,253 @@
           }
         },
         {
+          "id": "calendars_list",
+          "name": "List Calendars",
+          "description": "Get all calendars for the user",
+          "method": "GET",
+          "path": "/me/calendars",
+          "parameters": [
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,id,owner,isDefaultCalendar"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 1000,
+              "validation": {
+                "enum": [10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "1h"
+            }
+          }
+        },
+        {
+          "id": "calendar_read_event",
+          "name": "Read Calendar Event",
+          "description": "Get a specific calendar event by ID",
+          "method": "GET",
+          "path": "/me/events/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Event ID to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            }
+          }
+        },
+        {
+          "id": "calendar_events_read_summary",
+          "name": "Read Calendar Events Summary",
+          "description": "Get calendar events from a specific calendar with basic information",
+          "method": "GET",
+          "path": "/me/calendars/{calendarId}/events",
+          "parameters": [
+            {
+              "name": "calendarId",
+              "description": "Calendar ID to retrieve events from",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,start,end"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100,
+              "validation": {
+                "enum": [10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            }
+          }
+        },
+        {
+          "id": "calendar_events_read_details",
+          "name": "Read Calendar Events Details",
+          "description": "Get calendar events from a specific calendar with full details",
+          "method": "GET",
+          "path": "/me/calendars/{calendarId}/events",
+          "parameters": [
+            {
+              "name": "calendarId",
+              "description": "Calendar ID to retrieve events from",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,body,bodyPreview,organizer,attendees,start,end,location"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            }
+          }
+        },
+        {
           "id": "mail_read_inbox",
           "name": "Read Inbox Messages",
           "description": "Get inbox messages with basic information",
@@ -229,6 +476,148 @@
             "caching": {
               "enabled": true,
               "ttl": "5m"
+            }
+          }
+        },
+        {
+          "id": "mail_folders_list",
+          "name": "List Mail Folders",
+          "description": "Get all mail folders for the user",
+          "method": "GET",
+          "path": "/me/mailFolders",
+          "parameters": [
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "displayName,id,parentFolderId,childFolderCount,unreadItemCount,totalItemCount"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 1000,
+              "validation": {
+                "enum": [10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "30m"
+            }
+          }
+        },
+        {
+          "id": "mail_folder_messages",
+          "name": "Read Mail Folder Messages",
+          "description": "Get messages from a specific mail folder",
+          "method": "GET",
+          "path": "/me/mailFolders/{folderId}/messages",
+          "parameters": [
+            {
+              "name": "folderId",
+              "description": "Mail folder ID to retrieve messages from",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$top",
+              "description": "Number of messages to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,from,receivedDateTime,bodyPreview,isRead"
+            },
+            {
+              "name": "$filter",
+              "description": "Filter expression (e.g., 'isRead eq false')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "2m"
+            }
+          }
+        },
+        {
+          "id": "mail_read_message",
+          "name": "Read Mail Message",
+          "description": "Get a specific email message by ID",
+          "method": "GET",
+          "path": "/me/messages/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Message ID to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "15m"
             }
           }
         },
@@ -328,6 +717,36 @@
             "caching": {
               "enabled": true,
               "ttl": "15m"
+            }
+          }
+        },
+        {
+          "id": "contacts_read_contact",
+          "name": "Read Contact",
+          "description": "Get a specific contact by ID",
+          "method": "GET",
+          "path": "/me/contacts/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Contact ID to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "30m"
             }
           }
         }
