@@ -23,6 +23,7 @@ import (
 type TenantContext struct {
 	TenantHash  string            `json:"tenant_hash"`
 	ServiceName string            `json:"service_name"`
+	Description string            `json:"description,omitempty"`
 	Metadata    map[string]string `json:"metadata,omitempty"`
 	RequestID   string            `json:"request_id,omitempty"`
 	CreatedAt   time.Time         `json:"created_at"`
@@ -471,7 +472,7 @@ func (mtam *MultiTenantAuthManager) convertOAuthTokenDataToTokenInfo(tokenData *
 // ExtractTenantFromToken extracts tenant information from a bearer token
 func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*TenantContext, error) {
 	if token == "" {
-		return nil, fmt.Errorf("token is required")
+		return nil, fmt.Errorf("invalid token")
 	}
 
 	// Remove "Bearer " prefix if present
@@ -479,24 +480,64 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 		token = strings.TrimPrefix(token, "Bearer ")
 	}
 
+	// Validate the token against the database
+	if mtam.db != nil {
+		valid, hash, err := mtam.db.ValidateAPIToken(token)
+		if err != nil {
+			if mtam.logger != nil {
+				mtam.logger.Errorf("Token validation error: %v", err)
+			}
+			return nil, fmt.Errorf("invalid token")
+		}
+
+		if !valid {
+			if mtam.logger != nil {
+				mtam.logger.Warning("Invalid token provided")
+			}
+			return nil, fmt.Errorf("invalid token")
+		}
+
+		// Get token metadata for additional context
+		metadata, err := mtam.db.GetAPITokenMetadata(hash)
+		if err != nil {
+			if mtam.logger != nil {
+				mtam.logger.Warningf("Failed to get token metadata: %v", err)
+			}
+		}
+
+		tenantContext := &TenantContext{
+			TenantHash:  hash,
+			ServiceName: "default", // Service name will be resolved from request context
+			Metadata:    make(map[string]string),
+			CreatedAt:   time.Now(),
+		}
+
+		if metadata != nil {
+			tenantContext.Description = metadata.Description
+		}
+
+		if mtam.logger != nil {
+			mtam.logger.Debugf("Validated and extracted tenant context: %s", tenantContext.String())
+		}
+
+		return tenantContext, nil
+	}
+
+	// Fallback for when database is not available (legacy mode)
 	// Hash the token to create a tenant identifier
 	hasher := sha256.New()
 	hasher.Write([]byte(token))
 	tenantHash := hex.EncodeToString(hasher.Sum(nil))
 
-	// For now, we'll use a default service name. In a real implementation,
-	// the service name might be encoded in the token or derived from the request context
-	serviceName := "default"
-
 	tenantContext := &TenantContext{
 		TenantHash:  tenantHash,
-		ServiceName: serviceName,
+		ServiceName: "default",
 		Metadata:    make(map[string]string),
 		CreatedAt:   time.Now(),
 	}
 
 	if mtam.logger != nil {
-		mtam.logger.Debugf("Extracted tenant context from token: %s", tenantContext.String())
+		mtam.logger.Debugf("Extracted tenant context from token (legacy mode): %s", tenantContext.String())
 	}
 
 	return tenantContext, nil

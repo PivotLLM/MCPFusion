@@ -104,7 +104,7 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 				if am.logger != nil {
 					am.logger.Warningf("Missing bearer token for authenticated request to %s", r.URL.Path)
 				}
-				am.writeErrorResponse(w, http.StatusUnauthorized, "Bearer token required")
+				am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
 				return
 			} else {
 				// Auth not required, continue without tenant context
@@ -122,7 +122,7 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 			if am.logger != nil {
 				am.logger.Errorf("Failed to extract tenant context from token: %v", err)
 			}
-			am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid bearer token")
+			am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
 
@@ -416,7 +416,7 @@ func (avm *AuthValidationMiddleware) Middleware(next http.Handler) http.Handler 
 			if avm.logger != nil {
 				avm.logger.Warningf("Missing or invalid authorization header for %s %s", r.Method, r.URL.Path)
 			}
-			avm.writeError(w, http.StatusUnauthorized, "Bearer token required")
+			avm.writeError(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
 
@@ -425,7 +425,7 @@ func (avm *AuthValidationMiddleware) Middleware(next http.Handler) http.Handler 
 			if avm.logger != nil {
 				avm.logger.Warning("Empty bearer token provided")
 			}
-			avm.writeError(w, http.StatusUnauthorized, "Invalid bearer token")
+			avm.writeError(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
 
