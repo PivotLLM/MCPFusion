@@ -166,7 +166,7 @@ After successful authentication:
 
 ## Step 5: Available Microsoft 365 Tools
 
-Once configured, these 13 MCP tools are available:
+Once configured, these 19 MCP tools are available:
 
 ### 5.1 Profile Management
 **Tool**: `microsoft365_profile_get`
@@ -276,6 +276,64 @@ Once configured, these 13 MCP tools are available:
 - `id` (required): Contact ID to retrieve
 - `$select` (optional): Fields to include
 
+### 5.5 Search Capabilities
+
+**Search Calendar Events**
+**Tool**: `microsoft365_calendar_search`
+**Description**: Search calendar events with flexible filtering by subject, attendees, location, and date range
+**Parameters**:
+- `startDate` (required): Start date in YYYYMMDD format
+- `endDate` (required): End date in YYYYMMDD format
+- `$filter` (optional): OData filter expression
+  - Examples: `contains(subject,'Meeting')`, `contains(subject,'Project') and start/dateTime ge '2025-01-01T00:00:00Z'`
+  - `attendees/any(a:contains(a/emailAddress/address,'john@example.com'))`, `contains(location/displayName,'Room')`
+- `$select` (optional): Fields to include (default: subject,start,end,location,organizer,attendees)
+- `$top` (optional): Number of events (default: 50)
+
+**Search Mail Messages**
+**Tool**: `microsoft365_mail_search`
+**Description**: Search mail messages with flexible filtering and full-text search
+**Parameters**:
+- `$filter` (optional): OData filter expression
+  - Examples: `contains(subject,'Invoice')`, `contains(from/emailAddress/address,'boss@company.com')`
+  - `contains(subject,'Project') and receivedDateTime ge 2025-01-01T00:00:00Z`, `isRead eq false`, `hasAttachments eq true`
+- `$search` (optional): Full-text search across message content
+  - Examples: `'invoice payment'`, `'from:john@company.com'`, `'subject:meeting'`, `'attachment:*.pdf'`
+- `$select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments)
+- `$top` (optional): Number of messages (default: 25)
+- `$orderby` (optional): Sort order (default: receivedDateTime desc)
+
+### 5.6 File Management
+
+**List OneDrive Files**
+**Tool**: `microsoft365_files_list`
+**Description**: List files and folders in OneDrive root directory
+**Parameters**:
+- `$filter` (optional): OData filter expression
+  - Examples: `file ne null`, `folder ne null`, `file/mimeType eq 'application/pdf'`
+- `$select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,parentReference)
+- `$top` (optional): Number of items (default: 100)
+- `$orderby` (optional): Sort order (default: name asc)
+
+**Search OneDrive Files**
+**Tool**: `microsoft365_files_search`
+**Description**: Search files in OneDrive with flexible filtering by name, content type, and modification date
+**Parameters**:
+- `searchQuery` (required): Search query for file names and content
+  - Examples: `'invoice'`, `'*.pdf'`, `'report 2025'`, `'presentation'`
+- `$filter` (optional): OData filter expression
+  - Examples: `file/mimeType eq 'application/pdf'`, `lastModifiedDateTime ge 2025-01-01T00:00:00Z`, `size gt 1048576`
+- `$select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder)
+- `$top` (optional): Number of items (default: 50)
+- `$orderby` (optional): Sort order (default: lastModifiedDateTime desc)
+
+**Read File Details**
+**Tool**: `microsoft365_files_read_file`
+**Description**: Get detailed information about a specific file by ID
+**Parameters**:
+- `id` (required): File ID to retrieve
+- `$select` (optional): Fields to include
+
 ## Step 6: Testing the Integration
 
 ### 6.1 Using curl
@@ -310,6 +368,61 @@ curl -X POST http://localhost:8888 \
       }
     },
     "id": 2
+  }'
+```
+
+Test calendar search:
+```bash
+curl -X POST http://localhost:8888 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "microsoft365_calendar_search",
+      "arguments": {
+        "startDate": "20250101",
+        "endDate": "20250131",
+        "$filter": "contains(subject,\"Meeting\")"
+      }
+    },
+    "id": 3
+  }'
+```
+
+Test mail search:
+```bash
+curl -X POST http://localhost:8888 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "microsoft365_mail_search",
+      "arguments": {
+        "$search": "invoice payment",
+        "$top": 10
+      }
+    },
+    "id": 4
+  }'
+```
+
+Test file search:
+```bash
+curl -X POST http://localhost:8888 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "microsoft365_files_search",
+      "arguments": {
+        "searchQuery": "*.pdf",
+        "$top": 10
+      }
+    },
+    "id": 5
   }'
 ```
 

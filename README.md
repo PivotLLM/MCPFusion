@@ -63,7 +63,7 @@ MCPFusion/
 
 ## Available Tools & APIs
 
-### **Microsoft 365 Integration** (13 tools)
+### **Microsoft 365 Integration** (19 tools)
 **Authentication:** OAuth2 Device Flow with automatic token refresh
 
 | Category | Tools | Description |
@@ -75,10 +75,15 @@ MCPFusion/
 | | `microsoft365_calendar_events_read_summary` | Events from specific calendar (summary) |
 | | `microsoft365_calendar_events_read_details` | Events from specific calendar (detailed) |
 | | `microsoft365_calendar_read_event` | Individual event by ID |
+| | `microsoft365_calendar_search` | **Search calendar events with flexible filtering** |
 | **Mail Management** | `microsoft365_mail_folders_list` | List all mail folders |
 | | `microsoft365_mail_read_inbox` | Inbox messages |
 | | `microsoft365_mail_folder_messages` | Messages from specific folder |
 | | `microsoft365_mail_read_message` | Individual message by ID |
+| | `microsoft365_mail_search` | **Search mail with filter and full-text search** |
+| **File Management** | `microsoft365_files_list` | List OneDrive files and folders |
+| | `microsoft365_files_search` | **Search OneDrive files with flexible filtering** |
+| | `microsoft365_files_read_file` | Individual file details by ID |
 | **Contacts** | `microsoft365_contacts_list` | List contacts |
 | | `microsoft365_contacts_read_contact` | Individual contact by ID |
 
@@ -130,11 +135,12 @@ cd tests && ./run_all_tests.sh
 ```
 
 **Test Coverage:**
-- ✅ All 13 Microsoft 365 endpoints
+- ✅ All 19 Microsoft 365 endpoints (including search capabilities)
 - ✅ Parameter validation and constraints
 - ✅ Authentication flows
 - ✅ Error handling scenarios
 - ✅ Multiple data formats and edge cases
+- ✅ Advanced search and filtering scenarios
 
 See [Testing Guide](tests/README.md) for detailed testing documentation.
 
@@ -153,6 +159,15 @@ Once connected through your MCP client, you can use natural language to interact
 
 **"Show details for calendar event {event-id}"**
 → Calls `microsoft365_calendar_read_event` with the specific event ID
+
+**"Find all my meetings with John from last month"**
+→ Calls `microsoft365_calendar_search` with date range and attendee filter
+
+**"Search emails from boss@company.com about project status"**
+→ Calls `microsoft365_mail_search` with sender and subject filters
+
+**"Find all PDF files in my OneDrive modified this year"**
+→ Calls `microsoft365_files_search` with file type and date filters
 
 The enhanced parameter system ensures the AI has all the context needed to make proper API calls with appropriate defaults and validation.
 

@@ -8,7 +8,7 @@
         "config": {
           "clientId": "${MS365_CLIENT_ID}",
           "tenantId": "${MS365_TENANT_ID}",
-          "scope": "openid profile User.Read Calendars.Read Calendars.Read.Shared Contacts.Read Contacts.Read.Shared Files.Read Files.Read.All Mail.Read Mail.Read.Shared offline_access",
+          "scope": "openid profile User.Read Calendars.Read Calendars.Read.Shared Contacts.Read Contacts.Read.Shared Files.Read Files.Read.All Mail.Read Mail.Read.Shared Sites.Read.All offline_access",
           "authorizationURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/devicecode",
           "tokenURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token"
         }
@@ -624,7 +624,7 @@
         {
           "id": "profile_get",
           "name": "Get User Profile",
-          "description": "Get the current user's profile information",
+          "description": "Get the current user's profile information. This is a good way to test connectivity a log in.",
           "method": "GET",
           "path": "/me",
           "parameters": [
@@ -747,6 +747,396 @@
             "caching": {
               "enabled": true,
               "ttl": "30m"
+            }
+          }
+        },
+        {
+          "id": "calendar_search",
+          "name": "Search Calendar Events",
+          "description": "Search calendar events with flexible filtering by subject, attendees, location, and date range",
+          "method": "GET",
+          "path": "/me/calendarView",
+          "parameters": [
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$filter",
+              "description": "OData filter expression. Examples: contains(subject,'Meeting'), contains(subject,'Project') and start/dateTime ge '2025-01-01T00:00:00Z', attendees/any(a:contains(a/emailAddress/address,'john@example.com')), contains(location/displayName,'Room')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "contains(subject,'Meeting')",
+                "contains(subject,'Project') and start/dateTime ge '2025-01-01T00:00:00Z'",
+                "attendees/any(a:contains(a/emailAddress/address,'john@example.com'))",
+                "contains(location/displayName,'Room 101')",
+                "contains(subject,'Standup') or contains(subject,'Review')"
+              ]
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,start,end,location,organizer,attendees"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 50,
+              "validation": {
+                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "2m"
+            }
+          }
+        },
+        {
+          "id": "mail_search",
+          "name": "Search Mail Messages",
+          "description": "Search mail messages with flexible filtering by subject, sender, recipient, content, and date range",
+          "method": "GET",
+          "path": "/me/messages",
+          "parameters": [
+            {
+              "name": "$filter",
+              "description": "OData filter expression. Examples: contains(subject,'Invoice'), contains(from/emailAddress/address,'boss@company.com'), contains(subject,'Project') and receivedDateTime ge 2025-01-01T00:00:00Z, isRead eq false, hasAttachments eq true",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "contains(subject,'Invoice')",
+                "contains(from/emailAddress/address,'boss@company.com')",
+                "contains(subject,'Project') and receivedDateTime ge 2025-01-01T00:00:00Z",
+                "isRead eq false",
+                "hasAttachments eq true",
+                "contains(bodyPreview,'urgent') or contains(subject,'urgent')",
+                "toRecipients/any(r:contains(r/emailAddress/address,'team@company.com'))"
+              ]
+            },
+            {
+              "name": "$search",
+              "description": "Full-text search across message content. Examples: 'invoice payment', 'from:john@company.com', 'subject:meeting', 'attachment:*.pdf'",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "invoice payment",
+                "from:john@company.com",
+                "subject:meeting",
+                "attachment:*.pdf",
+                "urgent OR important",
+                "has:attachment"
+              ]
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            },
+            {
+              "name": "$orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "receivedDateTime desc",
+              "enum": [
+                "receivedDateTime desc",
+                "receivedDateTime asc", 
+                "subject asc",
+                "subject desc",
+                "from/emailAddress/address asc",
+                "from/emailAddress/address desc"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "1m"
+            }
+          }
+        },
+        {
+          "id": "files_search",
+          "name": "Search OneDrive Files",
+          "description": "Search files in OneDrive with flexible filtering by name, content type, and modification date",
+          "method": "GET",
+          "path": "/me/drive/root/search(q='{searchQuery}')",
+          "parameters": [
+            {
+              "name": "searchQuery",
+              "description": "Search query for file names and content. Examples: 'invoice', '*.pdf', 'report 2025', 'presentation'",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "examples": [
+                "invoice",
+                "*.pdf",
+                "report 2025",
+                "presentation",
+                "*.docx",
+                "budget"
+              ]
+            },
+            {
+              "name": "$filter",
+              "description": "OData filter expression. Examples: file/mimeType eq 'application/pdf', lastModifiedDateTime ge 2025-01-01T00:00:00Z, size gt 1048576",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file/mimeType eq 'application/pdf'",
+                "lastModifiedDateTime ge 2025-01-01T00:00:00Z",
+                "size gt 1048576",
+                "folder ne null",
+                "file ne null"
+              ]
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 50,
+              "validation": {
+                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            },
+            {
+              "name": "$orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "lastModifiedDateTime desc",
+              "enum": [
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "name asc",
+                "name desc",
+                "size desc",
+                "size asc"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            }
+          }
+        },
+        {
+          "id": "files_list",
+          "name": "List OneDrive Files",
+          "description": "List files and folders in OneDrive root directory",
+          "method": "GET",
+          "path": "/me/drive/root/children",
+          "parameters": [
+            {
+              "name": "$filter",
+              "description": "OData filter expression. Examples: file/mimeType eq 'application/pdf', folder ne null, file ne null",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file ne null",
+                "folder ne null",
+                "file/mimeType eq 'application/pdf'",
+                "lastModifiedDateTime ge 2025-01-01T00:00:00Z"
+              ]
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,parentReference"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100,
+              "validation": {
+                "enum": [10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            },
+            {
+              "name": "$orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name asc",
+              "enum": [
+                "name asc",
+                "name desc",
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "size desc",
+                "size asc"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "@odata.nextLink",
+              "dataPath": "value",
+              "pageSize": 50
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "10m"
+            }
+          }
+        },
+        {
+          "id": "files_read_file",
+          "name": "Read File Details",
+          "description": "Get detailed information about a specific file by ID",
+          "method": "GET",
+          "path": "/me/drive/items/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "File ID to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,parentReference,createdDateTime,lastModifiedBy"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "15m"
             }
           }
         }

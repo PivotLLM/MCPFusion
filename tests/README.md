@@ -18,6 +18,11 @@ This directory contains comprehensive test scripts for all Microsoft 365 MCP too
 - `test_mail_folder_messages.sh` - Tests folder-specific message retrieval
 - `test_individual_items.sh` - Tests individual item retrieval (events, messages, contacts)
 
+### Search API Tests
+- `test_calendar_search.sh` - Tests calendar event search and filtering
+- `test_mail_search.sh` - Tests mail message search and filtering
+- `test_files_search.sh` - Tests OneDrive file search and listing
+
 ### Test Infrastructure
 - `run_all_tests.sh` - Master test runner that executes all tests
 
@@ -37,6 +42,9 @@ cd tests
 ./test_calendar_details.sh > calendar_details_output.log
 ./test_mail.sh > mail_output.log
 ./test_contacts.sh > contacts_output.log
+./test_calendar_search.sh > calendar_search_output.log
+./test_mail_search.sh > mail_search_output.log
+./test_files_search.sh > files_search_output.log
 ```
 
 ## Test Output
@@ -78,7 +86,7 @@ cd tests
 2. Limited contact count (10 contacts)
 3. Custom field selection
 
-### Extended API Tests (New 8 endpoints)
+### Extended API Tests (New 11 endpoints)
 
 **Calendar Management Tests:**
 1. List all calendars with default fields
@@ -98,6 +106,20 @@ cd tests
 2. Specific email message by ID  
 3. Specific contact by ID
 4. Custom field selection for individual items
+
+**File Management Tests:**
+1. List all OneDrive files and folders
+2. List only files (excluding folders)
+3. List only folders (excluding files)
+4. Filter files by modification date
+
+**Search Capability Tests:**
+1. Calendar event search by subject, attendee, location
+2. Calendar search with date range and complex filters
+3. Mail search by subject, sender, recipient
+4. Mail full-text search with content keywords
+5. File search by name, type, and modification date
+6. Advanced filtering with OData expressions
 
 ### Parameter Validation Tests
 All tests include validation of:

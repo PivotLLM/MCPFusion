@@ -121,6 +121,18 @@ run_test "Individual Items API Test" \
     "$TESTS_DIR/test_individual_items.sh" \
     "$TESTS_DIR/individual_items_test_${TIMESTAMP}.log"
 
+run_test "Calendar Search API Test" \
+    "$TESTS_DIR/test_calendar_search.sh" \
+    "$TESTS_DIR/calendar_search_test_${TIMESTAMP}.log"
+
+run_test "Mail Search API Test" \
+    "$TESTS_DIR/test_mail_search.sh" \
+    "$TESTS_DIR/mail_search_test_${TIMESTAMP}.log"
+
+run_test "Files Search API Test" \
+    "$TESTS_DIR/test_files_search.sh" \
+    "$TESTS_DIR/files_search_test_${TIMESTAMP}.log"
+
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"
 echo "Total Tests: $tests_run"
