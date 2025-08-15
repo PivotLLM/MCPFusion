@@ -74,6 +74,25 @@
               "required": false,
               "location": "query",
               "default": "subject,start,end"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100,
+              "validation": {
+                "enum": [10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
             }
           ],
           "response": {
@@ -122,6 +141,25 @@
               "required": false,
               "location": "query",
               "default": "subject,body,bodyPreview,organizer,attendees,start,end,location"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
             }
           ],
           "response": {
@@ -170,6 +208,14 @@
               "type": "string",
               "required": false,
               "location": "query"
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
             }
           ],
           "response": {
@@ -200,6 +246,25 @@
               "required": false,
               "location": "query",
               "default": "displayName,mail,userPrincipalName,jobTitle,department,companyName"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100,
+              "validation": {
+                "enum": [10, 25, 50, 100, 250, 500, 1000]
+              }
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
             }
           ],
           "response": {
@@ -242,6 +307,14 @@
               "type": "string",
               "required": false,
               "location": "query"
+            },
+            {
+              "name": "$skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
             }
           ],
           "response": {
