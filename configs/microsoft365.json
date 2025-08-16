@@ -1125,6 +1125,252 @@
               "ttl": "15m"
             }
           }
+        },
+        {
+          "id": "files_download_content",
+          "name": "Download File Content",
+          "description": "Download the actual content of a file (binary or text)",
+          "method": "GET",
+          "path": "/me/drive/items/{id}/content",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "File ID to download",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "binary",
+            "caching": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "id": "files_list_children",
+          "name": "List Folder Contents",
+          "description": "List files and folders within a specific directory",
+          "method": "GET",
+          "path": "/me/drive/items/{id}/children",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Folder ID to list contents",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 200,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name asc",
+              "enum": [
+                "name asc",
+                "name desc",
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "size desc",
+                "size asc"
+              ]
+            },
+            {
+              "name": "$filter",
+              "description": "Filter results by type or properties",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file ne null",
+                "folder ne null",
+                "file/mimeType eq 'application/pdf'",
+                "lastModifiedDateTime ge 2025-01-01T00:00:00Z"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            }
+          }
+        },
+        {
+          "id": "files_get_by_path",
+          "name": "Get File/Folder by Path",
+          "description": "Get file or folder metadata using file system path",
+          "method": "GET",
+          "path": "/me/drive/root:/{filePath}",
+          "parameters": [
+            {
+              "name": "filePath",
+              "description": "File or folder path from root (e.g., 'Documents/report.docx', 'Projects/MyFolder')",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "examples": [
+                "Documents/report.docx",
+                "Projects/MyFolder",
+                "Presentations/Q1-Review.pptx",
+                "Data/analysis.xlsx"
+              ]
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,createdDateTime"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "10m"
+            }
+          }
+        },
+        {
+          "id": "files_recent",
+          "name": "List Recent Files",
+          "description": "List recently accessed files across all drives (OneDrive, SharePoint, Teams)",
+          "method": "GET",
+          "path": "/me/drive/recent",
+          "parameters": [
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,lastAccessedDateTime"
+            },
+            {
+              "name": "$top",
+              "description": "Number of recent items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 50,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "1m"
+            }
+          }
+        },
+        {
+          "id": "files_list_folder_by_path",
+          "name": "List Folder Contents by Path",
+          "description": "Navigate to folder by path and list its contents",
+          "method": "GET",
+          "path": "/me/drive/root:/{folderPath}:/children",
+          "parameters": [
+            {
+              "name": "folderPath",
+              "description": "Folder path from root (e.g., 'Documents', 'Projects/Current', 'Shared Documents')",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "examples": [
+                "Documents",
+                "Projects/Current",
+                "Shared Documents",
+                "Archive/2024",
+                "Teams/ProjectAlpha"
+              ]
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 200,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name asc",
+              "enum": [
+                "name asc",
+                "name desc",
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "size desc",
+                "size asc"
+              ]
+            },
+            {
+              "name": "$filter",
+              "description": "Filter results by type or properties",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file ne null",
+                "folder ne null",
+                "file/mimeType eq 'application/pdf'",
+                "size gt 1048576"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            }
+          }
         }
       ]
     }
