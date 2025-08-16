@@ -149,6 +149,27 @@ run_test "Files Search API Test" \
     "$TESTS_DIR/test_files_search.sh" \
     "$TESTS_DIR/files_search_test_${TIMESTAMP}.log"
 
+# New Enhanced File Capabilities Tests
+run_test "Files Recent Access Test" \
+    "$TESTS_DIR/test_files_recent.sh" \
+    "$TESTS_DIR/files_recent_test_${TIMESTAMP}.log"
+
+run_test "Files Path Access Test" \
+    "$TESTS_DIR/test_files_path_access.sh" \
+    "$TESTS_DIR/files_path_access_test_${TIMESTAMP}.log"
+
+run_test "Files Folder Navigation Test" \
+    "$TESTS_DIR/test_files_folder_navigation.sh" \
+    "$TESTS_DIR/files_folder_navigation_test_${TIMESTAMP}.log"
+
+run_test "Files ID Navigation Test" \
+    "$TESTS_DIR/test_files_id_navigation.sh" \
+    "$TESTS_DIR/files_id_navigation_test_${TIMESTAMP}.log"
+
+run_test "Files Content Download Test" \
+    "$TESTS_DIR/test_files_content_download.sh" \
+    "$TESTS_DIR/files_content_download_test_${TIMESTAMP}.log"
+
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"
 echo "Total Tests: $tests_run"
