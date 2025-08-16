@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package db
 
@@ -11,11 +11,11 @@ import (
 
 // APITokenMetadata represents metadata for an API token
 type APITokenMetadata struct {
-	Hash        string    `json:"hash"`         // SHA-256 hash of the original token
-	CreatedAt   time.Time `json:"created_at"`   // When the token was created
-	LastUsed    time.Time `json:"last_used"`    // When the token was last used
-	Description string    `json:"description"`  // Optional description
-	Prefix      string    `json:"prefix"`       // First 8 chars for identification
+	Hash        string    `json:"hash"`        // SHA-256 hash of the original token
+	CreatedAt   time.Time `json:"created_at"`  // When the token was created
+	LastUsed    time.Time `json:"last_used"`   // When the token was last used
+	Description string    `json:"description"` // Optional description
+	Prefix      string    `json:"prefix"`      // First 8 chars for identification
 }
 
 // OAuthTokenData represents stored OAuth token information
@@ -62,26 +62,26 @@ const (
 
 // ServiceCredentials represents other service authentication data
 type ServiceCredentials struct {
-	Type      CredentialType         `json:"type"`        // Type of credential
-	Data      map[string]interface{} `json:"data"`        // Service-specific credential data
+	Type      CredentialType         `json:"type"` // Type of credential
+	Data      map[string]interface{} `json:"data"` // Service-specific credential data
 	CreatedAt time.Time              `json:"created_at"`
 	UpdatedAt time.Time              `json:"updated_at"`
 }
 
 // TokenStats represents statistics about token usage
 type TokenStats struct {
-	TotalAPITokens    int64 `json:"total_api_tokens"`
-	TotalOAuthTokens  int64 `json:"total_oauth_tokens"`
-	TotalCredentials  int64 `json:"total_credentials"`
-	LastUpdated       time.Time `json:"last_updated"`
+	TotalAPITokens   int64     `json:"total_api_tokens"`
+	TotalOAuthTokens int64     `json:"total_oauth_tokens"`
+	TotalCredentials int64     `json:"total_credentials"`
+	LastUpdated      time.Time `json:"last_updated"`
 }
 
 // TenantInfo represents information about a tenant
 type TenantInfo struct {
-	Hash         string    `json:"hash"`
-	Description  string    `json:"description"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastUsed     time.Time `json:"last_used"`
-	OAuthCount   int       `json:"oauth_count"`
-	CredCount    int       `json:"credential_count"`
+	Hash        string    `json:"hash"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	LastUsed    time.Time `json:"last_used"`
+	OAuthCount  int       `json:"oauth_count"`
+	CredCount   int       `json:"credential_count"`
 }

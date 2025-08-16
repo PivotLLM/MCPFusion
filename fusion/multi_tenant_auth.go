@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package fusion
 
@@ -63,12 +63,12 @@ func (mtam *MultiTenantAuthManager) RegisterStrategy(strategy AuthStrategy) {
 	defer mtam.mu.Unlock()
 
 	mtam.strategies[strategy.GetAuthType()] = strategy
-	
+
 	// Set auth manager reference for OAuth2 device flow strategies
 	if oauth2Strategy, ok := strategy.(*OAuth2DeviceFlowStrategy); ok {
 		oauth2Strategy.SetAuthManager(mtam)
 	}
-	
+
 	if mtam.logger != nil {
 		mtam.logger.Infof("Registered multi-tenant auth strategy: %s", strategy.GetAuthType())
 	}

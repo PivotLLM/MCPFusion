@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package mcpserver
 
@@ -237,7 +237,7 @@ func (m *MCPServer) Start() error {
 			// Create HTTP server for non-streaming mode
 			m.httpServer = server.NewStreamableHTTPServer(m.srv)
 			m.transport = m.httpServer
-			
+
 			// Apply auth middleware if configured
 			if m.authMiddleware != nil {
 				if m.logger != nil {
@@ -255,7 +255,7 @@ func (m *MCPServer) Start() error {
 			// Create SSE server for streaming mode (default)
 			m.sseServer = server.NewSSEServer(m.srv)
 			m.transport = m.sseServer
-			
+
 			// Apply auth middleware if configured
 			if m.authMiddleware != nil {
 				if m.logger != nil {

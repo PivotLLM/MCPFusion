@@ -1,32 +1,32 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package internal
 
 // Bucket names for consistent database organization
 const (
 	// Root buckets
-	BucketAPITokens   = "api_tokens"
-	BucketTenants     = "tenants"
-	BucketTokenIndex  = "token_index"
-	BucketSystem      = "system"
-	
+	BucketAPITokens  = "api_tokens"
+	BucketTenants    = "tenants"
+	BucketTokenIndex = "token_index"
+	BucketSystem     = "system"
+
 	// Sub-buckets under tenants/{tenant_hash}/
-	BucketOAuthTokens       = "oauth_tokens"
+	BucketOAuthTokens        = "oauth_tokens"
 	BucketServiceCredentials = "service_credentials"
-	
+
 	// Sub-buckets under token_index/
 	BucketIndexByHash   = "by_hash"
 	BucketIndexByPrefix = "by_prefix"
-	
+
 	// Sub-buckets under service_credentials/
-	BucketAPIKeys    = "api_keys"
+	BucketAPIKeys      = "api_keys"
 	BucketBearerTokens = "bearer_tokens"
-	BucketBasicAuth  = "basic_auth"
-	BucketCustom     = "custom"
-	
+	BucketBasicAuth    = "basic_auth"
+	BucketCustom       = "custom"
+
 	// System keys
 	KeySchemaVersion = "schema_version"
 	KeyStats         = "stats"
@@ -71,7 +71,7 @@ var (
 	PathTenants    = NewBucketPath(BucketTenants)
 	PathTokenIndex = NewBucketPath(BucketTokenIndex)
 	PathSystem     = NewBucketPath(BucketSystem)
-	
+
 	// Index paths
 	PathIndexByHash   = PathTokenIndex.Append(BucketIndexByHash)
 	PathIndexByPrefix = PathTokenIndex.Append(BucketIndexByPrefix)

@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package fusion
 
@@ -16,7 +16,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	
+
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
@@ -60,7 +60,6 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-
 	// Build request
 	req, err := h.buildRequest(ctx, args)
 	if err != nil {
@@ -77,9 +76,9 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		if h.fusion.logger != nil {
 			h.fusion.logger.Debugf("Looking for tenant context in request context [%s]", correlationID)
 		}
-		
+
 		tenantContextValue := ctx.Value(global.TenantContextKey)
-		
+
 		if tenantContextValue != nil {
 			if tenantContext, ok := tenantContextValue.(*TenantContext); ok {
 				// Ensure service name and request ID are set
@@ -94,15 +93,15 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 				// Apply authentication using multi-tenant auth manager
 				if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, req, tenantContext, h.service.Auth); err != nil {
 					if h.fusion.logger != nil {
-						h.fusion.logger.Errorf("Authentication failed for tenant %s service %s [%s]: %v", 
+						h.fusion.logger.Errorf("Authentication failed for tenant %s service %s [%s]: %v",
 							tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID, err)
 					}
-					
+
 					// Check if it's a DeviceCodeError - pass it up for client handling
 					if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
 						return "", deviceCodeErr
 					}
-					
+
 					return "", fmt.Errorf("authentication failed: %w", err)
 				}
 
@@ -137,10 +136,10 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		h.fusion.logger.Debugf("Headers after auth:")
 		for name, values := range req.Header {
 			// Redact sensitive headers but show they exist
-			if strings.Contains(strings.ToLower(name), "authorization") || 
-			   strings.Contains(strings.ToLower(name), "api-key") ||
-			   strings.Contains(strings.ToLower(name), "token") ||
-			   strings.Contains(strings.ToLower(name), "x-api") {
+			if strings.Contains(strings.ToLower(name), "authorization") ||
+				strings.Contains(strings.ToLower(name), "api-key") ||
+				strings.Contains(strings.ToLower(name), "token") ||
+				strings.Contains(strings.ToLower(name), "x-api") {
 				if len(values) > 0 {
 					h.fusion.logger.Debugf("  %s: [REDACTED - length %d]", name, len(values[0]))
 				}
@@ -177,7 +176,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Request execution failed [%s]: %v", correlationID, err)
 			if requestMetrics != nil {
-				h.fusion.logger.Debugf("Request metrics: StatusCode=%d, Latency=%v, RetryCount=%d", 
+				h.fusion.logger.Debugf("Request metrics: StatusCode=%d, Latency=%v, RetryCount=%d",
 					requestMetrics.StatusCode, requestMetrics.Latency, requestMetrics.RetryCount)
 			}
 		}
@@ -201,7 +200,6 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		}
 		return "", err
 	}
-
 
 	totalLatency := time.Since(startTime)
 	if h.fusion.logger != nil {
@@ -410,7 +408,6 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 			return "", fmt.Errorf("failed to parse JSON response: %w", err)
 		}
 
-
 		// Apply transformation if specified
 		if h.endpoint.Response.Transform != "" {
 			mapper := NewMapper(h.fusion.logger)
@@ -441,8 +438,6 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 		return string(body), nil
 	}
 }
-
-
 
 // wrapNetworkError wraps network errors in NetworkError type
 func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {

@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package fusion
 
@@ -59,12 +59,12 @@ const (
 
 // Config holds the main configuration for the fusion package
 type Config struct {
-	Logger      global.Logger             `json:"-"`
-	Services    map[string]*ServiceConfig `json:"services"`
+	Logger   global.Logger             `json:"-"`
+	Services map[string]*ServiceConfig `json:"services"`
 	// Legacy AuthManager field removed - use multi-tenant auth
-	HTTPClient  *http.Client              `json:"-"`
-	Cache       Cache                     `json:"-"`
-	ConfigPath  string                    `json:"-"`
+	HTTPClient *http.Client `json:"-"`
+	Cache      Cache        `json:"-"`
+	ConfigPath string       `json:"-"`
 }
 
 // ServiceConfig represents the configuration for a single service
@@ -124,7 +124,7 @@ func (v *ValidationConfig) IsValidEnumValue(value interface{}) bool {
 	if len(v.Enum) == 0 {
 		return true // No enum constraints
 	}
-	
+
 	for _, allowedValue := range v.Enum {
 		if fmt.Sprintf("%v", value) == fmt.Sprintf("%v", allowedValue) {
 			return true
@@ -964,7 +964,6 @@ func (p *ParameterConfig) GetTransformedParameterName() string {
 	}
 	return p.Name
 }
-
 
 // MatchesPattern checks if a string value matches the validation pattern
 func (v *ValidationConfig) MatchesPattern(value string) bool {

@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package internal
 
@@ -18,10 +18,10 @@ const (
 	MaxTokenLength = 128 // Maximum token length in characters
 	HashLength     = 64  // SHA-256 hash length in hex
 	PrefixLength   = 8   // Token prefix length
-	
+
 	// Description constraints
 	MaxDescriptionLength = 256
-	
+
 	// Service name constraints
 	MaxServiceNameLength = 64
 	MinServiceNameLength = 1
@@ -31,10 +31,10 @@ const (
 var (
 	// Service name can contain alphanumeric, underscore, hyphen, dot, and space
 	serviceNameRegex = regexp.MustCompile(`^[a-zA-Z0-9._\- ]+$`)
-	
+
 	// Hash must be valid hex string
 	hashRegex = regexp.MustCompile(`^[a-fA-F0-9]+$`)
-	
+
 	// Token prefix validation (alphanumeric)
 	prefixRegex = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 )
@@ -48,7 +48,7 @@ func ValidateToken(token string) error {
 			Message: "token too short",
 		}
 	}
-	
+
 	if len(token) > MaxTokenLength {
 		return &ValidationError{
 			Field:   "token",
@@ -56,7 +56,7 @@ func ValidateToken(token string) error {
 			Message: "token too long",
 		}
 	}
-	
+
 	// Check if token is valid hex
 	if _, err := hex.DecodeString(token); err != nil {
 		return &ValidationError{
@@ -65,7 +65,7 @@ func ValidateToken(token string) error {
 			Message: "token must be valid hexadecimal",
 		}
 	}
-	
+
 	return nil
 }
 
@@ -78,7 +78,7 @@ func ValidateHash(hash string) error {
 			Message: "hash must be 64 characters (SHA-256)",
 		}
 	}
-	
+
 	if !hashRegex.MatchString(hash) {
 		return &ValidationError{
 			Field:   "hash",
@@ -86,7 +86,7 @@ func ValidateHash(hash string) error {
 			Message: "hash must be valid hexadecimal",
 		}
 	}
-	
+
 	return nil
 }
 
@@ -99,7 +99,7 @@ func ValidateServiceName(serviceName string) error {
 			Message: "service name too short",
 		}
 	}
-	
+
 	if len(serviceName) > MaxServiceNameLength {
 		return &ValidationError{
 			Field:   "service_name",
@@ -107,7 +107,7 @@ func ValidateServiceName(serviceName string) error {
 			Message: "service name too long",
 		}
 	}
-	
+
 	if !serviceNameRegex.MatchString(serviceName) {
 		return &ValidationError{
 			Field:   "service_name",
@@ -115,7 +115,7 @@ func ValidateServiceName(serviceName string) error {
 			Message: "service name contains invalid characters",
 		}
 	}
-	
+
 	return nil
 }
 
@@ -128,7 +128,7 @@ func ValidateDescription(description string) error {
 			Message: "description too long",
 		}
 	}
-	
+
 	// Trim whitespace for validation
 	trimmed := strings.TrimSpace(description)
 	if len(trimmed) == 0 && len(description) > 0 {
@@ -138,7 +138,7 @@ func ValidateDescription(description string) error {
 			Message: "description cannot be only whitespace",
 		}
 	}
-	
+
 	return nil
 }
 
@@ -151,7 +151,7 @@ func ValidatePrefix(prefix string) error {
 			Message: "prefix must be exactly 8 characters",
 		}
 	}
-	
+
 	if !prefixRegex.MatchString(prefix) {
 		return &ValidationError{
 			Field:   "prefix",
@@ -159,7 +159,7 @@ func ValidatePrefix(prefix string) error {
 			Message: "prefix must be alphanumeric",
 		}
 	}
-	
+
 	return nil
 }
 

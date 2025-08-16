@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#*******************************************************************************
+# Copyright (c) 2025 Tenebris Technologies Inc.                                *
+# Please see LICENSE file for details.                                         *
+#*******************************************************************************
+
 # Load environment variables
 if [ -f ".env" ]; then
     source .env

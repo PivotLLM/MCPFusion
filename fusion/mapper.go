@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package fusion
 
@@ -359,7 +359,6 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 
 	return data, nil
 }
-
 
 // ConvertToMCPParameters converts endpoint parameters to MCP tool parameters
 func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]interface{} {

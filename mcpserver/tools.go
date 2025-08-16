@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package mcpserver
 
@@ -31,7 +31,7 @@ func (m *MCPServer) AddTools() {
 				if param.Required {
 					options = append(options, mcp.Required())
 				}
-				
+
 				// Use appropriate MCP parameter type based on param.Type
 				var toolOption mcp.ToolOption
 				switch param.Type {
@@ -49,7 +49,7 @@ func (m *MCPServer) AddTools() {
 					// Fallback to string for unknown types
 					toolOption = mcp.WithString(param.Name, options...)
 				}
-				
+
 				toolOptions = append(toolOptions, toolOption)
 			}
 
@@ -71,12 +71,12 @@ func (m *MCPServer) AddTools() {
 				}
 				// Store the context for fusion handlers to extract tenant context
 				ctxOptions["__mcp_context"] = ctx
-				
+
 				// Debug: Log that we're passing context
 				if m.logger != nil {
 					m.logger.Debugf("MCP server passing context to tool %s", toolDef.Name)
 				}
-				
+
 				result, err := toolDef.Handler(ctxOptions)
 				if err != nil {
 					return mcp.NewToolResultError(err.Error()), err

@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package fusion
 
@@ -20,9 +20,9 @@ import (
 
 // OAuth2DeviceFlowStrategy implements OAuth2 device flow authentication
 type OAuth2DeviceFlowStrategy struct {
-	httpClient   *http.Client
-	logger       global.Logger
-	authManager  *MultiTenantAuthManager // Reference to auth manager for token storage
+	httpClient  *http.Client
+	logger      global.Logger
+	authManager *MultiTenantAuthManager // Reference to auth manager for token storage
 }
 
 // NewOAuth2DeviceFlowStrategy creates a new OAuth2 device flow strategy
@@ -69,7 +69,7 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 				AuthConfig:  config,
 			}
 			if s.logger != nil {
-				s.logger.Debugf("Extracted tenant context for background polling: tenant=%s, service=%s", 
+				s.logger.Debugf("Extracted tenant context for background polling: tenant=%s, service=%s",
 					pollingCtx.TenantHash[:12]+"...", pollingCtx.ServiceName)
 			}
 		}
@@ -158,12 +158,12 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 
 	// Return a DeviceCodeError to signal that user authentication is required
 	deviceCodeError := &DeviceCodeError{
-		DeviceCode:                deviceCodeResp.DeviceCode,
-		UserCode:                  deviceCodeResp.UserCode,
-		VerificationURL:           deviceCodeResp.VerificationURI,
-		VerificationURLComplete:   deviceCodeResp.VerificationURIComplete,
-		ExpiresIn:                 deviceCodeResp.ExpiresIn,
-		Interval:                  deviceCodeResp.Interval,
+		DeviceCode:              deviceCodeResp.DeviceCode,
+		UserCode:                deviceCodeResp.UserCode,
+		VerificationURL:         deviceCodeResp.VerificationURI,
+		VerificationURLComplete: deviceCodeResp.VerificationURIComplete,
+		ExpiresIn:               deviceCodeResp.ExpiresIn,
+		Interval:                deviceCodeResp.Interval,
 		// Don't set Message to avoid duplication - Error() method will generate the message
 	}
 
@@ -521,7 +521,7 @@ func (s *OAuth2DeviceFlowStrategy) backgroundTokenPolling(ctx context.Context, t
 					}
 					continue
 				}
-				
+
 				if strings.Contains(err.Error(), "slow_down") {
 					if s.logger != nil {
 						s.logger.Debugf("Rate limited, increasing polling interval...")

@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 package db
 
@@ -49,7 +49,7 @@ func (d *DB) GetStats() (*TokenStats, error) {
 				}
 
 				tenantHash := string(k)
-				
+
 				// Validate that this looks like a tenant hash
 				if err := internal.ValidateHash(tenantHash); err != nil {
 					// Skip invalid hashes (might be other data)
@@ -90,7 +90,7 @@ func (d *DB) GetStats() (*TokenStats, error) {
 		return nil, NewDatabaseError("get_stats", err)
 	}
 
-	d.logger.Debugf("Generated stats: API tokens: %d, OAuth tokens: %d, Credentials: %d", 
+	d.logger.Debugf("Generated stats: API tokens: %d, OAuth tokens: %d, Credentials: %d",
 		stats.TotalAPITokens, stats.TotalOAuthTokens, stats.TotalCredentials)
 
 	return stats, nil
@@ -106,7 +106,7 @@ func (d *DB) GetDetailedStats() (map[string]interface{}, error) {
 
 	err := d.db.View(func(tx *bbolt.Tx) error {
 		detailedStats = make(map[string]interface{})
-		
+
 		// Basic stats
 		totalAPITokens := int64(0)
 		totalOAuthTokens := int64(0)
@@ -138,7 +138,7 @@ func (d *DB) GetDetailedStats() (map[string]interface{}, error) {
 				}
 
 				tenantHash := string(k)
-				
+
 				// Validate that this looks like a tenant hash
 				if err := internal.ValidateHash(tenantHash); err != nil {
 					// Skip invalid hashes
@@ -154,12 +154,12 @@ func (d *DB) GetDetailedStats() (map[string]interface{}, error) {
 
 				// Initialize tenant stats
 				tenantStats := map[string]interface{}{
-					"oauth_tokens":  int64(0),
-					"credentials":   int64(0),
-					"services":      make([]string, 0),
-					"created_at":    "",
-					"last_used":     "",
-					"description":   "",
+					"oauth_tokens": int64(0),
+					"credentials":  int64(0),
+					"services":     make([]string, 0),
+					"created_at":   "",
+					"last_used":    "",
+					"description":  "",
 				}
 
 				// Get tenant metadata
@@ -240,7 +240,7 @@ func (d *DB) GetDetailedStats() (map[string]interface{}, error) {
 		systemBucket := tx.Bucket([]byte(internal.BucketSystem))
 		if systemBucket != nil {
 			systemInfo := make(map[string]interface{})
-			
+
 			// Get schema version
 			if schemaVersion := systemBucket.Get([]byte(internal.KeySchemaVersion)); schemaVersion != nil {
 				systemInfo["schema_version"] = string(schemaVersion)
@@ -272,12 +272,12 @@ func (d *DB) GetSystemHealth() (map[string]interface{}, error) {
 	err := d.db.View(func(tx *bbolt.Tx) error {
 		// Check that core buckets exist
 		healthInfo["database_accessible"] = true
-		
+
 		// Check schema integrity
 		systemBucket := tx.Bucket([]byte(internal.BucketSystem))
 		if systemBucket != nil {
 			healthInfo["system_bucket_exists"] = true
-			
+
 			schemaVersion := systemBucket.Get([]byte(internal.KeySchemaVersion))
 			if schemaVersion != nil {
 				healthInfo["schema_version"] = string(schemaVersion)
@@ -311,12 +311,12 @@ func (d *DB) GetSystemHealth() (map[string]interface{}, error) {
 	if d.db != nil {
 		stats := d.db.Stats()
 		dbStats := map[string]interface{}{
-			"free_page_count":   stats.FreePageN,
+			"free_page_count":    stats.FreePageN,
 			"pending_page_count": stats.PendingPageN,
-			"free_alloc":        stats.FreeAlloc,
-			"free_list_inuse":   stats.FreelistInuse,
-			"tx_count":          stats.TxN,
-			"open_tx_count":     stats.OpenTxN,
+			"free_alloc":         stats.FreeAlloc,
+			"free_list_inuse":    stats.FreelistInuse,
+			"tx_count":           stats.TxN,
+			"open_tx_count":      stats.OpenTxN,
 		}
 		healthInfo["database_stats"] = dbStats
 	}

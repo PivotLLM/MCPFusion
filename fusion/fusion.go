@@ -1,7 +1,7 @@
-/*=============================================================================
-= Copyright (c) 2025 Tenebris Technologies Inc.                              =
-= All rights reserved.                                                       =
-=============================================================================*/
+/******************************************************************************
+ * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Please see LICENSE file for details.                                       *
+ ******************************************************************************/
 
 // Package fusion provides a production-ready, configuration-driven MCP (Model Context Protocol)
 // provider that enables seamless integration with multiple APIs through JSON configuration.
@@ -74,7 +74,7 @@ var _ global.PromptProvider = (*Fusion)(nil)
 // All public methods are thread-safe and can be called concurrently from multiple
 // goroutines. Internal state is protected by appropriate synchronization primitives.
 type Fusion struct {
-	config                 *Config                    // Service configuration and endpoints
+	config *Config // Service configuration and endpoints
 	// Legacy authManager removed - only multi-tenant auth is supported
 	multiTenantAuth        *MultiTenantAuthManager    // Multi-tenant authentication manager (optional)
 	httpClient             *http.Client               // HTTP client with timeouts
@@ -333,7 +333,7 @@ func New(options ...Option) *Fusion {
 		fusion.config.Logger = fusion.logger
 		fusion.config.HTTPClient = fusion.httpClient
 		fusion.config.Cache = fusion.cache
-		
+
 		// Note: Authentication is handled by the multi-tenant auth manager at the server level
 
 		if fusion.logger != nil {
@@ -453,7 +453,7 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 			Default:     param.Default,
 			Examples:    param.Examples,
 		}
-		
+
 		// Copy validation rules if present
 		if param.Validation != nil {
 			globalParam.Pattern = param.Validation.Pattern
@@ -472,10 +472,10 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 				globalParam.Maximum = param.Validation.Maximum
 			}
 		}
-		
+
 		// Use enhanced description
 		globalParam.Description = globalParam.EnhancedDescription()
-		
+
 		parameters = append(parameters, globalParam)
 	}
 
@@ -501,7 +501,7 @@ func (f *Fusion) createToolHandler(serviceName string, service *ServiceConfig, e
 	contextHandler := &contextAwareHandler{
 		httpHandler: httpHandler,
 	}
-	
+
 	return global.ToolHandler(contextHandler.Call)
 }
 
@@ -513,7 +513,7 @@ type contextAwareHandler struct {
 // Call implements the legacy interface - extracts context from options if available
 func (h *contextAwareHandler) Call(options map[string]any) (string, error) {
 	ctx := context.Background()
-	
+
 	// Debug: Log what options we're receiving
 	if h.httpHandler.fusion.logger != nil {
 		h.httpHandler.fusion.logger.Debugf("contextAwareHandler.Call received options: %+v", options)
@@ -521,7 +521,7 @@ func (h *contextAwareHandler) Call(options map[string]any) (string, error) {
 			h.httpHandler.fusion.logger.Debugf("  option[%s] = %T: %v", k, v, v)
 		}
 	}
-	
+
 	// Check if the MCP server passed the context through options
 	if ctxValue, exists := options["__mcp_context"]; exists {
 		if h.httpHandler.fusion.logger != nil {
@@ -550,7 +550,7 @@ func (h *contextAwareHandler) Call(options map[string]any) (string, error) {
 			h.httpHandler.fusion.logger.Warningf("No __mcp_context found in options")
 		}
 	}
-	
+
 	return h.CallWithContext(ctx, options)
 }
 
@@ -575,10 +575,10 @@ func (h *contextAwareHandler) CallWithContext(ctx context.Context, options map[s
 func (f *Fusion) extractTenantContextFromOptions(serviceName string, options map[string]any) *TenantContext {
 	// In a proper implementation, this would extract the tenant context from the HTTP request context
 	// For now, we'll create a basic tenant context that can be used for authentication
-	
+
 	// TODO: This is a temporary workaround. The proper solution is to modify the MCP server
 	// to pass the HTTP request context through to tool handlers.
-	
+
 	return &TenantContext{
 		TenantHash:  "unknown", // Will be resolved by auth middleware
 		ServiceName: serviceName,
@@ -980,7 +980,6 @@ func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig,
 		responseData = transformed
 	}
 
-
 	// Convert back to JSON string for consistent output
 	result, err := json.MarshalIndent(responseData, "", "  ")
 	if err != nil {
@@ -1310,7 +1309,6 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 	return current, nil
 }
 
-
 // sanitizeHeaders removes or masks sensitive information from HTTP headers for logging
 func (f *Fusion) sanitizeHeaders(headers http.Header) map[string]string {
 	sensitiveHeaders := map[string]bool{
@@ -1568,4 +1566,3 @@ func (f *Fusion) StartMetricsLogging(ctx context.Context, interval time.Duration
 		f.metricsCollector.StartPeriodicLogging(ctx, interval)
 	}
 }
-
