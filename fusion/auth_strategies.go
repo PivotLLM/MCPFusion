@@ -454,7 +454,7 @@ func (s *OAuth2DeviceFlowStrategy) requestToken(ctx context.Context, tokenEndpoi
 		var errorResp map[string]interface{}
 		if err := json.Unmarshal(body, &errorResp); err == nil {
 			if errorStr, ok := errorResp["error"].(string); ok {
-				return nil, fmt.Errorf(errorStr)
+				return nil, fmt.Errorf("%s", errorStr)
 			}
 		}
 		return nil, fmt.Errorf("token request failed with status %d: %s", resp.StatusCode, string(body))

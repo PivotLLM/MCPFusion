@@ -21,11 +21,11 @@
 //
 // Example usage:
 //
+//	multiTenantAuth := fusion.NewMultiTenantAuthManager(db, logger)
 //	fusionProvider := fusion.New(
 //		fusion.WithJSONConfig("configs/microsoft365.json"),
 //		fusion.WithLogger(logger),
-//		fusion.WithInMemoryCache(),
-//		fusion.WithCircuitBreaker(true),
+//		fusion.WithMultiTenantAuth(multiTenantAuth),
 //	)
 //	server.AddToolProvider(fusionProvider)
 package fusion
@@ -74,11 +74,10 @@ var _ global.PromptProvider = (*Fusion)(nil)
 // All public methods are thread-safe and can be called concurrently from multiple
 // goroutines. Internal state is protected by appropriate synchronization primitives.
 type Fusion struct {
-	config *Config // Service configuration and endpoints
-	// Legacy authManager removed - only multi-tenant auth is supported
-	multiTenantAuth        *MultiTenantAuthManager    // Multi-tenant authentication manager (optional)
+	config                 *Config                    // Service configuration and endpoints
+	multiTenantAuth        *MultiTenantAuthManager    // Multi-tenant authentication manager (required)
 	httpClient             *http.Client               // HTTP client with timeouts
-	cache                  Cache                      // Token and response cache
+	cache                  Cache                      // Database cache from multi-tenant auth manager
 	logger                 global.Logger              // Structured logging interface
 	metricsCollector       *MetricsCollector          // Performance and health metrics
 	correlationIDGenerator *CorrelationIDGenerator    // Request correlation tracking
@@ -95,7 +94,7 @@ type Fusion struct {
 //	fusion := New(
 //		WithJSONConfig("config.json"),
 //		WithLogger(logger),
-//		WithInMemoryCache(),
+//		WithMultiTenantAuth(authManager),
 //	)
 type Option func(*Fusion)
 
@@ -181,28 +180,8 @@ func WithHTTPClient(client *http.Client) Option {
 	}
 }
 
-// WithCache sets a custom cache implementation
-func WithCache(cache Cache) Option {
-	return func(f *Fusion) {
-		f.cache = cache
-	}
-}
-
-// WithInMemoryCache enables in-memory caching
-func WithInMemoryCache() Option {
-	return func(f *Fusion) {
-		f.cache = NewInMemoryCacheWithLogger(f.logger)
-	}
-}
-
-// File-based caching has been removed - only database cache is supported
-
-// WithNoCache disables caching
-func WithNoCache() Option {
-	return func(f *Fusion) {
-		f.cache = NewNoOpCache()
-	}
-}
+// Cache is managed exclusively by the multi-tenant auth manager
+// Legacy cache options have been removed - only database cache is supported
 
 // WithTimeout sets the HTTP client timeout
 func WithTimeout(timeout time.Duration) Option {
@@ -244,11 +223,14 @@ func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 
 // New creates a new production-ready Fusion instance with the provided configuration options.
 // This is the primary constructor for the Fusion provider and initializes all components
-// required for API integration including authentication, caching, metrics, and circuit breakers.
+// required for API integration including multi-tenant authentication, database caching, 
+// metrics, and circuit breakers.
+//
+// REQUIRED: Must include WithMultiTenantAuth() option - the provider will panic without it.
 //
 // Default Configuration:
 // - HTTP Client: 30-second timeout with connection pooling
-// - Cache: In-memory cache for tokens and responses
+// - Cache: Database cache from multi-tenant auth manager
 // - Metrics: Real-time metrics collection enabled
 // - Circuit Breakers: Per-service failure protection
 // - Correlation IDs: Request tracking for debugging
@@ -272,7 +254,7 @@ func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 //		WithJSONConfig("configs/microsoft365.json"),
 //		WithJSONConfig("configs/google.json"),
 //		WithLogger(logger),
-//		WithInMemoryCache(),
+//		WithMultiTenantAuth(authManager),
 //		WithTimeout(45*time.Second),
 //		WithCircuitBreaker(true),
 //		WithMetricsCollection(true),
@@ -286,7 +268,7 @@ func New(options ...Option) *Fusion {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		cache:                  NewInMemoryCache(),             // Default to in-memory cache (will be updated with logger later)
+		cache:                  nil,                            // Cache will be set by multi-tenant auth manager
 		metricsCollector:       NewMetricsCollector(nil, true), // Enable metrics by default
 		correlationIDGenerator: NewCorrelationIDGenerator(),
 		circuitBreakers:        make(map[string]*CircuitBreaker),
@@ -302,22 +284,19 @@ func New(options ...Option) *Fusion {
 		fusion.logger.Debugf("HTTP client timeout: %v", fusion.httpClient.Timeout)
 	}
 
-	// In multi-tenant mode, we must use the database cache
-	if fusion.multiTenantAuth != nil {
-		if dbCache := fusion.multiTenantAuth.cache; dbCache != nil {
-			fusion.cache = dbCache
-			if fusion.logger != nil {
-				fusion.logger.Info("Using database-backed cache for persistent token storage")
-			}
-		} else {
-			if fusion.logger != nil {
-				fusion.logger.Fatal("Multi-tenant mode requires database cache")
-			}
+	// Multi-tenant authentication is required
+	if fusion.multiTenantAuth == nil {
+		panic("Fusion provider requires multi-tenant authentication - use WithMultiTenantAuth() option")
+	}
+	
+	// Use the database cache from multi-tenant auth manager
+	if dbCache := fusion.multiTenantAuth.cache; dbCache != nil {
+		fusion.cache = dbCache
+		if fusion.logger != nil {
+			fusion.logger.Info("Using database-backed cache for persistent token storage")
 		}
 	} else {
-		if fusion.logger != nil {
-			fusion.logger.Fatal("Fusion provider requires multi-tenant authentication")
-		}
+		panic("Multi-tenant auth manager must have a valid database cache")
 	}
 
 	// Update metrics collector with logger
@@ -442,11 +421,32 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 
 // createToolDefinition creates a tool definition from an endpoint configuration
 func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig, endpoint *EndpointConfig) global.ToolDefinition {
+	// Validate parameter names for conflicts
+	if err := ValidateParameterNames(endpoint.Parameters); err != nil {
+		if f.logger != nil {
+			f.logger.Errorf("Parameter name validation failed for %s_%s: %v", serviceName, endpoint.ID, err)
+		}
+	}
+	
 	// Create tool parameters from endpoint parameters
 	var parameters []global.Parameter
 	for _, param := range endpoint.Parameters {
+		// Use MCP-compliant name (alias or sanitized)
+		mcpName := GetMCPParameterName(&param)
+		
+		// Log the mapping if different from original
+		if f.logger != nil && mcpName != param.Name {
+			if param.Alias != "" {
+				f.logger.Infof("Using parameter alias '%s' for '%s' in %s_%s", 
+					mcpName, param.Name, serviceName, endpoint.ID)
+			} else {
+				f.logger.Warningf("Auto-sanitized parameter '%s' to '%s' in %s_%s - consider adding explicit alias", 
+					param.Name, mcpName, serviceName, endpoint.ID)
+			}
+		}
+		
 		globalParam := global.Parameter{
-			Name:        param.Name,
+			Name:        mcpName,  // Use MCP-compliant name
 			Description: param.Description,
 			Required:    param.Required,
 			Type:        string(param.Type),
@@ -681,27 +681,7 @@ func (f *Fusion) GetEndpoint(serviceName, endpointID string) *EndpointConfig {
 	return service.GetEndpointByID(endpointID)
 }
 
-// GetSupportedAuthTypes - legacy method removed, use multi-tenant auth manager
-func (f *Fusion) GetSupportedAuthTypes() []AuthType {
-	if f.logger != nil {
-		f.logger.Warning("GetSupportedAuthTypes is deprecated - use multi-tenant auth manager")
-	}
-	return []AuthType{}
-}
-
-// InvalidateTokens - legacy method removed, use multi-tenant auth manager
-func (f *Fusion) InvalidateTokens() {
-	if f.logger != nil {
-		f.logger.Warning("InvalidateTokens is deprecated - use multi-tenant auth manager")
-	}
-}
-
-// InvalidateServiceToken - legacy method removed, use multi-tenant auth manager
-func (f *Fusion) InvalidateServiceToken(serviceName string) {
-	if f.logger != nil {
-		f.logger.Warning("InvalidateServiceToken is deprecated - use multi-tenant auth manager")
-	}
-}
+// Legacy authentication methods removed - use multi-tenant auth manager
 
 // buildRequest constructs an HTTP request from endpoint configuration and user options
 func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *ServiceConfig, endpoint *EndpointConfig, options map[string]any) (*http.Request, error) {

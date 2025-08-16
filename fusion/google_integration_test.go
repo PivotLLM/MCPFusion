@@ -75,10 +75,11 @@ func TestGoogleIntegration(t *testing.T) {
 
 	// Create fusion instance
 	logger := &MockLogger{}
+	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, logger), logger)
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-google-config.json"),
 		WithLogger(logger),
-		WithInMemoryCache(),
+		WithMultiTenantAuth(mockAuth),
 	)
 
 	// Get the tools
@@ -592,10 +593,11 @@ func TestGoogleOAuth2DeviceFlow(t *testing.T) {
 	config := createTestGoogleConfig(server.URL)
 	logger := &MockLogger{}
 
+	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, logger), logger)
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-google-oauth-config.json"),
 		WithLogger(logger),
-		WithInMemoryCache(),
+		WithMultiTenantAuth(mockAuth),
 	)
 
 	// Get the tools

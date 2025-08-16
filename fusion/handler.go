@@ -22,17 +22,26 @@ import (
 
 // HTTPHandler handles HTTP requests for a specific endpoint
 type HTTPHandler struct {
-	service  *ServiceConfig
-	endpoint *EndpointConfig
-	fusion   *Fusion
+	service         *ServiceConfig
+	endpoint        *EndpointConfig
+	fusion          *Fusion
+	parameterMapper *ParameterNameMapper
 }
 
 // NewHTTPHandler creates a new HTTP handler for an endpoint
 func NewHTTPHandler(fusion *Fusion, service *ServiceConfig, endpoint *EndpointConfig) *HTTPHandler {
+	// Build parameter name mappings
+	parameterMapper, err := BuildParameterMappings(endpoint.Parameters, fusion.logger)
+	if err != nil && fusion.logger != nil {
+		fusion.logger.Errorf("Failed to build parameter mappings for %s.%s: %v", 
+			service.Name, endpoint.ID, err)
+	}
+	
 	return &HTTPHandler{
-		service:  service,
-		endpoint: endpoint,
-		fusion:   fusion,
+		service:         service,
+		endpoint:        endpoint,
+		fusion:          fusion,
+		parameterMapper: parameterMapper,
 	}
 }
 
@@ -51,6 +60,14 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	startTime := time.Now()
 	var requestMetrics *RequestMetrics
 
+	// Map MCP parameter names to original API parameter names
+	if h.parameterMapper != nil {
+		args = h.parameterMapper.MapArgsToOriginal(args)
+		if h.fusion.logger != nil {
+			h.fusion.logger.Debugf("Mapped MCP parameters to API parameters [%s]", correlationID)
+		}
+	}
+	
 	// Validate parameters
 	validator := NewValidator(h.fusion.logger)
 	if err := validator.ValidateParameters(h.endpoint.Parameters, args); err != nil {

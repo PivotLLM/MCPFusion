@@ -89,11 +89,17 @@ func(args map[string]interface{}) (*global.PromptResponse, error)
 
 ## Configuration
 
-MCPFusion uses environment variables loaded from `~/.mcp` file:
+MCPFusion requires multi-tenant authentication and uses environment variables for service credentials:
 ```bash
-# Example ~/.mcp file
-API_KEY=your-api-key
-API_BASE_URL=https://api.example.com
+# Example environment variables
+# Microsoft 365 Graph API
+MS365_CLIENT_ID=your-client-id
+MS365_TENANT_ID=your-tenant-id
+
+# Multi-tenant database settings
+MCP_ENABLE_DATABASE=true
+MCP_ENABLE_BEARER_TOKENS=true
+MCP_DB_DATA_DIR=/opt/mcpfusion
 ```
 
 ## Creating New Providers
@@ -111,10 +117,12 @@ func WithAPIKey(key string) Option {
 }
 ```
 
-4. Register your provider in `main.go`:
+4. Register your provider in `main.go` with multi-tenant authentication:
 ```go
+// Multi-tenant auth is required for all providers
+authManager := fusion.NewMultiTenantAuthManager(database, cache, logger)
 provider := yourprovider.New(
-    yourprovider.WithAPIKey(apiKey),
+    yourprovider.WithMultiTenantAuth(authManager),
 )
 server.AddToolProvider(provider)
 ```
@@ -125,12 +133,12 @@ server.AddToolProvider(provider)
   - GET/POST/DELETE tools
   - Resources for data retrieval
   - Prompts for common operations
-  - Environment-based configuration
+  - Multi-tenant authentication integration
 
 - **example2/**: Simple time service showing:
   - Basic tool implementation
   - Multiple handler registration
-  - No external dependencies
+  - Multi-tenant authentication support
 
 ## Important Patterns
 
@@ -138,12 +146,13 @@ server.AddToolProvider(provider)
 2. **Logging**: Use `mlogger` package for consistent logging
 3. **Configuration**: Use functional options for flexible configuration
 4. **Testing**: Each provider should have its own test file
-5. **Multi-Tenant Authentication**: Use database-backed token system for production deployments
-6. **Bearer Token Authentication**: Support standard Authorization: Bearer <token> headers
+5. **Multi-Tenant Authentication**: Required for all providers - use database-backed token system
+6. **Bearer Token Authentication**: Standard Authorization: Bearer <token> headers required
+7. **Provider Creation**: All providers must use `WithMultiTenantAuth()` option
 
 ## Multi-Tenant Authentication
 
-MCPFusion now supports multi-tenant authentication with the following components:
+MCPFusion requires multi-tenant authentication with the following components:
 
 ### Database Package (`db/`)
 - BoltDB-based persistent storage (`go.etcd.io/bbolt`)
@@ -153,33 +162,31 @@ MCPFusion now supports multi-tenant authentication with the following components
 - Comprehensive CLI tools for token administration
 
 ### Authentication Flow
-1. **API Token Generation**: Use `mcpfusion-token add` to create tenant tokens
+1. **API Token Generation**: Use `./mcpfusion -token-add` to create tenant tokens
 2. **Bearer Authentication**: Include `Authorization: Bearer <token>` in HTTP requests
 3. **Tenant Isolation**: Each API token represents a separate tenant namespace
 4. **Service Independence**: Each tenant has independent OAuth tokens for each service
 
-### Environment Variables for Multi-Tenant Mode
+### Required Environment Variables
 ```bash
-# Enable database for persistent storage
+# Multi-tenant authentication (required)
 MCP_ENABLE_DATABASE=true
-
-# Enable bearer token authentication
 MCP_ENABLE_BEARER_TOKENS=true
 
 # Optional: Set custom database directory
-MCP_DB_DATA_DIR=/path/to/data
+MCP_DB_DATA_DIR=/opt/mcpfusion
 ```
 
 ### Token Management CLI
 ```bash
 # Generate new API token
-mcpfusion-token add "Production environment"
+./mcpfusion -token-add "Production environment"
 
 # List all tokens
-mcpfusion-token list
+./mcpfusion -token-list
 
 # Delete token
-mcpfusion-token delete abc12345
+./mcpfusion -token-delete abc12345
 ```
 
 ## Testing Requirements

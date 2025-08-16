@@ -12,46 +12,41 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	// Test creating a new Fusion instance with default options
-	fusion := New()
-
-	if fusion == nil {
-		t.Fatal("New() returned nil")
-	}
-
-	if fusion.httpClient == nil {
-		t.Error("HTTP client should be initialized")
-	}
-
-	if fusion.cache == nil {
-		t.Error("Cache should be initialized")
-	}
+	// Test that creating a Fusion instance without multi-tenant auth panics
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic when creating Fusion without multi-tenant auth")
+		}
+	}()
+	
+	// This should panic
+	New()
 }
 
 func TestNewWithOptions(t *testing.T) {
 	// Create a mock logger
 	mockLogger := &mockLogger{}
 
+	// Create a multi-tenant auth manager with database cache
+	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, mockLogger), mockLogger)
+
 	// Test creating with options
 	fusion := New(
 		WithLogger(mockLogger),
-		WithInMemoryCache(),
+		WithMultiTenantAuth(mockAuth),
 	)
 
 	if fusion.logger != mockLogger {
 		t.Error("Logger not set correctly")
 	}
 
-	// Cache type depends on whether multi-tenant auth is configured
-	// Without multi-tenant auth, it should fall back to FileCache
-	if fusion.multiTenantAuth == nil {
-		if _, ok := fusion.cache.(*FileCache); !ok {
-			t.Error("Expected FileCache when no multi-tenant auth is configured")
-		}
-	} else {
-		if _, ok := fusion.cache.(*DatabaseCache); !ok {
-			t.Error("Expected DatabaseCache when multi-tenant auth is configured")
-		}
+	// Should always use database cache with multi-tenant auth
+	if _, ok := fusion.cache.(*DatabaseCache); !ok {
+		t.Error("Expected DatabaseCache when multi-tenant auth is configured")
+	}
+
+	if fusion.multiTenantAuth != mockAuth {
+		t.Error("Multi-tenant auth manager not set correctly")
 	}
 }
 
@@ -83,8 +78,12 @@ func TestNewWithJSONConfig(t *testing.T) {
 		}
 	}`
 
+	// Create a multi-tenant auth manager
+	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
+
 	fusion := New(
 		WithJSONConfigData([]byte(jsonConfig), "test-config.json"),
+		WithMultiTenantAuth(mockAuth),
 	)
 
 	if fusion.config == nil {

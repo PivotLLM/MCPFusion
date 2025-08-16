@@ -206,7 +206,8 @@ Use curly braces for path placeholders:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | Yes | Parameter name |
+| `name` | string | Yes | Actual API parameter name (can include special characters) |
+| `alias` | string | No | **MCP-compliant alias name** (overrides auto-sanitization) |
 | `description` | string | Yes | Description shown to LLM |
 | `type` | string | Yes | Parameter type (see types below) |
 | `required` | boolean | Yes | Whether parameter is required |
@@ -214,7 +215,41 @@ Use curly braces for path placeholders:
 | `default` | any | No | Default value if not provided |
 | `examples` | array | No | Example values for LLM |
 | `validation` | object | No | Validation rules |
-| `transform` | object | No | Parameter transformation rules |
+| `transform` | object | No | Parameter transformation rules
+
+### ⚠️ **MCP Parameter Naming Requirements**
+
+**MCP Specification**: Parameter names must match `^[a-zA-Z0-9_.-]{1,64}$`
+- ✅ **Valid**: `select`, `user_id`, `api-key`, `filter.name`
+- ❌ **Invalid**: `$select`, `user id`, `@param`, `100%complete`
+
+**Solution Options**:
+1. **Use `alias` field** (recommended): Provides explicit control
+2. **Auto-sanitization**: System removes invalid characters (logs warning)
+
+**Configuration Examples**:
+```json
+// Option 1: Explicit alias (recommended)
+{
+  "name": "$select",
+  "alias": "select", 
+  "description": "OData select fields",
+  "type": "string"
+}
+
+// Option 2: Auto-sanitization (will sanitize $filter → filter)
+{
+  "name": "$filter",
+  "description": "OData filter expression", 
+  "type": "string"
+}
+```
+
+**System Behavior**:
+- **With alias**: Uses alias name for MCP, logs INFO message
+- **Without alias**: Auto-sanitizes name, logs WARNING to add explicit alias
+- **API calls**: Always uses original `name` value for actual API requests
+- **Conflicts**: System validates no two parameters map to same MCP name |
 
 ### Parameter Types
 
@@ -492,6 +527,153 @@ API_BASE_URL=https://api.example.com
 - `service_resource_action`: `microsoft365_calendar_read_summary`
 - `service_resource_action_modifier`: `microsoft365_mail_folder_messages`
 
+### **Parameter Naming Best Practices**
+
+#### **Rule 1: Always Use Aliases for Special Characters**
+
+When your API uses parameters that violate MCP naming rules, always add explicit aliases:
+
+```json
+// ❌ Bad: Will auto-sanitize with warnings
+{
+  "name": "$select",
+  "description": "OData select fields",
+  "type": "string"
+}
+
+// ✅ Good: Explicit alias with clear intent
+{
+  "name": "$select", 
+  "alias": "select",
+  "description": "OData select fields (comma-separated)",
+  "type": "string",
+  "examples": ["displayName,mail", "id,displayName,mail,userPrincipalName"]
+}
+```
+
+#### **Rule 2: Choose Meaningful Alias Names**
+
+Use descriptive, LLM-friendly alias names:
+
+```json
+// ❌ Poor: Ambiguous alias
+{
+  "name": "$top",
+  "alias": "t",
+  "type": "number"
+}
+
+// ✅ Good: Clear, descriptive alias  
+{
+  "name": "$top",
+  "alias": "limit",
+  "description": "Maximum number of items to return",
+  "type": "number",
+  "default": 10,
+  "examples": [10, 25, 50, 100]
+}
+```
+
+#### **Rule 3: Handle Common API Patterns**
+
+**Microsoft Graph / OData APIs:**
+```json
+{
+  "name": "$select", "alias": "select",
+  "name": "$filter", "alias": "filter", 
+  "name": "$orderby", "alias": "orderby",
+  "name": "$top", "alias": "limit",
+  "name": "$skip", "alias": "offset",
+  "name": "$expand", "alias": "expand",
+  "name": "$search", "alias": "search",
+  "name": "$count", "alias": "include_count"
+}
+```
+
+**APIs with Spaces:**
+```json
+{
+  "name": "user name", 
+  "alias": "user_name",
+  "name": "file size",
+  "alias": "file_size"
+}
+```
+
+**APIs with Special Characters:**
+```json
+{
+  "name": "query[filters]",
+  "alias": "filters",
+  "name": "@timestamp", 
+  "alias": "timestamp",
+  "name": "100%complete",
+  "alias": "completion_percent"
+}
+```
+
+#### **Rule 4: Add Rich Descriptions and Examples**
+
+Make your parameters LLM-friendly with enhanced descriptions:
+
+```json
+{
+  "name": "$filter",
+  "alias": "filter", 
+  "description": "OData filter expression to narrow results. Supports eq, ne, gt, lt, ge, le, and, or, not operators. Common patterns: startswith(field,'value'), contains(field,'value'), field eq 'value'",
+  "type": "string",
+  "required": false,
+  "location": "query",
+  "examples": [
+    "startswith(displayName,'John')",
+    "mail eq 'user@example.com'", 
+    "createdDateTime ge 2024-01-01T00:00:00Z",
+    "startswith(displayName,'A') and department eq 'Engineering'"
+  ]
+}
+```
+
+#### **Rule 5: Validate No Conflicts**
+
+Ensure no two parameters map to the same MCP name:
+
+```json
+// ❌ Bad: Both map to "filter"
+[
+  {"name": "$filter", "alias": "filter"},
+  {"name": "search_filter", "alias": "filter"}  // CONFLICT!
+]
+
+// ✅ Good: Unique aliases
+[
+  {"name": "$filter", "alias": "odata_filter"},
+  {"name": "search_filter", "alias": "search_filter"}
+]
+```
+
+#### **System Behavior Summary**
+
+| Scenario | MCP Name | Log Level | Recommendation |
+|----------|----------|-----------|----------------|
+| `{"name": "validParam"}` | `validParam` | None | ✅ No action needed |
+| `{"name": "$select", "alias": "select"}` | `select` | INFO | ✅ Best practice |
+| `{"name": "$filter"}` | `filter` | WARNING | ⚠️ Add explicit alias |
+| `{"name": "$select"}, {"name": "select"}` | Conflict! | ERROR | ❌ Fix naming conflict |
+
+#### **LLM Guidance Template**
+
+When creating configurations, include this guidance for LLMs:
+
+```json
+{
+  "// IMPORTANT": "Parameter names must match ^[a-zA-Z0-9_.-]{1,64}$",
+  "// RULE 1": "If API parameter contains $, @, %, spaces, or special chars, add 'alias' field",
+  "// RULE 2": "Choose descriptive alias names (e.g., $top -> limit, $filter -> filter)",  
+  "// RULE 3": "Always include examples and detailed descriptions",
+  "// RULE 4": "Verify no two parameters map to same alias name"
+}
+```
+
 ## Complete Examples
 
 ### Simple REST API with Bearer Token
@@ -668,7 +850,25 @@ API_BASE_URL=https://api.example.com
 
 ### Common Issues
 
-**1. Authentication Failures**
+**1. Parameter Naming Errors**
+```
+Error: tools.0.custom.input_schema.properties: Property keys should match pattern '^[a-zA-Z0-9_.-]{1,64}$'
+```
+**Cause**: Parameter names contain characters not allowed by MCP specification (`$`, `@`, spaces, etc.).
+
+**Solutions:**
+- Add explicit `alias` field to problematic parameters:
+  ```json
+  {"name": "$select", "alias": "select", "type": "string"}
+  ```
+- Review server logs for auto-sanitization warnings:
+  ```
+  WARNING: Auto-sanitized parameter '$filter' to 'filter' - consider adding explicit alias
+  ```
+- Check for alias conflicts (two parameters mapping to same MCP name)
+- Ensure aliases match MCP pattern: `^[a-zA-Z0-9_.-]{1,64}$`
+
+**2. Authentication Failures**
 ```
 Error: Failed to apply authentication
 ```
@@ -739,6 +939,7 @@ Create a minimal config with just one endpoint to test authentication in isolati
 
 | Error Type | Typical Causes | Solutions |
 |------------|---------------|-----------|
+| **Parameter Naming** | Special characters in parameter names | Add explicit `alias` fields, review MCP naming rules |
 | **Configuration** | Invalid JSON, missing fields | Validate JSON syntax, check required fields |
 | **Authentication** | Invalid credentials, expired tokens | Verify environment variables, refresh tokens |
 | **Network** | Connection issues, timeouts | Check network connectivity, increase timeouts |
@@ -774,6 +975,8 @@ MCPFusion validates configurations on startup. Common validation errors:
 
 | Error | Cause | Fix |
 |-------|-------|-----|
+| `parameter name conflict` | Two parameters map to same MCP name | Use different aliases or sanitized names |
+| `parameter name not MCP-compliant` | Alias contains invalid characters | Ensure alias matches `^[a-zA-Z0-9_.-]{1,64}$` |
 | `endpoint ID is required` | Missing `id` field | Add unique `id` to endpoint |
 | `parameter name is required` | Missing `name` field | Add `name` to parameter |
 | `invalid HTTP method` | Invalid `method` value | Use GET, POST, PUT, DELETE, PATCH |

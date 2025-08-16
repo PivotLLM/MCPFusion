@@ -529,7 +529,7 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 		return tenantContext, nil
 	}
 
-	// Fallback for when database is not available (legacy mode)
+	// Fallback for when database is not available (testing/development mode)
 	// Hash the token to create a tenant identifier
 	hasher := sha256.New()
 	hasher.Write([]byte(token))
@@ -543,7 +543,7 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 	}
 
 	if mtam.logger != nil {
-		mtam.logger.Debugf("Extracted tenant context from token (legacy mode): %s", tenantContext.String())
+		mtam.logger.Debugf("Extracted tenant context from token (testing/development mode): %s", tenantContext.String())
 	}
 
 	return tenantContext, nil

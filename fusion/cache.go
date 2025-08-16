@@ -42,6 +42,8 @@ func (ci *cacheItem) isExpired() bool {
 }
 
 // InMemoryCache implements a simple in-memory cache
+// DEPRECATED: Use DatabaseCache with multi-tenant authentication instead.
+// This cache implementation is only kept for compatibility and will be removed.
 type InMemoryCache struct {
 	items  map[string]*cacheItem
 	mu     sync.RWMutex
@@ -49,6 +51,7 @@ type InMemoryCache struct {
 }
 
 // NewInMemoryCacheWithLogger creates a new in-memory cache with logging support
+// DEPRECATED: Use DatabaseCache with multi-tenant authentication instead.
 func NewInMemoryCacheWithLogger(logger global.Logger) *InMemoryCache {
 	cache := &InMemoryCache{
 		items:  make(map[string]*cacheItem),
@@ -70,6 +73,7 @@ func NewInMemoryCacheWithLogger(logger global.Logger) *InMemoryCache {
 }
 
 // NewInMemoryCache creates a new in-memory cache
+// DEPRECATED: Use DatabaseCache with multi-tenant authentication instead.
 func NewInMemoryCache() *InMemoryCache {
 	return NewInMemoryCacheWithLogger(nil)
 }

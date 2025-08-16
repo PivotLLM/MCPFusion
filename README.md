@@ -1,6 +1,8 @@
 # MCPFusion
 
-A production-ready, configuration-driven MCP (Model Context Protocol) server that enables AI clients to interact with multiple APIs and services through a standardized interface. Create powerful AI tools from any REST API using simple JSON configuration.
+A production-ready, configuration-driven MCP (Model Context Protocol) server that enables AI clients to interact with
+multiple APIs and services through a standardized interface. Create powerful AI tools from any REST API using simple
+JSON configuration.
 
 ## Features
 
@@ -8,7 +10,6 @@ A production-ready, configuration-driven MCP (Model Context Protocol) server tha
 - **🔐 Multi-Tenant Authentication**: Complete tenant isolation with database-backed token management
 - **🎫 Bearer Token Support**: Industry-standard `Authorization: Bearer <token>` authentication
 - **⚡ Enhanced Parameter System**: Rich parameter metadata with defaults, validation, and constraints
-- **📁 Multi-Calendar & Mail Folder Support**: Target specific calendars and mail folders
 - **🔄 Production-Grade Reliability**: Circuit breakers, retry logic, caching, and comprehensive error handling
 - **📊 Real-time Metrics**: Health monitoring, correlation IDs, and detailed logging
 - **🧪 Comprehensive Testing**: Full test suite for all endpoints and configurations
@@ -16,62 +17,48 @@ A production-ready, configuration-driven MCP (Model Context Protocol) server tha
 
 ## Quick Start
 
-### **Single-Tenant Mode (Legacy)**
+1. **Create an environment file**:
+/opt/mcpfusion/env is recommended.
+ ```
+MCP_FUSION_CONFIG=/Users/eric/source/MCPFusion/configs/microsoft365.json
+MCP_FUSION_LISTEN=127.0.0.1:8888
+MCP_FUSION_DB_DIR=/opt/mcpfusion/db
 
-1. **Build and Run**:
-   ```bash
-   go build -o mcpfusion .
-   ./mcpfusion -config configs/microsoft365.json -port 8888
-   ```
-
-2. **Configure Environment Variables**:
-   ```bash
-   # Create ~/.mcp file with your API credentials
-   echo "MS365_CLIENT_ID=your-client-id" >> ~/.mcp
-   echo "MS365_TENANT_ID=your-tenant-id" >> ~/.mcp
-   ```
-
-### **Multi-Tenant Mode (Recommended)**
-
-1. **Enable Multi-Tenant Features**:
-   ```bash
-   # Enable database and bearer token authentication
-   export MCP_ENABLE_DATABASE=true
-   export MCP_ENABLE_BEARER_TOKENS=true
-   
-   # Optional: Custom database directory
-   export MCP_DB_DATA_DIR=/opt/mcpfusion
-   ```
+# Example for Microsoft 365 Graph API
+MS365_CLIENT_ID=<application client ID>
+MS365_TENANT_ID=common
+```
 
 2. **Build and Generate API Token**:
    ```bash
    # Build the server
    go build -o mcpfusion .
    
-   # Generate API token for your application
-   ./mcpfusion -token-add "Production environment"
+   # Generate API token for your application with a description of your choice
+   ./mcpfusion -token-add "Token1"
    ```
 
 3. **Start Server and Connect**:
    ```bash
    # Start server
-   ./mcpfusion -config configs/microsoft365.json -port 8888
+   ./mcpfusion
    
-   # Connect using Bearer token authentication
-   curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:8888/api/endpoint
-   ```
-
+   # Optionally pass a config and port to the application
+   ./mcpfusion -config configs/microsoft365.json -port 8888
+   '''
+   
 ### **Client Configuration**
+- **URL**: http://localhost:8888/sss (adjust as required for your listen address/port)
+- **Authentication**: Send the token generated above as a Bearer in a standard Authorization header.
+  (eg. "Authorization: Bearer <TOKEN>" )
 
-- **Cline**: Add to `~/.cline/config.json`
-- **Claude Desktop**: Add to MCP servers configuration
-- **Custom Client**: Connect to `http://localhost:8888/sse`
-
-See [Client Configuration Guide](docs/clients.md) and [Token Management Guide](docs/TOKEN_MANAGEMENT.md) for detailed setup instructions.
+See [Client Configuration Guide](docs/clients.md) and [Token Management Guide](docs/TOKEN_MANAGEMENT.md) for detailed
+setup instructions.
 
 ## Documentation
 
 ### **Configuration & Setup**
+
 - 📚 **[Configuration Guide](docs/config.md)** - Complete guide to creating JSON configurations for any API
 - 🔌 **[Client Integration](docs/clients.md)** - Connect Cline, Claude Desktop, and custom MCP clients
 - 🎫 **[Token Management Guide](docs/TOKEN_MANAGEMENT.md)** - Multi-tenant authentication and CLI usage
@@ -79,6 +66,7 @@ See [Client Configuration Guide](docs/clients.md) and [Token Management Guide](d
 - 🔍 **[Google APIs Setup](fusion/README_CONFIG.md#google-apis-setup)** - Google Cloud Console configuration
 
 ### **Development & Testing**
+
 - ⚡ **[Quick Start Guide](fusion/QUICKSTART.md)** - 5-minute setup guide
 - 🧪 **[Testing Guide](tests/README.md)** - Comprehensive test suite documentation
 - 💻 **[Integration Examples](fusion/examples/)** - Code examples for custom integrations
@@ -98,28 +86,15 @@ MCPFusion/
 ├── example2/           # Simple time service example
 └── global/             # Shared interfaces and utilities
 ```
-
-### **Multi-Tenant Architecture**
-
-MCPFusion supports complete tenant isolation where each API token represents a separate namespace:
-
-- **🏢 Tenant Isolation**: Each API token has independent OAuth tokens and service credentials
-- **🗄️ Database Storage**: BoltDB-based persistent storage with automatic cleanup
-- **🔐 Secure Tokens**: SHA-256 hashed API tokens with auto-generation
-- **⚖️ Load Balancing**: Multiple tenants can use the same MCPFusion instance
-- **📊 Per-Tenant Analytics**: Independent metrics and monitoring per tenant
-
 ## Token Management
 
 MCPFusion includes a comprehensive CLI for managing API tokens:
 
-### **Token Commands**
-
 ```bash
 # Generate new API token
 ./mcpfusion -token-add "Production environment"
-> ✓ API Token created successfully
-> ⚠ SECURITY WARNING: This token will only be displayed once!
+> API Token created successfully
+> SECURITY WARNING: This token will only be displayed once!
 > Token: 1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
 > Hash: a1b2c3d4e5f6789...
 
@@ -139,78 +114,41 @@ MCPFusion includes a comprehensive CLI for managing API tokens:
 > Token deleted successfully
 ```
 
-### **Token Features**
-
-- **🔒 Auto-Generated**: Cryptographically secure 64-character hex tokens
-- **🎯 Prefix Identification**: 8-character prefixes for easy management
-- **🛡️ One-Time Display**: Tokens shown only during creation for security
-- **⏰ Usage Tracking**: Creation time and last-used timestamps
-- **🗑️ Safe Deletion**: Confirmation prompts with token details
-- **📁 Custom Descriptions**: Label tokens for different environments/applications
-
-### **Environment Configuration**
-
-```bash
-# Enable multi-tenant mode
-export MCP_ENABLE_DATABASE=true
-export MCP_ENABLE_BEARER_TOKENS=true
-
-# Optional settings
-export MCP_DB_DATA_DIR=/opt/mcpfusion  # Custom database directory
-```
-
-### **Authentication Usage**
-
-Include tokens in HTTP requests using standard Bearer authentication:
-
-```bash
-# API requests
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-     https://mcpfusion-server/api/microsoft365/profile
-
-# MCP client configuration
-{
-  "command": "mcpfusion",
-  "args": ["-config", "config.json"],
-  "env": {
-    "MCPFUSION_TOKEN": "YOUR_TOKEN"
-  }
-}
-```
-
-**📖 Complete Guide**: See [Token Management Documentation](docs/TOKEN_MANAGEMENT.md) for detailed usage instructions.
-
-## Available Tools & APIs
+## Configuration Examples
 
 ### **Microsoft 365 Integration** (19 tools)
+
 **Authentication:** OAuth2 Device Flow with automatic token refresh
 
-| Category | Tools | Description |
-|----------|-------|-------------|
-| **Profile** | `microsoft365_profile_get` | User profile information |
-| **Calendar Management** | `microsoft365_calendars_list` | List all user calendars |
-| | `microsoft365_calendar_read_summary` | Calendar events (summary view) |
-| | `microsoft365_calendar_read_details` | Calendar events (detailed view) |
-| | `microsoft365_calendar_events_read_summary` | Events from specific calendar (summary) |
-| | `microsoft365_calendar_events_read_details` | Events from specific calendar (detailed) |
-| | `microsoft365_calendar_read_event` | Individual event by ID |
-| | `microsoft365_calendar_search` | **Search calendar events with flexible filtering** |
-| **Mail Management** | `microsoft365_mail_folders_list` | List all mail folders |
-| | `microsoft365_mail_read_inbox` | Inbox messages |
-| | `microsoft365_mail_folder_messages` | Messages from specific folder |
-| | `microsoft365_mail_read_message` | Individual message by ID |
-| | `microsoft365_mail_search` | **Search mail with filter and full-text search** |
-| **File Management** | `microsoft365_files_list` | List OneDrive files and folders |
-| | `microsoft365_files_search` | **Search OneDrive files with flexible filtering** |
-| | `microsoft365_files_read_file` | Individual file details by ID |
-| **Contacts** | `microsoft365_contacts_list` | List contacts |
-| | `microsoft365_contacts_read_contact` | Individual contact by ID |
+| Category                | Tools                                       | Description                                        |
+|-------------------------|---------------------------------------------|----------------------------------------------------|
+| **Profile**             | `microsoft365_profile_get`                  | User profile information                           |
+| **Calendar Management** | `microsoft365_calendars_list`               | List all user calendars                            |
+|                         | `microsoft365_calendar_read_summary`        | Calendar events (summary view)                     |
+|                         | `microsoft365_calendar_read_details`        | Calendar events (detailed view)                    |
+|                         | `microsoft365_calendar_events_read_summary` | Events from specific calendar (summary)            |
+|                         | `microsoft365_calendar_events_read_details` | Events from specific calendar (detailed)           |
+|                         | `microsoft365_calendar_read_event`          | Individual event by ID                             |
+|                         | `microsoft365_calendar_search`              | **Search calendar events with flexible filtering** |
+| **Mail Management**     | `microsoft365_mail_folders_list`            | List all mail folders                              |
+|                         | `microsoft365_mail_read_inbox`              | Inbox messages                                     |
+|                         | `microsoft365_mail_folder_messages`         | Messages from specific folder                      |
+|                         | `microsoft365_mail_read_message`            | Individual message by ID                           |
+|                         | `microsoft365_mail_search`                  | **Search mail with filter and full-text search**   |
+| **File Management**     | `microsoft365_files_list`                   | List OneDrive files and folders                    |
+|                         | `microsoft365_files_search`                 | **Search OneDrive files with flexible filtering**  |
+|                         | `microsoft365_files_read_file`              | Individual file details by ID                      |
+| **Contacts**            | `microsoft365_contacts_list`                | List contacts                                      |
+|                         | `microsoft365_contacts_read_contact`        | Individual contact by ID                           |
 
 ### **Google APIs Integration** (16 tools)
+
 See [Google Configuration](fusion/README_CONFIG.md#google-apis-setup) for setup details.
 
 ### **Custom API Integration**
+
 Create tools for any REST API using [JSON configuration](docs/config.md). Supports:
+
 - **Authentication**: OAuth2, Bearer tokens, API keys, Basic Auth
 - **Parameter Types**: String, number, boolean, array, object with validation
 - **Response Handling**: JSON, text, binary with pagination support
@@ -218,26 +156,64 @@ Create tools for any REST API using [JSON configuration](docs/config.md). Suppor
 
 ## Key Features
 
-### **Enhanced Parameter System**
-- **Rich Metadata**: Parameters include defaults, validation rules, and constraint information
-- **Type Safety**: Full support for string, number, boolean, array, and object types
-- **Smart Validation**: Pattern matching, length constraints, enum values, and numeric ranges
-- **LLM-Friendly**: Enhanced descriptions show constraints and examples to guide AI usage
+### **MCP Parameter Naming & Compatibility**
 
-### **Production-Grade Reliability**
-- ✅ **Multiple Authentication Methods**: OAuth2 Device Flow, Bearer tokens, API keys, Basic Auth
-- ✅ **Circuit Breakers**: Configurable failure thresholds with automatic recovery
-- ✅ **Intelligent Retry Logic**: Exponential backoff with jitter and error categorization
-- ✅ **Response Caching**: Configurable TTL with automatic cache invalidation
-- ✅ **Real-time Metrics**: Request latency, success rates, and error categorization
-- ✅ **Correlation Tracking**: Request IDs for distributed tracing and debugging
-- ✅ **Comprehensive Error Handling**: User-friendly messages with actionable guidance
+MCPFusion automatically handles parameter name conflicts between API requirements and MCP naming restrictions:
 
-### **Advanced API Integration**
-- **Pagination Support**: Automatic multi-page fetching for large datasets
-- **Parameter Transformation**: Convert parameter formats before API calls
-- **Response Processing**: JSON path extraction and data transformation
-- **Flexible Routing**: Support for path parameters and multiple HTTP methods
+**🔤 MCP Parameter Rules**: The MCP specification requires parameter names to match `^[a-zA-Z0-9_.-]{1,64}$`
+
+- **Allowed**: letters, numbers, underscore, dot, hyphen (max 64 characters)
+- **Not Allowed**: `$`, `@`, `#`, `%`, spaces, and other special characters
+
+**API Parameter Challenges**: Many APIs use parameters that violate MCP rules:
+
+- Microsoft Graph API: `$select`, `$filter`, `$top`, `$orderby`, `$expand`, `$skip`
+- OData APIs: `$search`, `$count`, `$format`
+- Other APIs: parameters with spaces, special characters, or reserved symbols
+
+**Automatic Solutions**:
+
+1. **Explicit Aliases**: Configure user-friendly names (e.g., `$select` → `select`)
+2. **Auto-Sanitization**: Remove invalid characters as fallback with warning logs
+3. **Bidirectional Mapping**: Seamless conversion between MCP names and API names
+
+**📝 Configuration Example**:
+
+```json
+{
+  "name": "$select",
+  "alias": "select",
+  "description": "OData select parameter",
+  "type": "string"
+}
+```
+
+**🔍 System Behavior**:
+
+- **With Alias**: Uses clean alias name (`select`) for MCP, logs at INFO level
+- **Without Alias**: Auto-sanitizes (`$select` → `select`), logs WARNING to add explicit alias
+- **Conflicts**: Validates no two parameters map to the same MCP name
+- **API Calls**: Always uses original parameter names for actual API requests
+
+**📋 Quick Reference for Configuration**:
+
+```json
+// Template for problematic parameters
+{
+  "name": "$actual_api_param",
+  // Original API parameter name
+  "alias": "mcp_friendly_name",
+  // MCP-compliant alias (letters, numbers, _, -, .)
+  "description": "Clear description with examples",
+  "type": "string",
+  "required": false,
+  "location": "query",
+  "examples": [
+    "example1",
+    "example2"
+  ]
+}
+```
 
 ## Testing
 
@@ -288,7 +264,8 @@ Once connected through your MCP client, you can use natural language to interact
 **"Find all PDF files in my OneDrive modified this year"**
 → Calls `microsoft365_files_search` with file type and date filters
 
-The enhanced parameter system ensures the AI has all the context needed to make proper API calls with appropriate defaults and validation.
+The enhanced parameter system ensures the AI has all the context needed to make proper API calls with appropriate
+defaults and validation.
 
 ## License
 

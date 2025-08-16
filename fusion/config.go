@@ -98,6 +98,7 @@ type EndpointConfig struct {
 // ParameterConfig represents configuration for a parameter
 type ParameterConfig struct {
 	Name        string            `json:"name"`
+	Alias       string            `json:"alias,omitempty"`      // MCP-compliant name alias
 	Description string            `json:"description"`
 	Type        ParameterType     `json:"type"`
 	Required    bool              `json:"required"`

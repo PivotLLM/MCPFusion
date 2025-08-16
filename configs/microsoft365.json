@@ -69,6 +69,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -77,6 +78,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -89,6 +91,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -137,6 +140,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -145,6 +149,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -157,6 +162,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -178,6 +184,7 @@
           "parameters": [
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -186,6 +193,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -198,6 +206,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -226,6 +235,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -280,6 +290,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -288,6 +299,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -300,6 +312,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -356,6 +369,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -364,6 +378,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -376,6 +391,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -397,6 +413,7 @@
           "parameters": [
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of messages to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -409,6 +426,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -417,6 +435,7 @@
             },
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "Filter expression (e.g., 'isRead eq false')",
               "type": "string",
               "required": false,
@@ -424,6 +443,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -445,6 +465,7 @@
           "parameters": [
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -453,6 +474,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -465,6 +487,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -493,6 +516,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of messages to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -505,6 +529,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -513,6 +538,7 @@
             },
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "Filter expression (e.g., 'isRead eq false')",
               "type": "string",
               "required": false,
@@ -520,6 +546,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -548,6 +575,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -567,6 +595,7 @@
           "parameters": [
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -587,6 +616,7 @@
           "parameters": [
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of contacts to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -599,6 +629,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -607,6 +638,7 @@
             },
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "Filter expression",
               "type": "string",
               "required": false,
@@ -614,6 +646,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -642,6 +675,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -689,6 +723,7 @@
             },
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "OData filter expression. Examples: contains(subject,'Meeting'), contains(subject,'Project') and start/dateTime ge '2025-01-01T00:00:00Z', attendees/any(a:contains(a/emailAddress/address,'john@example.com')), contains(location/displayName,'Room')",
               "type": "string",
               "required": false,
@@ -703,6 +738,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -711,6 +747,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -723,6 +760,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -744,6 +782,7 @@
           "parameters": [
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "OData filter expression. Examples: contains(subject,'Invoice'), contains(from/emailAddress/address,'boss@company.com'), contains(subject,'Project') and receivedDateTime ge 2025-01-01T00:00:00Z, isRead eq false, hasAttachments eq true",
               "type": "string",
               "required": false,
@@ -760,6 +799,7 @@
             },
             {
               "name": "$search",
+              "alias": "search",
               "description": "Full-text search across message content. Examples: 'invoice payment', 'from:john@company.com', 'subject:meeting', 'attachment:*.pdf'",
               "type": "string",
               "required": false,
@@ -775,6 +815,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -783,6 +824,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -795,6 +837,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -803,6 +846,7 @@
             },
             {
               "name": "$orderby",
+              "alias": "orderby",
               "description": "Sort order for results",
               "type": "string",
               "required": false,
@@ -847,6 +891,7 @@
             },
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "OData filter expression. Examples: file/mimeType eq 'application/pdf', lastModifiedDateTime ge 2025-01-01T00:00:00Z, size gt 1048576",
               "type": "string",
               "required": false,
@@ -861,6 +906,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -869,6 +915,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -881,6 +928,7 @@
             },
             {
               "name": "$orderby",
+              "alias": "orderby",
               "description": "Sort order for results",
               "type": "string",
               "required": false,
@@ -910,6 +958,7 @@
           "parameters": [
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "OData filter expression. Examples: file/mimeType eq 'application/pdf', folder ne null, file ne null",
               "type": "string",
               "required": false,
@@ -923,6 +972,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -931,6 +981,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -943,6 +994,7 @@
             },
             {
               "name": "$skip",
+              "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
               "type": "number",
               "required": false,
@@ -951,6 +1003,7 @@
             },
             {
               "name": "$orderby",
+              "alias": "orderby",
               "description": "Sort order for results",
               "type": "string",
               "required": false,
@@ -967,6 +1020,7 @@
             },
             {
               "name": "$expand",
+              "alias": "expand",
               "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
               "type": "string",
               "required": false,
@@ -1001,6 +1055,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -1009,6 +1064,7 @@
             },
             {
               "name": "$expand",
+              "alias": "expand",
               "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
               "type": "string",
               "required": false,
@@ -1061,6 +1117,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -1069,6 +1126,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -1081,6 +1139,7 @@
             },
             {
               "name": "$orderby",
+              "alias": "orderby",
               "description": "Sort order for results",
               "type": "string",
               "required": false,
@@ -1097,6 +1156,7 @@
             },
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "Filter results by type or properties",
               "type": "string",
               "required": false,
@@ -1110,6 +1170,7 @@
             },
             {
               "name": "$expand",
+              "alias": "expand",
               "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
               "type": "string",
               "required": false,
@@ -1149,6 +1210,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -1157,6 +1219,7 @@
             },
             {
               "name": "$expand",
+              "alias": "expand",
               "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
               "type": "string",
               "required": false,
@@ -1183,6 +1246,7 @@
           "parameters": [
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -1191,6 +1255,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of recent items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -1203,6 +1268,7 @@
             },
             {
               "name": "$expand",
+              "alias": "expand",
               "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
               "type": "string",
               "required": false,
@@ -1243,6 +1309,7 @@
             },
             {
               "name": "$select",
+              "alias": "select",
               "description": "Fields to include in response",
               "type": "string",
               "required": false,
@@ -1251,6 +1318,7 @@
             },
             {
               "name": "$top",
+              "alias": "top",
               "description": "Number of items to retrieve (max 1000)",
               "type": "number",
               "required": false,
@@ -1263,6 +1331,7 @@
             },
             {
               "name": "$orderby",
+              "alias": "orderby",
               "description": "Sort order for results",
               "type": "string",
               "required": false,
@@ -1279,6 +1348,7 @@
             },
             {
               "name": "$filter",
+              "alias": "filter",
               "description": "Filter results by type or properties",
               "type": "string",
               "required": false,
@@ -1292,6 +1362,7 @@
             },
             {
               "name": "$expand",
+              "alias": "expand",
               "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
               "type": "string",
               "required": false,

@@ -38,6 +38,9 @@ func main() {
 
 	logger.Info("Starting MCPFusion server with Fusion provider...")
 
+	// Create multi-tenant auth manager (required)
+	mockAuth := fusion.NewMultiTenantAuthManager(nil, fusion.NewDatabaseCache(nil, logger), logger)
+	
 	// Create production-ready Fusion provider
 	fusionProvider := fusion.New(
 		// Load multiple service configurations
@@ -46,8 +49,8 @@ func main() {
 		fusion.WithJSONConfig("configs/custom-apis.json"),
 
 		// Configure production features
-		fusion.WithLogger(logger),  // Structured logging
-		fusion.WithInMemoryCache(), // Token and response caching
+		fusion.WithLogger(logger),           // Structured logging
+		fusion.WithMultiTenantAuth(mockAuth), // Multi-tenant authentication (required)
 	)
 
 	// Validate configuration at startup

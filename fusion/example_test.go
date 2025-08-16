@@ -14,9 +14,10 @@ import (
 
 // ExampleNew demonstrates how to create a new Fusion instance
 func ExampleNew() {
-	// Create a Fusion instance with default options (no logger to avoid output)
+	// Create a Fusion instance with multi-tenant auth (required)
+	mockAuth := fusion.NewMultiTenantAuthManager(nil, fusion.NewDatabaseCache(nil, nil), nil)
 	fusionProvider := fusion.New(
-		fusion.WithInMemoryCache(),
+		fusion.WithMultiTenantAuth(mockAuth),
 	)
 
 	fmt.Printf("Fusion provider created with %d configured services\n", len(fusionProvider.GetServiceNames()))
@@ -82,15 +83,16 @@ func ExampleNew_withConfig() {
 	// First tool: example_get_user
 }
 
-// ExampleFusion_GetSupportedAuthTypes demonstrates getting supported auth types
-func ExampleFusion_GetSupportedAuthTypes() {
-	fusionProvider := fusion.New()
+// ExampleNew_withMultiTenantAuth demonstrates multi-tenant auth requirement
+func ExampleNew_withMultiTenantAuth() {
+	// Multi-tenant auth manager handles all authentication
+	mockAuth := fusion.NewMultiTenantAuthManager(nil, fusion.NewDatabaseCache(nil, nil), nil)
+	_ = fusion.New(
+		fusion.WithMultiTenantAuth(mockAuth),
+	)
 
-	authTypes := fusionProvider.GetSupportedAuthTypes()
-	fmt.Printf("Supported auth types: %d\n", len(authTypes))
-
-	// The exact number may vary based on registered strategies
-	// Output: Supported auth types: 4
+	fmt.Printf("Fusion created with multi-tenant authentication\n")
+	// Output: Fusion created with multi-tenant authentication
 }
 
 // ExampleLoadConfigFromFile demonstrates loading configuration from a file

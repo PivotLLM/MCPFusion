@@ -366,6 +366,19 @@ func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]int
 	required := make([]string, 0)
 
 	for _, param := range params {
+		// Use MCP-compliant name (alias or sanitized)
+		mcpName := GetMCPParameterName(&param)
+		
+		// Log the mapping if different from original
+		if m.logger != nil && mcpName != param.Name {
+			if param.Alias != "" {
+				m.logger.Infof("Using parameter alias '%s' for '%s'", mcpName, param.Name)
+			} else {
+				m.logger.Warningf("Auto-sanitized parameter '%s' to '%s' - consider adding explicit alias", 
+					param.Name, mcpName)
+			}
+		}
+		
 		// Create property definition
 		prop := map[string]interface{}{
 			"type":        m.getMCPType(param.Type),
@@ -394,11 +407,11 @@ func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]int
 			prop["default"] = param.Default
 		}
 
-		properties[param.Name] = prop
+		properties[mcpName] = prop  // Use MCP-compliant name
 
-		// Track required parameters
+		// Track required parameters with MCP-compliant names
 		if param.Required {
-			required = append(required, param.Name)
+			required = append(required, mcpName)
 		}
 	}
 
