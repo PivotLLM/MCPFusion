@@ -166,11 +166,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "10m"
-            }
+            "paginated": false
           }
         },
         {
@@ -211,11 +207,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "1h"
-            }
+            "paginated": false
           }
         },
         {
@@ -241,11 +233,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "type": "json"
           }
         },
         {
@@ -321,11 +309,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "paginated": false
           }
         },
         {
@@ -401,11 +385,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "paginated": false
           }
         },
         {
@@ -453,11 +433,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "paginated": false
           }
         },
         {
@@ -498,11 +474,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "30m"
-            }
+            "paginated": false
           }
         },
         {
@@ -557,11 +529,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "2m"
-            }
+            "paginated": false
           }
         },
         {
@@ -587,11 +555,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "15m"
-            }
+            "type": "json"
           }
         },
         {
@@ -611,11 +575,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "30m"
-            }
+            "type": "json"
           }
         },
         {
@@ -663,11 +623,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "15m"
-            }
+            "paginated": false
           }
         },
         {
@@ -693,11 +649,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "30m"
-            }
+            "type": "json"
           }
         },
         {
@@ -780,11 +732,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "2m"
-            }
+            "paginated": false
           }
         },
         {
@@ -872,11 +820,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "1m"
-            }
+            "paginated": false
           }
         },
         {
@@ -954,11 +898,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "paginated": false
           }
         },
         {
@@ -1042,11 +982,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": false,
-            "caching": {
-              "enabled": true,
-              "ttl": "10m"
-            }
+            "paginated": false
           }
         },
         {
@@ -1087,11 +1023,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "15m"
-            }
+            "type": "json"
           }
         },
         {
@@ -1110,10 +1042,7 @@
             }
           ],
           "response": {
-            "type": "binary",
-            "caching": {
-              "enabled": false
-            }
+            "type": "binary"
           }
         },
         {
@@ -1195,11 +1124,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "type": "json"
           }
         },
         {
@@ -1246,11 +1171,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "10m"
-            }
+            "type": "json"
           }
         },
         {
@@ -1296,11 +1217,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "1m"
-            }
+            "type": "json"
           }
         },
         {
@@ -1389,11 +1306,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "type": "json"
           }
         }
       ]

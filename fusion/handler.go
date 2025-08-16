@@ -8,7 +8,6 @@ package fusion
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -61,35 +60,6 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-	// Check cache if enabled
-	var cacheKey string
-	var cacheHit bool
-	if h.endpoint.Response.Caching != nil && h.endpoint.Response.Caching.Enabled {
-		cacheKey = h.generateCacheKey(args)
-		if cachedResult, err := h.fusion.cache.Get(cacheKey); err == nil {
-			if h.fusion.logger != nil {
-				h.fusion.logger.Debugf("Cache hit for %s.%s with key %s [%s]", h.service.Name, h.endpoint.ID, cacheKey, correlationID)
-			}
-			if resultStr, ok := cachedResult.(string); ok {
-				cacheHit = true
-				// Record cache hit in metrics
-				if h.fusion.metricsCollector != nil {
-					cacheMetrics := RequestMetrics{
-						ServiceName:   h.service.Name,
-						EndpointID:    h.endpoint.ID,
-						Method:        "GET", // Cache hits are typically for GET requests
-						Success:       true,
-						CacheHit:      true,
-						Latency:       time.Since(startTime),
-						CorrelationID: correlationID,
-						Timestamp:     startTime,
-					}
-					h.fusion.metricsCollector.RecordRequest(cacheMetrics)
-				}
-				return resultStr, nil
-			}
-		}
-	}
 
 	// Build request
 	req, err := h.buildRequest(ctx, args)
@@ -232,21 +202,6 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-	// Cache the result if caching is enabled
-	if h.endpoint.Response.Caching != nil && h.endpoint.Response.Caching.Enabled && !cacheHit {
-		ttl := h.endpoint.Response.Caching.TTL
-		if ttl == 0 {
-			ttl = 5 * time.Minute // Default TTL
-		}
-
-		if err := h.fusion.cache.Set(cacheKey, result, ttl); err != nil {
-			if h.fusion.logger != nil {
-				h.fusion.logger.Warningf("Failed to cache result for %s.%s [%s]: %v", h.service.Name, h.endpoint.ID, correlationID, err)
-			}
-		} else if h.fusion.logger != nil {
-			h.fusion.logger.Debugf("Cached result for %s.%s with key %s (TTL: %v) [%s]", h.service.Name, h.endpoint.ID, cacheKey, ttl, correlationID)
-		}
-	}
 
 	totalLatency := time.Since(startTime)
 	if h.fusion.logger != nil {
@@ -488,40 +443,6 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 }
 
 
-// generateCacheKey generates a cache key for the request
-func (h *HTTPHandler) generateCacheKey(args map[string]interface{}) string {
-	// Use custom cache key template if provided
-	if h.endpoint.Response.Caching != nil && h.endpoint.Response.Caching.Key != "" {
-		// Simple template replacement - could be enhanced with a template engine
-		key := h.endpoint.Response.Caching.Key
-		for _, value := range args {
-			key = fmt.Sprintf(key, value) // Simple approach for now
-		}
-		return fmt.Sprintf("fusion:%s:%s:%s", h.service.Name, h.endpoint.ID, key)
-	}
-
-	// Generate a hash-based cache key from the arguments
-	hasher := sha256.New()
-
-	// Include service and endpoint info
-	hasher.Write([]byte(h.service.Name))
-	hasher.Write([]byte(":"))
-	hasher.Write([]byte(h.endpoint.ID))
-	hasher.Write([]byte(":"))
-
-	// Include all argument values in a deterministic way
-	argData, err := json.Marshal(args)
-	if err != nil {
-		// Fallback if marshaling fails
-		hasher.Write([]byte(fmt.Sprintf("%v", args)))
-	} else {
-		hasher.Write(argData)
-	}
-
-	// Generate hash
-	hash := fmt.Sprintf("%x", hasher.Sum(nil))
-	return fmt.Sprintf("fusion:%s:%s:%s", h.service.Name, h.endpoint.ID, hash[:16])
-}
 
 // wrapNetworkError wraps network errors in NetworkError type
 func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {

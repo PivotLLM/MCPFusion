@@ -104,7 +104,7 @@ func main() {
 
 	// Create a temporary logger for early logging (before env vars are loaded)
 	tempLogger, err := mlogger.New(
-		mlogger.WithPrefix("MCP"),
+		mlogger.WithPrefix("MCPFusion"),
 		mlogger.WithDateFormat("2006-01-02 15:04:05"),
 		mlogger.WithLogFile("mcp.log"),
 		mlogger.WithLogStdout(true),
