@@ -136,7 +136,7 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 				mtam.logger.Debugf("Attempting to refresh token for tenant %s service: %s",
 					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
 			}
-			if refreshedToken, err := strategy.RefreshToken(ctx, tokenInfo); err == nil {
+			if refreshedToken, err := strategy.RefreshToken(ctx, tokenInfo, authConfig.Config); err == nil {
 				mtam.CacheToken(tenantContext, refreshedToken)
 				if mtam.logger != nil {
 					mtam.logger.Infof("Successfully refreshed token for tenant %s service: %s",

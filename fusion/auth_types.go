@@ -56,7 +56,7 @@ type AuthStrategy interface {
 	Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error)
 
 	// RefreshToken refreshes an existing token
-	RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error)
+	RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error)
 
 	// GetAuthType returns the authentication type this strategy handles
 	GetAuthType() AuthType

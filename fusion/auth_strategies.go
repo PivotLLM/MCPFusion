@@ -174,8 +174,143 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 	return nil, deviceCodeError
 }
 
-func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error) {
-	return nil, fmt.Errorf("OAuth2 token refresh not implemented in database-only mode")
+func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+	if tokenInfo == nil {
+		return nil, fmt.Errorf("token info is nil")
+	}
+
+	if tokenInfo.RefreshToken == "" {
+		return nil, fmt.Errorf("no refresh token available")
+	}
+
+	if config == nil {
+		return nil, fmt.Errorf("authentication configuration is required")
+	}
+
+	// Extract configuration parameters (check both camelCase and snake_case)
+	clientID, ok := config["clientId"].(string)
+	if !ok || clientID == "" {
+		clientID, ok = config["client_id"].(string)
+		if !ok || clientID == "" {
+			return nil, fmt.Errorf("clientId is required for OAuth2 token refresh")
+		}
+	}
+
+	tokenEndpoint, ok := config["tokenURL"].(string)
+	if !ok || tokenEndpoint == "" {
+		tokenEndpoint, ok = config["token_endpoint"].(string)
+		if !ok || tokenEndpoint == "" {
+			return nil, fmt.Errorf("tokenURL is required for OAuth2 token refresh")
+		}
+	}
+
+	scope, _ := config["scope"].(string)
+	if scope == "" {
+		scope = "https://graph.microsoft.com/.default"
+	}
+
+	// Handle tenant ID replacement in URLs
+	tenantID, _ := config["tenantId"].(string)
+	if tenantID == "" {
+		tenantID, _ = config["tenant_id"].(string)
+	}
+	if tenantID == "" {
+		tenantID = "common" // Default to common endpoint
+	}
+
+	// Replace {tenantId} placeholder in URL
+	tokenEndpoint = strings.ReplaceAll(tokenEndpoint, "{tenantId}", tenantID)
+
+	if s.logger != nil {
+		s.logger.Debugf("Refreshing OAuth2 token: client_id=%s, tenant_id=%s, token_endpoint=%s, scope=%s",
+			clientID, tenantID, tokenEndpoint, scope)
+	}
+
+	// Prepare form data for refresh token request
+	data := url.Values{}
+	data.Set("grant_type", "refresh_token")
+	data.Set("scope", scope)
+	data.Set("client_id", clientID)
+	data.Set("refresh_token", tokenInfo.RefreshToken)
+
+	// Create request
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenEndpoint, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token refresh request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	if s.logger != nil {
+		s.logger.Debugf("Sending token refresh request: client_id=%s, scope=%s", clientID, scope)
+	}
+
+	// Execute request
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send token refresh request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if s.logger != nil {
+		s.logger.Debugf("Token refresh response status: %d", resp.StatusCode)
+	}
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read token refresh response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if s.logger != nil {
+			s.logger.Errorf("Token refresh request failed: status=%d, body=%s", resp.StatusCode, string(body))
+		}
+		return nil, fmt.Errorf("token refresh request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse response
+	var tokenResp TokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		if s.logger != nil {
+			s.logger.Errorf("Failed to parse token refresh response: %v, body: %s", err, string(body))
+		}
+		return nil, fmt.Errorf("failed to parse token refresh response: %w", err)
+	}
+
+	// Convert to TokenInfo
+	newTokenInfo := &TokenInfo{
+		AccessToken:  tokenResp.AccessToken,
+		TokenType:    tokenResp.TokenType,
+		RefreshToken: tokenResp.RefreshToken,
+		Scope:        strings.Split(tokenResp.Scope, " "), // Split space-separated scope string
+		Metadata:     make(map[string]string),
+	}
+
+	// If no new refresh token is provided, keep the old one (some providers don't rotate refresh tokens)
+	if newTokenInfo.RefreshToken == "" {
+		newTokenInfo.RefreshToken = tokenInfo.RefreshToken
+		if s.logger != nil {
+			s.logger.Debugf("No new refresh token provided, keeping existing refresh token")
+		}
+	}
+
+	// Calculate expiration time
+	if tokenResp.ExpiresIn > 0 {
+		expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+		newTokenInfo.ExpiresAt = &expiresAt
+	}
+
+	if s.logger != nil {
+		expiryInfo := "no expiry"
+		if newTokenInfo.ExpiresAt != nil {
+			expiryInfo = fmt.Sprintf("expires at %s", newTokenInfo.ExpiresAt.Format(time.RFC3339))
+		}
+		s.logger.Infof("Successfully refreshed OAuth2 token (%s)", expiryInfo)
+	}
+
+	return newTokenInfo, nil
 }
 
 func (s *OAuth2DeviceFlowStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
@@ -208,7 +343,7 @@ func (s *BearerTokenStrategy) Authenticate(ctx context.Context, config map[strin
 	return nil, fmt.Errorf("bearer token authentication not implemented in database-only mode")
 }
 
-func (s *BearerTokenStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error) {
+func (s *BearerTokenStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("bearer token refresh not supported")
 }
 
@@ -242,7 +377,7 @@ func (s *APIKeyStrategy) Authenticate(ctx context.Context, config map[string]int
 	return nil, fmt.Errorf("API key authentication not implemented in database-only mode")
 }
 
-func (s *APIKeyStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error) {
+func (s *APIKeyStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("API key refresh not supported")
 }
 
@@ -277,7 +412,7 @@ func (s *BasicAuthStrategy) Authenticate(ctx context.Context, config map[string]
 	return nil, fmt.Errorf("basic authentication not implemented in database-only mode")
 }
 
-func (s *BasicAuthStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo) (*TokenInfo, error) {
+func (s *BasicAuthStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("basic auth refresh not supported")
 }
 
