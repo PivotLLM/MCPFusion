@@ -441,7 +441,9 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("API error [%s]: status=%d, body=%s", correlationID, resp.StatusCode, string(body))
 		}
-		return "", NewAPIErrorWithCorrelation(h.service.Name, h.endpoint.ID, resp.StatusCode, "API request failed", string(body), false, correlationID)
+		// Return the actual API error response instead of a generic message
+		// This allows LLMs to understand what went wrong and correct their requests
+		return string(body), nil
 	}
 
 	// Handle different response types
