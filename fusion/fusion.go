@@ -75,7 +75,8 @@ var _ global.PromptProvider = (*Fusion)(nil)
 // goroutines. Internal state is protected by appropriate synchronization primitives.
 type Fusion struct {
 	config                 *Config                    // Service configuration and endpoints
-	authManager            *AuthManager               // Authentication strategy manager
+	// Legacy authManager removed - only multi-tenant auth is supported
+	multiTenantAuth        *MultiTenantAuthManager    // Multi-tenant authentication manager (optional)
 	httpClient             *http.Client               // HTTP client with timeouts
 	cache                  Cache                      // Token and response cache
 	logger                 global.Logger              // Structured logging interface
@@ -194,12 +195,7 @@ func WithInMemoryCache() Option {
 	}
 }
 
-// WithFileCache enables file-based persistent caching
-func WithFileCache() Option {
-	return func(f *Fusion) {
-		f.cache = NewFileCache(f.logger)
-	}
-}
+// File-based caching has been removed - only database cache is supported
 
 // WithNoCache disables caching
 func WithNoCache() Option {
@@ -236,6 +232,13 @@ func WithMetricsCollector(collector *MetricsCollector) Option {
 func WithCorrelationIDGenerator(generator *CorrelationIDGenerator) Option {
 	return func(f *Fusion) {
 		f.correlationIDGenerator = generator
+	}
+}
+
+// WithMultiTenantAuth sets a multi-tenant authentication manager
+func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
+	return func(f *Fusion) {
+		f.multiTenantAuth = multiTenantAuth
 	}
 }
 
@@ -299,13 +302,21 @@ func New(options ...Option) *Fusion {
 		fusion.logger.Debugf("HTTP client timeout: %v", fusion.httpClient.Timeout)
 	}
 
-	// Update cache with logger if we're using the default in-memory cache
-	// Use FileCache for persistent storage by default
-	if _, isInMemory := fusion.cache.(*InMemoryCache); isInMemory {
-		// Replace default in-memory cache with file cache for persistence
-		fusion.cache = NewFileCache(fusion.logger)
+	// In multi-tenant mode, we must use the database cache
+	if fusion.multiTenantAuth != nil {
+		if dbCache := fusion.multiTenantAuth.cache; dbCache != nil {
+			fusion.cache = dbCache
+			if fusion.logger != nil {
+				fusion.logger.Info("Using database-backed cache for persistent token storage")
+			}
+		} else {
+			if fusion.logger != nil {
+				fusion.logger.Fatal("Multi-tenant mode requires database cache")
+			}
+		}
+	} else {
 		if fusion.logger != nil {
-			fusion.logger.Info("Using file-based cache for persistent token storage")
+			fusion.logger.Fatal("Fusion provider requires multi-tenant authentication")
 		}
 	}
 
@@ -317,22 +328,13 @@ func New(options ...Option) *Fusion {
 		}
 	}
 
-	// Initialize auth manager if we have a config
+	// Set references in config if we have one
 	if fusion.config != nil {
-		if fusion.logger != nil {
-			fusion.logger.Debug("Initializing authentication manager")
-		}
-
-		fusion.authManager = NewAuthManager(fusion.cache, fusion.logger)
-
-		// Register default authentication strategies
-		fusion.registerDefaultAuthStrategies()
-
-		// Set references in config
 		fusion.config.Logger = fusion.logger
-		fusion.config.AuthManager = fusion.authManager
 		fusion.config.HTTPClient = fusion.httpClient
 		fusion.config.Cache = fusion.cache
+		
+		// Note: Authentication is handled by the multi-tenant auth manager at the server level
 
 		if fusion.logger != nil {
 			fusion.logger.Infof("Fusion initialized with %d services", len(fusion.config.Services))
@@ -356,38 +358,14 @@ func New(options ...Option) *Fusion {
 	return fusion
 }
 
-// registerDefaultAuthStrategies registers the built-in authentication strategies
-func (f *Fusion) registerDefaultAuthStrategies() {
-	if f.authManager == nil {
-		return
-	}
-
-	// Register OAuth2 device flow strategy
-	oauth2Strategy := NewOAuth2DeviceFlowStrategy(f.httpClient, f.logger)
-	f.authManager.RegisterStrategy(oauth2Strategy)
-
-	// Register bearer token strategy
-	bearerStrategy := NewBearerTokenStrategy(f.logger)
-	f.authManager.RegisterStrategy(bearerStrategy)
-
-	// Register API key strategy
-	apiKeyStrategy := NewAPIKeyStrategy(f.logger)
-	f.authManager.RegisterStrategy(apiKeyStrategy)
-
-	// Register basic auth strategy
-	basicStrategy := NewBasicAuthStrategy(f.logger)
-	f.authManager.RegisterStrategy(basicStrategy)
-}
+// Legacy authentication strategies removed - only multi-tenant auth is supported
 
 // GetConfig returns the current configuration
 func (f *Fusion) GetConfig() *Config {
 	return f.config
 }
 
-// GetAuthManager returns the authentication manager
-func (f *Fusion) GetAuthManager() *AuthManager {
-	return f.authManager
-}
+// Legacy GetAuthManager removed - use multi-tenant auth manager
 
 // GetHTTPClient returns the HTTP client
 func (f *Fusion) GetHTTPClient() *http.Client {
@@ -517,24 +495,95 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 
 // createToolHandler creates a handler function for a specific endpoint
 func (f *Fusion) createToolHandler(serviceName string, service *ServiceConfig, endpoint *EndpointConfig) global.ToolHandler {
-	handler := NewHTTPHandler(f, service, endpoint)
+	httpHandler := NewHTTPHandler(f, service, endpoint)
 
-	return func(options map[string]any) (string, error) {
-		ctx := context.Background()
+	// Create a context-aware handler that the MCP server can detect and use
+	contextHandler := &contextAwareHandler{
+		httpHandler: httpHandler,
+	}
+	
+	return global.ToolHandler(contextHandler.Call)
+}
 
-		// Handle request
-		result, err := handler.Handle(ctx, options)
-		if err != nil {
-			// Check if it's a device code error
-			if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
-				// For MCP, we return the device code message and expect the client to handle it
-				// The client should display the message and call back when ready
-				return deviceCodeErr.Error(), nil
-			}
-			return "", err
+// contextAwareHandler holds the HTTP handler and provides both legacy and context-aware interfaces
+type contextAwareHandler struct {
+	httpHandler *HTTPHandler
+}
+
+// Call implements the legacy interface - extracts context from options if available
+func (h *contextAwareHandler) Call(options map[string]any) (string, error) {
+	ctx := context.Background()
+	
+	// Debug: Log what options we're receiving
+	if h.httpHandler.fusion.logger != nil {
+		h.httpHandler.fusion.logger.Debugf("contextAwareHandler.Call received options: %+v", options)
+		for k, v := range options {
+			h.httpHandler.fusion.logger.Debugf("  option[%s] = %T: %v", k, v, v)
 		}
+	}
+	
+	// Check if the MCP server passed the context through options
+	if ctxValue, exists := options["__mcp_context"]; exists {
+		if h.httpHandler.fusion.logger != nil {
+			h.httpHandler.fusion.logger.Debugf("Found __mcp_context in options: %T", ctxValue)
+		}
+		if contextFromMCP, ok := ctxValue.(context.Context); ok {
+			ctx = contextFromMCP
+			if h.httpHandler.fusion.logger != nil {
+				h.httpHandler.fusion.logger.Debugf("Successfully extracted context from MCP server")
+			}
+			// Remove the context from options so it doesn't interfere with API calls
+			filteredOptions := make(map[string]any)
+			for k, v := range options {
+				if k != "__mcp_context" {
+					filteredOptions[k] = v
+				}
+			}
+			return h.CallWithContext(ctx, filteredOptions)
+		} else {
+			if h.httpHandler.fusion.logger != nil {
+				h.httpHandler.fusion.logger.Warningf("__mcp_context found but is not context.Context: %T", ctxValue)
+			}
+		}
+	} else {
+		if h.httpHandler.fusion.logger != nil {
+			h.httpHandler.fusion.logger.Warningf("No __mcp_context found in options")
+		}
+	}
+	
+	return h.CallWithContext(ctx, options)
+}
 
-		return result, nil
+// CallWithContext implements the context-aware interface that MCP server will detect
+func (h *contextAwareHandler) CallWithContext(ctx context.Context, options map[string]any) (string, error) {
+	result, err := h.httpHandler.Handle(ctx, options)
+	if err != nil {
+		// Check if it's a device code error
+		if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
+			// For MCP, we return the device code message and expect the client to handle it
+			// The client should display the message and call back when ready
+			return deviceCodeErr.Error(), nil
+		}
+		return "", err
+	}
+
+	return result, nil
+}
+
+// extractTenantContextFromOptions attempts to extract tenant context for multi-tenant operations
+// This is a placeholder for proper tenant context extraction once the MCP interface supports context passing
+func (f *Fusion) extractTenantContextFromOptions(serviceName string, options map[string]any) *TenantContext {
+	// In a proper implementation, this would extract the tenant context from the HTTP request context
+	// For now, we'll create a basic tenant context that can be used for authentication
+	
+	// TODO: This is a temporary workaround. The proper solution is to modify the MCP server
+	// to pass the HTTP request context through to tool handlers.
+	
+	return &TenantContext{
+		TenantHash:  "unknown", // Will be resolved by auth middleware
+		ServiceName: serviceName,
+		RequestID:   f.correlationIDGenerator.Generate(),
+		CreatedAt:   time.Now(),
 	}
 }
 
@@ -579,7 +628,7 @@ func (f *Fusion) ReloadConfig() error {
 	// Update configuration
 	f.config = newConfig
 	f.config.Logger = f.logger
-	f.config.AuthManager = f.authManager
+	// Legacy authManager reference removed
 	f.config.HTTPClient = f.httpClient
 	f.config.Cache = f.cache
 
@@ -632,40 +681,25 @@ func (f *Fusion) GetEndpoint(serviceName, endpointID string) *EndpointConfig {
 	return service.GetEndpointByID(endpointID)
 }
 
-// GetSupportedAuthTypes returns a list of supported authentication types
+// GetSupportedAuthTypes - legacy method removed, use multi-tenant auth manager
 func (f *Fusion) GetSupportedAuthTypes() []AuthType {
-	if f.authManager == nil {
-		return []AuthType{}
+	if f.logger != nil {
+		f.logger.Warning("GetSupportedAuthTypes is deprecated - use multi-tenant auth manager")
 	}
-
-	return f.authManager.GetRegisteredStrategies()
+	return []AuthType{}
 }
 
-// InvalidateTokens invalidates all cached tokens
+// InvalidateTokens - legacy method removed, use multi-tenant auth manager
 func (f *Fusion) InvalidateTokens() {
-	if f.authManager == nil {
-		return
-	}
-
-	for serviceName := range f.config.Services {
-		f.authManager.InvalidateToken(serviceName)
-	}
-
 	if f.logger != nil {
-		f.logger.Info("All tokens invalidated")
+		f.logger.Warning("InvalidateTokens is deprecated - use multi-tenant auth manager")
 	}
 }
 
-// InvalidateServiceToken invalidates the cached token for a specific service
+// InvalidateServiceToken - legacy method removed, use multi-tenant auth manager
 func (f *Fusion) InvalidateServiceToken(serviceName string) {
-	if f.authManager == nil {
-		return
-	}
-
-	f.authManager.InvalidateToken(serviceName)
-
 	if f.logger != nil {
-		f.logger.Infof("Token invalidated for service: %s", serviceName)
+		f.logger.Warning("InvalidateServiceToken is deprecated - use multi-tenant auth manager")
 	}
 }
 
@@ -946,10 +980,6 @@ func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig,
 		responseData = transformed
 	}
 
-	// Handle pagination if enabled
-	if endpoint.Response.Paginated && endpoint.Response.PaginationConfig != nil {
-		return f.handlePaginatedResponse(responseData, endpoint, serviceName)
-	}
 
 	// Convert back to JSON string for consistent output
 	result, err := json.MarshalIndent(responseData, "", "  ")
@@ -1280,40 +1310,6 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 	return current, nil
 }
 
-// handlePaginatedResponse handles paginated API responses
-func (f *Fusion) handlePaginatedResponse(data interface{}, endpoint *EndpointConfig, serviceName string) (string, error) {
-	// For now, just return the current page
-	// Full pagination support would require additional context and state management
-
-	config := endpoint.Response.PaginationConfig
-
-	// Extract the data array
-	dataArray, err := f.extractJSONPath(data, config.DataPath)
-	if err != nil {
-		return "", NewTransformationError("response", "pagination", config.DataPath, data, "failed to extract data array", err)
-	}
-
-	// Check if there's a next page token
-	nextToken, _ := f.extractJSONPath(data, config.NextPageTokenPath)
-
-	result := map[string]interface{}{
-		"data": dataArray,
-	}
-
-	if nextToken != nil {
-		result["nextPageToken"] = nextToken
-		result["hasNextPage"] = true
-	} else {
-		result["hasNextPage"] = false
-	}
-
-	jsonResult, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return "", NewTransformationError("response", "json", "json.MarshalIndent", result, "failed to marshal paginated response", err)
-	}
-
-	return string(jsonResult), nil
-}
 
 // sanitizeHeaders removes or masks sensitive information from HTTP headers for logging
 func (f *Fusion) sanitizeHeaders(headers http.Header) map[string]string {

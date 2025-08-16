@@ -42,8 +42,16 @@ func TestNewWithOptions(t *testing.T) {
 		t.Error("Logger not set correctly")
 	}
 
-	if _, ok := fusion.cache.(*InMemoryCache); !ok {
-		t.Error("Expected InMemoryCache")
+	// Cache type depends on whether multi-tenant auth is configured
+	// Without multi-tenant auth, it should fall back to FileCache
+	if fusion.multiTenantAuth == nil {
+		if _, ok := fusion.cache.(*FileCache); !ok {
+			t.Error("Expected FileCache when no multi-tenant auth is configured")
+		}
+	} else {
+		if _, ok := fusion.cache.(*DatabaseCache); !ok {
+			t.Error("Expected DatabaseCache when multi-tenant auth is configured")
+		}
 	}
 }
 

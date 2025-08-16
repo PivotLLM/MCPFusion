@@ -8,7 +8,6 @@ package fusion
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +16,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	
+	"github.com/PivotLLM/MCPFusion/global"
 )
 
 // HTTPHandler handles HTTP requests for a specific endpoint
@@ -59,35 +60,6 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-	// Check cache if enabled
-	var cacheKey string
-	var cacheHit bool
-	if h.endpoint.Response.Caching != nil && h.endpoint.Response.Caching.Enabled {
-		cacheKey = h.generateCacheKey(args)
-		if cachedResult, err := h.fusion.cache.Get(cacheKey); err == nil {
-			if h.fusion.logger != nil {
-				h.fusion.logger.Debugf("Cache hit for %s.%s with key %s [%s]", h.service.Name, h.endpoint.ID, cacheKey, correlationID)
-			}
-			if resultStr, ok := cachedResult.(string); ok {
-				cacheHit = true
-				// Record cache hit in metrics
-				if h.fusion.metricsCollector != nil {
-					cacheMetrics := RequestMetrics{
-						ServiceName:   h.service.Name,
-						EndpointID:    h.endpoint.ID,
-						Method:        "GET", // Cache hits are typically for GET requests
-						Success:       true,
-						CacheHit:      true,
-						Latency:       time.Since(startTime),
-						CorrelationID: correlationID,
-						Timestamp:     startTime,
-					}
-					h.fusion.metricsCollector.RecordRequest(cacheMetrics)
-				}
-				return resultStr, nil
-			}
-		}
-	}
 
 	// Build request
 	req, err := h.buildRequest(ctx, args)
@@ -98,18 +70,63 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-	// Apply authentication
-	if err := h.fusion.authManager.ApplyAuthentication(ctx, req, h.service.Name, h.service.Auth); err != nil {
-		// Check if it's a device code error - return the message for user
-		if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
-			// Return the device code error message as the response
-			return deviceCodeErr.Error(), nil
-		}
-
+	// Apply multi-tenant authentication if available
+	if h.fusion.multiTenantAuth != nil {
+		// Extract tenant context from the request context (set by auth middleware)
+		// Use the shared context key from global package
 		if h.fusion.logger != nil {
-			h.fusion.logger.Errorf("Failed to apply authentication [%s]: %v", correlationID, err)
+			h.fusion.logger.Debugf("Looking for tenant context in request context [%s]", correlationID)
 		}
-		return "", err
+		
+		tenantContextValue := ctx.Value(global.TenantContextKey)
+		
+		if tenantContextValue != nil {
+			if tenantContext, ok := tenantContextValue.(*TenantContext); ok {
+				// Ensure service name and request ID are set
+				tenantContext.ServiceName = h.service.Name
+				tenantContext.RequestID = correlationID
+
+				if h.fusion.logger != nil {
+					h.fusion.logger.Debugf("Found tenant context for tenant %s service %s [%s]",
+						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID)
+				}
+
+				// Apply authentication using multi-tenant auth manager
+				if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, req, tenantContext, h.service.Auth); err != nil {
+					if h.fusion.logger != nil {
+						h.fusion.logger.Errorf("Authentication failed for tenant %s service %s [%s]: %v", 
+							tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID, err)
+					}
+					
+					// Check if it's a DeviceCodeError - pass it up for client handling
+					if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
+						return "", deviceCodeErr
+					}
+					
+					return "", fmt.Errorf("authentication failed: %w", err)
+				}
+
+				if h.fusion.logger != nil {
+					h.fusion.logger.Debugf("Successfully applied authentication for tenant %s service %s [%s]",
+						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID)
+				}
+			} else {
+				if h.fusion.logger != nil {
+					h.fusion.logger.Warningf("Invalid tenant context type in request context [%s]: %T", correlationID, tenantContextValue)
+				}
+				return "", fmt.Errorf("invalid tenant context in request")
+			}
+		} else {
+			if h.fusion.logger != nil {
+				h.fusion.logger.Warningf("No tenant context found in request context [%s]", correlationID)
+			}
+			return "", fmt.Errorf("no tenant context found - authentication required")
+		}
+	} else {
+		if h.fusion.logger != nil {
+			h.fusion.logger.Errorf("Multi-tenant authentication manager not available [%s]", correlationID)
+		}
+		return "", fmt.Errorf("authentication not configured")
 	}
 
 	// Log final request after authentication is applied
@@ -185,21 +202,6 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-	// Cache the result if caching is enabled
-	if h.endpoint.Response.Caching != nil && h.endpoint.Response.Caching.Enabled && !cacheHit {
-		ttl := h.endpoint.Response.Caching.TTL
-		if ttl == 0 {
-			ttl = 5 * time.Minute // Default TTL
-		}
-
-		if err := h.fusion.cache.Set(cacheKey, result, ttl); err != nil {
-			if h.fusion.logger != nil {
-				h.fusion.logger.Warningf("Failed to cache result for %s.%s [%s]: %v", h.service.Name, h.endpoint.ID, correlationID, err)
-			}
-		} else if h.fusion.logger != nil {
-			h.fusion.logger.Debugf("Cached result for %s.%s with key %s (TTL: %v) [%s]", h.service.Name, h.endpoint.ID, cacheKey, ttl, correlationID)
-		}
-	}
 
 	totalLatency := time.Since(startTime)
 	if h.fusion.logger != nil {
@@ -394,7 +396,9 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("API error [%s]: status=%d, body=%s", correlationID, resp.StatusCode, string(body))
 		}
-		return "", NewAPIErrorWithCorrelation(h.service.Name, h.endpoint.ID, resp.StatusCode, "API request failed", string(body), false, correlationID)
+		// Return the actual API error response instead of a generic message
+		// This allows LLMs to understand what went wrong and correct their requests
+		return string(body), nil
 	}
 
 	// Handle different response types
@@ -406,10 +410,6 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 			return "", fmt.Errorf("failed to parse JSON response: %w", err)
 		}
 
-		// Handle pagination if configured
-		if h.endpoint.Response.Paginated && h.endpoint.Response.PaginationConfig != nil {
-			return h.handlePaginatedResponse(data)
-		}
 
 		// Apply transformation if specified
 		if h.endpoint.Response.Transform != "" {
@@ -442,158 +442,7 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 	}
 }
 
-// handlePaginatedResponse handles paginated API responses
-func (h *HTTPHandler) handlePaginatedResponse(data interface{}) (string, error) {
-	mapper := NewMapper(h.fusion.logger)
-	config := h.endpoint.Response.PaginationConfig
 
-	// Extract pagination info from the first response
-	nextPageToken, currentData, err := mapper.ExtractPaginationInfo(data, *config)
-	if err != nil {
-		return "", fmt.Errorf("failed to extract pagination info: %w", err)
-	}
-
-	allData := currentData
-	pageCount := 1
-	maxPages := 10 // Limit to prevent infinite loops
-
-	if h.fusion.logger != nil {
-		h.fusion.logger.Debugf("Starting pagination: first page has %d items, next token: %s",
-			len(currentData), nextPageToken)
-	}
-
-	// Fetch additional pages if they exist
-	for nextPageToken != "" && pageCount < maxPages {
-		if h.fusion.logger != nil {
-			h.fusion.logger.Debugf("Fetching page %d with token: %s", pageCount+1, nextPageToken)
-		}
-
-		nextData, nextToken, err := h.fetchNextPage(nextPageToken)
-		if err != nil {
-			if h.fusion.logger != nil {
-				h.fusion.logger.Warningf("Failed to fetch page %d, stopping pagination: %v", pageCount+1, err)
-			}
-			break
-		}
-
-		allData = append(allData, nextData...)
-		nextPageToken = nextToken
-		pageCount++
-	}
-
-	if h.fusion.logger != nil {
-		h.fusion.logger.Infof("Pagination completed: %d pages, %d total items", pageCount, len(allData))
-	}
-
-	// Apply transformation if specified
-	var finalData interface{} = allData
-	if h.endpoint.Response.Transform != "" {
-		// For paginated responses, we need to structure the data properly for transformation
-		structuredData := map[string]interface{}{
-			config.DataPath: allData,
-		}
-		transformed, err := mapper.TransformResponse(structuredData, h.endpoint.Response.Transform)
-		if err != nil {
-			return "", fmt.Errorf("failed to transform paginated response: %w", err)
-		}
-		finalData = transformed
-	}
-
-	// Convert to JSON string
-	result, err := json.MarshalIndent(finalData, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal paginated response: %w", err)
-	}
-
-	return string(result), nil
-}
-
-// fetchNextPage fetches the next page of a paginated response
-func (h *HTTPHandler) fetchNextPage(nextPageURL string) ([]interface{}, string, error) {
-	// Create a new request for the next page
-	req, err := http.NewRequest("GET", nextPageURL, nil)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create next page request: %w", err)
-	}
-
-	// Apply authentication to the next page request
-	ctx := context.Background()
-	if err := h.fusion.authManager.ApplyAuthentication(ctx, req, h.service.Name, h.service.Auth); err != nil {
-		return nil, "", fmt.Errorf("failed to apply authentication to next page: %w", err)
-	}
-
-	// Set headers
-	req.Header.Set("Accept", "application/json")
-
-	// Execute the request - for pagination, we'll use a simplified approach
-	resp, err := h.fusion.httpClient.Do(req)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to execute next page request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to read next page response body: %w", err)
-	}
-
-	// Check for errors
-	if resp.StatusCode >= 400 {
-		return nil, "", fmt.Errorf("next page request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse JSON response
-	var data interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, "", fmt.Errorf("failed to parse next page JSON response: %w", err)
-	}
-
-	// Extract pagination info
-	mapper := NewMapper(h.fusion.logger)
-	config := h.endpoint.Response.PaginationConfig
-	nextToken, pageData, err := mapper.ExtractPaginationInfo(data, *config)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to extract next page pagination info: %w", err)
-	}
-
-	return pageData, nextToken, nil
-}
-
-// generateCacheKey generates a cache key for the request
-func (h *HTTPHandler) generateCacheKey(args map[string]interface{}) string {
-	// Use custom cache key template if provided
-	if h.endpoint.Response.Caching != nil && h.endpoint.Response.Caching.Key != "" {
-		// Simple template replacement - could be enhanced with a template engine
-		key := h.endpoint.Response.Caching.Key
-		for _, value := range args {
-			key = fmt.Sprintf(key, value) // Simple approach for now
-		}
-		return fmt.Sprintf("fusion:%s:%s:%s", h.service.Name, h.endpoint.ID, key)
-	}
-
-	// Generate a hash-based cache key from the arguments
-	hasher := sha256.New()
-
-	// Include service and endpoint info
-	hasher.Write([]byte(h.service.Name))
-	hasher.Write([]byte(":"))
-	hasher.Write([]byte(h.endpoint.ID))
-	hasher.Write([]byte(":"))
-
-	// Include all argument values in a deterministic way
-	argData, err := json.Marshal(args)
-	if err != nil {
-		// Fallback if marshaling fails
-		hasher.Write([]byte(fmt.Sprintf("%v", args)))
-	} else {
-		hasher.Write(argData)
-	}
-
-	// Generate hash
-	hash := fmt.Sprintf("%x", hasher.Sum(nil))
-	return fmt.Sprintf("fusion:%s:%s:%s", h.service.Name, h.endpoint.ID, hash[:16])
-}
 
 // wrapNetworkError wraps network errors in NetworkError type
 func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {

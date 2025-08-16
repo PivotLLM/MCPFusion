@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# Load environment variables
+if [ -f ".env" ]; then
+    source .env
+else
+    echo "Error: .env file not found"
+    echo "Please create a .env file with APIKEY=your-api-token"
+    exit 1
+fi
+
+# Check if APIKEY is set
+if [ -z "$APIKEY" ]; then
+    echo "Error: APIKEY not set in .env file"
+    exit 1
+fi
+
 # Test script for Calendar Search functionality
 # Tests various search and filtering capabilities
 
@@ -16,6 +31,7 @@ OUTPUT_FILE="calendar_search_${TIMESTAMP}.log"
 
 echo "Test run: $TIMESTAMP" | tee "$OUTPUT_FILE"
 echo "Server: $SERVER_URL" | tee -a "$OUTPUT_FILE"
+echo "Using API Token: ${APIKEY:0:8}..." | tee -a "$OUTPUT_FILE"
 echo "Probe tool: $PROBE_PATH" | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
 
@@ -30,6 +46,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 1: Search for events containing 'Meeting' ===" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" call microsoft365_calendar_search \
   --server "$SERVER_URL" \
+  --headers "Authorization:Bearer $APIKEY" \
   --startDate "$START_DATE" \
   --endDate "$END_DATE" \
   --\$filter "contains(subject,'Meeting')" \
@@ -41,6 +58,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 2: Search for 'Project' events after Jan 1, 2025 ===" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" call microsoft365_calendar_search \
   --server "$SERVER_URL" \
+  --headers "Authorization:Bearer $APIKEY" \
   --startDate "$START_DATE" \
   --endDate "$END_DATE" \
   --\$filter "contains(subject,'Project') and start/dateTime ge '2025-01-01T00:00:00Z'" \
@@ -53,6 +71,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 3: Search for events with specific attendee ===" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" call microsoft365_calendar_search \
   --server "$SERVER_URL" \
+  --headers "Authorization:Bearer $APIKEY" \
   --startDate "$START_DATE" \
   --endDate "$END_DATE" \
   --\$filter "attendees/any(a:contains(a/emailAddress/address,'@'))" \
@@ -65,6 +84,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 4: Search for events in specific location ===" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" call microsoft365_calendar_search \
   --server "$SERVER_URL" \
+  --headers "Authorization:Bearer $APIKEY" \
   --startDate "$START_DATE" \
   --endDate "$END_DATE" \
   --\$filter "contains(location/displayName,'Room')" \
@@ -77,6 +97,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 5: Search for 'Standup' OR 'Review' events ===" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" call microsoft365_calendar_search \
   --server "$SERVER_URL" \
+  --headers "Authorization:Bearer $APIKEY" \
   --startDate "$START_DATE" \
   --endDate "$END_DATE" \
   --\$filter "contains(subject,'Standup') or contains(subject,'Review')" \
@@ -89,6 +110,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 6: Search with minimal field selection ===" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" call microsoft365_calendar_search \
   --server "$SERVER_URL" \
+  --headers "Authorization:Bearer $APIKEY" \
   --startDate "$START_DATE" \
   --endDate "$END_DATE" \
   --\$filter "contains(subject,'e')" \
@@ -101,6 +123,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 7: All events in date range (no filter) ===" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" call microsoft365_calendar_search \
   --server "$SERVER_URL" \
+  --headers "Authorization:Bearer $APIKEY" \
   --startDate "$START_DATE" \
   --endDate "$END_DATE" \
   --\$top 5 \

@@ -1,9 +1,25 @@
 #!/bin/bash
 
+# Load environment variables
+if [ -f ".env" ]; then
+    source .env
+else
+    echo "Error: .env file not found"
+    echo "Please create a .env file with APIKEY=your-api-token"
+    exit 1
+fi
+
+# Check if APIKEY is set
+if [ -z "$APIKEY" ]; then
+    echo "Error: APIKEY not set in .env file"
+    exit 1
+fi
+
 # Test Microsoft 365 Mail Folder Messages API
 echo "=== Testing Microsoft 365 Mail Folder Messages API ===" 
 echo "Timestamp: $(date)"
 echo "Server: http://127.0.0.1:8888/sse"
+echo "Using API Token: ${APIKEY:0:8}..."
 echo ""
 
 # Common folder IDs that usually exist
@@ -18,7 +34,7 @@ echo "Test 1: Read messages from Inbox"
 echo "Command: microsoft365_mail_folder_messages"
 echo "Parameters: {\"folderId\": \"$INBOX_ID\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_mail_folder_messages -params "{\"folderId\": \"$INBOX_ID\"}"
+/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folder_messages -params "{\"folderId\": \"$INBOX_ID\"}"
 
 echo ""
 echo "=========================================="
@@ -28,7 +44,7 @@ echo "Test 2: Read unread messages from Inbox"
 echo "Command: microsoft365_mail_folder_messages"
 echo "Parameters: {\"folderId\": \"$INBOX_ID\", \"\$filter\": \"isRead eq false\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_mail_folder_messages -params "{\"folderId\": \"$INBOX_ID\", \"\$filter\": \"isRead eq false\"}"
+/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folder_messages -params "{\"folderId\": \"$INBOX_ID\", \"\$filter\": \"isRead eq false\"}"
 
 echo ""
 echo "=========================================="
@@ -38,7 +54,7 @@ echo "Test 3: Read messages from Sent Items"
 echo "Command: microsoft365_mail_folder_messages"
 echo "Parameters: {\"folderId\": \"$SENT_ID\", \"\$top\": \"5\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_mail_folder_messages -params "{\"folderId\": \"$SENT_ID\", \"\$top\": \"5\"}"
+/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folder_messages -params "{\"folderId\": \"$SENT_ID\", \"\$top\": \"5\"}"
 
 echo ""
 echo "=========================================="
@@ -48,7 +64,7 @@ echo "Test 4: Read messages with custom fields"
 echo "Command: microsoft365_mail_folder_messages"
 echo "Parameters: {\"folderId\": \"$INBOX_ID\", \"\$select\": \"subject,from,receivedDateTime,importance\", \"\$top\": \"3\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_mail_folder_messages -params "{\"folderId\": \"$INBOX_ID\", \"\$select\": \"subject,from,receivedDateTime,importance\", \"\$top\": \"3\"}"
+/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folder_messages -params "{\"folderId\": \"$INBOX_ID\", \"\$select\": \"subject,from,receivedDateTime,importance\", \"\$top\": \"3\"}"
 
 echo ""
 echo "=== Mail Folder Messages API Tests Complete ==="

@@ -8,6 +8,7 @@ package mcpserver
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
@@ -24,6 +25,55 @@ type Option func(*MCPServer)
 type MCPServerTransport interface {
 	Start(addr string) error
 	Shutdown(ctx context.Context) error
+}
+
+// AuthenticatedTransport wraps an underlying transport with authentication middleware
+type AuthenticatedTransport struct {
+	underlying MCPServerTransport
+	handler    http.Handler
+	server     *http.Server
+	logger     global.Logger
+}
+
+// NewAuthenticatedTransport creates a new authenticated transport wrapper
+func NewAuthenticatedTransport(underlying MCPServerTransport, middleware func(http.Handler) http.Handler, logger global.Logger) *AuthenticatedTransport {
+	// Extract the http.Handler from the underlying transport
+	var handler http.Handler
+	if h, ok := underlying.(http.Handler); ok {
+		handler = middleware(h)
+	} else {
+		logger.Error("Underlying transport does not implement http.Handler")
+		return nil
+	}
+
+	return &AuthenticatedTransport{
+		underlying: underlying,
+		handler:    handler,
+		logger:     logger,
+	}
+}
+
+// Start starts the authenticated transport
+func (at *AuthenticatedTransport) Start(addr string) error {
+	if at.logger != nil {
+		at.logger.Infof("Starting authenticated transport on %s", addr)
+	}
+
+	// Create HTTP server with our wrapped handler
+	at.server = &http.Server{
+		Addr:    addr,
+		Handler: at.handler,
+	}
+
+	return at.server.ListenAndServe()
+}
+
+// Shutdown shuts down the authenticated transport
+func (at *AuthenticatedTransport) Shutdown(ctx context.Context) error {
+	if at.server != nil {
+		return at.server.Shutdown(ctx)
+	}
+	return nil
 }
 
 // MCPServer represents the server instance.
@@ -44,6 +94,7 @@ type MCPServer struct {
 	toolProviders     []global.ToolProvider
 	resourceProviders []global.ResourceProvider
 	promptProviders   []global.PromptProvider
+	authMiddleware    *AuthMiddleware
 }
 
 func WithListen(listen string) Option {
@@ -97,6 +148,12 @@ func WithPromptProviders(providers []global.PromptProvider) Option {
 func WithNoStreaming(noStreaming bool) Option {
 	return func(m *MCPServer) {
 		m.noStreaming = noStreaming
+	}
+}
+
+func WithAuthMiddleware(authMiddleware *AuthMiddleware) Option {
+	return func(m *MCPServer) {
+		m.authMiddleware = authMiddleware
 	}
 }
 
@@ -180,10 +237,38 @@ func (m *MCPServer) Start() error {
 			// Create HTTP server for non-streaming mode
 			m.httpServer = server.NewStreamableHTTPServer(m.srv)
 			m.transport = m.httpServer
+			
+			// Apply auth middleware if configured
+			if m.authMiddleware != nil {
+				if m.logger != nil {
+					m.logger.Info("Applying authentication middleware to HTTP server")
+				}
+				m.transport = NewAuthenticatedTransport(m.httpServer, m.authMiddleware.Middleware, m.logger)
+				if m.transport == nil {
+					if m.logger != nil {
+						m.logger.Error("Failed to create authenticated transport, continuing without authentication")
+					}
+					m.transport = m.httpServer
+				}
+			}
 		} else {
 			// Create SSE server for streaming mode (default)
 			m.sseServer = server.NewSSEServer(m.srv)
 			m.transport = m.sseServer
+			
+			// Apply auth middleware if configured
+			if m.authMiddleware != nil {
+				if m.logger != nil {
+					m.logger.Info("Applying authentication middleware to SSE server")
+				}
+				m.transport = NewAuthenticatedTransport(m.sseServer, m.authMiddleware.Middleware, m.logger)
+				if m.transport == nil {
+					if m.logger != nil {
+						m.logger.Error("Failed to create authenticated transport, continuing without authentication")
+					}
+					m.transport = m.sseServer
+				}
+			}
 		}
 
 		// Start the server

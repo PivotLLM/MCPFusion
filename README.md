@@ -5,14 +5,18 @@ A production-ready, configuration-driven MCP (Model Context Protocol) server tha
 ## Features
 
 - **🔌 Universal API Integration**: Connect to any REST API using JSON configuration
-- **🔐 Multiple Authentication**: OAuth2 Device Flow, Bearer tokens, API keys, and Basic Auth
+- **🔐 Multi-Tenant Authentication**: Complete tenant isolation with database-backed token management
+- **🎫 Bearer Token Support**: Industry-standard `Authorization: Bearer <token>` authentication
 - **⚡ Enhanced Parameter System**: Rich parameter metadata with defaults, validation, and constraints
 - **📁 Multi-Calendar & Mail Folder Support**: Target specific calendars and mail folders
 - **🔄 Production-Grade Reliability**: Circuit breakers, retry logic, caching, and comprehensive error handling
 - **📊 Real-time Metrics**: Health monitoring, correlation IDs, and detailed logging
 - **🧪 Comprehensive Testing**: Full test suite for all endpoints and configurations
+- **🛠️ CLI Token Management**: Complete command-line tools for token administration
 
 ## Quick Start
+
+### **Single-Tenant Mode (Legacy)**
 
 1. **Build and Run**:
    ```bash
@@ -27,18 +31,50 @@ A production-ready, configuration-driven MCP (Model Context Protocol) server tha
    echo "MS365_TENANT_ID=your-tenant-id" >> ~/.mcp
    ```
 
-3. **Connect Your MCP Client**:
-   - **Cline**: Add to `~/.cline/config.json`
-   - **Claude Desktop**: Add to MCP servers configuration
-   - **Custom Client**: Connect to `http://localhost:8888/sse`
+### **Multi-Tenant Mode (Recommended)**
 
-See [Client Configuration Guide](docs/clients.md) for detailed setup instructions.
+1. **Enable Multi-Tenant Features**:
+   ```bash
+   # Enable database and bearer token authentication
+   export MCP_ENABLE_DATABASE=true
+   export MCP_ENABLE_BEARER_TOKENS=true
+   
+   # Optional: Custom database directory
+   export MCP_DB_DATA_DIR=/opt/mcpfusion
+   ```
+
+2. **Build and Generate API Token**:
+   ```bash
+   # Build the server
+   go build -o mcpfusion .
+   
+   # Generate API token for your application
+   ./mcpfusion -token-add "Production environment"
+   ```
+
+3. **Start Server and Connect**:
+   ```bash
+   # Start server
+   ./mcpfusion -config configs/microsoft365.json -port 8888
+   
+   # Connect using Bearer token authentication
+   curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:8888/api/endpoint
+   ```
+
+### **Client Configuration**
+
+- **Cline**: Add to `~/.cline/config.json`
+- **Claude Desktop**: Add to MCP servers configuration
+- **Custom Client**: Connect to `http://localhost:8888/sse`
+
+See [Client Configuration Guide](docs/clients.md) and [Token Management Guide](docs/TOKEN_MANAGEMENT.md) for detailed setup instructions.
 
 ## Documentation
 
 ### **Configuration & Setup**
 - 📚 **[Configuration Guide](docs/config.md)** - Complete guide to creating JSON configurations for any API
 - 🔌 **[Client Integration](docs/clients.md)** - Connect Cline, Claude Desktop, and custom MCP clients
+- 🎫 **[Token Management Guide](docs/TOKEN_MANAGEMENT.md)** - Multi-tenant authentication and CLI usage
 - 📧 **[Microsoft 365 Setup](docs/Microsoft365.md)** - Azure app registration and authentication
 - 🔍 **[Google APIs Setup](fusion/README_CONFIG.md#google-apis-setup)** - Google Cloud Console configuration
 
@@ -56,10 +92,93 @@ MCPFusion/
 ├── fusion/             # Dynamic API provider package
 │   ├── configs/        # Pre-configured API definitions
 │   └── examples/       # Integration examples  
+├── db/                 # Multi-tenant database package (BoltDB)
+├── cmd/token/          # Token management CLI
 ├── example1/           # REST API provider example
 ├── example2/           # Simple time service example
 └── global/             # Shared interfaces and utilities
 ```
+
+### **Multi-Tenant Architecture**
+
+MCPFusion supports complete tenant isolation where each API token represents a separate namespace:
+
+- **🏢 Tenant Isolation**: Each API token has independent OAuth tokens and service credentials
+- **🗄️ Database Storage**: BoltDB-based persistent storage with automatic cleanup
+- **🔐 Secure Tokens**: SHA-256 hashed API tokens with auto-generation
+- **⚖️ Load Balancing**: Multiple tenants can use the same MCPFusion instance
+- **📊 Per-Tenant Analytics**: Independent metrics and monitoring per tenant
+
+## Token Management
+
+MCPFusion includes a comprehensive CLI for managing API tokens:
+
+### **Token Commands**
+
+```bash
+# Generate new API token
+./mcpfusion -token-add "Production environment"
+> ✓ API Token created successfully
+> ⚠ SECURITY WARNING: This token will only be displayed once!
+> Token: 1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
+> Hash: a1b2c3d4e5f6789...
+
+# List all tokens
+./mcpfusion -token-list
+> PREFIX     HASH                 CREATED              LAST USED           DESCRIPTION
+> 1a2b3c4d   a1b2c3d4e5f6...      2025-01-15 10:30:00  2025-01-15 11:45:00  Production environment
+> 9f8e7d6c   f9e8d7c6b5a4...      2025-01-14 09:15:00  Never used           Development token
+
+# Delete token by prefix or hash
+./mcpfusion -token-delete 1a2b3c4d
+> Token Details:
+>   Hash: a1b2c3d4e5f6...
+>   Description: Production environment
+>   Created: 2025-01-15 10:30:00
+> Are you sure you want to delete this token? (y/N): y
+> Token deleted successfully
+```
+
+### **Token Features**
+
+- **🔒 Auto-Generated**: Cryptographically secure 64-character hex tokens
+- **🎯 Prefix Identification**: 8-character prefixes for easy management
+- **🛡️ One-Time Display**: Tokens shown only during creation for security
+- **⏰ Usage Tracking**: Creation time and last-used timestamps
+- **🗑️ Safe Deletion**: Confirmation prompts with token details
+- **📁 Custom Descriptions**: Label tokens for different environments/applications
+
+### **Environment Configuration**
+
+```bash
+# Enable multi-tenant mode
+export MCP_ENABLE_DATABASE=true
+export MCP_ENABLE_BEARER_TOKENS=true
+
+# Optional settings
+export MCP_DB_DATA_DIR=/opt/mcpfusion  # Custom database directory
+```
+
+### **Authentication Usage**
+
+Include tokens in HTTP requests using standard Bearer authentication:
+
+```bash
+# API requests
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     https://mcpfusion-server/api/microsoft365/profile
+
+# MCP client configuration
+{
+  "command": "mcpfusion",
+  "args": ["-config", "config.json"],
+  "env": {
+    "MCPFUSION_TOKEN": "YOUR_TOKEN"
+  }
+}
+```
+
+**📖 Complete Guide**: See [Token Management Documentation](docs/TOKEN_MANAGEMENT.md) for detailed usage instructions.
 
 ## Available Tools & APIs
 

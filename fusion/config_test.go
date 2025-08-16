@@ -816,7 +816,7 @@ func TestEndpointConfig_Validate_MissingFields(t *testing.T) {
 
 func TestLoadConfigFromFile_RealExample(t *testing.T) {
 	// Test loading the actual Google config file
-	configPath := filepath.Join("configs", "google.json")
+	configPath := filepath.Join("..", "configs", "google.json")
 
 	config, err := LoadConfigFromFile(configPath)
 	if err != nil {

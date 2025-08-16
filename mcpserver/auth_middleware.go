@@ -1,0 +1,445 @@
+/*=============================================================================
+= Copyright (c) 2025 Tenebris Technologies Inc.                              =
+= All rights reserved.                                                       =
+=============================================================================*/
+
+package mcpserver
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/PivotLLM/MCPFusion/fusion"
+	"github.com/PivotLLM/MCPFusion/global"
+)
+
+// AuthMiddleware provides bearer token authentication and tenant context extraction
+type AuthMiddleware struct {
+	authManager     *fusion.MultiTenantAuthManager
+	serviceResolver *fusion.ServiceConfigResolver
+	logger          global.Logger
+	skipPaths       []string // Paths that should skip authentication
+	requireAuth     bool     // Whether authentication is required for all requests
+}
+
+// AuthMiddlewareOption represents configuration options for the auth middleware
+type AuthMiddlewareOption func(*AuthMiddleware)
+
+// WithSkipPaths sets paths that should skip authentication
+func WithSkipPaths(paths ...string) AuthMiddlewareOption {
+	return func(am *AuthMiddleware) {
+		am.skipPaths = paths
+	}
+}
+
+// WithRequireAuth sets whether authentication is required for all requests
+func WithRequireAuth(required bool) AuthMiddlewareOption {
+	return func(am *AuthMiddleware) {
+		am.requireAuth = required
+	}
+}
+
+// WithAuthLogger sets the logger for the auth middleware
+func WithAuthLogger(logger global.Logger) AuthMiddlewareOption {
+	return func(am *AuthMiddleware) {
+		am.logger = logger
+	}
+}
+
+// NewAuthMiddleware creates a new authentication middleware
+func NewAuthMiddleware(authManager *fusion.MultiTenantAuthManager, serviceResolver *fusion.ServiceConfigResolver,
+	options ...AuthMiddlewareOption) *AuthMiddleware {
+
+	am := &AuthMiddleware{
+		authManager:     authManager,
+		serviceResolver: serviceResolver,
+		skipPaths:       []string{"/health", "/metrics", "/status", "/capabilities"},
+		requireAuth:     true,
+	}
+
+	// Apply options
+	for _, option := range options {
+		option(am)
+	}
+
+	if am.logger != nil {
+		am.logger.Info("Initialized authentication middleware")
+		am.logger.Debugf("Auth middleware skip paths: %v", am.skipPaths)
+		am.logger.Debugf("Auth middleware require auth: %t", am.requireAuth)
+	}
+
+	return am
+}
+
+// Middleware returns the HTTP middleware function
+func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check if this path should skip authentication
+		if am.shouldSkipAuth(r.URL.Path) {
+			if am.logger != nil {
+				am.logger.Debugf("Skipping authentication for path: %s", r.URL.Path)
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Extract and validate bearer token
+		token := am.extractBearerToken(r)
+		if token == "" {
+			if am.requireAuth {
+				if am.logger != nil {
+					am.logger.Warningf("Missing bearer token for authenticated request to %s", r.URL.Path)
+				}
+				am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+				return
+			} else {
+				// Auth not required, continue without tenant context
+				if am.logger != nil {
+					am.logger.Debugf("No bearer token provided, continuing without authentication for %s", r.URL.Path)
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		// Extract tenant context from token
+		tenantContext, err := am.authManager.ExtractTenantFromToken(token)
+		if err != nil {
+			if am.logger != nil {
+				am.logger.Errorf("Failed to extract tenant context from token: %v", err)
+			}
+			am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+			return
+		}
+
+		// Add request ID to tenant context
+		tenantContext.RequestID = am.generateRequestID(r)
+
+		if am.logger != nil {
+			am.logger.Debugf("Extracted tenant context: %s for request %s %s",
+				tenantContext.String(), r.Method, r.URL.Path)
+		}
+
+		// Try to resolve service name from the request
+		serviceName, err := am.resolveServiceName(r, tenantContext)
+		if err != nil {
+			if am.logger != nil {
+				am.logger.Warningf("Failed to resolve service name for request %s %s: %v",
+					r.Method, r.URL.Path, err)
+			}
+			// Continue with default service name
+			serviceName = "default"
+		}
+
+		// Update tenant context with resolved service name
+		tenantContext.ServiceName = serviceName
+
+		// Validate tenant access to the service
+		if err := am.authManager.ValidateTenantAccess(tenantContext, serviceName); err != nil {
+			if am.logger != nil {
+				am.logger.Errorf("Tenant access validation failed for %s service %s: %v",
+					tenantContext.TenantHash[:12]+"...", serviceName, err)
+			}
+			am.writeErrorResponse(w, http.StatusForbidden, "Access denied to service")
+			return
+		}
+
+		if am.logger != nil {
+			am.logger.Debugf("Successfully authenticated tenant %s for service %s (request %s)",
+				tenantContext.TenantHash[:12]+"...", serviceName, tenantContext.RequestID)
+		}
+
+		// Add tenant context and service name to request context
+		ctx := context.WithValue(r.Context(), global.TenantContextKey, tenantContext)
+		ctx = context.WithValue(ctx, global.ServiceNameKey, serviceName)
+		r = r.WithContext(ctx)
+
+		// Continue to next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
+// shouldSkipAuth checks if authentication should be skipped for a given path
+func (am *AuthMiddleware) shouldSkipAuth(path string) bool {
+	for _, skipPath := range am.skipPaths {
+		if strings.HasPrefix(path, skipPath) {
+			return true
+		}
+	}
+	return false
+}
+
+// extractBearerToken extracts the bearer token from the Authorization header
+func (am *AuthMiddleware) extractBearerToken(r *http.Request) string {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return ""
+	}
+
+	// Check if it's a Bearer token
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		if am.logger != nil {
+			am.logger.Debugf("Authorization header found but not a Bearer token: %s", authHeader[:min(len(authHeader), 20)]+"...")
+		}
+		return ""
+	}
+
+	token := strings.TrimPrefix(authHeader, "Bearer ")
+	if token == "" {
+		if am.logger != nil {
+			am.logger.Debug("Empty bearer token found")
+		}
+		return ""
+	}
+
+	if am.logger != nil {
+		am.logger.Debugf("Extracted bearer token (length: %d)", len(token))
+	}
+
+	return token
+}
+
+// resolveServiceName attempts to resolve the service name from the request
+func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fusion.TenantContext) (string, error) {
+	// Try multiple strategies to determine the service name
+
+	// Strategy 1: Check for service name in query parameters
+	if serviceName := r.URL.Query().Get("service"); serviceName != "" {
+		if am.logger != nil {
+			am.logger.Debugf("Resolved service name from query parameter: %s", serviceName)
+		}
+		return serviceName, nil
+	}
+
+	// Strategy 2: Check for service name in headers
+	if serviceName := r.Header.Get("X-Service-Name"); serviceName != "" {
+		if am.logger != nil {
+			am.logger.Debugf("Resolved service name from header: %s", serviceName)
+		}
+		return serviceName, nil
+	}
+
+	// Strategy 3: Try to infer from URL path
+	if serviceName := am.inferServiceFromPath(r.URL.Path); serviceName != "" {
+		if am.logger != nil {
+			am.logger.Debugf("Inferred service name from path %s: %s", r.URL.Path, serviceName)
+		}
+		return serviceName, nil
+	}
+
+	// Strategy 4: Check if there's only one available service for this tenant
+	if am.serviceResolver != nil {
+		availableServices := am.serviceResolver.GetAvailableServices()
+		if len(availableServices) == 1 {
+			serviceName := availableServices[0]
+			if am.logger != nil {
+				am.logger.Debugf("Using single available service: %s", serviceName)
+			}
+			return serviceName, nil
+		}
+	}
+
+	if am.logger != nil {
+		am.logger.Debug("Could not resolve service name from request, using default")
+	}
+
+	// Default fallback
+	return "default", fmt.Errorf("could not determine service name from request")
+}
+
+// inferServiceFromPath tries to infer the service name from the URL path
+func (am *AuthMiddleware) inferServiceFromPath(path string) string {
+	// Remove leading slash and split path segments
+	path = strings.TrimPrefix(path, "/")
+	segments := strings.Split(path, "/")
+
+	if len(segments) == 0 {
+		return ""
+	}
+
+	// Look for common service name patterns
+	for _, segment := range segments {
+		// Skip common non-service segments
+		if segment == "api" || segment == "v1" || segment == "v2" || segment == "tools" || segment == "resources" {
+			continue
+		}
+
+		// Common service name patterns
+		if am.serviceResolver != nil {
+			availableServices := am.serviceResolver.GetAvailableServices()
+			for _, service := range availableServices {
+				if strings.EqualFold(segment, service) {
+					return service
+				}
+				// Check for partial matches
+				if strings.Contains(strings.ToLower(service), strings.ToLower(segment)) {
+					return service
+				}
+			}
+		}
+
+		// If no resolver is available, return the first meaningful segment
+		if segment != "" && len(segment) > 2 {
+			return segment
+		}
+	}
+
+	return ""
+}
+
+// generateRequestID generates a unique request ID for tracking
+func (am *AuthMiddleware) generateRequestID(r *http.Request) string {
+	// Check if request ID already exists in headers
+	if existingID := r.Header.Get("X-Request-ID"); existingID != "" {
+		return existingID
+	}
+
+	// Generate a simple request ID based on timestamp and remote address
+	timestamp := time.Now().Unix()
+	remoteAddr := r.RemoteAddr
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		remoteAddr = strings.Split(forwarded, ",")[0]
+	}
+
+	return fmt.Sprintf("req_%d_%s", timestamp, strings.ReplaceAll(remoteAddr, ":", "_"))
+}
+
+// writeErrorResponse writes a JSON error response
+func (am *AuthMiddleware) writeErrorResponse(w http.ResponseWriter, statusCode int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	errorResponse := map[string]interface{}{
+		"error": map[string]interface{}{
+			"code":    statusCode,
+			"message": message,
+			"type":    "authentication_error",
+		},
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}
+
+	// Don't log the error if JSON encoding fails - just write a simple response
+	if jsonBytes, err := json.Marshal(errorResponse); err == nil {
+		w.Write(jsonBytes)
+	} else {
+		w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
+	}
+}
+
+// GetTenantContextFromRequest extracts the tenant context from a request context
+func GetTenantContextFromRequest(r *http.Request) (*fusion.TenantContext, bool) {
+	if tenantContext, ok := r.Context().Value(global.TenantContextKey).(*fusion.TenantContext); ok {
+		return tenantContext, true
+	}
+	return nil, false
+}
+
+// GetServiceNameFromRequest extracts the service name from a request context
+func GetServiceNameFromRequest(r *http.Request) (string, bool) {
+	if serviceName, ok := r.Context().Value(global.ServiceNameKey).(string); ok {
+		return serviceName, true
+	}
+	return "", false
+}
+
+// RequireAuthentication is a convenience function that can be used to ensure a request is authenticated
+func RequireAuthentication(r *http.Request) (*fusion.TenantContext, string, error) {
+	tenantContext, hasTenant := GetTenantContextFromRequest(r)
+	if !hasTenant {
+		return nil, "", fmt.Errorf("request is not authenticated")
+	}
+
+	serviceName, hasService := GetServiceNameFromRequest(r)
+	if !hasService {
+		serviceName = "default"
+	}
+
+	return tenantContext, serviceName, nil
+}
+
+// min returns the smaller of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// AuthValidationMiddleware is a simpler middleware that only validates authentication without tenant resolution
+type AuthValidationMiddleware struct {
+	authManager *fusion.MultiTenantAuthManager
+	logger      global.Logger
+	skipPaths   []string
+}
+
+// NewAuthValidationMiddleware creates a simple authentication validation middleware
+func NewAuthValidationMiddleware(authManager *fusion.MultiTenantAuthManager, logger global.Logger, skipPaths ...string) *AuthValidationMiddleware {
+	if len(skipPaths) == 0 {
+		skipPaths = []string{"/health", "/metrics", "/status"}
+	}
+
+	return &AuthValidationMiddleware{
+		authManager: authManager,
+		logger:      logger,
+		skipPaths:   skipPaths,
+	}
+}
+
+// Middleware returns the HTTP middleware function for simple auth validation
+func (avm *AuthValidationMiddleware) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check if this path should skip authentication
+		for _, skipPath := range avm.skipPaths {
+			if strings.HasPrefix(r.URL.Path, skipPath) {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		// Extract bearer token
+		authHeader := r.Header.Get("Authorization")
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			if avm.logger != nil {
+				avm.logger.Warningf("Missing or invalid authorization header for %s %s", r.Method, r.URL.Path)
+			}
+			avm.writeError(w, http.StatusUnauthorized, "Invalid token")
+			return
+		}
+
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if token == "" {
+			if avm.logger != nil {
+				avm.logger.Warning("Empty bearer token provided")
+			}
+			avm.writeError(w, http.StatusUnauthorized, "Invalid token")
+			return
+		}
+
+		// Validate token format and extract tenant context
+		_, err := avm.authManager.ExtractTenantFromToken(token)
+		if err != nil {
+			if avm.logger != nil {
+				avm.logger.Errorf("Token validation failed: %v", err)
+			}
+			avm.writeError(w, http.StatusUnauthorized, "Invalid token")
+			return
+		}
+
+		if avm.logger != nil {
+			avm.logger.Debugf("Token validated successfully for %s %s", r.Method, r.URL.Path)
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// writeError writes a simple error response
+func (avm *AuthValidationMiddleware) writeError(w http.ResponseWriter, statusCode int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
+}

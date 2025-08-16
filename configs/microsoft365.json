@@ -82,8 +82,9 @@
               "required": false,
               "location": "query",
               "default": 100,
-              "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+             "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -150,7 +151,8 @@
               "location": "query",
               "default": 10,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -164,16 +166,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "10m"
-            }
+            "paginated": false
           }
         },
         {
@@ -199,7 +192,8 @@
               "location": "query",
               "default": 1000,
               "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -213,16 +207,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "1h"
-            }
+            "paginated": false
           }
         },
         {
@@ -248,11 +233,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "type": "json"
           }
         },
         {
@@ -313,7 +294,8 @@
               "location": "query",
               "default": 100,
               "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -327,16 +309,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "paginated": false
           }
         },
         {
@@ -397,7 +370,8 @@
               "location": "query",
               "default": 10,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -411,16 +385,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "paginated": false
           }
         },
         {
@@ -438,7 +403,8 @@
               "location": "query",
               "default": 10,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -467,16 +433,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "paginated": false
           }
         },
         {
@@ -501,8 +458,9 @@
               "required": false,
               "location": "query",
               "default": 1000,
-              "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -516,16 +474,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "30m"
-            }
+            "paginated": false
           }
         },
         {
@@ -550,7 +499,8 @@
               "location": "query",
               "default": 10,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -579,16 +529,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "2m"
-            }
+            "paginated": false
           }
         },
         {
@@ -614,11 +555,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "15m"
-            }
+            "type": "json"
           }
         },
         {
@@ -635,33 +572,10 @@
               "required": false,
               "location": "query",
               "default": "displayName,mail,userPrincipalName,jobTitle,department,companyName"
-            },
-            {
-              "name": "$top",
-              "description": "Number of items to retrieve (max 1000)",
-              "type": "number",
-              "required": false,
-              "location": "query",
-              "default": 100,
-              "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
-              }
-            },
-            {
-              "name": "$skip",
-              "description": "Number of items to skip (for pagination offset)",
-              "type": "number",
-              "required": false,
-              "location": "query",
-              "default": 0
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "30m"
-            }
+            "type": "json"
           }
         },
         {
@@ -679,7 +593,8 @@
               "location": "query",
               "default": 25,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -708,16 +623,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "15m"
-            }
+            "paginated": false
           }
         },
         {
@@ -743,11 +649,7 @@
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "30m"
-            }
+            "type": "json"
           }
         },
         {
@@ -814,8 +716,9 @@
               "required": false,
               "location": "query",
               "default": 50,
-              "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -829,16 +732,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "2m"
-            }
+            "paginated": false
           }
         },
         {
@@ -895,7 +789,8 @@
               "location": "query",
               "default": 25,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -925,16 +820,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "1m"
-            }
+            "paginated": false
           }
         },
         {
@@ -989,16 +875,9 @@
               "location": "query",
               "default": 50,
               "validation": {
-                "enum": [5, 10, 25, 50, 100, 250, 500, 1000]
+                "minimum": 1,
+                "maximum": 1000
               }
-            },
-            {
-              "name": "$skip",
-              "description": "Number of items to skip (for pagination offset)",
-              "type": "number",
-              "required": false,
-              "location": "query",
-              "default": 0
             },
             {
               "name": "$orderby",
@@ -1019,16 +898,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "5m"
-            }
+            "paginated": false
           }
         },
         {
@@ -1066,8 +936,9 @@
               "required": false,
               "location": "query",
               "default": 100,
-              "validation": {
-                "enum": [10, 25, 50, 100, 250, 500, 1000]
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
               }
             },
             {
@@ -1093,20 +964,25 @@
                 "size desc",
                 "size asc"
               ]
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
             }
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
-            "caching": {
-              "enabled": true,
-              "ttl": "10m"
-            }
+            "paginated": false
           }
         },
         {
@@ -1130,14 +1006,307 @@
               "required": false,
               "location": "query",
               "default": "name,size,lastModifiedDateTime,webUrl,file,folder,parentReference,createdDateTime,lastModifiedBy"
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
             }
           ],
           "response": {
-            "type": "json",
-            "caching": {
-              "enabled": true,
-              "ttl": "15m"
+            "type": "json"
+          }
+        },
+        {
+          "id": "files_download_content",
+          "name": "Download File Content",
+          "description": "Download the actual content of a file (binary or text)",
+          "method": "GET",
+          "path": "/me/drive/items/{id}/content",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "File ID to download",
+              "type": "string",
+              "required": true,
+              "location": "path"
             }
+          ],
+          "response": {
+            "type": "binary"
+          }
+        },
+        {
+          "id": "files_list_children",
+          "name": "List Folder Contents",
+          "description": "List files and folders within a specific directory",
+          "method": "GET",
+          "path": "/me/drive/items/{id}/children",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Folder ID to list contents",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 200,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name asc",
+              "enum": [
+                "name asc",
+                "name desc",
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "size desc",
+                "size asc"
+              ]
+            },
+            {
+              "name": "$filter",
+              "description": "Filter results by type or properties",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file ne null",
+                "folder ne null",
+                "file/mimeType eq 'application/pdf'",
+                "lastModifiedDateTime ge 2025-01-01T00:00:00Z"
+              ]
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "files_get_by_path",
+          "name": "Get File/Folder by Path",
+          "description": "Get file or folder metadata using file system path",
+          "method": "GET",
+          "path": "/me/drive/root:/{filePath}",
+          "parameters": [
+            {
+              "name": "filePath",
+              "description": "File or folder path from root (e.g., 'Documents/report.docx', 'Projects/MyFolder')",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "examples": [
+                "Documents/report.docx",
+                "Projects/MyFolder",
+                "Presentations/Q1-Review.pptx",
+                "Data/analysis.xlsx"
+              ]
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,createdDateTime"
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "files_recent",
+          "name": "List Recent Files",
+          "description": "List recently accessed files across all drives (OneDrive, SharePoint, Teams)",
+          "method": "GET",
+          "path": "/me/drive/recent",
+          "parameters": [
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,lastAccessedDateTime,remoteItem"
+            },
+            {
+              "name": "$top",
+              "description": "Number of recent items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 50,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "files_list_folder_by_path",
+          "name": "List Folder Contents by Path",
+          "description": "Navigate to folder by path and list its contents",
+          "method": "GET",
+          "path": "/me/drive/root:/{folderPath}:/children",
+          "parameters": [
+            {
+              "name": "folderPath",
+              "description": "Folder path from root (e.g., 'Documents', 'Projects/Current', 'Shared Documents')",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "examples": [
+                "Documents",
+                "Projects/Current",
+                "Shared Documents",
+                "Archive/2024",
+                "Teams/ProjectAlpha"
+              ]
+            },
+            {
+              "name": "$select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference"
+            },
+            {
+              "name": "$top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 200,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name asc",
+              "enum": [
+                "name asc",
+                "name desc",
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "size desc",
+                "size asc"
+              ]
+            },
+            {
+              "name": "$filter",
+              "description": "Filter results by type or properties",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file ne null",
+                "folder ne null",
+                "file/mimeType eq 'application/pdf'",
+                "size gt 1048576"
+              ]
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
           }
         }
       ]

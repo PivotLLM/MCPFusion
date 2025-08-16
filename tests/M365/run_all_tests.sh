@@ -9,6 +9,21 @@ SERVER_URL="http://127.0.0.1:8888/sse"
 PROBE_TOOL="/Users/eric/source/MCPProbe/probe"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
+# Load environment variables
+if [ -f "$TESTS_DIR/.env" ]; then
+    source "$TESTS_DIR/.env"
+else
+    echo -e "${RED}[ERROR]${NC} .env file not found in $TESTS_DIR"
+    echo "Please create a .env file with APIKEY=your-api-token"
+    exit 1
+fi
+
+# Check if APIKEY is set
+if [ -z "$APIKEY" ]; then
+    echo -e "${RED}[ERROR]${NC} APIKEY not set in .env file"
+    exit 1
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -20,6 +35,7 @@ echo -e "${BLUE}=== MCPFusion Test Suite Runner ===${NC}"
 echo "Timestamp: $(date)"
 echo "Tests Directory: $TESTS_DIR"
 echo "Server URL: $SERVER_URL"
+echo "Using API Token: ${APIKEY:0:8}..."
 echo ""
 
 # Check prerequisites
@@ -40,7 +56,7 @@ echo ""
 
 # Test server connectivity
 echo -e "${BLUE}[INFO]${NC} Testing server connectivity..."
-if ! "$PROBE_TOOL" -url "$SERVER_URL" -transport sse -list-only >/dev/null 2>&1; then
+if ! "$PROBE_TOOL" -url "$SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -list-only >/dev/null 2>&1; then
     echo -e "${RED}[ERROR]${NC} Cannot connect to MCP server at $SERVER_URL"
     echo "Please ensure the MCPFusion server is running"
     exit 1
@@ -132,6 +148,31 @@ run_test "Mail Search API Test" \
 run_test "Files Search API Test" \
     "$TESTS_DIR/test_files_search.sh" \
     "$TESTS_DIR/files_search_test_${TIMESTAMP}.log"
+
+# New Enhanced File Capabilities Tests
+run_test "Files Recent Access Test" \
+    "$TESTS_DIR/test_files_recent.sh" \
+    "$TESTS_DIR/files_recent_test_${TIMESTAMP}.log"
+
+run_test "Files Path Access Test" \
+    "$TESTS_DIR/test_files_path_access.sh" \
+    "$TESTS_DIR/files_path_access_test_${TIMESTAMP}.log"
+
+run_test "Files Folder Navigation Test" \
+    "$TESTS_DIR/test_files_folder_navigation.sh" \
+    "$TESTS_DIR/files_folder_navigation_test_${TIMESTAMP}.log"
+
+run_test "Files ID Navigation Test" \
+    "$TESTS_DIR/test_files_id_navigation.sh" \
+    "$TESTS_DIR/files_id_navigation_test_${TIMESTAMP}.log"
+
+run_test "Files Content Download Test" \
+    "$TESTS_DIR/test_files_content_download.sh" \
+    "$TESTS_DIR/files_content_download_test_${TIMESTAMP}.log"
+
+run_test "All File Capabilities Test" \
+    "$TESTS_DIR/test_all_file_capabilities.sh" \
+    "$TESTS_DIR/all_file_capabilities_test_${TIMESTAMP}.log"
 
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"

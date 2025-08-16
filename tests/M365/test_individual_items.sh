@@ -1,9 +1,25 @@
 #!/bin/bash
 
+# Load environment variables
+if [ -f ".env" ]; then
+    source .env
+else
+    echo "Error: .env file not found"
+    echo "Please create a .env file with APIKEY=your-api-token"
+    exit 1
+fi
+
+# Check if APIKEY is set
+if [ -z "$APIKEY" ]; then
+    echo "Error: APIKEY not set in .env file"
+    exit 1
+fi
+
 # Test Microsoft 365 Individual Item Retrieval APIs
 echo "=== Testing Microsoft 365 Individual Item Retrieval APIs ===" 
 echo "Timestamp: $(date)"
 echo "Server: http://127.0.0.1:8888/sse"
+echo "Using API Token: ${APIKEY:0:8}..."
 echo ""
 
 # Placeholder IDs - replace with real IDs from list operations
