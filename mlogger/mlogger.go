@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * Please see LICENSE file for details.                                       *
+ * All rights reserved.                                                       *
  ******************************************************************************/
 
 // Package mlogger provides a simple file-based logger with optional debug message
