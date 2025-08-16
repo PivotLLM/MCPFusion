@@ -60,12 +60,12 @@ echo "=== Test 3: Search with custom field selection ===" | tee -a "$OUTPUT_FILE
   2>&1 | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
 
-# Test 4: Search all files (no specific query)
-echo "=== Test 4: Search all files (top 5) ===" | tee -a "$OUTPUT_FILE"
+# Test 4: Search for common file types
+echo "=== Test 4: Search for files (top 5) ===" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_search \
-  -params '{"searchQuery":"*","$top":"5"}' \
+  -params '{"searchQuery":"doc","$top":"5"}' \
   2>&1 | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
 
