@@ -170,6 +170,10 @@ run_test "Files Content Download Test" \
     "$TESTS_DIR/test_files_content_download.sh" \
     "$TESTS_DIR/files_content_download_test_${TIMESTAMP}.log"
 
+run_test "All File Capabilities Test" \
+    "$TESTS_DIR/test_all_file_capabilities.sh" \
+    "$TESTS_DIR/all_file_capabilities_test_${TIMESTAMP}.log"
+
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"
 echo "Total Tests: $tests_run"

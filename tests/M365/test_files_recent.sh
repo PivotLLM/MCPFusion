@@ -66,8 +66,19 @@ echo "Description: Get recent files with specific field selection" | tee -a "$OU
   2>&1 | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
 
-# Test 4: Maximum count test
-echo "=== Test 4: List Recent Files (Maximum Count) ===" | tee -a "$OUTPUT_FILE"
+# Test 4: Test $expand parameter
+echo "=== Test 4: List Recent Files with $expand ====" | tee -a "$OUTPUT_FILE"
+echo "Command: microsoft365_files_recent" | tee -a "$OUTPUT_FILE"
+echo "Description: Get recent files with expanded permissions data" | tee -a "$OUTPUT_FILE"
+"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+  -headers "Authorization:Bearer $APIKEY" \
+  -call microsoft365_files_recent \
+  -params '{"$top": 5, "$expand": "permissions"}' \
+  2>&1 | tee -a "$OUTPUT_FILE"
+echo | tee -a "$OUTPUT_FILE"
+
+# Test 5: Maximum count test
+echo "=== Test 5: List Recent Files (Maximum Count) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_recent" | tee -a "$OUTPUT_FILE"
 echo "Description: Get maximum number of recent files (200)" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
@@ -87,4 +98,5 @@ echo "Test capabilities verified:"
 echo "✓ Recent files discovery across all drives"
 echo "✓ Customizable result count (1-1000)"
 echo "✓ Field selection for optimized responses"
+echo "✓ $expand parameter for including related data"
 echo "✓ Default and maximum parameter testing"

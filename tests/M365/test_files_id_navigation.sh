@@ -121,9 +121,22 @@ if [ ${#FOLDER_IDS[@]} -gt 0 ]; then
         echo | tee -a "$OUTPUT_FILE"
     fi
     
-    # Test 6: Maximum results test
+    # Test 6: Test $expand parameter
     if [ ${#FOLDER_IDS[@]} -ge 1 ]; then
-        echo "=== Test 6: Maximum Results Test ===" | tee -a "$OUTPUT_FILE"
+        echo "=== Test 6: List Children with $expand ===" | tee -a "$OUTPUT_FILE"
+        echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
+        echo "Description: List folder contents with expanded permissions" | tee -a "$OUTPUT_FILE"
+        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+          -headers "Authorization:Bearer $APIKEY" \
+          -call microsoft365_files_list_children \
+          -params "{\"id\": \"${FOLDER_IDS[0]}\", \"\$expand\": \"permissions(\$select=id,roles)\", \"\$top\": 5}" \
+          2>&1 | tee -a "$OUTPUT_FILE"
+        echo | tee -a "$OUTPUT_FILE"
+    fi
+
+    # Test 7: Maximum results test
+    if [ ${#FOLDER_IDS[@]} -ge 1 ]; then
+        echo "=== Test 7: Maximum Results Test ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
         echo "Description: Test maximum result count (200)" | tee -a "$OUTPUT_FILE"
         "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
@@ -139,8 +152,8 @@ else
     echo | tee -a "$OUTPUT_FILE"
 fi
 
-# Test 7: Error handling - invalid folder ID
-echo "=== Test 7: Invalid Folder ID (Error Test) ===" | tee -a "$OUTPUT_FILE"
+# Test 8: Error handling - invalid folder ID
+echo "=== Test 8: Invalid Folder ID (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for invalid folder ID" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
@@ -150,8 +163,8 @@ echo "Description: Test error handling for invalid folder ID" | tee -a "$OUTPUT_
   2>&1 | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
 
-# Test 8: Empty folder ID (error test)
-echo "=== Test 8: Empty Folder ID (Error Test) ===" | tee -a "$OUTPUT_FILE"
+# Test 9: Empty folder ID (error test)
+echo "=== Test 9: Empty Folder ID (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for empty folder ID" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
@@ -174,5 +187,6 @@ echo "✓ Customizable result count and field selection"
 echo "✓ Sorting options (name, date)"
 echo "✓ Filtering (files only, folders only)"
 echo "✓ Multiple folder navigation"
+echo "✓ $expand parameter for including related data"
 echo "✓ Error handling for invalid/empty IDs"
 echo "✓ Maximum result count testing"

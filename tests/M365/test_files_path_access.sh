@@ -89,8 +89,19 @@ echo "Description: Access folder with specific field selection" | tee -a "$OUTPU
   2>&1 | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
 
-# Test 6: Non-existent path (error handling)
-echo "=== Test 6: Non-Existent Path (Error Test) ===" | tee -a "$OUTPUT_FILE"
+# Test 6: Test $expand parameter
+echo "=== Test 6: Get Documents with $expand ===" | tee -a "$OUTPUT_FILE"
+echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
+echo "Description: Access Documents folder with expanded children data" | tee -a "$OUTPUT_FILE"
+"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+  -headers "Authorization:Bearer $APIKEY" \
+  -call microsoft365_files_get_by_path \
+  -params '{"filePath": "Documents", "$expand": "children($select=name,id,size)"}' \
+  2>&1 | tee -a "$OUTPUT_FILE"
+echo | tee -a "$OUTPUT_FILE"
+
+# Test 7: Non-existent path (error handling)
+echo "=== Test 7: Non-Existent Path (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for non-existent path" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
@@ -112,4 +123,5 @@ echo "✓ Common folder navigation (Documents, Pictures)"
 echo "✓ Nested path support (Documents/Projects)"
 echo "✓ Specific file access by full path"
 echo "✓ Custom field selection"
+echo "✓ $expand parameter for including related data"
 echo "✓ Error handling for invalid paths"

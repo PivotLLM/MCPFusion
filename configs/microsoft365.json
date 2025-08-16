@@ -1079,6 +1079,20 @@
                 "size desc",
                 "size asc"
               ]
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
             }
           ],
           "response": {
@@ -1116,6 +1130,20 @@
               "required": false,
               "location": "query",
               "default": "name,size,lastModifiedDateTime,webUrl,file,folder,parentReference,createdDateTime,lastModifiedBy"
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
             }
           ],
           "response": {
@@ -1210,6 +1238,20 @@
                 "file/mimeType eq 'application/pdf'",
                 "lastModifiedDateTime ge 2025-01-01T00:00:00Z"
               ]
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
             }
           ],
           "response": {
@@ -1247,6 +1289,20 @@
               "required": false,
               "location": "query",
               "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,createdDateTime"
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
             }
           ],
           "response": {
@@ -1270,7 +1326,7 @@
               "type": "string",
               "required": false,
               "location": "query",
-              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,lastAccessedDateTime"
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,lastAccessedDateTime,remoteItem"
             },
             {
               "name": "$top",
@@ -1283,6 +1339,20 @@
                 "minimum": 1,
                 "maximum": 1000
               }
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
             }
           ],
           "response": {
@@ -1361,6 +1431,20 @@
                 "folder ne null",
                 "file/mimeType eq 'application/pdf'",
                 "size gt 1048576"
+              ]
+            },
+            {
+              "name": "$expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
               ]
             }
           ],

@@ -111,8 +111,19 @@ echo "Description: Navigate into a nested folder structure" | tee -a "$OUTPUT_FI
   2>&1 | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
 
-# Test 8: Error handling - non-existent folder
-echo "=== Test 8: Non-Existent Folder (Error Test) ===" | tee -a "$OUTPUT_FILE"
+# Test 8: Test $expand parameter
+echo "=== Test 8: List Folder with $expand ===" | tee -a "$OUTPUT_FILE"
+echo "Command: microsoft365_files_list_folder_by_path" | tee -a "$OUTPUT_FILE"
+echo "Description: List Documents folder with expanded thumbnails data" | tee -a "$OUTPUT_FILE"
+"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+  -headers "Authorization:Bearer $APIKEY" \
+  -call microsoft365_files_list_folder_by_path \
+  -params '{"folderPath": "Documents", "$expand": "thumbnails", "$top": 5}' \
+  2>&1 | tee -a "$OUTPUT_FILE"
+echo | tee -a "$OUTPUT_FILE"
+
+# Test 9: Error handling - non-existent folder
+echo "=== Test 9: Non-Existent Folder (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_list_folder_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for non-existent folder" | tee -a "$OUTPUT_FILE"
 "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
@@ -135,4 +146,5 @@ echo "✓ Sorting options (name, date, size)"
 echo "✓ Filtering (files only, folders only)"
 echo "✓ Nested folder navigation"
 echo "✓ Root directory listing"
+echo "✓ $expand parameter for including related data"
 echo "✓ Error handling for invalid paths"
