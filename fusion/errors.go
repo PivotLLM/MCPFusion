@@ -26,12 +26,23 @@ type DeviceCodeError struct {
 
 // Error implements the error interface
 func (e DeviceCodeError) Error() string {
-	if e.Message != "" {
-		return fmt.Sprintf("OAuth2 Device Flow: %s\nPlease visit %s and enter code: %s",
-			e.Message, e.VerificationURL, e.UserCode)
+	message := "AUTHENTICATION REQUIRED - Please relay this message to the user:\n\n"
+	message += "You need to authenticate to continue. Please:\n"
+	message += fmt.Sprintf("1. Visit: %s\n", e.VerificationURL)
+	message += fmt.Sprintf("2. Enter code: %s\n", e.UserCode)
+
+	if e.ExpiresIn > 0 {
+		message += fmt.Sprintf("\nThis code expires in %d minutes.", e.ExpiresIn/60)
 	}
-	return fmt.Sprintf("Please visit %s and enter code: %s",
-		e.VerificationURL, e.UserCode)
+
+	message += "\n\nOnce authenticated, you can retry your request."
+
+	// Include any additional message if provided
+	if e.Message != "" {
+		message += fmt.Sprintf("\n\nAdditional info: %s", e.Message)
+	}
+
+	return message
 }
 
 // IsExpired checks if the device code has expired
