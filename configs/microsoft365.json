@@ -643,26 +643,6 @@
               "required": false,
               "location": "query",
               "default": "displayName,mail,userPrincipalName,jobTitle,department,companyName"
-            },
-            {
-              "name": "$top",
-              "description": "Number of items to retrieve (max 1000)",
-              "type": "number",
-              "required": false,
-              "location": "query",
-              "default": 100,
-               "validation": {
-                "minimum": 1,
-                "maximum": 1000
-              }
-            },
-            {
-              "name": "$skip",
-              "description": "Number of items to skip (for pagination offset)",
-              "type": "number",
-              "required": false,
-              "location": "query",
-              "default": 0
             }
           ],
           "response": {
@@ -1004,14 +984,6 @@
                 "minimum": 1,
                 "maximum": 1000
               }
-            },
-            {
-              "name": "$skip",
-              "description": "Number of items to skip (for pagination offset)",
-              "type": "number",
-              "required": false,
-              "location": "query",
-              "default": 0
             },
             {
               "name": "$orderby",
