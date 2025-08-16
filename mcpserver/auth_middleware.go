@@ -17,16 +17,6 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
-// contextKey is used for context values to avoid collisions
-type contextKey string
-
-const (
-	// TenantContextKey is the key used to store tenant context in the request context
-	TenantContextKey contextKey = "tenant_context"
-	// ServiceNameKey is the key used to store the resolved service name in the request context
-	ServiceNameKey contextKey = "service_name"
-)
-
 // AuthMiddleware provides bearer token authentication and tenant context extraction
 type AuthMiddleware struct {
 	authManager     *fusion.MultiTenantAuthManager
@@ -164,8 +154,8 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 
 		// Add tenant context and service name to request context
-		ctx := context.WithValue(r.Context(), TenantContextKey, tenantContext)
-		ctx = context.WithValue(ctx, ServiceNameKey, serviceName)
+		ctx := context.WithValue(r.Context(), global.TenantContextKey, tenantContext)
+		ctx = context.WithValue(ctx, global.ServiceNameKey, serviceName)
 		r = r.WithContext(ctx)
 
 		// Continue to next handler
@@ -342,7 +332,7 @@ func (am *AuthMiddleware) writeErrorResponse(w http.ResponseWriter, statusCode i
 
 // GetTenantContextFromRequest extracts the tenant context from a request context
 func GetTenantContextFromRequest(r *http.Request) (*fusion.TenantContext, bool) {
-	if tenantContext, ok := r.Context().Value(TenantContextKey).(*fusion.TenantContext); ok {
+	if tenantContext, ok := r.Context().Value(global.TenantContextKey).(*fusion.TenantContext); ok {
 		return tenantContext, true
 	}
 	return nil, false
@@ -350,7 +340,7 @@ func GetTenantContextFromRequest(r *http.Request) (*fusion.TenantContext, bool) 
 
 // GetServiceNameFromRequest extracts the service name from a request context
 func GetServiceNameFromRequest(r *http.Request) (string, bool) {
-	if serviceName, ok := r.Context().Value(ServiceNameKey).(string); ok {
+	if serviceName, ok := r.Context().Value(global.ServiceNameKey).(string); ok {
 		return serviceName, true
 	}
 	return "", false

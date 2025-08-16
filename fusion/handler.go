@@ -17,6 +17,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	
+	"github.com/PivotLLM/MCPFusion/global"
 )
 
 // HTTPHandler handles HTTP requests for a specific endpoint
@@ -98,10 +100,63 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-	// For now, skip authentication since we don't have a proper legacy auth manager
-	// This needs to be properly implemented with multi-tenant support
-	if h.fusion.logger != nil {
-		h.fusion.logger.Warningf("Authentication temporarily disabled - requires multi-tenant implementation [%s]", correlationID)
+	// Apply multi-tenant authentication if available
+	if h.fusion.multiTenantAuth != nil {
+		// Extract tenant context from the request context (set by auth middleware)
+		// Use the shared context key from global package
+		if h.fusion.logger != nil {
+			h.fusion.logger.Debugf("Looking for tenant context in request context [%s]", correlationID)
+		}
+		
+		tenantContextValue := ctx.Value(global.TenantContextKey)
+		
+		if tenantContextValue != nil {
+			if tenantContext, ok := tenantContextValue.(*TenantContext); ok {
+				// Ensure service name and request ID are set
+				tenantContext.ServiceName = h.service.Name
+				tenantContext.RequestID = correlationID
+
+				if h.fusion.logger != nil {
+					h.fusion.logger.Debugf("Found tenant context for tenant %s service %s [%s]",
+						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID)
+				}
+
+				// Apply authentication using multi-tenant auth manager
+				if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, req, tenantContext, h.service.Auth); err != nil {
+					if h.fusion.logger != nil {
+						h.fusion.logger.Errorf("Authentication failed for tenant %s service %s [%s]: %v", 
+							tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID, err)
+					}
+					
+					// Check if it's a DeviceCodeError - pass it up for client handling
+					if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
+						return "", deviceCodeErr
+					}
+					
+					return "", fmt.Errorf("authentication failed: %w", err)
+				}
+
+				if h.fusion.logger != nil {
+					h.fusion.logger.Debugf("Successfully applied authentication for tenant %s service %s [%s]",
+						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID)
+				}
+			} else {
+				if h.fusion.logger != nil {
+					h.fusion.logger.Warningf("Invalid tenant context type in request context [%s]: %T", correlationID, tenantContextValue)
+				}
+				return "", fmt.Errorf("invalid tenant context in request")
+			}
+		} else {
+			if h.fusion.logger != nil {
+				h.fusion.logger.Warningf("No tenant context found in request context [%s]", correlationID)
+			}
+			return "", fmt.Errorf("no tenant context found - authentication required")
+		}
+	} else {
+		if h.fusion.logger != nil {
+			h.fusion.logger.Errorf("Multi-tenant authentication manager not available [%s]", correlationID)
+		}
+		return "", fmt.Errorf("authentication not configured")
 	}
 
 	// Log final request after authentication is applied

@@ -495,24 +495,95 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 
 // createToolHandler creates a handler function for a specific endpoint
 func (f *Fusion) createToolHandler(serviceName string, service *ServiceConfig, endpoint *EndpointConfig) global.ToolHandler {
-	handler := NewHTTPHandler(f, service, endpoint)
+	httpHandler := NewHTTPHandler(f, service, endpoint)
 
-	return func(options map[string]any) (string, error) {
-		ctx := context.Background()
+	// Create a context-aware handler that the MCP server can detect and use
+	contextHandler := &contextAwareHandler{
+		httpHandler: httpHandler,
+	}
+	
+	return global.ToolHandler(contextHandler.Call)
+}
 
-		// Handle request
-		result, err := handler.Handle(ctx, options)
-		if err != nil {
-			// Check if it's a device code error
-			if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
-				// For MCP, we return the device code message and expect the client to handle it
-				// The client should display the message and call back when ready
-				return deviceCodeErr.Error(), nil
-			}
-			return "", err
+// contextAwareHandler holds the HTTP handler and provides both legacy and context-aware interfaces
+type contextAwareHandler struct {
+	httpHandler *HTTPHandler
+}
+
+// Call implements the legacy interface - extracts context from options if available
+func (h *contextAwareHandler) Call(options map[string]any) (string, error) {
+	ctx := context.Background()
+	
+	// Debug: Log what options we're receiving
+	if h.httpHandler.fusion.logger != nil {
+		h.httpHandler.fusion.logger.Debugf("contextAwareHandler.Call received options: %+v", options)
+		for k, v := range options {
+			h.httpHandler.fusion.logger.Debugf("  option[%s] = %T: %v", k, v, v)
 		}
+	}
+	
+	// Check if the MCP server passed the context through options
+	if ctxValue, exists := options["__mcp_context"]; exists {
+		if h.httpHandler.fusion.logger != nil {
+			h.httpHandler.fusion.logger.Debugf("Found __mcp_context in options: %T", ctxValue)
+		}
+		if contextFromMCP, ok := ctxValue.(context.Context); ok {
+			ctx = contextFromMCP
+			if h.httpHandler.fusion.logger != nil {
+				h.httpHandler.fusion.logger.Debugf("Successfully extracted context from MCP server")
+			}
+			// Remove the context from options so it doesn't interfere with API calls
+			filteredOptions := make(map[string]any)
+			for k, v := range options {
+				if k != "__mcp_context" {
+					filteredOptions[k] = v
+				}
+			}
+			return h.CallWithContext(ctx, filteredOptions)
+		} else {
+			if h.httpHandler.fusion.logger != nil {
+				h.httpHandler.fusion.logger.Warningf("__mcp_context found but is not context.Context: %T", ctxValue)
+			}
+		}
+	} else {
+		if h.httpHandler.fusion.logger != nil {
+			h.httpHandler.fusion.logger.Warningf("No __mcp_context found in options")
+		}
+	}
+	
+	return h.CallWithContext(ctx, options)
+}
 
-		return result, nil
+// CallWithContext implements the context-aware interface that MCP server will detect
+func (h *contextAwareHandler) CallWithContext(ctx context.Context, options map[string]any) (string, error) {
+	result, err := h.httpHandler.Handle(ctx, options)
+	if err != nil {
+		// Check if it's a device code error
+		if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
+			// For MCP, we return the device code message and expect the client to handle it
+			// The client should display the message and call back when ready
+			return deviceCodeErr.Error(), nil
+		}
+		return "", err
+	}
+
+	return result, nil
+}
+
+// extractTenantContextFromOptions attempts to extract tenant context for multi-tenant operations
+// This is a placeholder for proper tenant context extraction once the MCP interface supports context passing
+func (f *Fusion) extractTenantContextFromOptions(serviceName string, options map[string]any) *TenantContext {
+	// In a proper implementation, this would extract the tenant context from the HTTP request context
+	// For now, we'll create a basic tenant context that can be used for authentication
+	
+	// TODO: This is a temporary workaround. The proper solution is to modify the MCP server
+	// to pass the HTTP request context through to tool handlers.
+	
+	return &TenantContext{
+		TenantHash:  "unknown", // Will be resolved by auth middleware
+		ServiceName: serviceName,
+		RequestID:   f.correlationIDGenerator.Generate(),
+		CreatedAt:   time.Now(),
 	}
 }
 

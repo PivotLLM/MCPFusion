@@ -29,8 +29,8 @@ const (
 
 // Regular expressions for validation
 var (
-	// Service name can contain alphanumeric, underscore, hyphen, and dot
-	serviceNameRegex = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+	// Service name can contain alphanumeric, underscore, hyphen, dot, and space
+	serviceNameRegex = regexp.MustCompile(`^[a-zA-Z0-9._\- ]+$`)
 	
 	// Hash must be valid hex string
 	hashRegex = regexp.MustCompile(`^[a-fA-F0-9]+$`)

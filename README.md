@@ -54,7 +54,7 @@ A production-ready, configuration-driven MCP (Model Context Protocol) server tha
 
 3. **Start Server and Connect**:
    ```bash
-   # Start server with multi-tenant support
+   # Start server
    ./mcpfusion -config configs/microsoft365.json -port 8888
    
    # Connect using Bearer token authentication

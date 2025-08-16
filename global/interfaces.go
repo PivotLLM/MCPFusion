@@ -182,3 +182,17 @@ type PromptProvider interface {
 func NewPrompts() []PromptDefinition {
 	return []PromptDefinition{}
 }
+
+//
+// Context Keys for shared usage across packages
+//
+
+// ContextKey is a type for context keys to avoid collisions
+type ContextKey string
+
+const (
+	// TenantContextKey is the key used to store tenant context in request contexts
+	TenantContextKey ContextKey = "tenant_context"
+	// ServiceNameKey is the key used to store service name in request contexts
+	ServiceNameKey ContextKey = "service_name"
+)

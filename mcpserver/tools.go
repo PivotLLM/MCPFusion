@@ -63,8 +63,21 @@ func (m *MCPServer) AddTools() {
 				// Copy the MCP arguments to a map
 				options := req.GetArguments()
 
-				// Execute the tool's handler, passing the options
-				result, err := toolDef.Handler(options)
+				// Always pass context through options for fusion handlers to use
+				// This allows fusion providers to access tenant context
+				ctxOptions := make(map[string]any)
+				for k, v := range options {
+					ctxOptions[k] = v
+				}
+				// Store the context for fusion handlers to extract tenant context
+				ctxOptions["__mcp_context"] = ctx
+				
+				// Debug: Log that we're passing context
+				if m.logger != nil {
+					m.logger.Debugf("MCP server passing context to tool %s", toolDef.Name)
+				}
+				
+				result, err := toolDef.Handler(ctxOptions)
 				if err != nil {
 					return mcp.NewToolResultError(err.Error()), err
 				}

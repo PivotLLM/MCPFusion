@@ -63,6 +63,12 @@ func (mtam *MultiTenantAuthManager) RegisterStrategy(strategy AuthStrategy) {
 	defer mtam.mu.Unlock()
 
 	mtam.strategies[strategy.GetAuthType()] = strategy
+	
+	// Set auth manager reference for OAuth2 device flow strategies
+	if oauth2Strategy, ok := strategy.(*OAuth2DeviceFlowStrategy); ok {
+		oauth2Strategy.SetAuthManager(mtam)
+	}
+	
 	if mtam.logger != nil {
 		mtam.logger.Infof("Registered multi-tenant auth strategy: %s", strategy.GetAuthType())
 	}
@@ -131,7 +137,7 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
 			}
 			if refreshedToken, err := strategy.RefreshToken(ctx, tokenInfo); err == nil {
-				mtam.cacheToken(tenantContext, refreshedToken)
+				mtam.CacheToken(tenantContext, refreshedToken)
 				if mtam.logger != nil {
 					mtam.logger.Infof("Successfully refreshed token for tenant %s service: %s",
 						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
@@ -186,7 +192,7 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 	}
 
 	// Cache the new token
-	mtam.cacheToken(tenantContext, tokenInfo)
+	mtam.CacheToken(tenantContext, tokenInfo)
 
 	if mtam.logger != nil {
 		expiryInfo := "no expiry"
@@ -357,8 +363,8 @@ func (mtam *MultiTenantAuthManager) getCachedToken(tenantContext *TenantContext)
 	return nil
 }
 
-// cacheToken stores a token in cache and database
-func (mtam *MultiTenantAuthManager) cacheToken(tenantContext *TenantContext, tokenInfo *TokenInfo) {
+// CacheToken stores a token in cache and database
+func (mtam *MultiTenantAuthManager) CacheToken(tenantContext *TenantContext, tokenInfo *TokenInfo) {
 	if tokenInfo == nil || tenantContext == nil {
 		return
 	}

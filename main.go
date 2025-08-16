@@ -167,8 +167,8 @@ func main() {
 	// Use the temporary logger as the main logger
 	logger := tempLogger
 
-	// Initialize database (required for multi-tenant operation)
-	logger.Info("Initializing database for multi-tenant support")
+	// Initialize database
+	logger.Info("Initializing database")
 
 	// Database configuration
 	dbDataDir := os.Getenv("MCP_FUSION_DB_DIR")
