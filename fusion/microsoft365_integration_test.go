@@ -52,11 +52,9 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 	// Create fusion instance
 	logger := &MockLogger{}
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, logger), logger)
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-config.json"),
 		WithLogger(logger),
-		WithMultiTenantAuth(mockAuth),
 	)
 
 	// Get the tools
@@ -262,11 +260,9 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 	config := createTestMicrosoft365Config(server.URL)
 	logger := &MockLogger{}
 
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, logger), logger)
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-oauth-config.json"),
 		WithLogger(logger),
-		WithMultiTenantAuth(mockAuth),
 	)
 
 	// Get the tools

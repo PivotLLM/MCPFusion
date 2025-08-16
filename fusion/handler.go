@@ -33,10 +33,10 @@ func NewHTTPHandler(fusion *Fusion, service *ServiceConfig, endpoint *EndpointCo
 	// Build parameter name mappings
 	parameterMapper, err := BuildParameterMappings(endpoint.Parameters, fusion.logger)
 	if err != nil && fusion.logger != nil {
-		fusion.logger.Errorf("Failed to build parameter mappings for %s.%s: %v", 
+		fusion.logger.Errorf("Failed to build parameter mappings for %s.%s: %v",
 			service.Name, endpoint.ID, err)
 	}
-	
+
 	return &HTTPHandler{
 		service:         service,
 		endpoint:        endpoint,
@@ -67,7 +67,11 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 			h.fusion.logger.Debugf("Mapped MCP parameters to API parameters [%s]", correlationID)
 		}
 	}
-	
+
+	// Process time tokens in parameter values
+	timeTokenProcessor := NewTimeTokenProcessor(h.fusion.logger)
+	args = timeTokenProcessor.ProcessParameterArgs(args)
+
 	// Validate parameters
 	validator := NewValidator(h.fusion.logger)
 	if err := validator.ValidateParameters(h.endpoint.Parameters, args); err != nil {

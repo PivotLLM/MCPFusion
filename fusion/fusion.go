@@ -25,7 +25,6 @@
 //	fusionProvider := fusion.New(
 //		fusion.WithJSONConfig("configs/microsoft365.json"),
 //		fusion.WithLogger(logger),
-//		fusion.WithMultiTenantAuth(multiTenantAuth),
 //	)
 //	server.AddToolProvider(fusionProvider)
 package fusion
@@ -94,7 +93,6 @@ type Fusion struct {
 //	fusion := New(
 //		WithJSONConfig("config.json"),
 //		WithLogger(logger),
-//		WithMultiTenantAuth(authManager),
 //	)
 type Option func(*Fusion)
 
@@ -214,7 +212,8 @@ func WithCorrelationIDGenerator(generator *CorrelationIDGenerator) Option {
 	}
 }
 
-// WithMultiTenantAuth sets a multi-tenant authentication manager
+// WithMultiTenantAuth sets a custom multi-tenant authentication manager
+// NOTE: This is optional - if not provided, a default auth manager will be auto-created
 func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 	return func(f *Fusion) {
 		f.multiTenantAuth = multiTenantAuth
@@ -223,10 +222,11 @@ func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 
 // New creates a new production-ready Fusion instance with the provided configuration options.
 // This is the primary constructor for the Fusion provider and initializes all components
-// required for API integration including multi-tenant authentication, database caching, 
+// required for API integration including multi-tenant authentication, database caching,
 // metrics, and circuit breakers.
 //
-// REQUIRED: Must include WithMultiTenantAuth() option - the provider will panic without it.
+// Multi-tenant authentication is automatically enabled by default. You can optionally
+// provide a custom auth manager using WithMultiTenantAuth() if needed.
 //
 // Default Configuration:
 // - HTTP Client: 30-second timeout with connection pooling
@@ -254,7 +254,6 @@ func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 //		WithJSONConfig("configs/microsoft365.json"),
 //		WithJSONConfig("configs/google.json"),
 //		WithLogger(logger),
-//		WithMultiTenantAuth(authManager),
 //		WithTimeout(45*time.Second),
 //		WithCircuitBreaker(true),
 //		WithMetricsCollection(true),
@@ -284,11 +283,17 @@ func New(options ...Option) *Fusion {
 		fusion.logger.Debugf("HTTP client timeout: %v", fusion.httpClient.Timeout)
 	}
 
-	// Multi-tenant authentication is required
+	// Automatically create multi-tenant auth manager if not provided
 	if fusion.multiTenantAuth == nil {
-		panic("Fusion provider requires multi-tenant authentication - use WithMultiTenantAuth() option")
+		// Create database cache for multi-tenant authentication
+		dbCache := NewDatabaseCache(nil, fusion.logger)
+		fusion.multiTenantAuth = NewMultiTenantAuthManager(nil, dbCache, fusion.logger)
+
+		if fusion.logger != nil {
+			fusion.logger.Info("Auto-created multi-tenant authentication manager")
+		}
 	}
-	
+
 	// Use the database cache from multi-tenant auth manager
 	if dbCache := fusion.multiTenantAuth.cache; dbCache != nil {
 		fusion.cache = dbCache
@@ -427,26 +432,26 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 			f.logger.Errorf("Parameter name validation failed for %s_%s: %v", serviceName, endpoint.ID, err)
 		}
 	}
-	
+
 	// Create tool parameters from endpoint parameters
 	var parameters []global.Parameter
 	for _, param := range endpoint.Parameters {
 		// Use MCP-compliant name (alias or sanitized)
 		mcpName := GetMCPParameterName(&param)
-		
+
 		// Log the mapping if different from original
 		if f.logger != nil && mcpName != param.Name {
 			if param.Alias != "" {
-				f.logger.Infof("Using parameter alias '%s' for '%s' in %s_%s", 
+				f.logger.Infof("Using parameter alias '%s' for '%s' in %s_%s",
 					mcpName, param.Name, serviceName, endpoint.ID)
 			} else {
-				f.logger.Warningf("Auto-sanitized parameter '%s' to '%s' in %s_%s - consider adding explicit alias", 
+				f.logger.Warningf("Auto-sanitized parameter '%s' to '%s' in %s_%s - consider adding explicit alias",
 					param.Name, mcpName, serviceName, endpoint.ID)
 			}
 		}
-		
+
 		globalParam := global.Parameter{
-			Name:        mcpName,  // Use MCP-compliant name
+			Name:        mcpName, // Use MCP-compliant name
 			Description: param.Description,
 			Required:    param.Required,
 			Type:        string(param.Type),

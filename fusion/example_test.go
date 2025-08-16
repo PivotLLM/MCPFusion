@@ -14,11 +14,8 @@ import (
 
 // ExampleNew demonstrates how to create a new Fusion instance
 func ExampleNew() {
-	// Create a Fusion instance with multi-tenant auth (required)
-	mockAuth := fusion.NewMultiTenantAuthManager(nil, fusion.NewDatabaseCache(nil, nil), nil)
-	fusionProvider := fusion.New(
-		fusion.WithMultiTenantAuth(mockAuth),
-	)
+	// Create a Fusion instance with multi-tenant auth (automatically enabled)
+	fusionProvider := fusion.New()
 
 	fmt.Printf("Fusion provider created with %d configured services\n", len(fusionProvider.GetServiceNames()))
 	// Output: Fusion provider created with 0 configured services
@@ -85,11 +82,8 @@ func ExampleNew_withConfig() {
 
 // ExampleNew_withMultiTenantAuth demonstrates multi-tenant auth requirement
 func ExampleNew_withMultiTenantAuth() {
-	// Multi-tenant auth manager handles all authentication
-	mockAuth := fusion.NewMultiTenantAuthManager(nil, fusion.NewDatabaseCache(nil, nil), nil)
-	_ = fusion.New(
-		fusion.WithMultiTenantAuth(mockAuth),
-	)
+	// Multi-tenant auth manager handles all authentication (automatically enabled)
+	_ = fusion.New()
 
 	fmt.Printf("Fusion created with multi-tenant authentication\n")
 	// Output: Fusion created with multi-tenant authentication

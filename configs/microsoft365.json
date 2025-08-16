@@ -431,15 +431,25 @@
               "type": "string",
               "required": false,
               "location": "query",
-              "default": "subject,from,receivedDateTime,bodyPreview,isRead"
+              "default": "subject,from,receivedDateTime,isRead"
             },
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "Filter expression (e.g., 'isRead eq false')",
+              "description": "Filter expression. Use time tokens: #DAYS-N (N days ago at midnight UTC), #HOURS-N (N hours ago). Examples: 'isRead eq false', 'receivedDateTime ge #DAYS-1', 'receivedDateTime ge #HOURS-12 and isRead eq false'",
               "type": "string",
               "required": false,
-              "location": "query"
+              "location": "query",
+              "examples": [
+                "isRead eq false",
+                "receivedDateTime ge #DAYS-0",
+                "receivedDateTime ge #DAYS-1",
+                "receivedDateTime ge #DAYS-3",
+                "receivedDateTime ge #HOURS-6",
+                "receivedDateTime ge #HOURS-24",
+                "isRead eq false and receivedDateTime ge #DAYS-1",
+                "hasAttachments eq true and receivedDateTime ge #DAYS-7"
+              ]
             },
             {
               "name": "$skip",
@@ -724,16 +734,19 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "OData filter expression. Examples: contains(subject,'Meeting'), contains(subject,'Project') and start/dateTime ge '2025-01-01T00:00:00Z', attendees/any(a:contains(a/emailAddress/address,'john@example.com')), contains(location/displayName,'Room')",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago at midnight UTC), #HOURS-N (N hours ago). Examples: contains(subject,'Meeting'), contains(subject,'Project') and start/dateTime ge #DAYS-7, attendees/any(a:contains(a/emailAddress/address,'john@example.com'))",
               "type": "string",
               "required": false,
               "location": "query",
               "examples": [
                 "contains(subject,'Meeting')",
-                "contains(subject,'Project') and start/dateTime ge '2025-01-01T00:00:00Z'",
+                "contains(subject,'Project')",
+                "start/dateTime ge #DAYS-7",
+                "start/dateTime ge #DAYS-1 and start/dateTime le #DAYS-0",
                 "attendees/any(a:contains(a/emailAddress/address,'john@example.com'))",
                 "contains(location/displayName,'Room 101')",
-                "contains(subject,'Standup') or contains(subject,'Review')"
+                "contains(subject,'Standup') and start/dateTime ge #DAYS-3",
+                "createdDateTime ge #HOURS-24"
               ]
             },
             {
@@ -783,18 +796,20 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "OData filter expression. Examples: contains(subject,'Invoice'), contains(from/emailAddress/address,'boss@company.com'), contains(subject,'Project') and receivedDateTime ge 2025-01-01T00:00:00Z, isRead eq false, hasAttachments eq true",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago at midnight UTC), #HOURS-N (N hours ago). Examples: contains(subject,'Invoice'), contains(from/emailAddress/address,'boss@company.com'), receivedDateTime ge #DAYS-3, isRead eq false",
               "type": "string",
               "required": false,
               "location": "query",
               "examples": [
                 "contains(subject,'Invoice')",
                 "contains(from/emailAddress/address,'boss@company.com')",
-                "contains(subject,'Project') and receivedDateTime ge 2025-01-01T00:00:00Z",
-                "isRead eq false",
-                "hasAttachments eq true",
-                "contains(bodyPreview,'urgent') or contains(subject,'urgent')",
-                "toRecipients/any(r:contains(r/emailAddress/address,'team@company.com'))"
+                "receivedDateTime ge #DAYS-0",
+                "receivedDateTime ge #DAYS-3",
+                "receivedDateTime ge #HOURS-6",
+                "isRead eq false and receivedDateTime ge #DAYS-1",
+                "hasAttachments eq true and receivedDateTime ge #DAYS-7",
+                "contains(bodyPreview,'urgent') and receivedDateTime ge #HOURS-24",
+                "toRecipients/any(r:contains(r/emailAddress/address,'team@company.com')) and receivedDateTime ge #DAYS-1"
               ]
             },
             {

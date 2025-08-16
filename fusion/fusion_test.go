@@ -12,41 +12,39 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	// Test that creating a Fusion instance without multi-tenant auth panics
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("Expected panic when creating Fusion without multi-tenant auth")
-		}
-	}()
-	
-	// This should panic
-	New()
+	// Test that creating a Fusion instance automatically creates multi-tenant auth
+	fusion := New()
+
+	if fusion.multiTenantAuth == nil {
+		t.Error("Expected multi-tenant auth to be auto-created")
+	}
+
+	if fusion.cache == nil {
+		t.Error("Expected cache to be set from multi-tenant auth manager")
+	}
 }
 
 func TestNewWithOptions(t *testing.T) {
 	// Create a mock logger
 	mockLogger := &mockLogger{}
 
-	// Create a multi-tenant auth manager with database cache
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, mockLogger), mockLogger)
-
 	// Test creating with options
 	fusion := New(
 		WithLogger(mockLogger),
-		WithMultiTenantAuth(mockAuth),
 	)
 
 	if fusion.logger != mockLogger {
 		t.Error("Logger not set correctly")
 	}
 
-	// Should always use database cache with multi-tenant auth
+	// Should always use database cache with multi-tenant auth (auto-created)
 	if _, ok := fusion.cache.(*DatabaseCache); !ok {
 		t.Error("Expected DatabaseCache when multi-tenant auth is configured")
 	}
 
-	if fusion.multiTenantAuth != mockAuth {
-		t.Error("Multi-tenant auth manager not set correctly")
+	// Multi-tenant auth should be auto-created
+	if fusion.multiTenantAuth == nil {
+		t.Error("Multi-tenant auth manager should be auto-created")
 	}
 }
 
@@ -78,12 +76,8 @@ func TestNewWithJSONConfig(t *testing.T) {
 		}
 	}`
 
-	// Create a multi-tenant auth manager
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-
 	fusion := New(
 		WithJSONConfigData([]byte(jsonConfig), "test-config.json"),
-		WithMultiTenantAuth(mockAuth),
 	)
 
 	if fusion.config == nil {

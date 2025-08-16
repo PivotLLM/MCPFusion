@@ -117,12 +117,12 @@ func WithAPIKey(key string) Option {
 }
 ```
 
-4. Register your provider in `main.go` with multi-tenant authentication:
+4. Register your provider in `main.go`:
 ```go
-// Multi-tenant auth is required for all providers
-authManager := fusion.NewMultiTenantAuthManager(database, cache, logger)
+// Multi-tenant authentication is automatically enabled
 provider := yourprovider.New(
-    yourprovider.WithMultiTenantAuth(authManager),
+    yourprovider.WithJSONConfig("config.json"),
+    yourprovider.WithLogger(logger),
 )
 server.AddToolProvider(provider)
 ```
@@ -146,9 +146,9 @@ server.AddToolProvider(provider)
 2. **Logging**: Use `mlogger` package for consistent logging
 3. **Configuration**: Use functional options for flexible configuration
 4. **Testing**: Each provider should have its own test file
-5. **Multi-Tenant Authentication**: Required for all providers - use database-backed token system
+5. **Multi-Tenant Authentication**: Automatically enabled for all providers with database-backed token system
 6. **Bearer Token Authentication**: Standard Authorization: Bearer <token> headers required
-7. **Provider Creation**: All providers must use `WithMultiTenantAuth()` option
+7. **Provider Creation**: Simply use `New()` - multi-tenant auth is automatic
 
 ## Multi-Tenant Authentication
 

@@ -19,8 +19,7 @@ func intPtr(i int) *int {
 }
 
 func TestBuildRequest_BasicGET(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -60,8 +59,7 @@ func TestBuildRequest_BasicGET(t *testing.T) {
 }
 
 func TestBuildRequest_POSTWithBody(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -121,8 +119,7 @@ func TestBuildRequest_POSTWithBody(t *testing.T) {
 }
 
 func TestBuildRequest_PathParameters(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -158,8 +155,7 @@ func TestBuildRequest_PathParameters(t *testing.T) {
 }
 
 func TestBuildRequest_HeaderParameters(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -194,8 +190,7 @@ func TestBuildRequest_HeaderParameters(t *testing.T) {
 }
 
 func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -231,8 +226,7 @@ func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
 }
 
 func TestBuildRequest_DefaultValue(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -267,8 +261,7 @@ func TestBuildRequest_DefaultValue(t *testing.T) {
 }
 
 func TestProcessResponse_JSON(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	endpoint := &EndpointConfig{
 		Response: ResponseConfig{
@@ -315,8 +308,7 @@ func TestProcessResponse_JSON(t *testing.T) {
 }
 
 func TestProcessResponse_Text(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	endpoint := &EndpointConfig{
 		Response: ResponseConfig{
@@ -346,8 +338,7 @@ func TestProcessResponse_Text(t *testing.T) {
 }
 
 func TestProcessResponse_HTTPError(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	endpoint := &EndpointConfig{
 		ID: "test_endpoint",
@@ -387,8 +378,7 @@ func TestProcessResponse_HTTPError(t *testing.T) {
 }
 
 func TestValidateParameter_String(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	param := &ParameterConfig{
 		Name: "test",
@@ -427,8 +417,7 @@ func TestValidateParameter_String(t *testing.T) {
 }
 
 func TestValidateParameter_Number(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	param := &ParameterConfig{
 		Name: "test",
@@ -460,8 +449,7 @@ func TestValidateParameter_Number(t *testing.T) {
 }
 
 func TestValidateParameter_Enum(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	param := &ParameterConfig{
 		Name: "test",
@@ -483,8 +471,7 @@ func TestValidateParameter_Enum(t *testing.T) {
 }
 
 func TestTransformParameter_BasicTransforms(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	tests := []struct {
 		name       string
@@ -532,8 +519,7 @@ func TestTransformParameter_BasicTransforms(t *testing.T) {
 }
 
 func TestExtractJSONPath(t *testing.T) {
-	mockAuth := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
-	fusion := New(WithMultiTenantAuth(mockAuth))
+	fusion := New()
 
 	data := map[string]interface{}{
 		"user": map[string]interface{}{

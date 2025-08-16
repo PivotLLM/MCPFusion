@@ -16,13 +16,15 @@ import (
 
 // Mapper handles parameter mapping and transformation
 type Mapper struct {
-	logger global.Logger
+	logger             global.Logger
+	timeTokenProcessor *TimeTokenProcessor
 }
 
 // NewMapper creates a new Mapper
 func NewMapper(logger global.Logger) *Mapper {
 	return &Mapper{
-		logger: logger,
+		logger:             logger,
+		timeTokenProcessor: NewTimeTokenProcessor(logger),
 	}
 }
 
@@ -43,6 +45,9 @@ func (m *Mapper) BuildURL(baseURL, path string, params []ParameterConfig, args m
 		}
 
 		if exists {
+			// Apply time token substitution first
+			value = m.timeTokenProcessor.ProcessValue(value)
+
 			// Apply transformation if specified
 			if param.Transform != nil {
 				transformedValue, err := m.transformParameter(param, value)
@@ -85,6 +90,9 @@ func (m *Mapper) ApplyQueryParams(req *http.Request, params []ParameterConfig, a
 				continue
 			}
 		}
+
+		// Apply time token substitution first
+		value = m.timeTokenProcessor.ProcessValue(value)
 
 		// Apply transformation if specified
 		if param.Transform != nil {
@@ -134,6 +142,9 @@ func (m *Mapper) ApplyHeaders(req *http.Request, params []ParameterConfig, args 
 			}
 		}
 
+		// Apply time token substitution first
+		value = m.timeTokenProcessor.ProcessValue(value)
+
 		// Apply transformation if specified
 		if param.Transform != nil {
 			transformedValue, err := m.transformParameter(param, value)
@@ -169,6 +180,9 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 				continue
 			}
 		}
+
+		// Apply time token substitution first
+		value = m.timeTokenProcessor.ProcessValue(value)
 
 		// Apply transformation if specified
 		if param.Transform != nil {
@@ -368,17 +382,17 @@ func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]int
 	for _, param := range params {
 		// Use MCP-compliant name (alias or sanitized)
 		mcpName := GetMCPParameterName(&param)
-		
+
 		// Log the mapping if different from original
 		if m.logger != nil && mcpName != param.Name {
 			if param.Alias != "" {
 				m.logger.Infof("Using parameter alias '%s' for '%s'", mcpName, param.Name)
 			} else {
-				m.logger.Warningf("Auto-sanitized parameter '%s' to '%s' - consider adding explicit alias", 
+				m.logger.Warningf("Auto-sanitized parameter '%s' to '%s' - consider adding explicit alias",
 					param.Name, mcpName)
 			}
 		}
-		
+
 		// Create property definition
 		prop := map[string]interface{}{
 			"type":        m.getMCPType(param.Type),
@@ -407,7 +421,7 @@ func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]int
 			prop["default"] = param.Default
 		}
 
-		properties[mcpName] = prop  // Use MCP-compliant name
+		properties[mcpName] = prop // Use MCP-compliant name
 
 		// Track required parameters with MCP-compliant names
 		if param.Required {
