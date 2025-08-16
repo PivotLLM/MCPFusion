@@ -61,8 +61,8 @@ func main() {
 		fmt.Printf("        Show help information\n")
 		fmt.Printf("  -no-streaming\n")
 		fmt.Printf("        Disable streaming (use plain HTTP instead of SSE)\n")
-		fmt.Printf("  -port int\n")
-		fmt.Printf("        Port to listen on (default 8888)\n")
+		fmt.Printf("  -port int\n").
+			fmt.Printf("        Port to listen on (default 8888)\n")
 		fmt.Printf("  -version\n")
 		fmt.Printf("        Show version information\n\n")
 		fmt.Printf("Token Management Commands:\n")
