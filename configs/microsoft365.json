@@ -166,12 +166,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "10m"
@@ -216,12 +211,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "1h"
@@ -331,12 +321,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "5m"
@@ -416,12 +401,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "5m"
@@ -473,12 +453,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "5m"
@@ -523,12 +498,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "30m"
@@ -587,12 +557,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "2m"
@@ -698,12 +663,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "15m"
@@ -820,12 +780,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "2m"
@@ -917,12 +872,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "1m"
@@ -1004,12 +954,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "5m"
@@ -1097,12 +1042,7 @@
           ],
           "response": {
             "type": "json",
-            "paginated": true,
-            "paginationConfig": {
-              "nextPageTokenPath": "@odata.nextLink",
-              "dataPath": "value",
-              "pageSize": 50
-            },
+            "paginated": false,
             "caching": {
               "enabled": true,
               "ttl": "10m"

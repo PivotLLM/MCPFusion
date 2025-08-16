@@ -360,56 +360,6 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 	return data, nil
 }
 
-// ExtractPaginationInfo extracts pagination information from a response
-func (m *Mapper) ExtractPaginationInfo(data interface{}, config PaginationConfig) (string, []interface{}, error) {
-	obj, ok := data.(map[string]interface{})
-	if !ok {
-		return "", nil, fmt.Errorf("response is not an object")
-	}
-
-	// Extract next page token
-	var nextPageToken string
-	if config.NextPageTokenPath != "" {
-		if token, exists := obj[config.NextPageTokenPath]; exists {
-			nextPageToken = fmt.Sprintf("%v", token)
-		}
-	}
-
-	// Extract data array
-	var dataArray []interface{}
-	if config.DataPath != "" {
-		if arr, exists := obj[config.DataPath]; exists {
-			if arrayData, ok := arr.([]interface{}); ok {
-				dataArray = arrayData
-			} else {
-				return "", nil, fmt.Errorf("data path does not point to an array")
-			}
-		}
-	}
-
-	return nextPageToken, dataArray, nil
-}
-
-// MergeResponses merges multiple paginated responses
-func (m *Mapper) MergeResponses(responses []interface{}) interface{} {
-	if len(responses) == 0 {
-		return nil
-	}
-
-	if len(responses) == 1 {
-		return responses[0]
-	}
-
-	// For now, simply concatenate arrays
-	var result []interface{}
-	for _, resp := range responses {
-		if arr, ok := resp.([]interface{}); ok {
-			result = append(result, arr...)
-		}
-	}
-
-	return result
-}
 
 // ConvertToMCPParameters converts endpoint parameters to MCP tool parameters
 func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]interface{} {

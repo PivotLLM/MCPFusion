@@ -455,10 +455,6 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 			return "", fmt.Errorf("failed to parse JSON response: %w", err)
 		}
 
-		// Handle pagination if configured
-		if h.endpoint.Response.Paginated && h.endpoint.Response.PaginationConfig != nil {
-			return h.handlePaginatedResponse(data)
-		}
 
 		// Apply transformation if specified
 		if h.endpoint.Response.Transform != "" {
@@ -491,123 +487,6 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 	}
 }
 
-// handlePaginatedResponse handles paginated API responses
-func (h *HTTPHandler) handlePaginatedResponse(data interface{}) (string, error) {
-	mapper := NewMapper(h.fusion.logger)
-	config := h.endpoint.Response.PaginationConfig
-
-	// Extract pagination info from the first response
-	nextPageToken, currentData, err := mapper.ExtractPaginationInfo(data, *config)
-	if err != nil {
-		return "", fmt.Errorf("failed to extract pagination info: %w", err)
-	}
-
-	allData := currentData
-	pageCount := 1
-	maxPages := 10 // Limit to prevent infinite loops
-
-	if h.fusion.logger != nil {
-		h.fusion.logger.Debugf("Starting pagination: first page has %d items, next token: %s",
-			len(currentData), nextPageToken)
-	}
-
-	// Fetch additional pages if they exist
-	for nextPageToken != "" && pageCount < maxPages {
-		if h.fusion.logger != nil {
-			h.fusion.logger.Debugf("Fetching page %d with token: %s", pageCount+1, nextPageToken)
-		}
-
-		nextData, nextToken, err := h.fetchNextPage(nextPageToken)
-		if err != nil {
-			if h.fusion.logger != nil {
-				h.fusion.logger.Warningf("Failed to fetch page %d, stopping pagination: %v", pageCount+1, err)
-			}
-			break
-		}
-
-		allData = append(allData, nextData...)
-		nextPageToken = nextToken
-		pageCount++
-	}
-
-	if h.fusion.logger != nil {
-		h.fusion.logger.Infof("Pagination completed: %d pages, %d total items", pageCount, len(allData))
-	}
-
-	// Apply transformation if specified
-	var finalData interface{} = allData
-	if h.endpoint.Response.Transform != "" {
-		// For paginated responses, we need to structure the data properly for transformation
-		structuredData := map[string]interface{}{
-			config.DataPath: allData,
-		}
-		transformed, err := mapper.TransformResponse(structuredData, h.endpoint.Response.Transform)
-		if err != nil {
-			return "", fmt.Errorf("failed to transform paginated response: %w", err)
-		}
-		finalData = transformed
-	}
-
-	// Convert to JSON string
-	result, err := json.MarshalIndent(finalData, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal paginated response: %w", err)
-	}
-
-	return string(result), nil
-}
-
-// fetchNextPage fetches the next page of a paginated response
-func (h *HTTPHandler) fetchNextPage(nextPageURL string) ([]interface{}, string, error) {
-	// Create a new request for the next page
-	req, err := http.NewRequest("GET", nextPageURL, nil)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create next page request: %w", err)
-	}
-
-	// Authentication for pagination is not yet implemented in multi-tenant mode
-	// TODO: Implement multi-tenant authentication for pagination requests
-	if h.fusion.logger != nil {
-		h.fusion.logger.Warning("Pagination authentication not implemented in multi-tenant mode")
-	}
-
-	// Set headers
-	req.Header.Set("Accept", "application/json")
-
-	// Execute the request - for pagination, we'll use a simplified approach
-	resp, err := h.fusion.httpClient.Do(req)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to execute next page request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to read next page response body: %w", err)
-	}
-
-	// Check for errors
-	if resp.StatusCode >= 400 {
-		return nil, "", fmt.Errorf("next page request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse JSON response
-	var data interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, "", fmt.Errorf("failed to parse next page JSON response: %w", err)
-	}
-
-	// Extract pagination info
-	mapper := NewMapper(h.fusion.logger)
-	config := h.endpoint.Response.PaginationConfig
-	nextToken, pageData, err := mapper.ExtractPaginationInfo(data, *config)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to extract next page pagination info: %w", err)
-	}
-
-	return pageData, nextToken, nil
-}
 
 // generateCacheKey generates a cache key for the request
 func (h *HTTPHandler) generateCacheKey(args map[string]interface{}) string {

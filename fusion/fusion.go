@@ -980,10 +980,6 @@ func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig,
 		responseData = transformed
 	}
 
-	// Handle pagination if enabled
-	if endpoint.Response.Paginated && endpoint.Response.PaginationConfig != nil {
-		return f.handlePaginatedResponse(responseData, endpoint, serviceName)
-	}
 
 	// Convert back to JSON string for consistent output
 	result, err := json.MarshalIndent(responseData, "", "  ")
@@ -1314,40 +1310,6 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 	return current, nil
 }
 
-// handlePaginatedResponse handles paginated API responses
-func (f *Fusion) handlePaginatedResponse(data interface{}, endpoint *EndpointConfig, serviceName string) (string, error) {
-	// For now, just return the current page
-	// Full pagination support would require additional context and state management
-
-	config := endpoint.Response.PaginationConfig
-
-	// Extract the data array
-	dataArray, err := f.extractJSONPath(data, config.DataPath)
-	if err != nil {
-		return "", NewTransformationError("response", "pagination", config.DataPath, data, "failed to extract data array", err)
-	}
-
-	// Check if there's a next page token
-	nextToken, _ := f.extractJSONPath(data, config.NextPageTokenPath)
-
-	result := map[string]interface{}{
-		"data": dataArray,
-	}
-
-	if nextToken != nil {
-		result["nextPageToken"] = nextToken
-		result["hasNextPage"] = true
-	} else {
-		result["hasNextPage"] = false
-	}
-
-	jsonResult, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return "", NewTransformationError("response", "json", "json.MarshalIndent", result, "failed to marshal paginated response", err)
-	}
-
-	return string(jsonResult), nil
-}
 
 // sanitizeHeaders removes or masks sensitive information from HTTP headers for logging
 func (f *Fusion) sanitizeHeaders(headers http.Header) map[string]string {
