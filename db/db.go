@@ -21,6 +21,8 @@ import (
 )
 
 // Database interface defines the contract for the MCPFusion database
+//
+//goland:noinspection GoCommentStart
 type Database interface {
 	// API Token Management
 	AddAPIToken(description string) (string, string, error)

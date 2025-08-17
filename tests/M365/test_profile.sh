@@ -5,12 +5,15 @@
 # All rights reserved.                                                         *
 #*******************************************************************************
 
+# Get the directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Load environment variables
-if [ -f ".env" ]; then
-    source .env
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
 else
-    echo "Error: .env file not found"
-    echo "Please create a .env file with APIKEY=your-api-token"
+    echo "Error: .env file not found in $SCRIPT_DIR"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi
 
@@ -20,10 +23,19 @@ if [ -z "$APIKEY" ]; then
     exit 1
 fi
 
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
+    exit 1
+fi
+
+# Append /sse to the base URL
+FULL_SERVER_URL="${SERVER_URL}/sse"
+
 # Test Microsoft 365 Profile API
 echo "=== Testing Microsoft 365 Profile API ===" 
 echo "Timestamp: $(date)"
-echo "Server: http://127.0.0.1:8888/sse"
+echo "Server: $FULL_SERVER_URL"
 echo "Using API Token: ${APIKEY:0:8}..."
 echo ""
 
@@ -31,7 +43,7 @@ echo "Test 1: Basic profile retrieval"
 echo "Command: microsoft365_profile_get with default parameters"
 echo "Parameters: {}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_profile_get -params '{}'
+/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_profile_get -params '{}'
 
 echo ""
 echo "=========================================="
@@ -41,7 +53,7 @@ echo "Test 2: Profile with custom fields"
 echo "Command: microsoft365_profile_get with custom field selection"
 echo "Parameters: {\"\\$select\": \"displayName,mail,userPrincipalName,jobTitle,department\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_profile_get -params '{"$select": "displayName,mail,userPrincipalName,jobTitle,department"}'
+/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_profile_get -params '{"$select": "displayName,mail,userPrincipalName,jobTitle,department"}'
 
 echo ""
 echo "=== Profile API Tests Complete ==="

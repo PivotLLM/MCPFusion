@@ -11,10 +11,10 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (m *MCPServer) AddPrompts() {
+func (s *MCPServer) AddPrompts() {
 
 	// Iterate over prompt providers and register their prompts
-	for _, provider := range m.promptProviders {
+	for _, provider := range s.promptProviders {
 
 		// Call the Register function of the provider to get tool definitions
 		promptDefinitions := provider.RegisterPrompts()
@@ -40,7 +40,7 @@ func (m *MCPServer) AddPrompts() {
 
 			// Register the tool with the MCP server, creating a handler compatible with the MCP server
 			// that wraps the tool's handler function with the provided options
-			m.srv.AddPrompt(newPrompt, func(ctx context.Context, req mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+			s.srv.AddPrompt(newPrompt, func(ctx context.Context, req mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 
 				// Copy the MCP arguments to a map
 				options := make(map[string]any)

@@ -6,6 +6,8 @@
 package internal
 
 // Bucket names for consistent database organization
+//
+//goland:noinspection GoCommentStart
 const (
 	// Root buckets
 	BucketAPITokens  = "api_tokens"
@@ -27,7 +29,7 @@ const (
 	KeyMetadata      = "metadata"
 )
 
-// Current schema version
+// SchemaVersion Current schema version
 const SchemaVersion = "1.0"
 
 // BucketPath represents a path to a bucket in the database
@@ -59,6 +61,8 @@ func (bp BucketPath) Append(segments ...string) BucketPath {
 }
 
 // Predefined bucket paths for common operations
+//
+//goland:noinspection GoCommentStart
 var (
 	// Root bucket paths
 	PathAPITokens  = NewBucketPath(BucketAPITokens)

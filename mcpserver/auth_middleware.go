@@ -346,14 +346,6 @@ func GetServiceNameFromRequest(r *http.Request) (string, bool) {
 	return "", false
 }
 
-// minInt returns the smaller of two integers
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // AuthValidationMiddleware is a simpler middleware that only validates authentication without tenant resolution
 type AuthValidationMiddleware struct {
 	authManager *fusion.MultiTenantAuthManager

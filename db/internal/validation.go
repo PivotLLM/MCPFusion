@@ -12,6 +12,8 @@ import (
 )
 
 // Validation constants
+//
+//goland:noinspection GoCommentStart
 const (
 	// Token constraints
 	MinTokenLength = 32  // Minimum token length in characters

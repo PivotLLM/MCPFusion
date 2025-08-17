@@ -22,6 +22,8 @@ import (
 type Option func(*MCPServer)
 
 // MCPServerTransport is an interface that abstracts the different transport types
+//
+//goland:noinspection GoNameStartsWithPackageName
 type MCPServerTransport interface {
 	Start(addr string) error
 	Shutdown(ctx context.Context) error
@@ -216,63 +218,63 @@ func New(options ...Option) (*MCPServer, error) {
 }
 
 // Start runs the MCP server in a background goroutine and checks for a logger.
-func (m *MCPServer) Start() error {
-	if m.logger == nil {
+func (s *MCPServer) Start() error {
+	if s.logger == nil {
 		return fmt.Errorf("logger not set")
 	}
-	m.ctx, m.cancel = context.WithCancel(context.Background())
-	m.wg.Add(1)
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.wg.Add(1)
 	go func() {
-		defer m.wg.Done()
+		defer s.wg.Done()
 
 		// Log the start
-		if m.noStreaming {
-			m.logger.Infof("MCP server listening on TCP port %s (HTTP mode)", m.listen)
+		if s.noStreaming {
+			s.logger.Infof("MCP server listening on TCP port %s (HTTP mode)", s.listen)
 		} else {
-			m.logger.Infof("MCP server listening on TCP port %s (SSE mode)", m.listen)
+			s.logger.Infof("MCP server listening on TCP port %s (SSE mode)", s.listen)
 		}
 
 		// Create the appropriate server based on streaming preference
-		if m.noStreaming {
+		if s.noStreaming {
 			// Create HTTP server for non-streaming mode
-			m.httpServer = server.NewStreamableHTTPServer(m.srv)
-			m.transport = m.httpServer
+			s.httpServer = server.NewStreamableHTTPServer(s.srv)
+			s.transport = s.httpServer
 
 			// Apply auth middleware if configured
-			if m.authMiddleware != nil {
-				if m.logger != nil {
-					m.logger.Info("Applying authentication middleware to HTTP server")
+			if s.authMiddleware != nil {
+				if s.logger != nil {
+					s.logger.Info("Applying authentication middleware to HTTP server")
 				}
-				m.transport = NewAuthenticatedTransport(m.httpServer, m.authMiddleware.Middleware, m.logger)
-				if m.transport == nil {
-					if m.logger != nil {
-						m.logger.Error("Failed to create authenticated transport, continuing without authentication")
+				s.transport = NewAuthenticatedTransport(s.httpServer, s.authMiddleware.Middleware, s.logger)
+				if s.transport == nil {
+					if s.logger != nil {
+						s.logger.Error("Failed to create authenticated transport, continuing without authentication")
 					}
-					m.transport = m.httpServer
+					s.transport = s.httpServer
 				}
 			}
 		} else {
 			// Create SSE server for streaming mode (default)
-			m.sseServer = server.NewSSEServer(m.srv)
-			m.transport = m.sseServer
+			s.sseServer = server.NewSSEServer(s.srv)
+			s.transport = s.sseServer
 
 			// Apply auth middleware if configured
-			if m.authMiddleware != nil {
-				if m.logger != nil {
-					m.logger.Info("Applying authentication middleware to SSE server")
+			if s.authMiddleware != nil {
+				if s.logger != nil {
+					s.logger.Info("Applying authentication middleware to SSE server")
 				}
-				m.transport = NewAuthenticatedTransport(m.sseServer, m.authMiddleware.Middleware, m.logger)
-				if m.transport == nil {
-					if m.logger != nil {
-						m.logger.Error("Failed to create authenticated transport, continuing without authentication")
+				s.transport = NewAuthenticatedTransport(s.sseServer, s.authMiddleware.Middleware, s.logger)
+				if s.transport == nil {
+					if s.logger != nil {
+						s.logger.Error("Failed to create authenticated transport, continuing without authentication")
 					}
-					m.transport = m.sseServer
+					s.transport = s.sseServer
 				}
 			}
 		}
 
 		// Start the server
-		err := m.transport.Start(m.listen)
+		err := s.transport.Start(s.listen)
 		// We don't need to log anything here - if the server is shutting down,
 		// this is expected behavior and not an error condition
 		_ = err
@@ -282,13 +284,13 @@ func (m *MCPServer) Start() error {
 }
 
 // Stop signals the MCP server to shut down and waits for the goroutine to exit.
-func (m *MCPServer) Stop() error {
+func (s *MCPServer) Stop() error {
 	// First cancel the context to signal all operations to stop
-	if m.cancel != nil {
-		m.cancel()
+	if s.cancel != nil {
+		s.cancel()
 	}
 
-	if m.transport != nil {
+	if s.transport != nil {
 		// Attempt graceful shutdown with a timeout
 		// Use a shorter timeout to avoid the context deadline exceeded error
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -296,13 +298,13 @@ func (m *MCPServer) Stop() error {
 
 		// Shutdown the server and ignore all errors during shutdown
 		// This prevents both the ErrServerClosed and context deadline exceeded errors
-		_ = m.transport.Shutdown(ctx)
+		_ = s.transport.Shutdown(ctx)
 	}
 
 	// Wait for the server goroutine to exit with a timeout
 	waitCh := make(chan struct{})
 	go func() {
-		m.wg.Wait()
+		s.wg.Wait()
 		close(waitCh)
 	}()
 

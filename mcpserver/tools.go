@@ -11,10 +11,10 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (m *MCPServer) AddTools() {
+func (s *MCPServer) AddTools() {
 
 	// Iterate over tool providers and register their tools
-	for _, provider := range m.toolProviders {
+	for _, provider := range s.toolProviders {
 
 		// Call the Register function of the provider to get tool definitions
 		toolDefinitions := provider.RegisterTools()
@@ -58,7 +58,7 @@ func (m *MCPServer) AddTools() {
 
 			// Register the tool with the MCP server, creating a handler compatible with the MCP server
 			// that wraps the tool's handler function with the provided options
-			m.srv.AddTool(tool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			s.srv.AddTool(tool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 
 				// Copy the MCP arguments to a map
 				options := req.GetArguments()
@@ -73,8 +73,8 @@ func (m *MCPServer) AddTools() {
 				ctxOptions["__mcp_context"] = ctx
 
 				// Debug: Log that we're passing context
-				if m.logger != nil {
-					m.logger.Debugf("MCP server passing context to tool %s", toolDef.Name)
+				if s.logger != nil {
+					s.logger.Debugf("MCP server passing context to tool %s", toolDef.Name)
 				}
 
 				result, err := toolDef.Handler(ctxOptions)

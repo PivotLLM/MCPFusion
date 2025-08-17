@@ -12,37 +12,37 @@ import (
 )
 
 //goland:noinspection GoUnusedParameter
-func (m *MCPServer) hookAfterListPrompts(ctx context.Context, id any, request *mcp.ListPromptsRequest, result *mcp.ListPromptsResult) {
-	if m.debug {
-		m.logger.Debugf("%s: %v", request.Request.Method, result.Prompts)
+func (s *MCPServer) hookAfterListPrompts(ctx context.Context, id any, request *mcp.ListPromptsRequest, result *mcp.ListPromptsResult) {
+	if s.debug {
+		s.logger.Debugf("%s: %v", request.Request.Method, result.Prompts)
 	} else {
-		m.logger.Infof("%s: %s items returned", request.Request.Method, len(result.Prompts))
+		s.logger.Infof("%s: %s items returned", request.Request.Method, len(result.Prompts))
 	}
 }
 
 //goland:noinspection GoUnusedParameter
-func (m *MCPServer) hookAfterListResources(ctx context.Context, id any, request *mcp.ListResourcesRequest, result *mcp.ListResourcesResult) {
-	if m.debug {
-		m.logger.Debugf("%s: %v", request.Request.Method, result.Resources)
+func (s *MCPServer) hookAfterListResources(ctx context.Context, id any, request *mcp.ListResourcesRequest, result *mcp.ListResourcesResult) {
+	if s.debug {
+		s.logger.Debugf("%s: %v", request.Request.Method, result.Resources)
 	} else {
-		m.logger.Infof("%s: %s items returned", request.Request.Method, len(result.Resources))
+		s.logger.Infof("%s: %s items returned", request.Request.Method, len(result.Resources))
 	}
 }
 
 //goland:noinspection GoUnusedParameter
-func (m *MCPServer) hookAfterListResourceTemplates(ctx context.Context, id any, request *mcp.ListResourceTemplatesRequest, result *mcp.ListResourceTemplatesResult) {
-	if m.debug {
-		m.logger.Debugf("%s: %v", request.Request.Method, result.ResourceTemplates)
+func (s *MCPServer) hookAfterListResourceTemplates(ctx context.Context, id any, request *mcp.ListResourceTemplatesRequest, result *mcp.ListResourceTemplatesResult) {
+	if s.debug {
+		s.logger.Debugf("%s: %v", request.Request.Method, result.ResourceTemplates)
 	} else {
-		m.logger.Infof("%s: %s items returned", request.Request.Method, len(result.ResourceTemplates))
+		s.logger.Infof("%s: %s items returned", request.Request.Method, len(result.ResourceTemplates))
 	}
 }
 
 //goland:noinspection GoUnusedParameter
-func (m *MCPServer) hookAfterListTools(ctx context.Context, id any, request *mcp.ListToolsRequest, result *mcp.ListToolsResult) {
-	if m.debug {
-		m.logger.Debugf("%s: %v", request.Request.Method, result.Tools)
+func (s *MCPServer) hookAfterListTools(ctx context.Context, id any, request *mcp.ListToolsRequest, result *mcp.ListToolsResult) {
+	if s.debug {
+		s.logger.Debugf("%s: %v", request.Request.Method, result.Tools)
 	} else {
-		m.logger.Infof("%s: %s items returned", request.Request.Method, len(result.Tools))
+		s.logger.Infof("%s: %s items returned", request.Request.Method, len(result.Tools))
 	}
 }

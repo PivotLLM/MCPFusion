@@ -11,10 +11,10 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (m *MCPServer) AddResources() {
+func (s *MCPServer) AddResources() {
 
 	// Iterate over resource providers and register their resources
-	for _, provider := range m.resourceProviders {
+	for _, provider := range s.resourceProviders {
 
 		// Call the Register function of the provider to get tool definitions
 		resourceDefinitions := provider.RegisterResources()
@@ -30,7 +30,7 @@ func (m *MCPServer) AddResources() {
 			)
 
 			// Add resource with its handler
-			m.srv.AddResource(newResource,
+			s.srv.AddResource(newResource,
 				func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
 
 					// Copy the MCP arguments to a map
@@ -56,10 +56,10 @@ func (m *MCPServer) AddResources() {
 	}
 }
 
-func (m *MCPServer) AddResourceTemplates() {
+func (s *MCPServer) AddResourceTemplates() {
 
 	// Iterate over resource providers and register their templates
-	for _, provider := range m.resourceProviders {
+	for _, provider := range s.resourceProviders {
 
 		// Call the Register function of the provider to get tool definitions
 		resourceTemplates := provider.RegisterResourceTemplates()
@@ -74,7 +74,7 @@ func (m *MCPServer) AddResourceTemplates() {
 				mcp.WithTemplateMIMEType(resourceTemplate.MIMEType))
 
 			// Add resource template with its handler
-			m.srv.AddResourceTemplate(template,
+			s.srv.AddResourceTemplate(template,
 				func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
 					// Copy the MCP arguments to a map
 					options := request.Params.Arguments

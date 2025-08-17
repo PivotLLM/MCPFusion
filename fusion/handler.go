@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -473,7 +474,9 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 
 	// Determine if it's a timeout error
 	timeout := false
-	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		//if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 		timeout = true
 	}
 
@@ -481,7 +484,9 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 	retryable := true
 
 	// Check for specific error types
-	if urlErr, ok := err.(*url.Error); ok {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Timeout() {
+		//if urlErr, ok := err.(*url.Error); ok {
 		// DNS errors, connection errors, etc. are retryable
 		if strings.Contains(urlErr.Error(), "no such host") ||
 			strings.Contains(urlErr.Error(), "connection refused") ||
