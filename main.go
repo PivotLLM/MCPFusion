@@ -27,7 +27,7 @@ import (
 // Version information
 const (
 	AppName    = "MCPFusion"
-	AppVersion = "0.0.2"
+	AppVersion = "0.0.3"
 )
 
 func main() {
