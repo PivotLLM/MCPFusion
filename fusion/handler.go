@@ -307,6 +307,55 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		circuitBreaker = h.fusion.getOrCreateCircuitBreaker(h.service.Name, circuitBreakerConfig)
 	}
 
+	// Apply connection control settings if configured
+	httpClient := h.fusion.httpClient
+	if h.endpoint.Connection != nil {
+		if h.endpoint.Connection.DisableKeepAlive {
+			// Add Connection: close header to force connection closure
+			req.Header.Set("Connection", "close")
+			if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("Disabling keep-alive for request [%s]", correlationID)
+			}
+		}
+		
+		if h.endpoint.Connection.ForceNewConnection {
+			// Create a new HTTP client with disabled connection pooling
+			transport := h.fusion.httpClient.Transport.(*http.Transport).Clone()
+			transport.DisableKeepAlives = true
+			transport.MaxIdleConns = -1
+			httpClient = &http.Client{
+				Transport: transport,
+				Timeout:   h.fusion.httpClient.Timeout,
+			}
+			if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("Forcing new connection for request [%s]", correlationID)
+			}
+		}
+		
+		if h.endpoint.Connection.Timeout != "" {
+			// Parse custom timeout for this endpoint
+			if timeout, err := time.ParseDuration(h.endpoint.Connection.Timeout); err == nil {
+				// Create a custom client with the specified timeout
+				transport := httpClient.Transport
+				if h.endpoint.Connection.ForceNewConnection {
+					// Already cloned above
+				} else {
+					transport = h.fusion.httpClient.Transport.(*http.Transport).Clone()
+				}
+				httpClient = &http.Client{
+					Transport: transport,
+					Timeout:   timeout,
+				}
+				if h.fusion.logger != nil {
+					h.fusion.logger.Debugf("Using custom timeout %v for request [%s]", timeout, correlationID)
+				}
+			} else if h.fusion.logger != nil {
+				h.fusion.logger.Warningf("Invalid timeout format '%s' for endpoint %s [%s]", 
+					h.endpoint.Connection.Timeout, h.endpoint.ID, correlationID)
+			}
+		}
+	}
+
 	// Execute with circuit breaker if enabled
 	var resp *http.Response
 	var err error
@@ -315,7 +364,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		if retryConfig.Enabled {
 			// Use retry executor
 			retryExecutor := NewRetryExecutor(retryConfig, h.fusion.logger)
-			resp, err = retryExecutor.Execute(ctx, h.fusion.httpClient, req)
+			resp, err = retryExecutor.Execute(ctx, httpClient, req)
 			if err != nil && resp == nil {
 				// Count retry attempts from the error context
 				metrics.RetryCount = retryConfig.MaxAttempts - 1
@@ -325,7 +374,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 			if h.fusion.logger != nil {
 				h.fusion.logger.Debugf("Executing HTTP request: %s %s", req.Method, req.URL.String())
 			}
-			resp, err = h.fusion.httpClient.Do(req)
+			resp, err = httpClient.Do(req)
 			if err != nil {
 				if h.fusion.logger != nil {
 					h.fusion.logger.Debugf("HTTP request failed: %v", err)
@@ -354,8 +403,18 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		// Categorize the error
 		if strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "deadline") {
 			metrics.ErrorCategory = ErrorCategoryTimeout
+			// Automatically cleanup connections on timeout errors
+			if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("Timeout detected, triggering connection cleanup [%s]", correlationID)
+			}
+			h.fusion.ForceConnectionCleanup()
 		} else if strings.Contains(err.Error(), "connection") || strings.Contains(err.Error(), "network") {
 			metrics.ErrorCategory = ErrorCategoryNetwork
+			// Automatically cleanup connections on connection errors
+			if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("Connection error detected, triggering connection cleanup [%s]", correlationID)
+			}
+			h.fusion.ForceConnectionCleanup()
 		} else if strings.Contains(err.Error(), "circuit breaker") {
 			metrics.ErrorCategory = ErrorCategoryServer
 		} else {

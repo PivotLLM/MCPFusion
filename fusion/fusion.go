@@ -35,6 +35,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -82,6 +83,11 @@ type Fusion struct {
 	correlationIDGenerator *CorrelationIDGenerator    // Request correlation tracking
 	circuitBreakers        map[string]*CircuitBreaker // Per-service circuit breakers
 	circuitBreakersMutex   sync.RWMutex               // Protects circuitBreakers map
+	
+	// Connection health management
+	connectionCleanupTicker *time.Ticker // Periodic connection cleanup
+	shutdownChan           chan struct{} // Channel for graceful shutdown
+	shutdownOnce           sync.Once     // Ensures cleanup happens only once
 }
 
 // Option defines a functional option type for configuring Fusion instances.
@@ -273,9 +279,35 @@ func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 // The returned Fusion instance is thread-safe and can handle concurrent requests
 // from multiple goroutines without additional synchronization.
 func New(options ...Option) *Fusion {
+	// Create custom HTTP transport with optimized connection pooling
+	transport := &http.Transport{
+		// Connection pooling settings
+		MaxIdleConns:          100,              // Maximum total idle connections
+		MaxIdleConnsPerHost:   10,               // Maximum idle connections per host
+		IdleConnTimeout:       30 * time.Second, // How long idle connections are kept
+		
+		// Keep-alive settings
+		DisableKeepAlives:     false,            // Enable keep-alive
+		
+		// Timeouts for connection establishment
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second, // Connection timeout
+			KeepAlive: 30 * time.Second, // Keep-alive probe interval
+		}).DialContext,
+		
+		// Response timeouts
+		TLSHandshakeTimeout:   10 * time.Second, // TLS handshake timeout
+		ResponseHeaderTimeout: 30 * time.Second, // Time to receive response headers
+		ExpectContinueTimeout: 1 * time.Second,  // Time to wait for 100-continue
+		
+		// Connection limits
+		MaxConnsPerHost:       50, // Maximum connections per host
+	}
+
 	fusion := &Fusion{
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Transport: transport,
+			Timeout:   60 * time.Second, // Overall request timeout (increased from 30s)
 		},
 		cache:                  nil,                            // Cache will be set by multi-tenant auth manager
 		metricsCollector:       NewMetricsCollector(nil, true), // Enable metrics by default
@@ -344,6 +376,10 @@ func New(options ...Option) *Fusion {
 			fusion.logger.Warning("No configuration provided - services will need to be configured separately")
 		}
 	}
+
+	// Initialize connection health management
+	fusion.shutdownChan = make(chan struct{})
+	fusion.startConnectionHealthManagement()
 
 	if fusion.logger != nil {
 		fusion.logger.Info("Fusion instance initialization completed")
@@ -1560,4 +1596,72 @@ func (f *Fusion) StartMetricsLogging(ctx context.Context, interval time.Duration
 	if f.metricsCollector != nil {
 		f.metricsCollector.StartPeriodicLogging(ctx, interval)
 	}
+}
+
+// startConnectionHealthManagement initializes periodic connection pool cleanup
+func (f *Fusion) startConnectionHealthManagement() {
+	// Start periodic connection cleanup every 5 minutes
+	f.connectionCleanupTicker = time.NewTicker(5 * time.Minute)
+	
+	go func() {
+		defer f.connectionCleanupTicker.Stop()
+		
+		for {
+			select {
+			case <-f.connectionCleanupTicker.C:
+				f.cleanupConnections()
+			case <-f.shutdownChan:
+				if f.logger != nil {
+					f.logger.Debug("Connection health management shutting down")
+				}
+				return
+			}
+		}
+	}()
+	
+	if f.logger != nil {
+		f.logger.Debug("Connection health management started")
+	}
+}
+
+// cleanupConnections forces cleanup of idle connections in the HTTP client's transport
+func (f *Fusion) cleanupConnections() {
+	if f.httpClient != nil && f.httpClient.Transport != nil {
+		if transport, ok := f.httpClient.Transport.(*http.Transport); ok {
+			// Close idle connections to prevent stale connection reuse
+			transport.CloseIdleConnections()
+			
+			if f.logger != nil {
+				f.logger.Debug("Cleaned up idle HTTP connections")
+			}
+		}
+	}
+}
+
+// Shutdown gracefully shuts down the Fusion instance and cleans up resources
+func (f *Fusion) Shutdown() {
+	f.shutdownOnce.Do(func() {
+		if f.logger != nil {
+			f.logger.Info("Shutting down Fusion instance")
+		}
+		
+		// Signal shutdown to background goroutines
+		close(f.shutdownChan)
+		
+		// Final connection cleanup
+		f.cleanupConnections()
+		
+		if f.logger != nil {
+			f.logger.Info("Fusion instance shutdown completed")
+		}
+	})
+}
+
+// ForceConnectionCleanup manually triggers connection pool cleanup
+// This can be called when connection issues are detected
+func (f *Fusion) ForceConnectionCleanup() {
+	if f.logger != nil {
+		f.logger.Info("Forcing connection pool cleanup")
+	}
+	f.cleanupConnections()
 }

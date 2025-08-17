@@ -299,6 +299,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Shutdown Fusion provider if initialized
+	if fusionProvider != nil {
+		fusionProvider.Shutdown()
+	}
+
 	// Close database connection if initialized
 	if database != nil {
 		if err := database.Close(); err != nil {
