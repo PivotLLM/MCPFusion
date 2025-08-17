@@ -64,6 +64,7 @@ setup instructions.
 - 🎫 **[Token Management Guide](docs/TOKEN_MANAGEMENT.md)** - Multi-tenant authentication and CLI usage
 - 📧 **[Microsoft 365 Setup](docs/Microsoft365.md)** - Azure app registration and authentication
 - 🔍 **[Google APIs Setup](fusion/README_CONFIG.md#google-apis-setup)** - Google Cloud Console configuration
+- 🌐 **[HTTP Session Management](docs/HTTP_SESSION_MANAGEMENT.md)** - Connection pooling, timeouts, and reliability features
 
 ### **Development & Testing**
 
@@ -86,6 +87,60 @@ MCPFusion/
 ├── example2/           # Simple time service example
 └── globalMetrics/             # Shared interfaces and utilities
 ```
+
+## HTTP Session Management
+
+MCPFusion includes advanced HTTP session management to prevent connection timeouts and improve reliability with external APIs like Microsoft 365.
+
+### **Connection Pooling & Health Management**
+
+- **Optimized Transport**: Custom HTTP transport with proper connection pooling settings
+- **Automatic Cleanup**: Periodic cleanup of idle connections every 5 minutes
+- **Error Detection**: Automatic connection cleanup when timeout or connection errors are detected
+- **Graceful Shutdown**: Proper resource cleanup on application termination
+
+### **Per-Endpoint Connection Control**
+
+Configure connection behavior for specific endpoints that may have reliability issues:
+
+```json
+{
+  "id": "microsoft365_mail_search",
+  "name": "Search emails in Microsoft 365",
+  "method": "GET",
+  "path": "/me/messages",
+  "connection": {
+    "disableKeepAlive": true,
+    "forceNewConnection": false,
+    "timeout": "45s"
+  }
+}
+```
+
+**Connection Options:**
+- `disableKeepAlive`: Forces connection closure after each request (adds `Connection: close` header)
+- `forceNewConnection`: Creates a new connection for each request, bypassing connection pool
+- `timeout`: Custom timeout for this specific endpoint (overrides default 60s timeout)
+
+### **Default Transport Settings**
+
+- **Connection Limits**: 100 total idle connections, 10 per host, 50 max per host
+- **Timeouts**: 30s idle timeout, 10s connection establishment, 60s overall request timeout
+- **Keep-Alive**: 30s probe interval with automatic health validation
+
+### **Monitoring & Troubleshooting**
+
+The system automatically logs connection management activities:
+
+```
+[DEBUG] Timeout detected, triggering connection cleanup [correlation-id]
+[DEBUG] Connection error detected, triggering connection cleanup [correlation-id]
+[DEBUG] Cleaned up idle HTTP connections
+[INFO] Forcing connection pool cleanup
+```
+
+Use the `ForceConnectionCleanup()` method programmatically when connection issues are detected.
+
 ## Token Management
 
 MCPFusion includes a comprehensive CLI for managing API tokens:

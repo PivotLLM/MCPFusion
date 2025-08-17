@@ -472,6 +472,56 @@ Any MCP-compatible client can connect to `http://localhost:8888` and use the Mic
    - `graph.microsoft.com`
 3. Check proxy settings if behind corporate firewall
 
+**Problem**: Frequent timeout errors or connection resets
+
+**Solutions**:
+1. **Use Connection Control**: Configure problematic endpoints with connection management:
+   ```json
+   {
+     "id": "microsoft365_mail_search",
+     "connection": {
+       "disableKeepAlive": true,
+       "timeout": "45s"
+     }
+   }
+   ```
+
+2. **Monitor Connection Health**: Enable debug logging to see automatic cleanup:
+   ```bash
+   ./mcpfusion -debug
+   ```
+   Look for these log messages:
+   ```
+   [DEBUG] Timeout detected, triggering connection cleanup
+   [DEBUG] Connection error detected, triggering connection cleanup
+   [DEBUG] Cleaned up idle HTTP connections
+   ```
+
+3. **Force Connection Cleanup**: If issues persist, MCPFusion automatically cleans up connections every 5 minutes and after errors. For immediate cleanup, restart the service.
+
+4. **Use Fresh Connections**: For severe cases, configure endpoints to use new connections:
+   ```json
+   {
+     "connection": {
+       "forceNewConnection": true
+     }
+   }
+   ```
+
+**Problem**: "context deadline exceeded" errors
+
+**Solutions**:
+1. Increase timeout for slow endpoints:
+   ```json
+   {
+     "connection": {
+       "timeout": "90s"
+     }
+   }
+   ```
+2. Check Microsoft 365 service status at [Microsoft 365 Status](https://status.office365.com/)
+3. Monitor for throttling responses (HTTP 429) which may indicate rate limiting
+
 #### 7.5 Configuration Issues
 
 **Problem**: "MS365_CLIENT_ID environment variable not found"

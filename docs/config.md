@@ -11,6 +11,7 @@ This guide explains how to create JSON configuration files for MCPFusion to inte
 - [Parameter Configuration](#parameter-configuration)
 - [Response Configuration](#response-configuration)
 - [Advanced Features](#advanced-features)
+- [HTTP Session Management](#http-session-management)
 - [Best Practices](#best-practices)
 - [Complete Examples](#complete-examples)
 - [Troubleshooting](#troubleshooting)
@@ -435,6 +436,100 @@ Protect against cascading failures:
   }
 }
 ```
+
+## HTTP Session Management
+
+MCPFusion includes advanced HTTP session management to handle connection timeouts and improve reliability with external APIs. This is particularly useful for APIs that may have intermittent connectivity issues or strict connection limits.
+
+### Connection Configuration
+
+You can configure connection behavior at the endpoint level to handle problematic APIs:
+
+```json
+{
+  "id": "microsoft365_mail_search",
+  "name": "Search emails in Microsoft 365",
+  "method": "GET",
+  "path": "/me/messages",
+  "connection": {
+    "disableKeepAlive": true,
+    "forceNewConnection": false,
+    "timeout": "45s"
+  },
+  "parameters": [...]
+}
+```
+
+### Connection Options
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `disableKeepAlive` | boolean | false | Forces connection closure after each request (adds `Connection: close` header) |
+| `forceNewConnection` | boolean | false | Creates a new connection for each request, bypassing connection pool |
+| `timeout` | string | "60s" | Custom timeout for this specific endpoint (format: "30s", "2m", etc.) |
+
+### Default Transport Settings
+
+MCPFusion uses optimized HTTP transport settings:
+
+- **Connection Limits**: 100 total idle connections, 10 per host, 50 max per host
+- **Timeouts**: 30s idle timeout, 10s connection establishment, 60s overall request timeout
+- **Keep-Alive**: 30s probe interval with automatic health validation
+- **Automatic Cleanup**: Periodic cleanup of idle connections every 5 minutes
+
+### When to Use Connection Control
+
+**Use `disableKeepAlive: true` when:**
+- API servers close connections unpredictably
+- You experience frequent timeout errors
+- The API has strict connection limits
+
+**Use `forceNewConnection: true` when:**
+- Connection reuse causes authentication issues
+- API requires fresh connections for each request
+- Debugging connection-related problems
+
+**Use custom `timeout` when:**
+- Endpoint typically takes longer than 60s to respond
+- API has known slow response times
+- Need tighter timeout control for specific operations
+
+### Example: Microsoft 365 Configuration
+
+```json
+{
+  "id": "microsoft365_mail_search",
+  "name": "Search Microsoft 365 emails",
+  "method": "GET",
+  "path": "/me/messages",
+  "connection": {
+    "disableKeepAlive": true,
+    "timeout": "45s"
+  },
+  "parameters": [
+    {
+      "name": "$filter",
+      "alias": "filter",
+      "description": "OData filter expression",
+      "type": "string",
+      "required": false,
+      "location": "query"
+    }
+  ]
+}
+```
+
+### Monitoring Connection Health
+
+MCPFusion automatically logs connection management activities:
+
+```
+[DEBUG] Timeout detected, triggering connection cleanup [correlation-id]
+[DEBUG] Connection error detected, triggering connection cleanup [correlation-id]
+[DEBUG] Cleaned up idle HTTP connections
+```
+
+Monitor these logs to identify endpoints that may benefit from connection configuration.
 
 ## Best Practices
 
