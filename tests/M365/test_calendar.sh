@@ -20,10 +20,18 @@ if [ -z "$APIKEY" ]; then
     exit 1
 fi
 
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
+    exit 1
+fi
+
 # Test Microsoft 365 Calendar API
+FULL_SERVER_URL="${SERVER_URL}/sse"
+
 echo "=== Testing Microsoft 365 Calendar API ===" 
 echo "Timestamp: $(date)"
-echo "Server: http://127.0.0.1:8888/sse"
+echo "Server: $FULL_SERVER_URL"
 echo "Using API Token: ${APIKEY:0:8}..."
 echo ""
 
@@ -37,7 +45,7 @@ echo "Test 1: Calendar summary (last 30 days)"
 echo "Command: microsoft365_calendar_read_summary"
 echo "Parameters: {\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_summary -params "{\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
+/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_summary -params "{\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
 
 echo ""
 echo "=========================================="
@@ -47,7 +55,7 @@ echo "Test 2: Calendar details (last 30 days)"
 echo "Command: microsoft365_calendar_read_details"
 echo "Parameters: {\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_details -params "{\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
+/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_details -params "{\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
 
 echo ""
 echo "=========================================="
@@ -57,7 +65,7 @@ echo "Test 3: Calendar details with custom fields"
 echo "Command: microsoft365_calendar_read_details with field selection"
 echo "Parameters: {\"startDate\": \"$start_date\", \"endDate\": \"$end_date\", \"\\$select\": \"subject,start,end,organizer,location\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_details -params "{\"startDate\": \"$start_date\", \"endDate\": \"$end_date\", \"\$select\": \"subject,start,end,organizer,location\"}"
+/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_details -params "{\"startDate\": \"$start_date\", \"endDate\": \"$end_date\", \"\$select\": \"subject,start,end,organizer,location\"}"
 
 echo ""
 echo "=========================================="
@@ -67,7 +75,7 @@ echo "Test 4: Future calendar events (next 30 days)"
 echo "Command: microsoft365_calendar_read_summary for future events"
 echo "Parameters: {\"startDate\": \"$future_start\", \"endDate\": \"$future_end\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_summary -params "{\"startDate\": \"$future_start\", \"endDate\": \"$future_end\"}"
+/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_summary -params "{\"startDate\": \"$future_start\", \"endDate\": \"$future_end\"}"
 
 echo ""
 echo "=== Calendar API Tests Complete ==="

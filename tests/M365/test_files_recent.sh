@@ -6,19 +6,23 @@
 #*******************************************************************************
 
 # Load environment variables
-if [ -f "../.env" ]; then
-    source ../.env
-elif [ -f ".env" ]; then
+if [ -f ".env" ]; then
     source .env
 else
     echo "Error: .env file not found"
-    echo "Please create a .env file with APIKEY=your-api-token"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi
 
 # Check if APIKEY is set
 if [ -z "$APIKEY" ]; then
     echo "Error: APIKEY not set in .env file"
+    exit 1
+fi
+
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
     exit 1
 fi
 
@@ -29,12 +33,12 @@ echo
 
 # Configuration
 PROBE_PATH="/Users/eric/source/MCPProbe/probe"
-SERVER_URL="http://127.0.0.1:8888"
+FULL_SERVER_URL="${SERVER_URL}/sse"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 OUTPUT_FILE="files_recent_${TIMESTAMP}.log"
 
 echo "Test run: $TIMESTAMP" | tee "$OUTPUT_FILE"
-echo "Server: $SERVER_URL" | tee -a "$OUTPUT_FILE"
+echo "Server: $FULL_SERVER_URL" | tee -a "$OUTPUT_FILE"
 echo "Using API Token: ${APIKEY:0:8}..." | tee -a "$OUTPUT_FILE"
 echo "Probe tool: $PROBE_PATH" | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
@@ -43,7 +47,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 1: List Recent Files (Default) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_recent" | tee -a "$OUTPUT_FILE"
 echo "Description: Get recently accessed files with default settings" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_recent \
   2>&1 | tee -a "$OUTPUT_FILE"
@@ -53,7 +57,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 2: List Recent Files (Top 5) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_recent" | tee -a "$OUTPUT_FILE"
 echo "Description: Get top 5 most recent files" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_recent \
   -params '{"$top": 5}' \
@@ -64,7 +68,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 3: List Recent Files (Custom Fields) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_recent" | tee -a "$OUTPUT_FILE"
 echo "Description: Get recent files with specific field selection" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_recent \
   -params '{"$select": "name,webUrl,lastModifiedDateTime,size", "$top": 10}' \
@@ -75,7 +79,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 4: List Recent Files with $expand ====" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_recent" | tee -a "$OUTPUT_FILE"
 echo "Description: Get recent files with expanded permissions data" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_recent \
   -params '{"$top": 5, "$expand": "permissions"}' \
@@ -86,7 +90,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 5: List Recent Files (Maximum Count) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_recent" | tee -a "$OUTPUT_FILE"
 echo "Description: Get maximum number of recent files (200)" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_recent \
   -params '{"$top": 200}' \

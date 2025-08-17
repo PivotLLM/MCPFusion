@@ -20,10 +20,18 @@ if [ -z "$APIKEY" ]; then
     exit 1
 fi
 
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
+    exit 1
+fi
+
 # Test Microsoft 365 Calendar Summary API
+FULL_SERVER_URL="${SERVER_URL}/sse"
+
 echo "=== Testing Microsoft 365 Calendar Summary API ===" 
 echo "Timestamp: $(date)"
-echo "Server: http://127.0.0.1:8888/sse"
+echo "Server: $FULL_SERVER_URL"
 echo ""
 
 # Calculate date ranges
@@ -34,5 +42,5 @@ echo "Calendar summary (last 30 days)"
 echo "Command: microsoft365_calendar_read_summary"
 echo "Parameters: {\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_summary -params "{\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
+/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_read_summary -params "{\"startDate\": \"$start_date\", \"endDate\": \"$end_date\"}"
 

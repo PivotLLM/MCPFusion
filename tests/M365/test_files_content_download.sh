@@ -6,19 +6,23 @@
 #*******************************************************************************
 
 # Load environment variables
-if [ -f "../.env" ]; then
-    source ../.env
-elif [ -f ".env" ]; then
+if [ -f ".env" ]; then
     source .env
 else
     echo "Error: .env file not found"
-    echo "Please create a .env file with APIKEY=your-api-token"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi
 
 # Check if APIKEY is set
 if [ -z "$APIKEY" ]; then
     echo "Error: APIKEY not set in .env file"
+    exit 1
+fi
+
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
     exit 1
 fi
 
@@ -29,12 +33,12 @@ echo
 
 # Configuration
 PROBE_PATH="/Users/eric/source/MCPProbe/probe"
-SERVER_URL="http://127.0.0.1:8888"
+FULL_SERVER_URL="${SERVER_URL}/sse"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 OUTPUT_FILE="files_content_download_${TIMESTAMP}.log"
 
 echo "Test run: $TIMESTAMP" | tee "$OUTPUT_FILE"
-echo "Server: $SERVER_URL" | tee -a "$OUTPUT_FILE"
+echo "Server: $FULL_SERVER_URL" | tee -a "$OUTPUT_FILE"
 echo "Using API Token: ${APIKEY:0:8}..." | tee -a "$OUTPUT_FILE"
 echo "Probe tool: $PROBE_PATH" | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
@@ -43,7 +47,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Step 1: Find Files for Content Download Testing ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_search" | tee -a "$OUTPUT_FILE"
 echo "Description: Search for text files suitable for content download" | tee -a "$OUTPUT_FILE"
-FILE_SEARCH_RESPONSE=$("$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+FILE_SEARCH_RESPONSE=$("$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_search \
   -params '{"searchQuery": "txt", "$top": 5}' \
@@ -67,7 +71,7 @@ if [ ${#FILE_IDS[@]} -gt 0 ]; then
         echo "Command: microsoft365_files_download_content" | tee -a "$OUTPUT_FILE"
         echo "Description: Download content of file ID: ${FILE_IDS[0]}" | tee -a "$OUTPUT_FILE"
         echo "Note: Content will be truncated for readability" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_download_content \
           -params "{\"id\": \"${FILE_IDS[0]}\"}" \
@@ -81,7 +85,7 @@ if [ ${#FILE_IDS[@]} -gt 0 ]; then
         echo "=== Test 2: Download Content of Second File ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_download_content" | tee -a "$OUTPUT_FILE"
         echo "Description: Download content of file ID: ${FILE_IDS[1]}" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_download_content \
           -params "{\"id\": \"${FILE_IDS[1]}\"}" \
@@ -95,7 +99,7 @@ if [ ${#FILE_IDS[@]} -gt 0 ]; then
         echo "=== Test 3: Download Content of Third File ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_download_content" | tee -a "$OUTPUT_FILE"
         echo "Description: Download content of file ID: ${FILE_IDS[2]}" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_download_content \
           -params "{\"id\": \"${FILE_IDS[2]}\"}" \
@@ -112,7 +116,7 @@ else
     echo "=== Alternative: Search for Document Files ===" | tee -a "$OUTPUT_FILE"
     echo "Command: microsoft365_files_search" | tee -a "$OUTPUT_FILE"
     echo "Description: Search for document files" | tee -a "$OUTPUT_FILE"
-    DOC_SEARCH_RESPONSE=$("$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+    DOC_SEARCH_RESPONSE=$("$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
       -headers "Authorization:Bearer $APIKEY" \
       -call microsoft365_files_search \
       -params '{"searchQuery": "doc", "$top": 3}' \
@@ -135,7 +139,7 @@ else
             echo "=== Test 4: Download Document Content ===" | tee -a "$OUTPUT_FILE"
             echo "Command: microsoft365_files_download_content" | tee -a "$OUTPUT_FILE"
             echo "Description: Download content of document ID: ${DOC_FILE_IDS[0]}" | tee -a "$OUTPUT_FILE"
-            "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+            "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
               -headers "Authorization:Bearer $APIKEY" \
               -call microsoft365_files_download_content \
               -params "{\"id\": \"${DOC_FILE_IDS[0]}\"}" \
@@ -150,7 +154,7 @@ fi
 echo "=== Test 5: Download Recent File Content ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_recent + microsoft365_files_download_content" | tee -a "$OUTPUT_FILE"
 echo "Description: Get recent files and download content from first one" | tee -a "$OUTPUT_FILE"
-RECENT_RESPONSE=$("$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+RECENT_RESPONSE=$("$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_recent \
   -params '{"$top": 5}' \
@@ -165,7 +169,7 @@ RECENT_FILE_ID=$(echo "$RECENT_RESPONSE" | grep -o '"id"[[:space:]]*:[[:space:]]
 if [ -n "$RECENT_FILE_ID" ]; then
     echo "Found recent file ID: $RECENT_FILE_ID" | tee -a "$OUTPUT_FILE"
     echo "Downloading content..." | tee -a "$OUTPUT_FILE"
-    "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+    "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
       -headers "Authorization:Bearer $APIKEY" \
       -call microsoft365_files_download_content \
       -params "{\"id\": \"$RECENT_FILE_ID\"}" \
@@ -178,7 +182,7 @@ fi
 echo "=== Test 6: Invalid File ID (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_download_content" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for invalid file ID" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_download_content \
   -params '{"id": "invalid-file-id-12345"}' \
@@ -189,7 +193,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 7: Empty File ID (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_download_content" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for empty file ID" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_download_content \
   -params '{"id": ""}' \

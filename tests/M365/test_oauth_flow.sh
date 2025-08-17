@@ -7,7 +7,26 @@
 
 # Direct test of OAuth flow via MCP
 
-source .env
+# Load environment variables
+if [ -f ".env" ]; then
+    source .env
+else
+    echo "Error: .env file not found"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
+    exit 1
+fi
+
+# Check if APIKEY is set
+if [ -z "$APIKEY" ]; then
+    echo "Error: APIKEY not set in .env file"
+    exit 1
+fi
+
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
+    exit 1
+fi
 
 echo "Testing OAuth Device Flow directly..."
 echo ""
@@ -26,11 +45,11 @@ cat > /tmp/mcp_request.json << 'EOF'
 EOF
 
 echo "Sending MCP request to server..."
-echo "URL: http://127.0.0.1:8888/message"
+echo "URL: ${SERVER_URL}/message"
 echo ""
 
 # Make the request with curl
-response=$(curl -s -X POST http://127.0.0.1:8888/message \
+response=$(curl -s -X POST "${SERVER_URL}/message" \
   -H "Authorization: Bearer $APIKEY" \
   -H "Content-Type: application/json" \
   -d @/tmp/mcp_request.json)

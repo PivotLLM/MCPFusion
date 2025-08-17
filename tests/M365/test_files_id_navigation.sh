@@ -6,9 +6,7 @@
 #*******************************************************************************
 
 # Load environment variables
-if [ -f "../.env" ]; then
-    source ../.env
-elif [ -f ".env" ]; then
+if [ -f ".env" ]; then
     source .env
 else
     echo "Error: .env file not found"
@@ -22,6 +20,12 @@ if [ -z "$APIKEY" ]; then
     exit 1
 fi
 
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
+    exit 1
+fi
+
 echo "====================================================="
 echo "Testing Microsoft 365 Folder Navigation by ID"
 echo "====================================================="
@@ -29,12 +33,12 @@ echo
 
 # Configuration
 PROBE_PATH="/Users/eric/source/MCPProbe/probe"
-SERVER_URL="http://127.0.0.1:8888"
+FULL_SERVER_URL="${SERVER_URL}/sse"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 OUTPUT_FILE="files_id_navigation_${TIMESTAMP}.log"
 
 echo "Test run: $TIMESTAMP" | tee "$OUTPUT_FILE"
-echo "Server: $SERVER_URL" | tee -a "$OUTPUT_FILE"
+echo "Server: $FULL_SERVER_URL" | tee -a "$OUTPUT_FILE"
 echo "Using API Token: ${APIKEY:0:8}..." | tee -a "$OUTPUT_FILE"
 echo "Probe tool: $PROBE_PATH" | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
@@ -43,7 +47,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Step 1: Get Root Directory to Find Folder IDs ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_list" | tee -a "$OUTPUT_FILE"
 echo "Description: List root directory to get folder IDs for testing" | tee -a "$OUTPUT_FILE"
-ROOT_RESPONSE=$("$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+ROOT_RESPONSE=$("$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_list \
   -params '{"$filter": "folder ne null", "$top": 10}' \
@@ -66,7 +70,7 @@ if [ ${#FOLDER_IDS[@]} -gt 0 ]; then
         echo "=== Test 1: List Contents of First Folder ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
         echo "Description: List contents of folder ID: ${FOLDER_IDS[0]}" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_list_children \
           -params "{\"id\": \"${FOLDER_IDS[0]}\"}" \
@@ -79,7 +83,7 @@ if [ ${#FOLDER_IDS[@]} -gt 0 ]; then
         echo "=== Test 2: List Folder Contents (Limited, Custom Fields) ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
         echo "Description: List top 10 items with custom fields" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_list_children \
           -params "{\"id\": \"${FOLDER_IDS[0]}\", \"\$select\": \"name,size,lastModifiedDateTime,webUrl,file,folder\", \"\$top\": 10}" \
@@ -92,7 +96,7 @@ if [ ${#FOLDER_IDS[@]} -gt 0 ]; then
         echo "=== Test 3: List Folder Contents (Sorted by Date) ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
         echo "Description: List contents sorted by modification date" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_list_children \
           -params "{\"id\": \"${FOLDER_IDS[0]}\", \"\$orderby\": \"lastModifiedDateTime desc\", \"\$top\": 15}" \
@@ -105,7 +109,7 @@ if [ ${#FOLDER_IDS[@]} -gt 0 ]; then
         echo "=== Test 4: List Files Only in Folder ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
         echo "Description: List only files (no subfolders)" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_list_children \
           -params "{\"id\": \"${FOLDER_IDS[0]}\", \"\$filter\": \"file ne null\", \"\$top\": 20}" \
@@ -118,7 +122,7 @@ if [ ${#FOLDER_IDS[@]} -gt 0 ]; then
         echo "=== Test 5: List Contents of Second Folder ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
         echo "Description: List contents of folder ID: ${FOLDER_IDS[1]}" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_list_children \
           -params "{\"id\": \"${FOLDER_IDS[1]}\", \"\$top\": 10}" \
@@ -131,7 +135,7 @@ if [ ${#FOLDER_IDS[@]} -gt 0 ]; then
         echo "=== Test 6: List Children with $expand ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
         echo "Description: List folder contents with expanded permissions" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_list_children \
           -params "{\"id\": \"${FOLDER_IDS[0]}\", \"\$expand\": \"permissions(\$select=id,roles)\", \"\$top\": 5}" \
@@ -144,7 +148,7 @@ if [ ${#FOLDER_IDS[@]} -gt 0 ]; then
         echo "=== Test 7: Maximum Results Test ===" | tee -a "$OUTPUT_FILE"
         echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
         echo "Description: Test maximum result count (200)" | tee -a "$OUTPUT_FILE"
-        "$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+        "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
           -headers "Authorization:Bearer $APIKEY" \
           -call microsoft365_files_list_children \
           -params "{\"id\": \"${FOLDER_IDS[0]}\", \"\$top\": 200}" \
@@ -161,7 +165,7 @@ fi
 echo "=== Test 8: Invalid Folder ID (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for invalid folder ID" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_list_children \
   -params '{"id": "invalid-folder-id-12345"}' \
@@ -172,7 +176,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 9: Empty Folder ID (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_list_children" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for empty folder ID" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_list_children \
   -params '{"id": ""}' \

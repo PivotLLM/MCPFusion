@@ -20,10 +20,18 @@ if [ -z "$APIKEY" ]; then
     exit 1
 fi
 
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
+    exit 1
+fi
+
 # Test Microsoft 365 Individual Item Retrieval APIs
+FULL_SERVER_URL="${SERVER_URL}/sse"
+
 echo "=== Testing Microsoft 365 Individual Item Retrieval APIs ===" 
 echo "Timestamp: $(date)"
-echo "Server: http://127.0.0.1:8888/sse"
+echo "Server: $FULL_SERVER_URL"
 echo "Using API Token: ${APIKEY:0:8}..."
 echo ""
 
@@ -42,7 +50,7 @@ echo "Parameters: {\"id\": \"$CALENDAR_EVENT_ID\"}"
 echo ""
 echo "NOTE: Get event ID from calendar list operations first"
 # Commented out to avoid errors - uncomment when you have real IDs
-# /Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_calendar_read_event -params "{\"id\": \"$CALENDAR_EVENT_ID\"}"
+# /Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -call microsoft365_calendar_read_event -params "{\"id\": \"$CALENDAR_EVENT_ID\"}"
 
 echo ""
 echo "=========================================="
@@ -54,7 +62,7 @@ echo "Parameters: {\"id\": \"$CALENDAR_EVENT_ID\", \"\$select\": \"subject,start
 echo ""
 echo "NOTE: Get event ID from calendar list operations first"
 # Commented out to avoid errors - uncomment when you have real IDs
-# /Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_calendar_read_event -params "{\"id\": \"$CALENDAR_EVENT_ID\", \"\$select\": \"subject,start,end,organizer,location\"}"
+# /Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -call microsoft365_calendar_read_event -params "{\"id\": \"$CALENDAR_EVENT_ID\", \"\$select\": \"subject,start,end,organizer,location\"}"
 
 echo ""
 echo "=========================================="
@@ -66,7 +74,7 @@ echo "Parameters: {\"id\": \"$MESSAGE_ID\"}"
 echo ""
 echo "NOTE: Get message ID from mail list operations first"
 # Commented out to avoid errors - uncomment when you have real IDs
-# /Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_mail_read_message -params "{\"id\": \"$MESSAGE_ID\"}"
+# /Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -call microsoft365_mail_read_message -params "{\"id\": \"$MESSAGE_ID\"}"
 
 echo ""
 echo "=========================================="
@@ -78,7 +86,7 @@ echo "Parameters: {\"id\": \"$MESSAGE_ID\", \"\$select\": \"subject,from,body,re
 echo ""
 echo "NOTE: Get message ID from mail list operations first"
 # Commented out to avoid errors - uncomment when you have real IDs
-# /Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_mail_read_message -params "{\"id\": \"$MESSAGE_ID\", \"\$select\": \"subject,from,body,receivedDateTime\"}"
+# /Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -call microsoft365_mail_read_message -params "{\"id\": \"$MESSAGE_ID\", \"\$select\": \"subject,from,body,receivedDateTime\"}"
 
 echo ""
 echo "=========================================="
@@ -90,7 +98,7 @@ echo "Parameters: {\"id\": \"$CONTACT_ID\"}"
 echo ""
 echo "NOTE: Get contact ID from contacts list operations first"
 # Commented out to avoid errors - uncomment when you have real IDs
-# /Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_contacts_read_contact -params "{\"id\": \"$CONTACT_ID\"}"
+# /Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -call microsoft365_contacts_read_contact -params "{\"id\": \"$CONTACT_ID\"}"
 
 echo ""
 echo "=========================================="
@@ -102,7 +110,7 @@ echo "Parameters: {\"id\": \"$CONTACT_ID\", \"\$select\": \"displayName,emailAdd
 echo ""
 echo "NOTE: Get contact ID from contacts list operations first"
 # Commented out to avoid errors - uncomment when you have real IDs
-# /Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -call microsoft365_contacts_read_contact -params "{\"id\": \"$CONTACT_ID\", \"\$select\": \"displayName,emailAddresses,businessPhones\"}"
+# /Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -call microsoft365_contacts_read_contact -params "{\"id\": \"$CONTACT_ID\", \"\$select\": \"displayName,emailAddresses,businessPhones\"}"
 
 echo ""
 echo "=== Individual Item Retrieval API Tests Complete ==="

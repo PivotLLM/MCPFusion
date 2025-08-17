@@ -6,9 +6,7 @@
 #*******************************************************************************
 
 # Load environment variables
-if [ -f "../.env" ]; then
-    source ../.env
-elif [ -f ".env" ]; then
+if [ -f ".env" ]; then
     source .env
 else
     echo "Error: .env file not found"
@@ -19,6 +17,12 @@ fi
 # Check if APIKEY is set
 if [ -z "$APIKEY" ]; then
     echo "Error: APIKEY not set in .env file"
+    exit 1
+fi
+
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
     exit 1
 fi
 

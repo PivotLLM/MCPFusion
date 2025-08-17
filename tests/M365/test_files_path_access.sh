@@ -6,9 +6,7 @@
 #*******************************************************************************
 
 # Load environment variables
-if [ -f "../.env" ]; then
-    source ../.env
-elif [ -f ".env" ]; then
+if [ -f ".env" ]; then
     source .env
 else
     echo "Error: .env file not found"
@@ -22,6 +20,12 @@ if [ -z "$APIKEY" ]; then
     exit 1
 fi
 
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
+    exit 1
+fi
+
 echo "=================================================="
 echo "Testing Microsoft 365 Path-Based File Access"
 echo "=================================================="
@@ -29,12 +33,12 @@ echo
 
 # Configuration
 PROBE_PATH="/Users/eric/source/MCPProbe/probe"
-SERVER_URL="http://127.0.0.1:8888"
+FULL_SERVER_URL="${SERVER_URL}/sse"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 OUTPUT_FILE="files_path_access_${TIMESTAMP}.log"
 
 echo "Test run: $TIMESTAMP" | tee "$OUTPUT_FILE"
-echo "Server: $SERVER_URL" | tee -a "$OUTPUT_FILE"
+echo "Server: $FULL_SERVER_URL" | tee -a "$OUTPUT_FILE"
 echo "Using API Token: ${APIKEY:0:8}..." | tee -a "$OUTPUT_FILE"
 echo "Probe tool: $PROBE_PATH" | tee -a "$OUTPUT_FILE"
 echo | tee -a "$OUTPUT_FILE"
@@ -43,7 +47,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 1: Get Documents Folder ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Access Documents folder by path" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_get_by_path \
   -params '{"filePath": "Documents"}' \
@@ -54,7 +58,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 2: Get Pictures Folder ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Access Pictures folder by path" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_get_by_path \
   -params '{"filePath": "Pictures"}' \
@@ -65,7 +69,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 3: Get Nested Path ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Access nested folder path" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_get_by_path \
   -params '{"filePath": "Documents/Projects"}' \
@@ -76,7 +80,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 4: Get Specific File ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Access a specific file by full path" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_get_by_path \
   -params '{"filePath": "Documents/readme.txt"}' \
@@ -87,7 +91,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 5: Get Folder with Custom Fields ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Access folder with specific field selection" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_get_by_path \
   -params '{"filePath": "Documents", "$select": "name,size,lastModifiedDateTime,webUrl,folder"}' \
@@ -98,7 +102,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 6: Get Documents with $expand ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Access Documents folder with expanded children data" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_get_by_path \
   -params '{"filePath": "Documents", "$expand": "children($select=name,id,size)"}' \
@@ -109,7 +113,7 @@ echo | tee -a "$OUTPUT_FILE"
 echo "=== Test 7: Non-Existent Path (Error Test) ===" | tee -a "$OUTPUT_FILE"
 echo "Command: microsoft365_files_get_by_path" | tee -a "$OUTPUT_FILE"
 echo "Description: Test error handling for non-existent path" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$SERVER_URL/sse" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_get_by_path \
   -params '{"filePath": "NonExistent/Folder/Path"}' \

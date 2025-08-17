@@ -1008,15 +1008,6 @@
               }
             },
             {
-              "name": "$skip",
-              "alias": "skip",
-              "description": "Number of items to skip (for pagination offset)",
-              "type": "number",
-              "required": false,
-              "location": "query",
-              "default": 0
-            },
-            {
               "name": "$orderby",
               "alias": "orderby",
               "description": "Sort order for results",
