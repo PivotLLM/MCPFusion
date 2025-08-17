@@ -7,6 +7,7 @@ package db
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -398,7 +399,7 @@ func (d *DB) GetStoredStats() (*TokenStats, error) {
 	})
 
 	if err != nil {
-		if err == ErrTokenNotFound {
+		if errors.Is(err, ErrTokenNotFound) {
 			// No cached stats, generate fresh ones
 			return d.GetStats()
 		}

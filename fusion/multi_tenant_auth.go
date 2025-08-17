@@ -175,7 +175,7 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 	tokenInfo, err := strategy.Authenticate(ctx, authConfig.Config)
 	if err != nil {
 		// Check if it's a DeviceCodeError - don't wrap it
-		if _, ok := err.(*DeviceCodeError); ok {
+		if _, ok := AsDeviceCodeError(err); ok {
 			if mtam.logger != nil {
 				mtam.logger.Infof("Device code authentication required for tenant %s service %s",
 					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)

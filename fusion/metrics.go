@@ -197,22 +197,22 @@ func (mc *MetricsCollector) GetServiceMetrics(serviceName string) *ServiceMetric
 	defer mc.mu.RUnlock()
 
 	if metrics, exists := mc.metrics[serviceName]; exists {
-		// Return a copy to avoid race conditions
-		copy := *metrics
-		copy.ErrorsByType = make(map[ErrorCategory]int64)
+		// Return a cpy to avoid race conditions
+		cpy := *metrics
+		cpy.ErrorsByType = make(map[ErrorCategory]int64)
 		for k, v := range metrics.ErrorsByType {
-			copy.ErrorsByType[k] = v
+			cpy.ErrorsByType[k] = v
 		}
-		copy.EndpointStats = make(map[string]*EndpointStats)
+		cpy.EndpointStats = make(map[string]*EndpointStats)
 		for k, v := range metrics.EndpointStats {
 			endpointCopy := *v
 			endpointCopy.ErrorsByType = make(map[ErrorCategory]int64)
 			for ek, ev := range v.ErrorsByType {
 				endpointCopy.ErrorsByType[ek] = ev
 			}
-			copy.EndpointStats[k] = &endpointCopy
+			cpy.EndpointStats[k] = &endpointCopy
 		}
-		return &copy
+		return &cpy
 	}
 
 	return nil
@@ -318,9 +318,9 @@ func (mc *MetricsCollector) logMetricsSummary() {
 		return
 	}
 
-	global := mc.GetGlobalMetrics()
+	globalMetrics := mc.GetGlobalMetrics()
 	mc.logger.Infof("Metrics Summary - Requests: %d, Errors: %d, Success Rate: %.1f%%, Services: %d, Uptime: %v",
-		global.RequestCount, global.ErrorCount, global.SuccessRate, global.ServiceCount, global.Uptime)
+		globalMetrics.RequestCount, globalMetrics.ErrorCount, globalMetrics.SuccessRate, globalMetrics.ServiceCount, globalMetrics.Uptime)
 
 	// Log top error-prone services
 	for serviceName, metrics := range mc.metrics {

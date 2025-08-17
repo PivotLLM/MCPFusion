@@ -33,6 +33,8 @@ type ServiceConfigResolver struct {
 type ServiceResolverOption func(*ServiceConfigResolver)
 
 // WithConfigPaths sets the configuration file search paths
+//
+//goland:noinspection GoUnusedExportedFunction
 func WithConfigPaths(paths ...string) ServiceResolverOption {
 	return func(scr *ServiceConfigResolver) {
 		scr.configPaths = paths

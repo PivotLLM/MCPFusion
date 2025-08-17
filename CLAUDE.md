@@ -60,7 +60,7 @@ cd tests && ./test_profile.sh > profile_output.log
    - Manages SSE and HTTP transports
    - Routes tool/resource/prompt calls to providers
 
-2. **Provider Interfaces** (`global/`)
+2. **Provider Interfaces** (`globalMetrics/`)
    - `ToolProvider`: Implements tools (functions AI can call)
    - `ResourceProvider`: Implements resources (data AI can read)
    - `PromptProvider`: Implements prompts (templates for AI)
@@ -84,7 +84,7 @@ func(uri string) (string, error)
 
 Prompt handlers follow:
 ```go
-func(args map[string]interface{}) (*global.PromptResponse, error)
+func(args map[string]interface{}) (*globalMetrics.PromptResponse, error)
 ```
 
 ## Configuration
@@ -105,7 +105,7 @@ MCP_DB_DATA_DIR=/opt/mcpfusion
 ## Creating New Providers
 
 1. Create a new package in the project root
-2. Implement the appropriate interface(s) from `global/`
+2. Implement the appropriate interface(s) from `globalMetrics/`
 3. Use functional options pattern for configuration:
 ```go
 type Option func(*Config)

@@ -354,7 +354,7 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 		t.Fatal("Expected API error for invalid authentication")
 	}
 
-	apiErr, ok := err.(*APIError)
+	apiErr, ok := AsAPIError(err)
 	if !ok {
 		t.Errorf("Expected APIError, got %T", err)
 	} else if apiErr.StatusCode != 401 {
@@ -407,7 +407,7 @@ func TestFusionIntegration_NetworkError(t *testing.T) {
 		t.Fatal("Expected network error for invalid host")
 	}
 
-	networkErr, ok := err.(*NetworkError)
+	networkErr, ok := AsNetworkError(err)
 	if !ok {
 		t.Errorf("Expected NetworkError, got %T: %v", err, err)
 	} else if !networkErr.Retryable {

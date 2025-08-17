@@ -346,23 +346,8 @@ func GetServiceNameFromRequest(r *http.Request) (string, bool) {
 	return "", false
 }
 
-// RequireAuthentication is a convenience function that can be used to ensure a request is authenticated
-func RequireAuthentication(r *http.Request) (*fusion.TenantContext, string, error) {
-	tenantContext, hasTenant := GetTenantContextFromRequest(r)
-	if !hasTenant {
-		return nil, "", fmt.Errorf("request is not authenticated")
-	}
-
-	serviceName, hasService := GetServiceNameFromRequest(r)
-	if !hasService {
-		serviceName = "default"
-	}
-
-	return tenantContext, serviceName, nil
-}
-
-// min returns the smaller of two integers
-func min(a, b int) int {
+// minInt returns the smaller of two integers
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
@@ -374,19 +359,6 @@ type AuthValidationMiddleware struct {
 	authManager *fusion.MultiTenantAuthManager
 	logger      global.Logger
 	skipPaths   []string
-}
-
-// NewAuthValidationMiddleware creates a simple authentication validation middleware
-func NewAuthValidationMiddleware(authManager *fusion.MultiTenantAuthManager, logger global.Logger, skipPaths ...string) *AuthValidationMiddleware {
-	if len(skipPaths) == 0 {
-		skipPaths = []string{"/health", "/metrics", "/status"}
-	}
-
-	return &AuthValidationMiddleware{
-		authManager: authManager,
-		logger:      logger,
-		skipPaths:   skipPaths,
-	}
 }
 
 // Middleware returns the HTTP middleware function for simple auth validation

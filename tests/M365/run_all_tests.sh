@@ -10,7 +10,7 @@
 
 # Configuration
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVER_URL="http://127.0.0.1:8888/sse"
+# SERVER_URL will be loaded from .env file and /sse will be appended
 PROBE_TOOL="/Users/eric/source/MCPProbe/probe"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
@@ -19,7 +19,7 @@ if [ -f "$TESTS_DIR/.env" ]; then
     source "$TESTS_DIR/.env"
 else
     echo -e "${RED}[ERROR]${NC} .env file not found in $TESTS_DIR"
-    echo "Please create a .env file with APIKEY=your-api-token"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi
 
@@ -28,6 +28,16 @@ if [ -z "$APIKEY" ]; then
     echo -e "${RED}[ERROR]${NC} APIKEY not set in .env file"
     exit 1
 fi
+
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo -e "${RED}[ERROR]${NC} SERVER_URL not set in .env file"
+    echo "Please add SERVER_URL=your-server-url to .env file"
+    exit 1
+fi
+
+# Append /sse to the base URL
+SERVER_URL="${SERVER_URL}/sse"
 
 # Colors for output
 RED='\033[0;31m'

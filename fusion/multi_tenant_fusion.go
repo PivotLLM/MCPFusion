@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
@@ -36,79 +35,6 @@ type MultiTenantFusion struct {
 
 // MultiTenantFusionOption represents configuration options for MultiTenantFusion
 type MultiTenantFusionOption func(*MultiTenantFusion)
-
-// WithMTDatabase sets the database for multi-tenant storage
-func WithMTDatabase(database *db.DB) MultiTenantFusionOption {
-	return func(mtf *MultiTenantFusion) {
-		mtf.db = database
-	}
-}
-
-// WithMTHTTPClient sets the HTTP client for all fusion instances
-func WithMTHTTPClient(client *http.Client) MultiTenantFusionOption {
-	return func(mtf *MultiTenantFusion) {
-		mtf.httpClient = client
-	}
-}
-
-// WithMTLogger sets the logger for multi-tenant fusion
-func WithMTLogger(logger global.Logger) MultiTenantFusionOption {
-	return func(mtf *MultiTenantFusion) {
-		mtf.logger = logger
-	}
-}
-
-// WithMTDefaultConfig sets a default configuration that will be used as a fallback
-func WithMTDefaultConfig(config *Config) MultiTenantFusionOption {
-	return func(mtf *MultiTenantFusion) {
-		mtf.defaultConfig = config
-	}
-}
-
-// NewMultiTenantFusion creates a new multi-tenant fusion instance
-func NewMultiTenantFusion(options ...MultiTenantFusionOption) (*MultiTenantFusion, error) {
-	mtf := &MultiTenantFusion{
-		tenantFusions: make(map[string]*Fusion),
-		httpClient:    &http.Client{Timeout: 30 * time.Second},
-	}
-
-	// Apply options
-	for _, option := range options {
-		option(mtf)
-	}
-
-	// Initialize database cache if database is available
-	if mtf.db != nil {
-		mtf.databaseCache = NewDatabaseCache(mtf.db, mtf.logger)
-	}
-
-	// Initialize service resolver
-	mtf.serviceResolver = NewServiceConfigResolver(
-		WithSRLogger(mtf.logger),
-		WithAutoReload(5*time.Minute), // Auto-reload configs every 5 minutes
-	)
-
-	// Load all available services
-	if err := mtf.serviceResolver.LoadAllServices(); err != nil {
-		if mtf.logger != nil {
-			mtf.logger.Warningf("Failed to load all services during initialization: %v", err)
-		}
-	}
-
-	// Initialize auth manager
-	mtf.authManager = NewMultiTenantAuthManager(mtf.db, mtf.databaseCache, mtf.logger)
-
-	// Register default authentication strategies
-	mtf.registerDefaultAuthStrategies()
-
-	if mtf.logger != nil {
-		mtf.logger.Info("Initialized multi-tenant fusion")
-		availableServices := mtf.serviceResolver.GetAvailableServices()
-		mtf.logger.Infof("Available services: %v", availableServices)
-	}
-
-	return mtf, nil
-}
 
 // GetFusionForTenant returns a Fusion instance configured for a specific tenant and service
 func (mtf *MultiTenantFusion) GetFusionForTenant(tenantContext *TenantContext) (*Fusion, error) {
@@ -203,6 +129,7 @@ func (mtf *MultiTenantFusion) GetResource(ctx context.Context, tenantContext *Te
 	for _, resource := range resources {
 		if resource.URI == resourceURI {
 			response, err := resource.Handler(resourceURI, make(map[string]interface{}))
+			//goland:noinspection GoDfaErrorMayBeNotNil
 			return response.Content, err
 		}
 	}
@@ -212,6 +139,7 @@ func (mtf *MultiTenantFusion) GetResource(ctx context.Context, tenantContext *Te
 		// Simple URI matching - in a real implementation you'd do proper template matching
 		if strings.Contains(resourceURI, template.Name) {
 			response, err := template.Handler(resourceURI, make(map[string]interface{}))
+			//goland:noinspection GoDfaErrorMayBeNotNil
 			return response.Content, err
 		}
 	}

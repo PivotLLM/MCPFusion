@@ -282,7 +282,7 @@ func (r *RetryExecutor) wrapNetworkError(err error, req *http.Request) error {
 	}
 
 	// Check if it's already a NetworkError (avoid double wrapping)
-	if _, ok := err.(*NetworkError); ok {
+	if _, ok := AsNetworkError(err); ok {
 		return err
 	}
 

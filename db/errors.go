@@ -11,6 +11,8 @@ import (
 )
 
 // Base error types
+//
+//goland:noinspection GoUnusedGlobalVariable
 var (
 	ErrTenantNotFound   = errors.New("tenant not found")
 	ErrTokenNotFound    = errors.New("token not found")
@@ -122,6 +124,8 @@ func IsNotFound(err error) bool {
 }
 
 // IsDatabaseError checks if an error is a DatabaseError
+//
+//goland:noinspection GoUnusedExportedFunction
 func IsDatabaseError(err error) bool {
 	var dbErr *DatabaseError
 	return errors.As(err, &dbErr)
@@ -134,6 +138,8 @@ func IsValidationError(err error) bool {
 }
 
 // IsTokenError checks if an error is a TokenError
+//
+//goland:noinspection GoUnusedExportedFunction
 func IsTokenError(err error) bool {
 	var tokErr *TokenError
 	return errors.As(err, &tokErr)

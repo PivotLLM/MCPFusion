@@ -6,6 +6,7 @@
 package fusion
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -189,6 +190,7 @@ func (e ValidationError) GetUserFriendlyMessage() string {
 // ErrorCategory represents the category of an error
 type ErrorCategory string
 
+//goland:noinspection GoUnusedConst
 const (
 	ErrorCategoryTransient  ErrorCategory = "transient"  // Temporary errors that can be retried
 	ErrorCategoryPermanent  ErrorCategory = "permanent"  // Permanent errors that should not be retried
@@ -374,6 +376,8 @@ func (e NetworkError) GetRetryAfter() time.Duration {
 }
 
 // NewDeviceCodeError creates a new DeviceCodeError
+//
+//goland:noinspection GoUnusedExportedFunction
 func NewDeviceCodeError(verificationURL, userCode, deviceCode string, expiresIn, interval int) *DeviceCodeError {
 	return &DeviceCodeError{
 		VerificationURL: verificationURL,
@@ -451,6 +455,8 @@ func NewTransformationError(transformType, name, expression string, value interf
 }
 
 // NewTokenError creates a new TokenError
+//
+//goland:noinspection GoUnusedExportedFunction
 func NewTokenError(authType AuthType, service, reason, message string, cause error) *TokenError {
 	return &TokenError{
 		Type:    authType,
@@ -490,8 +496,6 @@ func NewNetworkErrorWithCorrelation(url, method, message string, cause error, ti
 // categorizeHTTPError categorizes an HTTP status code into an error category
 func categorizeHTTPError(statusCode int) ErrorCategory {
 	switch {
-	case statusCode >= 500:
-		return ErrorCategoryServer
 	case statusCode == 429:
 		return ErrorCategoryRateLimit
 	case statusCode == 408:
@@ -500,7 +504,65 @@ func categorizeHTTPError(statusCode int) ErrorCategory {
 		return ErrorCategoryAuth
 	case statusCode >= 400 && statusCode < 500:
 		return ErrorCategoryClient
+	case statusCode >= 500:
+		return ErrorCategoryServer
 	default:
 		return ErrorCategoryPermanent
 	}
+}
+
+// Helper functions for safe error type checking with wrapped errors
+
+// AsDeviceCodeError safely extracts a DeviceCodeError from an error chain
+func AsDeviceCodeError(err error) (*DeviceCodeError, bool) {
+	var dcErr *DeviceCodeError
+	if errors.As(err, &dcErr) {
+		return dcErr, true
+	}
+	return nil, false
+}
+
+// AsNetworkError safely extracts a NetworkError from an error chain
+func AsNetworkError(err error) (*NetworkError, bool) {
+	var netErr *NetworkError
+	if errors.As(err, &netErr) {
+		return netErr, true
+	}
+	return nil, false
+}
+
+// AsAPIError safely extracts an APIError from an error chain
+func AsAPIError(err error) (*APIError, bool) {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr, true
+	}
+	return nil, false
+}
+
+// AsValidationError safely extracts a ValidationError from an error chain
+func AsValidationError(err error) (*ValidationError, bool) {
+	var valErr *ValidationError
+	if errors.As(err, &valErr) {
+		return valErr, true
+	}
+	return nil, false
+}
+
+// AsAuthenticationError safely extracts an AuthenticationError from an error chain
+func AsAuthenticationError(err error) (*AuthenticationError, bool) {
+	var authErr *AuthenticationError
+	if errors.As(err, &authErr) {
+		return authErr, true
+	}
+	return nil, false
+}
+
+// AsTokenError safely extracts a TokenError from an error chain
+func AsTokenError(err error) (*TokenError, bool) {
+	var tokErr *TokenError
+	if errors.As(err, &tokErr) {
+		return tokErr, true
+	}
+	return nil, false
 }

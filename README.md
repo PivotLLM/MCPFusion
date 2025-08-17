@@ -84,7 +84,7 @@ MCPFusion/
 ├── cmd/token/          # Token management CLI
 ├── example1/           # REST API provider example
 ├── example2/           # Simple time service example
-└── global/             # Shared interfaces and utilities
+└── globalMetrics/             # Shared interfaces and utilities
 ```
 ## Token Management
 

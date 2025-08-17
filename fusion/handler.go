@@ -119,7 +119,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 					}
 
 					// Check if it's a DeviceCodeError - pass it up for client handling
-					if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
+					if deviceCodeErr, ok := AsDeviceCodeError(err); ok {
 						return "", deviceCodeErr
 					}
 
@@ -235,7 +235,7 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 	mapper := NewMapper(h.fusion.logger)
 
 	// Build URL with path parameters
-	url, err := mapper.BuildURL(h.service.BaseURL, h.endpoint.Path, h.endpoint.Parameters, args)
+	requestUrl, err := mapper.BuildURL(h.service.BaseURL, h.endpoint.Path, h.endpoint.Parameters, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build URL: %w", err)
 	}
@@ -257,7 +257,7 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 	}
 
 	// Create request
-	req, err := http.NewRequestWithContext(ctx, h.endpoint.Method, url, body)
+	req, err := http.NewRequestWithContext(ctx, h.endpoint.Method, requestUrl, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -362,7 +362,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		}
 
 		// Enhance error with correlation ID if it's a network error
-		if netErr, ok := err.(*NetworkError); ok && netErr.CorrelationID == "" {
+		if netErr, ok := AsNetworkError(err); ok && netErr.CorrelationID == "" {
 			netErr.CorrelationID = correlationID
 		}
 	} else if resp != nil {
@@ -467,7 +467,7 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 	}
 
 	// Check if it's already a NetworkError (avoid double wrapping)
-	if _, ok := err.(*NetworkError); ok {
+	if _, ok := AsNetworkError(err); ok {
 		return err
 	}
 

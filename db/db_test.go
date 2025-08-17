@@ -39,11 +39,11 @@ func (l *testLogger) addLog(msg string) {
 func (l *testLogger) getLogs() []string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	copy := make([]string, len(l.logs))
+	cpy := make([]string, len(l.logs))
 	for i, log := range l.logs {
-		copy[i] = log
+		cpy[i] = log
 	}
-	return copy
+	return cpy
 }
 
 func (l *testLogger) Debug(msg string)                { l.addLog("DEBUG: " + msg) }

@@ -21,12 +21,6 @@ const (
 	BucketIndexByHash   = "by_hash"
 	BucketIndexByPrefix = "by_prefix"
 
-	// Sub-buckets under service_credentials/
-	BucketAPIKeys      = "api_keys"
-	BucketBearerTokens = "bearer_tokens"
-	BucketBasicAuth    = "basic_auth"
-	BucketCustom       = "custom"
-
 	// System keys
 	KeySchemaVersion = "schema_version"
 	KeyStats         = "stats"
@@ -41,7 +35,7 @@ type BucketPath []string
 
 // NewBucketPath creates a new bucket path from string segments
 func NewBucketPath(segments ...string) BucketPath {
-	return BucketPath(segments)
+	return segments
 }
 
 // String returns the bucket path as a slash-separated string
@@ -83,6 +77,8 @@ func GetTenantPath(tenantHash string) BucketPath {
 }
 
 // GetTenantOAuthPath returns the OAuth tokens bucket path for a tenant
+//
+//goland:noinspection GoUnusedExportedFunction
 func GetTenantOAuthPath(tenantHash string) BucketPath {
 	return GetTenantPath(tenantHash).Append(BucketOAuthTokens)
 }
@@ -93,6 +89,8 @@ func GetTenantCredentialsPath(tenantHash string) BucketPath {
 }
 
 // GetCredentialTypePath returns the path for a specific credential type
+//
+//goland:noinspection GoUnusedExportedFunction
 func GetCredentialTypePath(tenantHash string, credType string) BucketPath {
 	return GetTenantCredentialsPath(tenantHash).Append(credType)
 }

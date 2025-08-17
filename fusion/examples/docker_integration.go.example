@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/fusion"
-	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/globalMetrics"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
 	"github.com/PivotLLM/MCPFusion/mlogger"
 )
@@ -124,7 +124,7 @@ func loadConfigFromEnvironment() *ContainerConfig {
 }
 
 // createContainerLogger creates a logger suitable for container environments
-func createContainerLogger() (global.Logger, error) {
+func createContainerLogger() (globalMetrics.Logger, error) {
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "info"
@@ -141,7 +141,7 @@ func createContainerLogger() (global.Logger, error) {
 }
 
 // createFusionProvider creates Fusion provider with container configuration
-func createFusionProvider(logger global.Logger, config *ContainerConfig) *fusion.Fusion {
+func createFusionProvider(logger globalMetrics.Logger, config *ContainerConfig) *fusion.Fusion {
 	options := []fusion.Option{
 		fusion.WithLogger(logger),
 	}
@@ -177,7 +177,7 @@ func createFusionProvider(logger global.Logger, config *ContainerConfig) *fusion
 }
 
 // createMCPServer creates MCP server with container configuration
-func createMCPServer(logger global.Logger, config *ContainerConfig) *mcpserver.MCPServer {
+func createMCPServer(logger globalMetrics.Logger, config *ContainerConfig) *mcpserver.MCPServer {
 	return mcpserver.New(
 		mcpserver.WithPort(config.Port),
 		mcpserver.WithLogger(logger),
@@ -242,7 +242,7 @@ func setupHealthCheck(fusionProvider *fusion.Fusion, port int) {
 }
 
 // runServerWithGracefulShutdown handles server lifecycle with proper shutdown
-func runServerWithGracefulShutdown(logger global.Logger, server *mcpserver.MCPServer, 
+func runServerWithGracefulShutdown(logger globalMetrics.Logger, server *mcpserver.MCPServer,
 	fusionProvider *fusion.Fusion, shutdownTimeout time.Duration) {
 	
 	ctx, cancel := context.WithCancel(context.Background())
@@ -293,7 +293,7 @@ func runServerWithGracefulShutdown(logger global.Logger, server *mcpserver.MCPSe
 }
 
 // logConfiguration logs the current configuration for debugging
-func logConfiguration(logger global.Logger, config *ContainerConfig) {
+func logConfiguration(logger globalMetrics.Logger, config *ContainerConfig) {
 	logger.Infof("Container configuration:")
 	logger.Infof("  Port: %d", config.Port)
 	logger.Infof("  Log Level: %s", config.LogLevel)

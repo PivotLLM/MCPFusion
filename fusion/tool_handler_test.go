@@ -217,7 +217,7 @@ func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
 		t.Fatal("Expected error for missing required parameter")
 	}
 
-	validationErr, ok := err.(*ValidationError)
+	validationErr, ok := AsValidationError(err)
 	if !ok {
 		t.Errorf("Expected ValidationError, got %T", err)
 	} else if validationErr.Parameter != "id" {
@@ -361,7 +361,7 @@ func TestProcessResponse_HTTPError(t *testing.T) {
 		t.Fatal("Expected error for 404 response")
 	}
 
-	apiErr, ok := err.(*APIError)
+	apiErr, ok := AsAPIError(err)
 	if !ok {
 		t.Errorf("Expected APIError, got %T", err)
 	} else {

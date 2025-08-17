@@ -143,6 +143,8 @@ func ValidateDescription(description string) error {
 }
 
 // ValidatePrefix validates a token prefix
+//
+//goland:noinspection GoUnusedExportedFunction
 func ValidatePrefix(prefix string) error {
 	if len(prefix) != PrefixLength {
 		return &ValidationError{

@@ -172,6 +172,8 @@ func WithLogger(logger global.Logger) Option {
 }
 
 // WithHTTPClient sets a custom HTTP client
+//
+//goland:noinspection GoUnusedExportedFunction
 func WithHTTPClient(client *http.Client) Option {
 	return func(f *Fusion) {
 		f.httpClient = client
@@ -182,6 +184,8 @@ func WithHTTPClient(client *http.Client) Option {
 // Legacy cache options have been removed - only database cache is supported
 
 // WithTimeout sets the HTTP client timeout
+//
+//goland:noinspection GoUnusedExportedFunction
 func WithTimeout(timeout time.Duration) Option {
 	return func(f *Fusion) {
 		if f.httpClient == nil {
@@ -192,6 +196,8 @@ func WithTimeout(timeout time.Duration) Option {
 }
 
 // WithMetrics enables or disables metrics collection
+//
+//goland:noinspection GoUnusedExportedFunction
 func WithMetrics(enabled bool) Option {
 	return func(f *Fusion) {
 		f.metricsCollector = NewMetricsCollector(f.logger, enabled)
@@ -199,6 +205,8 @@ func WithMetrics(enabled bool) Option {
 }
 
 // WithMetricsCollector sets a custom metrics collector
+//
+//goland:noinspection GoUnusedExportedFunction
 func WithMetricsCollector(collector *MetricsCollector) Option {
 	return func(f *Fusion) {
 		f.metricsCollector = collector
@@ -206,6 +214,8 @@ func WithMetricsCollector(collector *MetricsCollector) Option {
 }
 
 // WithCorrelationIDGenerator sets a custom correlation ID generator
+//
+//goland:noinspection GoUnusedExportedFunction
 func WithCorrelationIDGenerator(generator *CorrelationIDGenerator) Option {
 	return func(f *Fusion) {
 		f.correlationIDGenerator = generator
@@ -507,7 +517,7 @@ func (f *Fusion) createToolHandler(serviceName string, service *ServiceConfig, e
 		httpHandler: httpHandler,
 	}
 
-	return global.ToolHandler(contextHandler.Call)
+	return contextHandler.Call
 }
 
 // contextAwareHandler holds the HTTP handler and provides both legacy and context-aware interfaces
@@ -564,7 +574,7 @@ func (h *contextAwareHandler) CallWithContext(ctx context.Context, options map[s
 	result, err := h.httpHandler.Handle(ctx, options)
 	if err != nil {
 		// Check if it's a device code error
-		if deviceCodeErr, ok := err.(*DeviceCodeError); ok {
+		if deviceCodeErr, ok := AsDeviceCodeError(err); ok {
 			// For MCP, we return the device code message and expect the client to handle it
 			// The client should display the message and call back when ready
 			return deviceCodeErr.Error(), nil

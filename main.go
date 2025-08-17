@@ -225,7 +225,7 @@ func main() {
 	logger.Info("Multi-tenant authentication system initialized")
 
 	// Create a slice (list) of tool providers
-	providers := []global.ToolProvider{}
+	var providers []global.ToolProvider
 
 	// Add fusion provider if configuration is provided
 	var fusionProvider *fusion.Fusion

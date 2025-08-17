@@ -138,7 +138,7 @@ func init() {
 		"GOOGLE_CLIENT_SECRET",
 	}
 
-	missing := []string{}
+	var missing []string
 	for _, varName := range requiredVars {
 		if os.Getenv(varName) == "" {
 			missing = append(missing, varName)
