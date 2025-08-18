@@ -90,14 +90,12 @@ func (dc *DatabaseCache) Get(key string) (interface{}, error) {
 	// Convert OAuthTokenData to TokenInfo
 	tokenInfo := dc.convertOAuthTokenDataToTokenInfo(tokenData)
 
-	// Check if the token is expired
+	// Return the token even if expired - let the auth manager handle refresh
+	// The auth manager will check expiration and attempt refresh if needed
 	if tokenInfo.IsExpired() {
 		if dc.logger != nil {
-			dc.logger.Debugf("Database cache MISS - token expired for key: %s", key)
+			dc.logger.Debugf("Database cache HIT - returning expired token for potential refresh: %s", key)
 		}
-		// Clean up expired token
-		_ = dc.db.DeleteOAuthToken(tenantHash, serviceName)
-		return nil, &CacheError{Operation: "get", Key: key, Message: "key expired"}
 	}
 
 	if dc.logger != nil {
