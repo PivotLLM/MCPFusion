@@ -28,52 +28,8 @@ import (
 // Version information
 const (
 	AppName    = "MCPFusion"
-	AppVersion = "0.0.3"
+	AppVersion = "0.0.4"
 )
-
-// getConfigFiles parses comma-separated config files from command line or environment
-func getConfigFiles(configFlag string, logger global.Logger) []string {
-	configPaths := configFlag
-
-	// If not provided via command line, check environment variables
-	if configPaths == "" {
-		// Check new environment variable first
-		configPaths = os.Getenv("MCP_FUSION_CONFIGS")
-		if configPaths != "" && logger != nil {
-			logger.Infof("Using config files from MCP_FUSION_CONFIGS: %s", configPaths)
-		}
-	}
-	
-	// Fall back to old single config environment variable for backward compatibility
-	if configPaths == "" {
-		configPaths = os.Getenv("MCP_FUSION_CONFIG")
-		if configPaths != "" && logger != nil {
-			logger.Infof("Using config file from MCP_FUSION_CONFIG: %s", configPaths)
-		}
-	}
-
-	// If still empty, return empty list (no configs)
-	if configPaths == "" {
-		return []string{}
-	}
-
-	// Split comma-separated list and trim whitespace
-	files := strings.Split(configPaths, ",")
-	cleanFiles := make([]string, 0, len(files))
-
-	for _, file := range files {
-		trimmed := strings.TrimSpace(file)
-		if trimmed != "" {
-			cleanFiles = append(cleanFiles, trimmed)
-		}
-	}
-
-	if logger != nil && len(cleanFiles) > 0 {
-		logger.Infof("Found %d configuration file(s) to load", len(cleanFiles))
-	}
-
-	return cleanFiles
-}
 
 func main() {
 	var err error
@@ -148,19 +104,6 @@ func main() {
 	debug := *debugFlag
 	noStreaming := *noStreamingFlag
 
-	// Create a temporary logger for early logging (before env vars are loaded)
-	tempLogger, err := mlogger.New(
-		mlogger.WithPrefix("MCPFusion"),
-		mlogger.WithDateFormat("2006-01-02 15:04:05"),
-		mlogger.WithLogFile("mcp.log"),
-		mlogger.WithLogStdout(true),
-		mlogger.WithDebug(debug),
-	)
-	if err != nil {
-		fmt.Printf("Unable to create logger: %v", err)
-		os.Exit(1)
-	}
-
 	// Load environment variables from config files in priority order:
 	// 1. /opt/mcpfusion/env
 	// 2. ~/.mcpfusion
@@ -183,27 +126,47 @@ func main() {
 		if _, err := os.Stat(envFile); err == nil {
 			err = godotenv.Load(envFile)
 			if err == nil {
-				tempLogger.Infof("Loaded environment variables from %s", envFile)
-				break // Stop after loading the first successful file
+				// Stop after loading the first successful file. Note that logger is not configured yet.
+				break
 			}
 		}
 	}
 
+	// My default log in the current directory
+	logfile := "mcp.log"
+
+	// If MCP_FUSION_LOGFILE is set, use it instead
+	value, exists := os.LookupEnv("MCP_FUSION_LOGFILE")
+	if exists {
+		// Environment variable is set (could be empty)
+		logfile = value
+	}
+
+	// Create the logger
+	logger, err := mlogger.New(
+		mlogger.WithPrefix("MCPFusion"),
+		mlogger.WithDateFormat("2006-01-02 15:04:05"),
+		mlogger.WithLogFile(logfile),
+		mlogger.WithLogStdout(true),
+		mlogger.WithDebug(debug),
+	)
+	if err != nil {
+		fmt.Printf("Unable to create logger: %v", err)
+		os.Exit(1)
+	}
+
 	// Now that env files are loaded, check for fusion configs
-	configFiles := getConfigFiles(*configFlag, tempLogger)
+	configFiles := getConfigFiles(*configFlag, logger)
 
 	// Determine listen address from environment or flag
 	if envListen := os.Getenv("MCP_FUSION_LISTEN"); envListen != "" {
 		listen = envListen
-		tempLogger.Infof("Using listen address from MCP_FUSION_LISTEN: %s", envListen)
+		logger.Infof("Using listen address from MCP_FUSION_LISTEN: %s", envListen)
 	} else if *portFlag > 0 && *portFlag < 65536 {
 		listen = fmt.Sprintf("localhost:%d", *portFlag)
 	} else {
 		listen = "localhost:8888"
 	}
-
-	// Use the temporary logger as the main logger
-	logger := tempLogger
 
 	// Initialize database
 	logger.Info("Initializing database")
@@ -511,4 +474,48 @@ func handleTokenDelete(database db.Database, identifier string, logger global.Lo
 
 	fmt.Printf("Token deleted successfully.\n")
 	return nil
+}
+
+// getConfigFiles parses comma-separated config files from command line or environment
+func getConfigFiles(configFlag string, logger global.Logger) []string {
+	configPaths := configFlag
+
+	// If not provided via command line, check environment variables
+	if configPaths == "" {
+		// Check new environment variable first
+		configPaths = os.Getenv("MCP_FUSION_CONFIGS")
+		if configPaths != "" && logger != nil {
+			logger.Infof("Using config files from MCP_FUSION_CONFIGS: %s", configPaths)
+		}
+	}
+
+	// Fall back to old single config environment variable for backward compatibility
+	if configPaths == "" {
+		configPaths = os.Getenv("MCP_FUSION_CONFIG")
+		if configPaths != "" && logger != nil {
+			logger.Infof("Using config file from MCP_FUSION_CONFIG: %s", configPaths)
+		}
+	}
+
+	// If still empty, return empty list (no configs)
+	if configPaths == "" {
+		return []string{}
+	}
+
+	// Split comma-separated list and trim whitespace
+	files := strings.Split(configPaths, ",")
+	cleanFiles := make([]string, 0, len(files))
+
+	for _, file := range files {
+		trimmed := strings.TrimSpace(file)
+		if trimmed != "" {
+			cleanFiles = append(cleanFiles, trimmed)
+		}
+	}
+
+	if logger != nil && len(cleanFiles) > 0 {
+		logger.Infof("Found %d configuration file(s) to load", len(cleanFiles))
+	}
+
+	return cleanFiles
 }

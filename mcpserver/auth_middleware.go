@@ -262,7 +262,7 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fus
 			}
 			return "", fmt.Errorf("invalid tool name %s: %w", toolName, err)
 		}
-		
+
 		// Validate that this service exists in our configuration
 		if am.serviceProvider != nil {
 			availableServices := am.serviceProvider.GetAvailableServices()
@@ -281,7 +281,7 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fus
 				return "", fmt.Errorf("service '%s' not configured", serviceName)
 			}
 		}
-		
+
 		if am.logger != nil {
 			am.logger.Debugf("Resolved service name '%s' from tool name: %s", serviceName, toolName)
 		}
@@ -324,7 +324,6 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fus
 	// Default fallback
 	return "default", fmt.Errorf("could not determine service name from request")
 }
-
 
 // generateRequestID generates a unique request ID for tracking
 func (am *AuthMiddleware) generateRequestID(r *http.Request) string {
@@ -440,5 +439,5 @@ func (avm *AuthValidationMiddleware) Middleware(next http.Handler) http.Handler 
 func (avm *AuthValidationMiddleware) writeError(w http.ResponseWriter, statusCode int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
+	_, _ = w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
 }
