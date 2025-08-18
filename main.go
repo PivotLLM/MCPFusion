@@ -17,6 +17,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/PivotLLM/MCPFusion/config"
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
@@ -30,6 +31,50 @@ const (
 	AppVersion = "0.0.3"
 )
 
+// getConfigFiles parses comma-separated config files from command line or environment
+func getConfigFiles(configFlag string, logger global.Logger) []string {
+	configPaths := configFlag
+
+	// If not provided via command line, check environment variables
+	if configPaths == "" {
+		// Check new environment variable first
+		configPaths = os.Getenv("MCP_FUSION_CONFIGS")
+		if configPaths != "" && logger != nil {
+			logger.Infof("Using config files from MCP_FUSION_CONFIGS: %s", configPaths)
+		}
+	}
+	
+	// Fall back to old single config environment variable for backward compatibility
+	if configPaths == "" {
+		configPaths = os.Getenv("MCP_FUSION_CONFIG")
+		if configPaths != "" && logger != nil {
+			logger.Infof("Using config file from MCP_FUSION_CONFIG: %s", configPaths)
+		}
+	}
+
+	// If still empty, return empty list (no configs)
+	if configPaths == "" {
+		return []string{}
+	}
+
+	// Split comma-separated list and trim whitespace
+	files := strings.Split(configPaths, ",")
+	cleanFiles := make([]string, 0, len(files))
+
+	for _, file := range files {
+		trimmed := strings.TrimSpace(file)
+		if trimmed != "" {
+			cleanFiles = append(cleanFiles, trimmed)
+		}
+	}
+
+	if logger != nil && len(cleanFiles) > 0 {
+		logger.Infof("Found %d configuration file(s) to load", len(cleanFiles))
+	}
+
+	return cleanFiles
+}
+
 func main() {
 	var err error
 	var listen string
@@ -38,7 +83,7 @@ func main() {
 	debugFlag := flag.Bool("debug", true, "Enable debug mode")
 	portFlag := flag.Int("port", 8888, "Port to listen on")
 	noStreamingFlag := flag.Bool("no-streaming", false, "Disable streaming (use plain HTTP instead of SSE)")
-	configFlag := flag.String("config", "", "Path to fusion configuration file (optional)")
+	configFlag := flag.String("config", "", "Comma-separated list of configuration files (optional)")
 	helpFlag := flag.Bool("help", false, "Show help information")
 	versionFlag := flag.Bool("version", false, "Show version information")
 
@@ -54,7 +99,8 @@ func main() {
 		fmt.Printf("  %s [options]\n\n", os.Args[0])
 		fmt.Printf("Server Options:\n")
 		fmt.Printf("  -config string\n")
-		fmt.Printf("        Path to fusion configuration file (optional)\n")
+		fmt.Printf("        Comma-separated list of configuration files (optional)\n")
+		fmt.Printf("        Can also use MCP_FUSION_CONFIGS environment variable\n")
 		fmt.Printf("  -debug\n")
 		fmt.Printf("        Enable debug mode (default true)\n")
 		fmt.Printf("  -help\n")
@@ -143,16 +189,8 @@ func main() {
 		}
 	}
 
-	// Now that env files are loaded, check for fusion config
-	fusionConfig := *configFlag
-
-	// Check for MCP_FUSION_CONFIG environment variable if no config flag was provided
-	if fusionConfig == "" {
-		if envConfig := os.Getenv("MCP_FUSION_CONFIG"); envConfig != "" {
-			fusionConfig = envConfig
-			tempLogger.Infof("Using fusion config from MCP_FUSION_CONFIG: %s", envConfig)
-		}
-	}
+	// Now that env files are loaded, check for fusion configs
+	configFiles := getConfigFiles(*configFlag, tempLogger)
 
 	// Determine listen address from environment or flag
 	if envListen := os.Getenv("MCP_FUSION_LISTEN"); envListen != "" {
@@ -216,26 +254,38 @@ func main() {
 	basicStrategy := fusion.NewBasicAuthStrategy(logger)
 	multiTenantAuth.RegisterStrategy(basicStrategy)
 
-	// Initialize service resolver
-	serviceResolver := fusion.NewServiceConfigResolver(
-		fusion.WithSRLogger(logger),
-		fusion.WithAutoReload(5*time.Minute),
+	// Initialize config manager with all configuration files
+	configManager := config.New(
+		config.WithLogger(logger),
+		config.WithConfigFiles(configFiles...),
 	)
+
+	// Load all configurations
+	if err := configManager.LoadConfigs(); err != nil {
+		logger.Errorf("Failed to load configurations: %v", err)
+		// Continue anyway - server can run without configs
+	}
+
+	if configManager.ServiceCount() > 0 {
+		logger.Infof("Loaded %d services from configuration files", configManager.ServiceCount())
+	} else {
+		logger.Warning("No services loaded from configuration files")
+	}
 
 	logger.Info("Multi-tenant authentication system initialized")
 
 	// Create a slice (list) of tool providers
 	var providers []global.ToolProvider
 
-	// Add fusion provider if configuration is provided
+	// Add fusion provider if configurations were loaded
 	var fusionProvider *fusion.Fusion
-	if fusionConfig != "" {
-		logger.Infof("Loading fusion provider with config file: %s", fusionConfig)
+	if configManager.ServiceCount() > 0 {
+		logger.Infof("Creating fusion provider with %d configured services", configManager.ServiceCount())
 
-		// Configure fusion provider based on whether multi-tenant mode is enabled
+		// Configure fusion provider with config manager
 		fusionOpts := []fusion.Option{
 			fusion.WithLogger(logger),
-			fusion.WithJSONConfig(fusionConfig),
+			fusion.WithConfigManager(configManager),
 		}
 
 		// Add multi-tenant support if available
@@ -245,6 +295,8 @@ func main() {
 
 		fusionProvider = fusion.New(fusionOpts...)
 		providers = append(providers, fusionProvider)
+	} else {
+		logger.Warning("No fusion provider created - no configurations loaded")
 	}
 
 	// Create MCP server, passing in the logger and tool providers
@@ -266,7 +318,7 @@ func main() {
 	}
 
 	// Add multi-tenant authentication middleware (always enabled)
-	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, serviceResolver,
+	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, configManager,
 		mcpserver.WithAuthLogger(logger),
 		mcpserver.WithRequireAuth(true),
 		mcpserver.WithSkipPaths("/health", "/metrics", "/status", "/capabilities"),

@@ -195,4 +195,6 @@ const (
 	TenantContextKey ContextKey = "tenant_context"
 	// ServiceNameKey is the key used to store service name in request contexts
 	ServiceNameKey ContextKey = "service_name"
+	// ToolNameKey is the key used to store the MCP tool name in request contexts
+	ToolNameKey ContextKey = "tool_name"
 )

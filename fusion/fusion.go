@@ -170,6 +170,18 @@ func WithConfig(config *Config) Option {
 	}
 }
 
+// WithConfigManager sets the configuration from a config manager
+func WithConfigManager(configManager interface{ GetConfig() *Config }) Option {
+	return func(f *Fusion) {
+		if configManager != nil {
+			f.config = configManager.GetConfig()
+			if f.logger != nil && f.config != nil {
+				f.logger.Infof("Loaded configuration from config manager with %d services", len(f.config.Services))
+			}
+		}
+	}
+}
+
 // WithLogger sets the logger
 func WithLogger(logger global.Logger) Option {
 	return func(f *Fusion) {

@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/PivotLLM/MCPFusion/global"
 )
 
 func (s *MCPServer) AddTools() {
@@ -21,6 +22,8 @@ func (s *MCPServer) AddTools() {
 
 		// Iterate over the tool definitions and register each tool
 		for _, toolDef := range toolDefinitions {
+			// Capture toolDef in closure to avoid loop variable issues
+			toolDef := toolDef
 
 			// Combine description and parameters into a slice of options
 			toolOptions := []mcp.ToolOption{
@@ -59,6 +62,8 @@ func (s *MCPServer) AddTools() {
 			// Register the tool with the MCP server, creating a handler compatible with the MCP server
 			// that wraps the tool's handler function with the provided options
 			s.srv.AddTool(tool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+				// Add the tool name to the context for downstream middleware/handlers
+				ctx = context.WithValue(ctx, global.ToolNameKey, toolDef.Name)
 
 				// Copy the MCP arguments to a map
 				options := req.GetArguments()

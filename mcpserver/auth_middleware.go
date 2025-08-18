@@ -6,9 +6,11 @@
 package mcpserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -17,10 +19,15 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
+// ServiceProvider interface for getting available services
+type ServiceProvider interface {
+	GetAvailableServices() []string
+}
+
 // AuthMiddleware provides bearer token authentication and tenant context extraction
 type AuthMiddleware struct {
 	authManager     *fusion.MultiTenantAuthManager
-	serviceResolver *fusion.ServiceConfigResolver
+	serviceProvider ServiceProvider
 	logger          global.Logger
 	skipPaths       []string // Paths that should skip authentication
 	requireAuth     bool     // Whether authentication is required for all requests
@@ -51,12 +58,12 @@ func WithAuthLogger(logger global.Logger) AuthMiddlewareOption {
 }
 
 // NewAuthMiddleware creates a new authentication middleware
-func NewAuthMiddleware(authManager *fusion.MultiTenantAuthManager, serviceResolver *fusion.ServiceConfigResolver,
+func NewAuthMiddleware(authManager *fusion.MultiTenantAuthManager, serviceProvider ServiceProvider,
 	options ...AuthMiddlewareOption) *AuthMiddleware {
 
 	am := &AuthMiddleware{
 		authManager:     authManager,
-		serviceResolver: serviceResolver,
+		serviceProvider: serviceProvider,
 		skipPaths:       []string{"/health", "/metrics", "/status", "/capabilities"},
 		requireAuth:     true,
 	}
@@ -85,6 +92,36 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 			}
 			next.ServeHTTP(w, r)
 			return
+		}
+
+		// Try to extract tool name from MCP request body if this is an MCP call
+		var toolName string
+		if r.Method == "POST" && r.Header.Get("Content-Type") == "application/json" {
+			// Read and buffer the body so we can parse it and still pass it downstream
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err == nil {
+				// Restore the body for downstream handlers
+				r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+				// Try to parse as MCP request
+				var mcpRequest struct {
+					Method string `json:"method"`
+					Params struct {
+						Name string `json:"name"`
+					} `json:"params"`
+				}
+				if err := json.Unmarshal(bodyBytes, &mcpRequest); err == nil {
+					if mcpRequest.Method == "tools/call" && mcpRequest.Params.Name != "" {
+						toolName = mcpRequest.Params.Name
+						if am.logger != nil {
+							am.logger.Debugf("Extracted tool name from MCP request: %s", toolName)
+						}
+						// Add tool name to request context for resolveServiceName to use
+						ctx := context.WithValue(r.Context(), global.ToolNameKey, toolName)
+						r = r.WithContext(ctx)
+					}
+				}
+			}
 		}
 
 		// Extract and validate bearer token
@@ -127,11 +164,19 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 		// Try to resolve service name from the request
 		serviceName, err := am.resolveServiceName(r, tenantContext)
 		if err != nil {
+			// If this is a tool call and we couldn't resolve the service, it's an error
+			if toolName != "" {
+				if am.logger != nil {
+					am.logger.Errorf("Failed to resolve service for tool %s: %v", toolName, err)
+				}
+				am.writeErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("Unknown tool: %s", toolName))
+				return
+			}
 			if am.logger != nil {
 				am.logger.Warningf("Failed to resolve service name for request %s %s: %v",
 					r.Method, r.URL.Path, err)
 			}
-			// Continue with default service name
+			// Continue with default service name for non-tool requests
 			serviceName = "default"
 		}
 
@@ -207,7 +252,43 @@ func (am *AuthMiddleware) extractBearerToken(r *http.Request) string {
 func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fusion.TenantContext) (string, error) {
 	// Try multiple strategies to determine the service name
 
-	// Strategy 1: Check for service name in query parameters
+	// Strategy 1: Extract from MCP tool name if this is a tool call
+	// Check if tool name is in the context (set by MCP server for tool calls)
+	if toolName, ok := r.Context().Value(global.ToolNameKey).(string); ok && toolName != "" {
+		serviceName, err := global.ExtractServiceFromToolName(toolName)
+		if err != nil {
+			if am.logger != nil {
+				am.logger.Errorf("Failed to extract service from tool name %s: %v", toolName, err)
+			}
+			return "", fmt.Errorf("invalid tool name %s: %w", toolName, err)
+		}
+		
+		// Validate that this service exists in our configuration
+		if am.serviceProvider != nil {
+			availableServices := am.serviceProvider.GetAvailableServices()
+			serviceFound := false
+			for _, availableService := range availableServices {
+				if availableService == serviceName {
+					serviceFound = true
+					break
+				}
+			}
+			if !serviceFound {
+				if am.logger != nil {
+					am.logger.Errorf("Service '%s' from tool '%s' not found in available services: %v",
+						serviceName, toolName, availableServices)
+				}
+				return "", fmt.Errorf("service '%s' not configured", serviceName)
+			}
+		}
+		
+		if am.logger != nil {
+			am.logger.Debugf("Resolved service name '%s' from tool name: %s", serviceName, toolName)
+		}
+		return serviceName, nil
+	}
+
+	// Strategy 2: Check for service name in query parameters (for non-tool requests)
 	if serviceName := r.URL.Query().Get("service"); serviceName != "" {
 		if am.logger != nil {
 			am.logger.Debugf("Resolved service name from query parameter: %s", serviceName)
@@ -215,7 +296,7 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fus
 		return serviceName, nil
 	}
 
-	// Strategy 2: Check for service name in headers
+	// Strategy 3: Check for service name in headers (for non-tool requests)
 	if serviceName := r.Header.Get("X-Service-Name"); serviceName != "" {
 		if am.logger != nil {
 			am.logger.Debugf("Resolved service name from header: %s", serviceName)
@@ -223,17 +304,10 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fus
 		return serviceName, nil
 	}
 
-	// Strategy 3: Try to infer from URL path
-	if serviceName := am.inferServiceFromPath(r.URL.Path); serviceName != "" {
-		if am.logger != nil {
-			am.logger.Debugf("Inferred service name from path %s: %s", r.URL.Path, serviceName)
-		}
-		return serviceName, nil
-	}
-
 	// Strategy 4: Check if there's only one available service for this tenant
-	if am.serviceResolver != nil {
-		availableServices := am.serviceResolver.GetAvailableServices()
+	// This is only used when there's no tool name and no explicit service specification
+	if am.serviceProvider != nil {
+		availableServices := am.serviceProvider.GetAvailableServices()
 		if len(availableServices) == 1 {
 			serviceName := availableServices[0]
 			if am.logger != nil {
@@ -251,45 +325,6 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fus
 	return "default", fmt.Errorf("could not determine service name from request")
 }
 
-// inferServiceFromPath tries to infer the service name from the URL path
-func (am *AuthMiddleware) inferServiceFromPath(path string) string {
-	// Remove leading slash and split path segments
-	path = strings.TrimPrefix(path, "/")
-	segments := strings.Split(path, "/")
-
-	if len(segments) == 0 {
-		return ""
-	}
-
-	// Look for common service name patterns
-	for _, segment := range segments {
-		// Skip common non-service segments
-		if segment == "api" || segment == "v1" || segment == "v2" || segment == "tools" || segment == "resources" {
-			continue
-		}
-
-		// Common service name patterns
-		if am.serviceResolver != nil {
-			availableServices := am.serviceResolver.GetAvailableServices()
-			for _, service := range availableServices {
-				if strings.EqualFold(segment, service) {
-					return service
-				}
-				// Check for partial matches
-				if strings.Contains(strings.ToLower(service), strings.ToLower(segment)) {
-					return service
-				}
-			}
-		}
-
-		// If no resolver is available, return the first meaningful segment
-		if segment != "" && len(segment) > 2 {
-			return segment
-		}
-	}
-
-	return ""
-}
 
 // generateRequestID generates a unique request ID for tracking
 func (am *AuthMiddleware) generateRequestID(r *http.Request) string {
