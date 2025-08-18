@@ -550,6 +550,8 @@ func AsValidationError(err error) (*ValidationError, bool) {
 }
 
 // AsAuthenticationError safely extracts an AuthenticationError from an error chain
+//
+//goland:noinspection GoUnusedExportedFunction
 func AsAuthenticationError(err error) (*AuthenticationError, bool) {
 	var authErr *AuthenticationError
 	if errors.As(err, &authErr) {
@@ -559,6 +561,8 @@ func AsAuthenticationError(err error) (*AuthenticationError, bool) {
 }
 
 // AsTokenError safely extracts a TokenError from an error chain
+//
+//goland:noinspection GoUnusedExportedFunction
 func AsTokenError(err error) (*TokenError, bool) {
 	var tokErr *TokenError
 	if errors.As(err, &tokErr) {

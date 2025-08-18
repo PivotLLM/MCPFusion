@@ -8,8 +8,8 @@ package mcpserver
 import (
 	"context"
 
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 func (s *MCPServer) AddTools() {

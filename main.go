@@ -352,7 +352,7 @@ func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, 
 }
 
 // handleTokenAdd creates a new API token
-func handleTokenAdd(database db.Database, description string, logger global.Logger) error {
+func handleTokenAdd(database db.Database, description string, _ global.Logger) error {
 	if description == "" {
 		description = "API Token"
 	}
@@ -388,7 +388,7 @@ func handleTokenAdd(database db.Database, description string, logger global.Logg
 }
 
 // handleTokenList displays all API tokens
-func handleTokenList(database db.Database, logger global.Logger) error {
+func handleTokenList(database db.Database, _ global.Logger) error {
 	tokens, err := database.ListAPITokens()
 	if err != nil {
 		return fmt.Errorf("failed to list API tokens: %w", err)
@@ -428,7 +428,7 @@ func handleTokenList(database db.Database, logger global.Logger) error {
 }
 
 // handleTokenDelete removes an API token
-func handleTokenDelete(database db.Database, identifier string, logger global.Logger) error {
+func handleTokenDelete(database db.Database, identifier string, _ global.Logger) error {
 	if identifier == "" {
 		return fmt.Errorf("token identifier is required")
 	}
@@ -461,7 +461,10 @@ func handleTokenDelete(database db.Database, identifier string, logger global.Lo
 
 	fmt.Printf("Are you sure you want to delete this token? (y/N): ")
 	var response string
-	fmt.Scanln(&response)
+	_, err = fmt.Scanln(&response)
+	if err != nil {
+		return err
+	}
 
 	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 		fmt.Printf("Token deletion cancelled.\n")

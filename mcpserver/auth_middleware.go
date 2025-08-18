@@ -364,22 +364,6 @@ func (am *AuthMiddleware) writeErrorResponse(w http.ResponseWriter, statusCode i
 	}
 }
 
-// GetTenantContextFromRequest extracts the tenant context from a request context
-func GetTenantContextFromRequest(r *http.Request) (*fusion.TenantContext, bool) {
-	if tenantContext, ok := r.Context().Value(global.TenantContextKey).(*fusion.TenantContext); ok {
-		return tenantContext, true
-	}
-	return nil, false
-}
-
-// GetServiceNameFromRequest extracts the service name from a request context
-func GetServiceNameFromRequest(r *http.Request) (string, bool) {
-	if serviceName, ok := r.Context().Value(global.ServiceNameKey).(string); ok {
-		return serviceName, true
-	}
-	return "", false
-}
-
 // AuthValidationMiddleware is a simpler middleware that only validates authentication without tenant resolution
 type AuthValidationMiddleware struct {
 	authManager *fusion.MultiTenantAuthManager

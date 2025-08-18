@@ -65,14 +65,7 @@ func (bp BucketPath) Append(segments ...string) BucketPath {
 //goland:noinspection GoCommentStart
 var (
 	// Root bucket paths
-	PathAPITokens  = NewBucketPath(BucketAPITokens)
-	PathTenants    = NewBucketPath(BucketTenants)
-	PathTokenIndex = NewBucketPath(BucketTokenIndex)
-	PathSystem     = NewBucketPath(BucketSystem)
-
-	// Index paths
-	PathIndexByHash   = PathTokenIndex.Append(BucketIndexByHash)
-	PathIndexByPrefix = PathTokenIndex.Append(BucketIndexByPrefix)
+	PathTenants = NewBucketPath(BucketTenants)
 )
 
 // GetTenantPath returns the bucket path for a specific tenant

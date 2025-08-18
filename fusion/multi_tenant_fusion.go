@@ -18,12 +18,11 @@ import (
 
 // MultiTenantFusion wraps the regular Fusion to provide multi-tenant capabilities
 type MultiTenantFusion struct {
-	authManager     *MultiTenantAuthManager
-	serviceResolver *ServiceConfigResolver
-	databaseCache   *DatabaseCache
-	httpClient      *http.Client
-	logger          global.Logger
-	db              *db.DB
+	authManager   *MultiTenantAuthManager
+	databaseCache *DatabaseCache
+	httpClient    *http.Client
+	logger        global.Logger
+	db            *db.DB
 
 	// Fusion instances per tenant (for caching configurations)
 	tenantFusions map[string]*Fusion
@@ -196,11 +195,6 @@ func (mtf *MultiTenantFusion) GetAuthManager() *MultiTenantAuthManager {
 	return mtf.authManager
 }
 
-// GetServiceResolver returns the service configuration resolver
-func (mtf *MultiTenantFusion) GetServiceResolver() *ServiceConfigResolver {
-	return mtf.serviceResolver
-}
-
 // GetDatabaseCache returns the database cache
 func (mtf *MultiTenantFusion) GetDatabaseCache() *DatabaseCache {
 	return mtf.databaseCache
@@ -208,30 +202,24 @@ func (mtf *MultiTenantFusion) GetDatabaseCache() *DatabaseCache {
 
 // createTenantFusion creates a new Fusion instance for a specific tenant and service
 func (mtf *MultiTenantFusion) createTenantFusion(tenantContext *TenantContext) (*Fusion, error) {
-	// Resolve service configuration
-	serviceConfig, err := mtf.serviceResolver.ResolveServiceForTenant(
-		tenantContext.TenantHash, tenantContext.ServiceName)
-	if err != nil {
-		if mtf.logger != nil {
-			mtf.logger.Warningf("Failed to resolve service config for tenant %s service %s, using default: %v",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
-		}
+	// TODO: Update to use centralized config.Manager instead of ServiceConfigResolver
+	// For now, use default configuration
+	var serviceConfig *ServiceConfig
 
-		// Fall back to default configuration if available
-		if mtf.defaultConfig != nil {
-			serviceConfig = mtf.defaultConfig.GetServiceByName(tenantContext.ServiceName)
-			if serviceConfig == nil && len(mtf.defaultConfig.Services) > 0 {
-				// Use the first available service as fallback
-				for _, service := range mtf.defaultConfig.Services {
-					serviceConfig = service
-					break
-				}
+	// Fall back to default configuration if available
+	if mtf.defaultConfig != nil {
+		serviceConfig = mtf.defaultConfig.GetServiceByName(tenantContext.ServiceName)
+		if serviceConfig == nil && len(mtf.defaultConfig.Services) > 0 {
+			// Use the first available service as fallback
+			for _, service := range mtf.defaultConfig.Services {
+				serviceConfig = service
+				break
 			}
 		}
+	}
 
-		if serviceConfig == nil {
-			return nil, fmt.Errorf("no service configuration available for %s", tenantContext.ServiceName)
-		}
+	if serviceConfig == nil {
+		return nil, fmt.Errorf("no service configuration available for %s", tenantContext.ServiceName)
 	}
 
 	// Create a tenant-specific configuration
@@ -293,14 +281,7 @@ func (mtf *MultiTenantFusion) Close() error {
 		mtf.logger.Info("Closing multi-tenant fusion")
 	}
 
-	// Close service resolver
-	if mtf.serviceResolver != nil {
-		if err := mtf.serviceResolver.Close(); err != nil {
-			if mtf.logger != nil {
-				mtf.logger.Errorf("Error closing service resolver: %v", err)
-			}
-		}
-	}
+	// TODO: Close service resolver when we add it back with config.Manager
 
 	// Clear tenant fusion cache
 	mtf.mu.Lock()
@@ -324,15 +305,12 @@ func (mtf *MultiTenantFusion) GetStats() map[string]interface{} {
 	mtf.mu.RUnlock()
 
 	stats := map[string]interface{}{
-		"active_tenants":             tenantCount,
-		"database_cache_available":   mtf.databaseCache != nil,
-		"service_resolver_available": mtf.serviceResolver != nil,
-		"auth_strategies":            mtf.authManager.GetRegisteredStrategies(),
+		"active_tenants":           tenantCount,
+		"database_cache_available": mtf.databaseCache != nil,
+		"auth_strategies":          mtf.authManager.GetRegisteredStrategies(),
 	}
 
-	if mtf.serviceResolver != nil {
-		stats["service_resolver"] = mtf.serviceResolver.GetStats()
-	}
+	// TODO: Add service resolver stats when we update to use config.Manager
 
 	if mtf.databaseCache != nil {
 		stats["database_cache"] = mtf.databaseCache.GetStats()

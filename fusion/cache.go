@@ -49,36 +49,3 @@ type InMemoryCache struct {
 	mu     sync.RWMutex
 	logger global.Logger
 }
-
-// NoOpCache implements a cache that doesn't actually cache anything
-type NoOpCache struct{}
-
-// NewNoOpCache creates a new no-op cache
-func NewNoOpCache() *NoOpCache {
-	return &NoOpCache{}
-}
-
-// Get always returns a "not found" error
-func (c *NoOpCache) Get(key string) (interface{}, error) {
-	return nil, &CacheError{Operation: "get", Key: key, Message: "no-op cache does not store values"}
-}
-
-// Set does nothing and returns nil
-func (c *NoOpCache) Set(key string, value interface{}, ttl time.Duration) error {
-	return nil
-}
-
-// Delete does nothing and returns nil
-func (c *NoOpCache) Delete(key string) error {
-	return nil
-}
-
-// Clear does nothing and returns nil
-func (c *NoOpCache) Clear() error {
-	return nil
-}
-
-// Has always returns false
-func (c *NoOpCache) Has(key string) bool {
-	return false
-}
