@@ -68,14 +68,6 @@ type ServiceCredentials struct {
 	UpdatedAt time.Time              `json:"updated_at"`
 }
 
-// TokenStats represents statistics about token usage
-type TokenStats struct {
-	TotalAPITokens   int64     `json:"total_api_tokens"`
-	TotalOAuthTokens int64     `json:"total_oauth_tokens"`
-	TotalCredentials int64     `json:"total_credentials"`
-	LastUpdated      time.Time `json:"last_updated"`
-}
-
 // TenantInfo represents information about a tenant
 type TenantInfo struct {
 	Hash        string    `json:"hash"`

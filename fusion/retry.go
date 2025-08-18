@@ -25,8 +25,6 @@ import (
 type RetryExecutor struct {
 	config *RetryConfig
 	logger global.Logger
-	rand   *rand.Rand
-	mu     sync.Mutex
 }
 
 // NewRetryExecutor creates a new retry executor
@@ -34,7 +32,6 @@ func NewRetryExecutor(config *RetryConfig, logger global.Logger) *RetryExecutor 
 	return &RetryExecutor{
 		config: config,
 		logger: logger,
-		rand:   rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
@@ -82,7 +79,7 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 		// Store the last error and response for potential return
 		lastErr = err
 		if lastResp != nil {
-			lastResp.Body.Close()
+			_ = lastResp.Body.Close()
 		}
 		lastResp = resp
 
@@ -104,7 +101,7 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 				// Continue to next attempt
 			case <-ctx.Done():
 				if resp != nil {
-					resp.Body.Close()
+					_ = resp.Body.Close()
 				}
 				return nil, ctx.Err()
 			}
@@ -250,18 +247,11 @@ func (r *RetryExecutor) calculateDelay(attempt int) time.Duration {
 
 	// Apply jitter to prevent thundering herd
 	if r.config.Jitter {
-		jitter := r.generateJitter(delay)
+		jitter := rand.Float64()
 		delay = time.Duration(float64(delay) * (0.5 + jitter*0.5)) // ±50% jitter
 	}
 
 	return delay
-}
-
-// generateJitter generates a random jitter value between 0 and 1
-func (r *RetryExecutor) generateJitter(delay time.Duration) float64 {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.rand.Float64()
 }
 
 // cloneRequest creates a copy of an HTTP request for retry
@@ -363,7 +353,7 @@ func NewCircuitBreaker(config *CircuitBreakerConfig, logger global.Logger) *Circ
 }
 
 // Execute executes a function with circuit breaker protection
-func (cb *CircuitBreaker) Execute(ctx context.Context, fn func() error) error {
+func (cb *CircuitBreaker) Execute(_ context.Context, fn func() error) error {
 	if !cb.config.Enabled {
 		// Circuit breaker disabled, execute directly
 		return fn()
@@ -447,6 +437,13 @@ func (cb *CircuitBreaker) recordFailure() {
 			}
 		}
 
+	case CircuitBreakerOpen:
+		// Circuit breaker is already open, failure count is still tracked but no state change needed
+		// The nextRetry time remains unchanged to maintain the original reset timeout
+		if cb.logger != nil {
+			cb.logger.Debugf("Circuit breaker OPEN: recording failure %d (no state change)", cb.failureCount)
+		}
+
 	case CircuitBreakerHalfOpen:
 		// Failure in half-open state, go back to open
 		cb.state = CircuitBreakerOpen
@@ -467,6 +464,13 @@ func (cb *CircuitBreaker) recordSuccess() {
 			if cb.logger != nil {
 				cb.logger.Debugf("Circuit breaker: failure count reset after success")
 			}
+		}
+
+	case CircuitBreakerOpen:
+		// Success while circuit breaker is open - this shouldn't normally happen
+		// since calls should be rejected in OPEN state, but we'll log it for debugging
+		if cb.logger != nil {
+			cb.logger.Warningf("Circuit breaker OPEN: unexpected success recorded (possible race condition)")
 		}
 
 	case CircuitBreakerHalfOpen:

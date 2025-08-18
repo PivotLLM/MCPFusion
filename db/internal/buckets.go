@@ -25,7 +25,6 @@ const (
 
 	// System keys
 	KeySchemaVersion = "schema_version"
-	KeyStats         = "stats"
 	KeyMetadata      = "metadata"
 )
 

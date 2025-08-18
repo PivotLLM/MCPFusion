@@ -86,7 +86,7 @@ func (mtf *MultiTenantFusion) GetFusionForTenant(tenantContext *TenantContext) (
 }
 
 // CallTool calls a tool for a specific tenant
-func (mtf *MultiTenantFusion) CallTool(ctx context.Context, tenantContext *TenantContext,
+func (mtf *MultiTenantFusion) CallTool(_ context.Context, tenantContext *TenantContext,
 	toolName string, args map[string]interface{}) (string, error) {
 
 	if mtf.logger != nil {
@@ -110,7 +110,7 @@ func (mtf *MultiTenantFusion) CallTool(ctx context.Context, tenantContext *Tenan
 }
 
 // GetResource gets a resource for a specific tenant
-func (mtf *MultiTenantFusion) GetResource(ctx context.Context, tenantContext *TenantContext,
+func (mtf *MultiTenantFusion) GetResource(_ context.Context, tenantContext *TenantContext,
 	resourceURI string) (string, error) {
 
 	if mtf.logger != nil {
@@ -146,7 +146,7 @@ func (mtf *MultiTenantFusion) GetResource(ctx context.Context, tenantContext *Te
 }
 
 // GetPrompt gets a prompt for a specific tenant
-func (mtf *MultiTenantFusion) GetPrompt(ctx context.Context, tenantContext *TenantContext,
+func (mtf *MultiTenantFusion) GetPrompt(_ context.Context, tenantContext *TenantContext,
 	promptName string, args map[string]interface{}) (string, global.Messages, error) {
 
 	if mtf.logger != nil {
@@ -317,58 +317,4 @@ func (mtf *MultiTenantFusion) GetStats() map[string]interface{} {
 	}
 
 	return stats
-}
-
-// tenantAuthManagerWrapper wraps the MultiTenantAuthManager to provide a standard AuthManager interface
-// for use with individual Fusion instances
-type tenantAuthManagerWrapper struct {
-	multiTenantAuthManager *MultiTenantAuthManager
-	tenantContext          *TenantContext
-	logger                 global.Logger
-}
-
-// RegisterStrategy is not supported for tenant-specific auth managers
-func (tam *tenantAuthManagerWrapper) RegisterStrategy(strategy AuthStrategy) {
-	if tam.logger != nil {
-		tam.logger.Warning("RegisterStrategy called on tenant auth manager wrapper - operation ignored")
-	}
-}
-
-// GetToken gets a token for the wrapped tenant context
-func (tam *tenantAuthManagerWrapper) GetToken(ctx context.Context, serviceName string, authConfig AuthConfig) (*TokenInfo, error) {
-	// Update the tenant context with the correct service name
-	tenantContext := *tam.tenantContext // Copy the context
-	tenantContext.ServiceName = serviceName
-
-	return tam.multiTenantAuthManager.GetToken(ctx, &tenantContext, authConfig)
-}
-
-// ApplyAuthentication applies authentication for the wrapped tenant context
-func (tam *tenantAuthManagerWrapper) ApplyAuthentication(ctx context.Context, req *http.Request,
-	serviceName string, authConfig AuthConfig) error {
-
-	// Update the tenant context with the correct service name
-	tenantContext := *tam.tenantContext // Copy the context
-	tenantContext.ServiceName = serviceName
-
-	return tam.multiTenantAuthManager.ApplyAuthentication(ctx, req, &tenantContext, authConfig)
-}
-
-// InvalidateToken invalidates a token for the wrapped tenant context
-func (tam *tenantAuthManagerWrapper) InvalidateToken(serviceName string) {
-	// Update the tenant context with the correct service name
-	tenantContext := *tam.tenantContext // Copy the context
-	tenantContext.ServiceName = serviceName
-
-	tam.multiTenantAuthManager.InvalidateToken(&tenantContext)
-}
-
-// GetRegisteredStrategies returns the registered strategies from the underlying auth manager
-func (tam *tenantAuthManagerWrapper) GetRegisteredStrategies() []AuthType {
-	return tam.multiTenantAuthManager.GetRegisteredStrategies()
-}
-
-// HasStrategy checks if a strategy is registered
-func (tam *tenantAuthManagerWrapper) HasStrategy(authType AuthType) bool {
-	return tam.multiTenantAuthManager.HasStrategy(authType)
 }

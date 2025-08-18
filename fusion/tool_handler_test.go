@@ -8,6 +8,7 @@ package fusion
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -279,13 +280,15 @@ func TestProcessResponse_JSON(t *testing.T) {
 	// Mock the response body
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(jsonData)
+		_, _ = w.Write(jsonData)
 	}))
 	defer server.Close()
 
 	// Create actual response
 	realResp, _ := http.Get(server.URL)
-	defer realResp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(realResp.Body)
 
 	result, err := fusion.processResponse(realResp, endpoint, "test")
 	if err != nil {
@@ -320,12 +323,14 @@ func TestProcessResponse_Text(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(expectedText))
+		_, _ = w.Write([]byte(expectedText))
 	}))
 	defer server.Close()
 
 	resp, _ := http.Get(server.URL)
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 
 	result, err := fusion.processResponse(resp, endpoint, "test")
 	if err != nil {
@@ -349,12 +354,14 @@ func TestProcessResponse_HTTPError(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
-		w.Write([]byte(`{"error": "Not found"}`))
+		_, _ = w.Write([]byte(`{"error": "Not found"}`))
 	}))
 	defer server.Close()
 
 	resp, _ := http.Get(server.URL)
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 
 	_, err := fusion.processResponse(resp, endpoint, "test")
 	if err == nil {

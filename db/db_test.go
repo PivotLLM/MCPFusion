@@ -75,7 +75,7 @@ func setupTestDB(t *testing.T) (Database, string, *testLogger) {
 		WithDataDir(tempDir),
 	)
 	if err != nil {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 		require.NoError(t, err, "Failed to create test database")
 	}
 
@@ -85,9 +85,9 @@ func setupTestDB(t *testing.T) (Database, string, *testLogger) {
 // cleanupTestDB removes the temporary database
 func cleanupTestDB(db Database, tempDir string) {
 	if db != nil {
-		db.Close()
+		_ = db.Close()
 	}
-	os.RemoveAll(tempDir)
+	_ = os.RemoveAll(tempDir)
 }
 
 // createTestTenant creates a test tenant and returns its hash
@@ -779,9 +779,6 @@ func TestDatabaseErrors(t *testing.T) {
 	_, err = db.GetOAuthToken("hash", "service")
 	assert.Equal(t, ErrDatabaseClosed, err)
 
-	_, err = db.GetStats()
-	assert.Equal(t, ErrDatabaseClosed, err)
-
 	// Multiple closes should not cause issues
 	err = db.Close()
 	require.NoError(t, err, "Multiple close calls should not error")
@@ -941,7 +938,9 @@ func TestDatabaseBackup(t *testing.T) {
 	// Create backup
 	backupDir, err := os.MkdirTemp("", "mcpfusion_backup_")
 	require.NoError(t, err)
-	defer os.RemoveAll(backupDir)
+	defer func(path string) {
+		_ = os.RemoveAll(path)
+	}(backupDir)
 
 	backupPath := filepath.Join(backupDir, "backup.db")
 	err = db.Backup(backupPath)
@@ -955,47 +954,4 @@ func TestDatabaseBackup(t *testing.T) {
 	info, err := os.Stat(backupPath)
 	require.NoError(t, err)
 	assert.Greater(t, info.Size(), int64(0), "Backup file should not be empty")
-}
-
-func TestDatabaseStats(t *testing.T) {
-	db, tempDir, _ := setupTestDB(t)
-	defer cleanupTestDB(db, tempDir)
-
-	// Initially should have no tokens
-	stats, err := db.GetStats()
-	require.NoError(t, err)
-
-	assert.Equal(t, int64(0), stats.TotalAPITokens)
-	assert.Equal(t, int64(0), stats.TotalOAuthTokens)
-	assert.Equal(t, int64(0), stats.TotalCredentials)
-	assert.NotZero(t, stats.LastUpdated)
-
-	// Add some data
-	_, hash, err := db.AddAPIToken("Stats test tenant")
-	require.NoError(t, err)
-
-	tokenData := &OAuthTokenData{
-		AccessToken: "stats-oauth-token",
-		TokenType:   "Bearer",
-	}
-	err = db.StoreOAuthToken(hash, "service1", tokenData)
-	require.NoError(t, err)
-
-	err = db.StoreOAuthToken(hash, "service2", tokenData)
-	require.NoError(t, err)
-
-	credData := &ServiceCredentials{
-		Type: CredentialTypeAPIKey,
-		Data: map[string]interface{}{"key": "value"},
-	}
-	err = db.StoreCredentials(hash, "service3", credData)
-	require.NoError(t, err)
-
-	// Get updated stats
-	stats, err = db.GetStats()
-	require.NoError(t, err)
-
-	assert.Equal(t, int64(1), stats.TotalAPITokens, "Should have 1 API token")
-	assert.Equal(t, int64(2), stats.TotalOAuthTokens, "Should have 2 OAuth tokens")
-	assert.Equal(t, int64(1), stats.TotalCredentials, "Should have 1 credential")
 }

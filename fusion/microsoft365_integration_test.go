@@ -313,7 +313,7 @@ func handleDeviceCodeRequest(w http.ResponseWriter, r *http.Request, t *testing.
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleTokenRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -332,7 +332,7 @@ func handleTokenRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleProfileRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -352,7 +352,7 @@ func handleProfileRequest(w http.ResponseWriter, r *http.Request, t *testing.T) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleCalendarRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -424,7 +424,7 @@ func handleCalendarRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleMessagesRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -455,7 +455,7 @@ func handleMessagesRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleContactsRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -489,7 +489,7 @@ func handleContactsRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func createTestMicrosoft365Config(baseURL string) string {

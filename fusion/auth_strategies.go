@@ -251,7 +251,11 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 	if err != nil {
 		return nil, fmt.Errorf("failed to send token refresh request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+		}
+	}(resp.Body)
 
 	if s.logger != nil {
 		s.logger.Debugf("Token refresh response status: %d", resp.StatusCode)
@@ -339,11 +343,11 @@ func (s *BearerTokenStrategy) SupportsRefresh() bool {
 	return false
 }
 
-func (s *BearerTokenStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
+func (s *BearerTokenStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("bearer token authentication not implemented in database-only mode")
 }
 
-func (s *BearerTokenStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+func (s *BearerTokenStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("bearer token refresh not supported")
 }
 
@@ -373,11 +377,11 @@ func (s *APIKeyStrategy) SupportsRefresh() bool {
 	return false
 }
 
-func (s *APIKeyStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
+func (s *APIKeyStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("API key authentication not implemented in database-only mode")
 }
 
-func (s *APIKeyStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+func (s *APIKeyStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("API key refresh not supported")
 }
 
@@ -408,11 +412,11 @@ func (s *BasicAuthStrategy) SupportsRefresh() bool {
 	return false
 }
 
-func (s *BasicAuthStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
+func (s *BasicAuthStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("basic authentication not implemented in database-only mode")
 }
 
-func (s *BasicAuthStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+func (s *BasicAuthStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
 	return nil, fmt.Errorf("basic auth refresh not supported")
 }
 
@@ -472,7 +476,11 @@ func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, device
 	if err != nil {
 		return nil, fmt.Errorf("failed to send device code request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+		}
+	}(resp.Body)
 
 	if s.logger != nil {
 		s.logger.Debugf("Device code response status: %d", resp.StatusCode)
@@ -576,7 +584,11 @@ func (s *OAuth2DeviceFlowStrategy) requestToken(ctx context.Context, tokenEndpoi
 	if err != nil {
 		return nil, fmt.Errorf("failed to send token request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+		}
+	}(resp.Body)
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -702,7 +714,7 @@ func (s *OAuth2DeviceFlowStrategy) backgroundTokenPolling(ctx context.Context, t
 }
 
 // storeTokenFromPolling stores the token obtained from background polling
-func (s *OAuth2DeviceFlowStrategy) storeTokenFromPolling(ctx context.Context, tokenInfo *TokenInfo, pollingCtx *PollingContext) error {
+func (s *OAuth2DeviceFlowStrategy) storeTokenFromPolling(_ context.Context, tokenInfo *TokenInfo, pollingCtx *PollingContext) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}

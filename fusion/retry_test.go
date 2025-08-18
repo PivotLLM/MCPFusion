@@ -40,7 +40,7 @@ func TestRetryExecutor(t *testing.T) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					*attempts++
 					w.WriteHeader(200)
-					w.Write([]byte("success"))
+					_, _ = w.Write([]byte("success"))
 				}
 			},
 			expectSuccess:  true,
@@ -56,7 +56,7 @@ func TestRetryExecutor(t *testing.T) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					*attempts++
 					w.WriteHeader(500)
-					w.Write([]byte("server error"))
+					_, _ = w.Write([]byte("server error"))
 				}
 			},
 			expectSuccess:  false,
@@ -79,7 +79,7 @@ func TestRetryExecutor(t *testing.T) {
 						w.WriteHeader(500) // Fail first two attempts
 					} else {
 						w.WriteHeader(200) // Success on third attempt
-						w.Write([]byte("success"))
+						_, _ = w.Write([]byte("success"))
 					}
 				}
 			},
@@ -100,7 +100,7 @@ func TestRetryExecutor(t *testing.T) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					*attempts++
 					w.WriteHeader(500)
-					w.Write([]byte("server error"))
+					_, _ = w.Write([]byte("server error"))
 				}
 			},
 			expectSuccess:  false,
@@ -120,7 +120,7 @@ func TestRetryExecutor(t *testing.T) {
 				return func(w http.ResponseWriter, r *http.Request) {
 					*attempts++
 					w.WriteHeader(400) // Client error - should not retry
-					w.Write([]byte("bad request"))
+					_, _ = w.Write([]byte("bad request"))
 				}
 			},
 			expectSuccess:  false,
@@ -143,7 +143,7 @@ func TestRetryExecutor(t *testing.T) {
 						w.WriteHeader(429) // Rate limited - should retry
 					} else {
 						w.WriteHeader(200) // Success on third attempt
-						w.Write([]byte("success"))
+						_, _ = w.Write([]byte("success"))
 					}
 				}
 			},
@@ -191,7 +191,7 @@ func TestRetryExecutor(t *testing.T) {
 			}
 
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		})
 	}
@@ -320,7 +320,7 @@ func TestCircuitBreaker(t *testing.T) {
 		time.Sleep(150 * time.Millisecond)
 
 		// Should transition to HALF_OPEN on next call
-		cb.Execute(ctx, func() error {
+		_ = cb.Execute(ctx, func() error {
 			return nil // Success
 		})
 
@@ -329,7 +329,7 @@ func TestCircuitBreaker(t *testing.T) {
 		}
 
 		// One more success should close the circuit
-		cb.Execute(ctx, func() error {
+		_ = cb.Execute(ctx, func() error {
 			return nil // Success
 		})
 
@@ -352,8 +352,8 @@ func TestCircuitBreaker(t *testing.T) {
 		ctx := context.Background()
 
 		// Test some failures
-		cb.Execute(ctx, func() error { return errors.New("fail") })
-		cb.Execute(ctx, func() error { return errors.New("fail") })
+		_ = cb.Execute(ctx, func() error { return errors.New("fail") })
+		_ = cb.Execute(ctx, func() error { return errors.New("fail") })
 
 		metrics := cb.GetMetrics()
 		if metrics.FailureCount != 2 {

@@ -48,9 +48,6 @@ type Database interface {
 	GetTenantInfo(hash string) (*TenantInfo, error)
 	ListTenants() ([]TenantInfo, error)
 
-	// Statistics and Health
-	GetStats() (*TokenStats, error)
-
 	// Database Management
 	Close() error
 	Backup(path string) error
@@ -125,7 +122,7 @@ func New(opts ...Option) (Database, error) {
 
 	// Initialize schema
 	if err := d.initializeSchema(); err != nil {
-		d.db.Close()
+		_ = d.db.Close()
 		return nil, NewDatabaseError("init_schema", err)
 	}
 
@@ -182,7 +179,7 @@ func (d *DB) isDirectoryWritable(dir string) bool {
 		return false
 	}
 
-	os.Remove(testFile)
+	_ = os.Remove(testFile)
 	return true
 }
 

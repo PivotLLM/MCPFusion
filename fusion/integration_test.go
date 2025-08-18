@@ -30,20 +30,20 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				}
 
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"users": users,
 					"total": len(users),
 				})
 			} else if r.Method == "POST" {
 				// Handle POST /users
 				var requestBody map[string]interface{}
-				json.NewDecoder(r.Body).Decode(&requestBody)
+				_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 				// Verify auth header
 				authHeader := r.Header.Get("Authorization")
 				if authHeader != "Bearer test-token" {
 					w.WriteHeader(401)
-					json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
+					_ = json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 					return
 				}
 
@@ -55,7 +55,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(201)
-				json.NewEncoder(w).Encode(user)
+				_ = json.NewEncoder(w).Encode(user)
 			}
 
 		case "/users/123":
@@ -68,12 +68,12 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				}
 
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(user)
+				_ = json.NewEncoder(w).Encode(user)
 			}
 
 		default:
 			w.WriteHeader(404)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Not Found"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Not Found"})
 		}
 	}))
 	defer server.Close()
@@ -301,12 +301,12 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader != "Bearer valid-token" {
 			w.WriteHeader(401)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"message": "Success"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "Success"})
 	}))
 	defer server.Close()
 

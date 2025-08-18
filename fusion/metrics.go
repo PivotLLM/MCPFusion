@@ -267,7 +267,7 @@ type GlobalMetrics struct {
 }
 
 // GetErrorRate returns the error rate for a service over a time window
-func (mc *MetricsCollector) GetErrorRate(serviceName string, window time.Duration) float64 {
+func (mc *MetricsCollector) GetErrorRate(serviceName string, _ time.Duration) float64 {
 	if !mc.enabled {
 		return 0
 	}

@@ -218,13 +218,13 @@ func (m *mockLogger) Warning(msg string) { m.logs = append(m.logs, "WARNING: "+m
 func (m *mockLogger) Error(msg string)   { m.logs = append(m.logs, "ERROR: "+msg) }
 func (m *mockLogger) Fatal(msg string)   { m.logs = append(m.logs, "FATAL: "+msg) }
 
-func (m *mockLogger) Debugf(format string, args ...any)  { m.logs = append(m.logs, "DEBUG: "+format) }
-func (m *mockLogger) Infof(format string, args ...any)   { m.logs = append(m.logs, "INFO: "+format) }
-func (m *mockLogger) Noticef(format string, args ...any) { m.logs = append(m.logs, "NOTICE: "+format) }
-func (m *mockLogger) Warningf(format string, args ...any) {
+func (m *mockLogger) Debugf(format string, _ ...any)  { m.logs = append(m.logs, "DEBUG: "+format) }
+func (m *mockLogger) Infof(format string, _ ...any)   { m.logs = append(m.logs, "INFO: "+format) }
+func (m *mockLogger) Noticef(format string, _ ...any) { m.logs = append(m.logs, "NOTICE: "+format) }
+func (m *mockLogger) Warningf(format string, _ ...any) {
 	m.logs = append(m.logs, "WARNING: "+format)
 }
-func (m *mockLogger) Errorf(format string, args ...any) { m.logs = append(m.logs, "ERROR: "+format) }
-func (m *mockLogger) Fatalf(format string, args ...any) { m.logs = append(m.logs, "FATAL: "+format) }
+func (m *mockLogger) Errorf(format string, _ ...any) { m.logs = append(m.logs, "ERROR: "+format) }
+func (m *mockLogger) Fatalf(format string, _ ...any) { m.logs = append(m.logs, "FATAL: "+format) }
 
 func (m *mockLogger) Close() {}

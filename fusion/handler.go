@@ -212,7 +212,9 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 
 	// Handle response
 	result, err := h.handleResponse(resp, correlationID)
@@ -317,7 +319,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 				h.fusion.logger.Debugf("Disabling keep-alive for request [%s]", correlationID)
 			}
 		}
-		
+
 		if h.endpoint.Connection.ForceNewConnection {
 			// Create a new HTTP client with disabled connection pooling
 			transport := h.fusion.httpClient.Transport.(*http.Transport).Clone()
@@ -331,7 +333,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 				h.fusion.logger.Debugf("Forcing new connection for request [%s]", correlationID)
 			}
 		}
-		
+
 		if h.endpoint.Connection.Timeout != "" {
 			// Parse custom timeout for this endpoint
 			if timeout, err := time.ParseDuration(h.endpoint.Connection.Timeout); err == nil {
@@ -350,7 +352,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 					h.fusion.logger.Debugf("Using custom timeout %v for request [%s]", timeout, correlationID)
 				}
 			} else if h.fusion.logger != nil {
-				h.fusion.logger.Warningf("Invalid timeout format '%s' for endpoint %s [%s]", 
+				h.fusion.logger.Warningf("Invalid timeout format '%s' for endpoint %s [%s]",
 					h.endpoint.Connection.Timeout, h.endpoint.ID, correlationID)
 			}
 		}

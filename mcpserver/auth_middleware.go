@@ -249,7 +249,7 @@ func (am *AuthMiddleware) extractBearerToken(r *http.Request) string {
 }
 
 // resolveServiceName attempts to resolve the service name from the request
-func (am *AuthMiddleware) resolveServiceName(r *http.Request, tenantContext *fusion.TenantContext) (string, error) {
+func (am *AuthMiddleware) resolveServiceName(r *http.Request, _ *fusion.TenantContext) (string, error) {
 	// Try multiple strategies to determine the service name
 
 	// Strategy 1: Extract from MCP tool name if this is a tool call
@@ -358,9 +358,9 @@ func (am *AuthMiddleware) writeErrorResponse(w http.ResponseWriter, statusCode i
 
 	// Don't log the error if JSON encoding fails - just write a simple response
 	if jsonBytes, err := json.Marshal(errorResponse); err == nil {
-		w.Write(jsonBytes)
+		_, _ = w.Write(jsonBytes)
 	} else {
-		w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
+		_, _ = w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
 	}
 }
 

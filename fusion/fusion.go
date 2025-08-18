@@ -83,11 +83,11 @@ type Fusion struct {
 	correlationIDGenerator *CorrelationIDGenerator    // Request correlation tracking
 	circuitBreakers        map[string]*CircuitBreaker // Per-service circuit breakers
 	circuitBreakersMutex   sync.RWMutex               // Protects circuitBreakers map
-	
+
 	// Connection health management
-	connectionCleanupTicker *time.Ticker // Periodic connection cleanup
-	shutdownChan           chan struct{} // Channel for graceful shutdown
-	shutdownOnce           sync.Once     // Ensures cleanup happens only once
+	connectionCleanupTicker *time.Ticker  // Periodic connection cleanup
+	shutdownChan            chan struct{} // Channel for graceful shutdown
+	shutdownOnce            sync.Once     // Ensures cleanup happens only once
 }
 
 // Option defines a functional option type for configuring Fusion instances.
@@ -294,26 +294,26 @@ func New(options ...Option) *Fusion {
 	// Create custom HTTP transport with optimized connection pooling
 	transport := &http.Transport{
 		// Connection pooling settings
-		MaxIdleConns:          100,              // Maximum total idle connections
-		MaxIdleConnsPerHost:   10,               // Maximum idle connections per host
-		IdleConnTimeout:       30 * time.Second, // How long idle connections are kept
-		
+		MaxIdleConns:        100,              // Maximum total idle connections
+		MaxIdleConnsPerHost: 10,               // Maximum idle connections per host
+		IdleConnTimeout:     30 * time.Second, // How long idle connections are kept
+
 		// Keep-alive settings
-		DisableKeepAlives:     false,            // Enable keep-alive
-		
+		DisableKeepAlives: false, // Enable keep-alive
+
 		// Timeouts for connection establishment
 		DialContext: (&net.Dialer{
 			Timeout:   10 * time.Second, // Connection timeout
 			KeepAlive: 30 * time.Second, // Keep-alive probe interval
 		}).DialContext,
-		
+
 		// Response timeouts
 		TLSHandshakeTimeout:   10 * time.Second, // TLS handshake timeout
 		ResponseHeaderTimeout: 30 * time.Second, // Time to receive response headers
 		ExpectContinueTimeout: 1 * time.Second,  // Time to wait for 100-continue
-		
+
 		// Connection limits
-		MaxConnsPerHost:       50, // Maximum connections per host
+		MaxConnsPerHost: 50, // Maximum connections per host
 	}
 
 	fusion := &Fusion{
@@ -557,7 +557,7 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 }
 
 // createToolHandler creates a handler function for a specific endpoint
-func (f *Fusion) createToolHandler(serviceName string, service *ServiceConfig, endpoint *EndpointConfig) global.ToolHandler {
+func (f *Fusion) createToolHandler(_ string, service *ServiceConfig, endpoint *EndpointConfig) global.ToolHandler {
 	httpHandler := NewHTTPHandler(f, service, endpoint)
 
 	// Create a context-aware handler that the MCP server can detect and use
@@ -635,7 +635,7 @@ func (h *contextAwareHandler) CallWithContext(ctx context.Context, options map[s
 
 // extractTenantContextFromOptions attempts to extract tenant context for multi-tenant operations
 // This is a placeholder for proper tenant context extraction once the MCP interface supports context passing
-func (f *Fusion) extractTenantContextFromOptions(serviceName string, options map[string]any) *TenantContext {
+func (f *Fusion) extractTenantContextFromOptions(serviceName string, _ map[string]any) *TenantContext {
 	// In a proper implementation, this would extract the tenant context from the HTTP request context
 	// For now, we'll create a basic tenant context that can be used for authentication
 
@@ -1007,7 +1007,7 @@ func (f *Fusion) processResponse(resp *http.Response, endpoint *EndpointConfig, 
 }
 
 // processJSONResponse processes JSON responses with optional transformation
-func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig, serviceName string) (string, error) {
+func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig, _ string) (string, error) {
 	// Parse JSON
 	var responseData interface{}
 	if err := json.Unmarshal(bodyBytes, &responseData); err != nil {
@@ -1614,10 +1614,10 @@ func (f *Fusion) StartMetricsLogging(ctx context.Context, interval time.Duration
 func (f *Fusion) startConnectionHealthManagement() {
 	// Start periodic connection cleanup every 5 minutes
 	f.connectionCleanupTicker = time.NewTicker(5 * time.Minute)
-	
+
 	go func() {
 		defer f.connectionCleanupTicker.Stop()
-		
+
 		for {
 			select {
 			case <-f.connectionCleanupTicker.C:
@@ -1630,7 +1630,7 @@ func (f *Fusion) startConnectionHealthManagement() {
 			}
 		}
 	}()
-	
+
 	if f.logger != nil {
 		f.logger.Debug("Connection health management started")
 	}
@@ -1642,7 +1642,7 @@ func (f *Fusion) cleanupConnections() {
 		if transport, ok := f.httpClient.Transport.(*http.Transport); ok {
 			// Close idle connections to prevent stale connection reuse
 			transport.CloseIdleConnections()
-			
+
 			if f.logger != nil {
 				f.logger.Debug("Cleaned up idle HTTP connections")
 			}
@@ -1656,13 +1656,13 @@ func (f *Fusion) Shutdown() {
 		if f.logger != nil {
 			f.logger.Info("Shutting down Fusion instance")
 		}
-		
+
 		// Signal shutdown to background goroutines
 		close(f.shutdownChan)
-		
+
 		// Final connection cleanup
 		f.cleanupConnections()
-		
+
 		if f.logger != nil {
 			f.logger.Info("Fusion instance shutdown completed")
 		}

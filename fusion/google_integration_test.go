@@ -644,7 +644,7 @@ func handleGoogleDeviceCodeRequest(w http.ResponseWriter, r *http.Request, t *te
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleTokenRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -663,7 +663,7 @@ func handleGoogleTokenRequest(w http.ResponseWriter, r *http.Request, t *testing
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleProfileRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -685,7 +685,7 @@ func handleGoogleProfileRequest(w http.ResponseWriter, r *http.Request, t *testi
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleCalendarEventsRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -755,7 +755,7 @@ func handleGoogleCalendarEventsRequest(w http.ResponseWriter, r *http.Request, t
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleCalendarEventCreateRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -766,7 +766,7 @@ func handleGoogleCalendarEventCreateRequest(w http.ResponseWriter, r *http.Reque
 	}
 
 	var requestBody map[string]interface{}
-	json.NewDecoder(r.Body).Decode(&requestBody)
+	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 	response := map[string]interface{}{
 		"id":          "created-event-123",
@@ -781,7 +781,7 @@ func handleGoogleCalendarEventCreateRequest(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleCalendarEventGetRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -806,7 +806,7 @@ func handleGoogleCalendarEventGetRequest(w http.ResponseWriter, r *http.Request,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleCalendarEventUpdateRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -821,7 +821,7 @@ func handleGoogleCalendarEventUpdateRequest(w http.ResponseWriter, r *http.Reque
 	eventId := parts[len(parts)-1]
 
 	var requestBody map[string]interface{}
-	json.NewDecoder(r.Body).Decode(&requestBody)
+	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 	response := map[string]interface{}{
 		"id":          eventId,
@@ -835,7 +835,7 @@ func handleGoogleCalendarEventUpdateRequest(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleCalendarEventDeleteRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -871,7 +871,7 @@ func handleGoogleGmailMessagesRequest(w http.ResponseWriter, r *http.Request, t 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleGmailMessageGetRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -905,7 +905,7 @@ func handleGoogleGmailMessageGetRequest(w http.ResponseWriter, r *http.Request, 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleGmailSendRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -916,7 +916,7 @@ func handleGoogleGmailSendRequest(w http.ResponseWriter, r *http.Request, t *tes
 	}
 
 	var requestBody map[string]interface{}
-	json.NewDecoder(r.Body).Decode(&requestBody)
+	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 	response := map[string]interface{}{
 		"id":       "sent-msg-123",
@@ -924,7 +924,7 @@ func handleGoogleGmailSendRequest(w http.ResponseWriter, r *http.Request, t *tes
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleDriveFilesRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -959,7 +959,7 @@ func handleGoogleDriveFilesRequest(w http.ResponseWriter, r *http.Request, t *te
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleDriveFileGetRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -986,7 +986,7 @@ func handleGoogleDriveFileGetRequest(w http.ResponseWriter, r *http.Request, t *
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleDriveFileDownloadRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -998,7 +998,7 @@ func handleGoogleDriveFileDownloadRequest(w http.ResponseWriter, r *http.Request
 
 	// Return mock file content
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte("This is test file content from Google Drive"))
+	_, _ = w.Write([]byte("This is test file content from Google Drive"))
 }
 
 func handleGoogleDriveFileCreateRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -1009,7 +1009,7 @@ func handleGoogleDriveFileCreateRequest(w http.ResponseWriter, r *http.Request, 
 	}
 
 	var requestBody map[string]interface{}
-	json.NewDecoder(r.Body).Decode(&requestBody)
+	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 	response := map[string]interface{}{
 		"id":           "created-file-123",
@@ -1022,7 +1022,7 @@ func handleGoogleDriveFileCreateRequest(w http.ResponseWriter, r *http.Request, 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleGoogleDriveFileDeleteRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -1044,7 +1044,7 @@ func handleGoogleDriveFileShareRequest(w http.ResponseWriter, r *http.Request, t
 	}
 
 	var requestBody map[string]interface{}
-	json.NewDecoder(r.Body).Decode(&requestBody)
+	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 	response := map[string]interface{}{
 		"id":           "permission-123",
@@ -1055,7 +1055,7 @@ func handleGoogleDriveFileShareRequest(w http.ResponseWriter, r *http.Request, t
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func createTestGoogleConfig(baseURL string) string {

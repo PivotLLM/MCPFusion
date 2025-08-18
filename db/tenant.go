@@ -93,10 +93,13 @@ func (d *DB) GetTenantInfo(hash string) (*TenantInfo, error) {
 		oauthBucket := tenantBucket.Bucket([]byte(internal.BucketOAuthTokens))
 		if oauthBucket != nil {
 			oauthCount := 0
-			oauthBucket.ForEach(func(k, v []byte) error {
+			if err := oauthBucket.ForEach(func(k, v []byte) error {
 				oauthCount++
 				return nil
-			})
+			}); err != nil {
+				d.logger.Warningf("Failed to iterate OAuth tokens for tenant %s: %v", hash[:12], err)
+				// Continue with partial data - don't fail the entire operation
+			}
 			tenantInfo.OAuthCount = oauthCount
 		}
 
@@ -104,10 +107,13 @@ func (d *DB) GetTenantInfo(hash string) (*TenantInfo, error) {
 		credentialsBucket := tenantBucket.Bucket([]byte(internal.BucketServiceCredentials))
 		if credentialsBucket != nil {
 			credCount := 0
-			credentialsBucket.ForEach(func(k, v []byte) error {
+			if err := credentialsBucket.ForEach(func(k, v []byte) error {
 				credCount++
 				return nil
-			})
+			}); err != nil {
+				d.logger.Warningf("Failed to iterate credentials for tenant %s: %v", hash[:12], err)
+				// Continue with partial data - don't fail the entire operation
+			}
 			tenantInfo.CredCount = credCount
 		}
 
@@ -210,10 +216,13 @@ func (d *DB) ListTenants() ([]TenantInfo, error) {
 			oauthBucket := tenantBucket.Bucket([]byte(internal.BucketOAuthTokens))
 			if oauthBucket != nil {
 				oauthCount := 0
-				oauthBucket.ForEach(func(k, v []byte) error {
+				if err := oauthBucket.ForEach(func(k, v []byte) error {
 					oauthCount++
 					return nil
-				})
+				}); err != nil {
+					d.logger.Warningf("Failed to iterate OAuth tokens for tenant %s: %v", tenantHash[:12], err)
+					// Continue with partial data - don't fail the entire operation
+				}
 				tenantInfo.OAuthCount = oauthCount
 			}
 
@@ -221,10 +230,13 @@ func (d *DB) ListTenants() ([]TenantInfo, error) {
 			credentialsBucket := tenantBucket.Bucket([]byte(internal.BucketServiceCredentials))
 			if credentialsBucket != nil {
 				credCount := 0
-				credentialsBucket.ForEach(func(k, v []byte) error {
+				if err := credentialsBucket.ForEach(func(k, v []byte) error {
 					credCount++
 					return nil
-				})
+				}); err != nil {
+					d.logger.Warningf("Failed to iterate credentials for tenant %s: %v", tenantHash[:12], err)
+					// Continue with partial data - don't fail the entire operation
+				}
 				tenantInfo.CredCount = credCount
 			}
 
@@ -405,18 +417,24 @@ func (d *DB) DeleteTenant(tenantHash string) error {
 
 		oauthBucket := tenantBucket.Bucket([]byte(internal.BucketOAuthTokens))
 		if oauthBucket != nil {
-			oauthBucket.ForEach(func(k, v []byte) error {
+			if err := oauthBucket.ForEach(func(k, v []byte) error {
 				oauthCount++
 				return nil
-			})
+			}); err != nil {
+				d.logger.Warningf("Failed to count OAuth tokens for tenant deletion %s: %v", tenantHash[:12], err)
+				// Continue with deletion - count may be inaccurate in logs
+			}
 		}
 
 		credentialsBucket := tenantBucket.Bucket([]byte(internal.BucketServiceCredentials))
 		if credentialsBucket != nil {
-			credentialsBucket.ForEach(func(k, v []byte) error {
+			if err := credentialsBucket.ForEach(func(k, v []byte) error {
 				credCount++
 				return nil
-			})
+			}); err != nil {
+				d.logger.Warningf("Failed to count credentials for tenant deletion %s: %v", tenantHash[:12], err)
+				// Continue with deletion - count may be inaccurate in logs
+			}
 		}
 
 		// Delete the entire tenant bucket
@@ -496,19 +514,23 @@ func (d *DB) GetTenantResourceCount(tenantHash string) (int, int, error) {
 		// Count OAuth tokens
 		oauthBucket := tenantBucket.Bucket([]byte(internal.BucketOAuthTokens))
 		if oauthBucket != nil {
-			oauthBucket.ForEach(func(k, v []byte) error {
+			if err := oauthBucket.ForEach(func(k, v []byte) error {
 				oauthCount++
 				return nil
-			})
+			}); err != nil {
+				return NewDatabaseError("get_tenant_resource_count", fmt.Errorf("failed to iterate OAuth tokens: %w", err))
+			}
 		}
 
 		// Count service credentials
 		credentialsBucket := tenantBucket.Bucket([]byte(internal.BucketServiceCredentials))
 		if credentialsBucket != nil {
-			credentialsBucket.ForEach(func(k, v []byte) error {
+			if err := credentialsBucket.ForEach(func(k, v []byte) error {
 				credCount++
 				return nil
-			})
+			}); err != nil {
+				return NewDatabaseError("get_tenant_resource_count", fmt.Errorf("failed to iterate credentials: %w", err))
+			}
 		}
 
 		return nil
