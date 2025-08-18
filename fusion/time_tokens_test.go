@@ -73,6 +73,48 @@ func TestTimeTokenProcessor_ProcessValue(t *testing.T) {
 			expectChange: true,
 		},
 		{
+			name:         "DAYS+0 token (today in future)",
+			input:        "#DAYS+0",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T00:00:00Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "DAYS+1 token (tomorrow)",
+			input:        "#DAYS+1",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T00:00:00Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "DAYS+7 token (week from now)",
+			input:        "#DAYS+7",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T00:00:00Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "HOURS+0 token (now in future)",
+			input:        "#HOURS+0",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "HOURS+1 token (1 hour from now)",
+			input:        "#HOURS+1",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "HOURS+24 token (24 hours from now)",
+			input:        "#HOURS+24",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "Mixed past and future tokens",
+			input:        "start=#DAYS-7&end=#DAYS+7&now=#HOURS+0",
+			expectRegex:  `^start=\d{4}-\d{2}-\d{2}T00:00:00Z&end=\d{4}-\d{2}-\d{2}T00:00:00Z&now=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
 			name:         "No tokens - unchanged",
 			input:        "regular string value",
 			expectRegex:  `^regular string value$`,
@@ -143,12 +185,16 @@ func TestTimeTokenProcessor_HasTimeTokens(t *testing.T) {
 	}{
 		{"DAYS token", "#DAYS-7", true},
 		{"HOURS token", "#HOURS-24", true},
-		{"Both tokens", "#DAYS-7 and #HOURS-12", true},
+		{"DAYS+ token", "#DAYS+7", true},
+		{"HOURS+ token", "#HOURS+24", true},
+		{"Both past tokens", "#DAYS-7 and #HOURS-12", true},
+		{"Both future tokens", "#DAYS+7 and #HOURS+12", true},
+		{"Mixed past and future", "#DAYS-7 and #DAYS+14", true},
 		{"No tokens", "regular string", false},
 		{"Invalid token format", "#DAYS-X", false},
 		{"Partial match", "DAYS-7", false},
 		{"Empty string", "", false},
-		{"Multiple valid tokens", "#DAYS-0 #DAYS-1 #HOURS-6", true},
+		{"Multiple valid tokens", "#DAYS-0 #DAYS+1 #HOURS-6 #HOURS+12", true},
 	}
 
 	for _, tt := range tests {
@@ -173,12 +219,17 @@ func TestTimeTokenProcessor_ValidateTimeTokens(t *testing.T) {
 	}{
 		{"Valid DAYS token", "#DAYS-7", false, ""},
 		{"Valid HOURS token", "#HOURS-24", false, ""},
+		{"Valid DAYS+ token", "#DAYS+7", false, ""},
+		{"Valid HOURS+ token", "#HOURS+24", false, ""},
 		{"Valid multiple tokens", "#DAYS-0 #HOURS-1", false, ""},
+		{"Valid mixed past and future", "#DAYS-7 #DAYS+14 #HOURS-6 #HOURS+12", false, ""},
 		{"Invalid DAYS - too large", "#DAYS-500", true, "days value out of range"},
 		{"Invalid HOURS - too large", "#HOURS-10000", true, "hours value out of range"},
+		{"Invalid DAYS+ - too large", "#DAYS+500", true, "days value out of range"},
+		{"Invalid HOURS+ - too large", "#HOURS+10000", true, "hours value out of range"},
 		{"Invalid DAYS - negative", "#DAYS--1", false, ""}, // Regex won't match negative
 		{"Invalid number format", "#DAYS-abc", false, ""},  // Regex won't match non-digits
-		{"Edge case - boundary values", "#DAYS-365 #HOURS-8760", false, ""},
+		{"Edge case - boundary values", "#DAYS-365 #HOURS-8760 #DAYS+365 #HOURS+8760", false, ""},
 		{"No tokens", "regular string", false, ""},
 	}
 
@@ -316,19 +367,86 @@ func TestTimeTokenSubstitution_ActualTimeCalculation(t *testing.T) {
 	}
 }
 
+func TestTimeTokenSubstitution_FutureTimeCalculation(t *testing.T) {
+	logger, _ := mlogger.New(mlogger.WithDebug(false))
+	processor := NewTimeTokenProcessor(logger)
+
+	// Test that DAYS+ tokens produce times at midnight in the future
+	result := processor.ProcessValue("#DAYS+0")
+	if resultStr, ok := result.(string); ok {
+		// Parse the time to verify it's at midnight
+		parsedTime, err := time.Parse(time.RFC3339, resultStr)
+		if err != nil {
+			t.Errorf("Failed to parse result time: %v", err)
+			return
+		}
+
+		// Check that it's at midnight (00:00:00)
+		if parsedTime.Hour() != 0 || parsedTime.Minute() != 0 || parsedTime.Second() != 0 {
+			t.Errorf("DAYS+ token should produce midnight time, got %s", resultStr)
+		}
+
+		// Check that it's today's date (since DAYS+0 should be today at midnight)
+		today := time.Now().UTC().Truncate(24 * time.Hour)
+		if !parsedTime.Equal(today) {
+			t.Errorf("DAYS+0 should be today at midnight, expected %s, got %s",
+				today.Format(time.RFC3339), resultStr)
+		}
+	} else {
+		t.Error("Result should be a string")
+	}
+
+	// Test that DAYS+1 is tomorrow
+	result = processor.ProcessValue("#DAYS+1")
+	if resultStr, ok := result.(string); ok {
+		parsedTime, err := time.Parse(time.RFC3339, resultStr)
+		if err != nil {
+			t.Errorf("Failed to parse result time: %v", err)
+			return
+		}
+
+		// Check that it's tomorrow at midnight
+		tomorrow := time.Now().UTC().AddDate(0, 0, 1).Truncate(24 * time.Hour)
+		if !parsedTime.Equal(tomorrow) {
+			t.Errorf("DAYS+1 should be tomorrow at midnight, expected %s, got %s",
+				tomorrow.Format(time.RFC3339), resultStr)
+		}
+	} else {
+		t.Error("Result should be a string")
+	}
+
+	// Test that HOURS+ tokens preserve the hour precision
+	result = processor.ProcessValue("#HOURS+1")
+	if resultStr, ok := result.(string); ok {
+		parsedTime, err := time.Parse(time.RFC3339, resultStr)
+		if err != nil {
+			t.Errorf("Failed to parse result time: %v", err)
+			return
+		}
+
+		// Should be approximately 1 hour from now (within 1 minute tolerance)
+		expectedTime := time.Now().UTC().Add(1 * time.Hour)
+		diff := parsedTime.Sub(expectedTime)
+		if diff < -time.Minute || diff > time.Minute {
+			t.Errorf("HOURS+1 should be approximately 1 hour from now, got %s", resultStr)
+		}
+	} else {
+		t.Error("Result should be a string")
+	}
+}
+
 func TestTimeTokenProcessor_GetSupportedTokens(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
 	processor := NewTimeTokenProcessor(logger)
 
 	tokens := processor.GetSupportedTokens()
 
-	// Check that we have the expected token types
-	if _, exists := tokens["#DAYS-N"]; !exists {
-		t.Error("Should include #DAYS-N token")
-	}
-
-	if _, exists := tokens["#HOURS-N"]; !exists {
-		t.Error("Should include #HOURS-N token")
+	// Check that we have all expected token types
+	expectedTokens := []string{"#DAYS-N", "#HOURS-N", "#DAYS+N", "#HOURS+N"}
+	for _, expectedToken := range expectedTokens {
+		if _, exists := tokens[expectedToken]; !exists {
+			t.Errorf("Should include %s token", expectedToken)
+		}
 	}
 
 	// Check that descriptions are not empty

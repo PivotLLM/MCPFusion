@@ -436,7 +436,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "Filter expression. Use time tokens: #DAYS-N (N days ago at midnight UTC), #HOURS-N (N hours ago). Examples: 'isRead eq false', 'receivedDateTime ge #DAYS-1', 'receivedDateTime ge #HOURS-12 and isRead eq false'",
+              "description": "Filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: 'isRead eq false', 'receivedDateTime ge #DAYS-1', 'receivedDateTime le #DAYS+7', 'receivedDateTime ge #HOURS-12 and isRead eq false'",
               "type": "string",
               "required": false,
               "location": "query",
@@ -734,7 +734,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago at midnight UTC), #HOURS-N (N hours ago). Examples: contains(subject,'Meeting'), contains(subject,'Project') and start/dateTime ge #DAYS-7, attendees/any(a:contains(a/emailAddress/address,'john@example.com'))",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: contains(subject,'Meeting'), contains(subject,'Project') and start/dateTime ge #DAYS-7, start/dateTime le #DAYS+30, attendees/any(a:contains(a/emailAddress/address,'john@example.com'))",
               "type": "string",
               "required": false,
               "location": "query",
@@ -796,7 +796,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago at midnight UTC), #HOURS-N (N hours ago). Examples: contains(subject,'Invoice'), contains(from/emailAddress/address,'boss@company.com'), receivedDateTime ge #DAYS-3, isRead eq false",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: contains(subject,'Invoice'), contains(from/emailAddress/address,'boss@company.com'), receivedDateTime ge #DAYS-3, receivedDateTime le #DAYS+1, isRead eq false",
               "type": "string",
               "required": false,
               "location": "query",
