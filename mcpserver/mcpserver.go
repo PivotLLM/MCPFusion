@@ -15,6 +15,8 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/PivotLLM/MCPFusion/db"
+	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
@@ -97,6 +99,9 @@ type MCPServer struct {
 	resourceProviders []global.ResourceProvider
 	promptProviders   []global.PromptProvider
 	authMiddleware    *AuthMiddleware
+	database          *db.DB
+	authManager       *fusion.MultiTenantAuthManager
+	configManager     ServiceProvider
 }
 
 func WithListen(listen string) Option {
@@ -156,6 +161,24 @@ func WithNoStreaming(noStreaming bool) Option {
 func WithAuthMiddleware(authMiddleware *AuthMiddleware) Option {
 	return func(m *MCPServer) {
 		m.authMiddleware = authMiddleware
+	}
+}
+
+func WithDatabase(database *db.DB) Option {
+	return func(m *MCPServer) {
+		m.database = database
+	}
+}
+
+func WithAuthManager(authManager *fusion.MultiTenantAuthManager) Option {
+	return func(m *MCPServer) {
+		m.authManager = authManager
+	}
+}
+
+func WithConfigManager(configManager ServiceProvider) Option {
+	return func(m *MCPServer) {
+		m.configManager = configManager
 	}
 }
 
@@ -239,36 +262,59 @@ func (s *MCPServer) Start() error {
 			// Create HTTP server for non-streaming mode
 			s.httpServer = server.NewStreamableHTTPServer(s.srv)
 			s.transport = s.httpServer
-
-			// Apply auth middleware if configured
-			if s.authMiddleware != nil {
-				if s.logger != nil {
-					s.logger.Info("Applying authentication middleware to HTTP server")
-				}
-				s.transport = NewAuthenticatedTransport(s.httpServer, s.authMiddleware.Middleware, s.logger)
-				if s.transport == nil {
-					if s.logger != nil {
-						s.logger.Error("Failed to create authenticated transport, continuing without authentication")
-					}
-					s.transport = s.httpServer
-				}
-			}
 		} else {
 			// Create SSE server for streaming mode (default)
 			s.sseServer = server.NewSSEServer(s.srv)
 			s.transport = s.sseServer
+		}
 
-			// Apply auth middleware if configured
+		// Check if OAuth API functionality should be enabled
+		if s.database != nil && s.authManager != nil && s.configManager != nil {
+			if s.logger != nil {
+				s.logger.Info("Enabling OAuth API endpoints with extended transport")
+			}
+			// Use ExtendedTransport that includes OAuth API endpoints
+			if s.authMiddleware != nil {
+				s.transport = NewExtendedTransport(s.transport, s.database, s.authManager, 
+					s.configManager, s.authMiddleware.Middleware, s.logger)
+			} else {
+				if s.logger != nil {
+					s.logger.Warning("OAuth API enabled but no auth middleware configured")
+				}
+				s.transport = NewExtendedTransport(s.transport, s.database, s.authManager, 
+					s.configManager, nil, s.logger)
+			}
+			if s.transport == nil {
+				if s.logger != nil {
+					s.logger.Error("Failed to create extended transport, falling back to basic transport")
+				}
+				// Fallback to basic transport
+				if s.noStreaming {
+					s.transport = s.httpServer
+				} else {
+					s.transport = s.sseServer
+				}
+			}
+		} else {
+			// Apply auth middleware to basic transport if configured
 			if s.authMiddleware != nil {
 				if s.logger != nil {
-					s.logger.Info("Applying authentication middleware to SSE server")
+					if s.noStreaming {
+						s.logger.Info("Applying authentication middleware to HTTP server")
+					} else {
+						s.logger.Info("Applying authentication middleware to SSE server")
+					}
 				}
-				s.transport = NewAuthenticatedTransport(s.sseServer, s.authMiddleware.Middleware, s.logger)
+				s.transport = NewAuthenticatedTransport(s.transport, s.authMiddleware.Middleware, s.logger)
 				if s.transport == nil {
 					if s.logger != nil {
 						s.logger.Error("Failed to create authenticated transport, continuing without authentication")
 					}
-					s.transport = s.sseServer
+					if s.noStreaming {
+						s.transport = s.httpServer
+					} else {
+						s.transport = s.sseServer
+					}
 				}
 			}
 		}

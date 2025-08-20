@@ -280,6 +280,11 @@ func main() {
 		mcpserver.WithPromptProviders([]global.PromptProvider{fusionProvider}),
 	}
 
+	// Add OAuth API support components
+	mcpOpts = append(mcpOpts, mcpserver.WithDatabase(database.(*db.DB)))
+	mcpOpts = append(mcpOpts, mcpserver.WithAuthManager(multiTenantAuth))
+	mcpOpts = append(mcpOpts, mcpserver.WithConfigManager(configManager))
+
 	// Add multi-tenant authentication middleware (always enabled)
 	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, configManager,
 		mcpserver.WithAuthLogger(logger),
@@ -288,6 +293,7 @@ func main() {
 	)
 	mcpOpts = append(mcpOpts, mcpserver.WithAuthMiddleware(authMiddleware))
 	logger.Info("Multi-tenant authentication middleware enabled")
+	logger.Info("OAuth API endpoints will be available at /api/v1/oauth/*")
 
 	mcp, err := mcpserver.New(mcpOpts...)
 	if err != nil {
