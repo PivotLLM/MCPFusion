@@ -817,6 +817,7 @@
               "alias": "search",
               "description": "Full-text search across message content. Examples: 'invoice payment', 'from:john@company.com', 'subject:meeting', 'attachment:*.pdf'",
               "type": "string",
+              "quoted": true,
               "required": false,
               "location": "query",
               "examples": [
@@ -869,6 +870,7 @@
               "type": "string",
               "required": true,
               "location": "path",
+              "quoted": true,
               "examples": [
                 "invoice",
                 "*.pdf",
