@@ -75,17 +75,10 @@ setup instructions.
 
 ## Architecture
 
+Incorrect informaton remoted - to be completed
+
 ```
-MCPFusion/
-├── mcpserver/          # Core MCP protocol implementation
-├── fusion/             # Dynamic API provider package
-│   ├── configs/        # Pre-configured API definitions
-│   └── examples/       # Integration examples  
-├── db/                 # Multi-tenant database package (BoltDB)
-├── cmd/token/          # Token management CLI
-├── example1/           # REST API provider example
-├── example2/           # Simple time service example
-└── globalMetrics/             # Shared interfaces and utilities
+
 ```
 
 ## HTTP Session Management

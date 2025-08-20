@@ -1,0 +1,12 @@
+Env Can:
+
+curl -s https://dd.weather.gc.ca/citypage_weather/siteList.xml 
+
+curl -s https://dd.weather.gc.ca/today/citypage_weather/ON/
+
+curl -s https://dd.weather.gc.ca/today/citypage_weather/ON/23/
+
+curl https://dd.weather.gc.ca/today/citypage_weather/ON/23/20250818T230126.804Z_MSC_CitypageWeather_s0000430_en.xml
+
+
+

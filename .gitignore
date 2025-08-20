@@ -16,3 +16,6 @@ private/
 *.log
 mcpfusion
 MCPFusion
+fusion-auth
+fusion-oauth
+cmd/auth/auth
