@@ -7,6 +7,7 @@ package fusion
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -48,6 +49,45 @@ func (t *TokenInfo) GetAuthorizationHeader() string {
 		return t.TokenType + " " + t.AccessToken
 	}
 	return "Bearer " + t.AccessToken
+}
+
+// String returns a safe string representation that doesn't expose token values
+func (t *TokenInfo) String() string {
+	if t == nil {
+		return "TokenInfo(nil)"
+	}
+
+	// Create safe representation of access token
+	var accessTokenInfo string
+	if len(t.AccessToken) == 0 {
+		accessTokenInfo = "empty"
+	} else if len(t.AccessToken) <= 8 {
+		accessTokenInfo = "[REDACTED]"
+	} else {
+		accessTokenInfo = t.AccessToken[:8] + "...[REDACTED]"
+	}
+
+	// Create safe representation of refresh token
+	var refreshTokenInfo string
+	if len(t.RefreshToken) == 0 {
+		refreshTokenInfo = "none"
+	} else {
+		refreshTokenInfo = "present"
+	}
+
+	// Format expiry information
+	var expiryInfo string
+	if t.ExpiresAt == nil {
+		expiryInfo = "no_expiry"
+	} else if t.IsExpired() {
+		expiryInfo = "expired"
+	} else {
+		timeUntilExpiry := time.Until(*t.ExpiresAt).Round(time.Minute)
+		expiryInfo = fmt.Sprintf("expires_in=%v", timeUntilExpiry)
+	}
+
+	return fmt.Sprintf("TokenInfo(type=%s, access_token=%s, refresh_token=%s, %s, scope_count=%d)",
+		t.TokenType, accessTokenInfo, refreshTokenInfo, expiryInfo, len(t.Scope))
 }
 
 // AuthStrategy defines the interface for authentication strategies

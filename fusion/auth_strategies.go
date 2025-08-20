@@ -741,9 +741,20 @@ func (s *OAuth2DeviceFlowStrategy) storeTokenFromPolling(_ context.Context, toke
 	}
 
 	if s.logger != nil {
-		s.logger.Infof("Storing token from background polling for tenant %s service %s: type=%s, expires_at=%v, has_refresh=%v",
+		var expiryInfo string
+		if tokenInfo.ExpiresAt != nil {
+			timeUntilExpiry := time.Until(*tokenInfo.ExpiresAt).Round(time.Minute)
+			if timeUntilExpiry > 0 {
+				expiryInfo = fmt.Sprintf("expires_in=%v", timeUntilExpiry)
+			} else {
+				expiryInfo = "expired"
+			}
+		} else {
+			expiryInfo = "no_expiry"
+		}
+		s.logger.Infof("Storing token from background polling for tenant %s service %s: type=%s, %s, has_refresh=%v",
 			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName,
-			tokenInfo.TokenType, tokenInfo.ExpiresAt, tokenInfo.HasRefreshToken())
+			tokenInfo.TokenType, expiryInfo, tokenInfo.HasRefreshToken())
 	}
 
 	// Use the auth manager's CacheToken method to store in both database and cache

@@ -157,18 +157,9 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		h.fusion.logger.Debugf("URL: %s", req.URL.String())
 		h.fusion.logger.Debugf("Headers after auth:")
 		for name, values := range req.Header {
-			// Redact sensitive headers but show they exist
-			if strings.Contains(strings.ToLower(name), "authorization") ||
-				strings.Contains(strings.ToLower(name), "api-key") ||
-				strings.Contains(strings.ToLower(name), "token") ||
-				strings.Contains(strings.ToLower(name), "x-api") {
-				if len(values) > 0 {
-					h.fusion.logger.Debugf("  %s: [REDACTED - length %d]", name, len(values[0]))
-				}
-			} else {
-				for _, value := range values {
-					h.fusion.logger.Debugf("  %s: %s", name, value)
-				}
+			for _, value := range values {
+				sanitizedValue := SanitizeHeaderForLogging(name, value)
+				h.fusion.logger.Debugf("  %s: %s", name, sanitizedValue)
 			}
 		}
 		if req.Body != nil {

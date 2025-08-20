@@ -61,7 +61,7 @@ func NewDatabaseCacheWithDefaultTTL(database *db.DB, logger global.Logger, defau
 // Get retrieves a value from the database cache
 func (dc *DatabaseCache) Get(key string) (interface{}, error) {
 	if dc.logger != nil {
-		dc.logger.Debugf("Database cache GET operation for key: %s", key)
+		dc.logger.Debugf("Database cache GET operation for key: %s", SanitizeCacheKeyForLogging(key))
 	}
 
 	if dc.db == nil {
@@ -82,7 +82,7 @@ func (dc *DatabaseCache) Get(key string) (interface{}, error) {
 	tokenData, err := dc.db.GetOAuthToken(tenantHash, serviceName)
 	if err != nil {
 		if dc.logger != nil {
-			dc.logger.Debugf("Database cache MISS - token not found for key: %s (%v)", key, err)
+			dc.logger.Debugf("Database cache MISS - token not found for key: %s (%v)", SanitizeCacheKeyForLogging(key), err)
 		}
 		return nil, &CacheError{Operation: "get", Key: key, Message: "key not found"}
 	}
@@ -94,17 +94,13 @@ func (dc *DatabaseCache) Get(key string) (interface{}, error) {
 	// The auth manager will check expiration and attempt refresh if needed
 	if tokenInfo.IsExpired() {
 		if dc.logger != nil {
-			dc.logger.Debugf("Database cache HIT - returning expired token for potential refresh: %s", key)
+			dc.logger.Debugf("Database cache HIT - returning expired token for potential refresh: %s", SanitizeCacheKeyForLogging(key))
 		}
 	}
 
 	if dc.logger != nil {
-		expiryInfo := "no expiry"
-		if tokenInfo.ExpiresAt != nil {
-			timeToExpiry := time.Until(*tokenInfo.ExpiresAt)
-			expiryInfo = fmt.Sprintf("expires in %v", timeToExpiry)
-		}
-		dc.logger.Debugf("Database cache HIT for key: %s (%s)", key, expiryInfo)
+		expiryInfo := FormatExpiryForLogging(tokenInfo.ExpiresAt)
+		dc.logger.Debugf("Database cache HIT for key: %s (%s)", SanitizeCacheKeyForLogging(key), expiryInfo)
 	}
 
 	return tokenInfo, nil
@@ -113,7 +109,7 @@ func (dc *DatabaseCache) Get(key string) (interface{}, error) {
 // Set stores a value in the database cache with the given TTL
 func (dc *DatabaseCache) Set(key string, value interface{}, ttl time.Duration) error {
 	if dc.logger != nil {
-		dc.logger.Debugf("Database cache SET operation for key: %s (TTL: %v)", key, ttl)
+		dc.logger.Debugf("Database cache SET operation for key: %s (TTL: %v)", SanitizeCacheKeyForLogging(key), ttl)
 	}
 
 	if dc.db == nil {
@@ -124,7 +120,7 @@ func (dc *DatabaseCache) Set(key string, value interface{}, ttl time.Duration) e
 	tenantHash, serviceName, err := dc.parseCacheKey(key)
 	if err != nil {
 		if dc.logger != nil {
-			dc.logger.Warningf("Failed to parse cache key %s as tenant key: %v", key, err)
+			dc.logger.Warningf("Failed to parse cache key %s as tenant key: %v", SanitizeCacheKeyForLogging(key), err)
 		}
 		return &CacheError{Operation: "set", Key: key, Message: "unsupported cache key format"}
 	}
@@ -133,7 +129,7 @@ func (dc *DatabaseCache) Set(key string, value interface{}, ttl time.Duration) e
 	tokenInfo, ok := value.(*TokenInfo)
 	if !ok {
 		if dc.logger != nil {
-			dc.logger.Errorf("Database cache SET failed - invalid value type for key: %s", key)
+			dc.logger.Errorf("Database cache SET failed - invalid value type for key: %s", SanitizeCacheKeyForLogging(key))
 		}
 		return &CacheError{Operation: "set", Key: key, Message: "value must be *TokenInfo"}
 	}
@@ -151,17 +147,14 @@ func (dc *DatabaseCache) Set(key string, value interface{}, ttl time.Duration) e
 	// Store in database
 	if err := dc.db.StoreOAuthToken(tenantHash, serviceName, tokenData); err != nil {
 		if dc.logger != nil {
-			dc.logger.Errorf("Database cache SET failed for key %s: %v", key, err)
+			dc.logger.Errorf("Database cache SET failed for key %s: %v", SanitizeCacheKeyForLogging(key), err)
 		}
 		return &CacheError{Operation: "set", Key: key, Message: fmt.Sprintf("database error: %v", err)}
 	}
 
 	if dc.logger != nil {
-		expiryInfo := "no expiry"
-		if tokenData.ExpiresAt != nil {
-			expiryInfo = fmt.Sprintf("expires at: %s", tokenData.ExpiresAt.Format(time.RFC3339))
-		}
-		dc.logger.Debugf("Database cache SET successful for key: %s (%s)", key, expiryInfo)
+		expiryInfo := FormatExpiryForLogging(tokenData.ExpiresAt)
+		dc.logger.Debugf("Database cache SET successful for key: %s (%s)", SanitizeCacheKeyForLogging(key), expiryInfo)
 	}
 
 	return nil
@@ -170,7 +163,7 @@ func (dc *DatabaseCache) Set(key string, value interface{}, ttl time.Duration) e
 // Delete removes a value from the database cache
 func (dc *DatabaseCache) Delete(key string) error {
 	if dc.logger != nil {
-		dc.logger.Debugf("Database cache DELETE operation for key: %s", key)
+		dc.logger.Debugf("Database cache DELETE operation for key: %s", SanitizeCacheKeyForLogging(key))
 	}
 
 	if dc.db == nil {
@@ -181,7 +174,7 @@ func (dc *DatabaseCache) Delete(key string) error {
 	tenantHash, serviceName, err := dc.parseCacheKey(key)
 	if err != nil {
 		if dc.logger != nil {
-			dc.logger.Warningf("Failed to parse cache key %s as tenant key: %v", key, err)
+			dc.logger.Warningf("Failed to parse cache key %s as tenant key: %v", SanitizeCacheKeyForLogging(key), err)
 		}
 		return &CacheError{Operation: "delete", Key: key, Message: "unsupported cache key format"}
 	}
@@ -190,7 +183,7 @@ func (dc *DatabaseCache) Delete(key string) error {
 	err = dc.db.DeleteOAuthToken(tenantHash, serviceName)
 	if err != nil {
 		if dc.logger != nil {
-			dc.logger.Warningf("Database cache DELETE failed for key %s: %v", key, err)
+			dc.logger.Warningf("Database cache DELETE failed for key %s: %v", SanitizeCacheKeyForLogging(key), err)
 		}
 		// Don't return error for "not found" cases - deletion is idempotent
 		if !strings.Contains(err.Error(), "not found") {
@@ -199,7 +192,7 @@ func (dc *DatabaseCache) Delete(key string) error {
 	}
 
 	if dc.logger != nil {
-		dc.logger.Debugf("Database cache DELETE successful for key: %s", key)
+		dc.logger.Debugf("Database cache DELETE successful for key: %s", SanitizeCacheKeyForLogging(key))
 	}
 
 	return nil
