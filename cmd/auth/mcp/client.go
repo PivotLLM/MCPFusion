@@ -48,6 +48,11 @@ type TokenResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	TokenID string `json:"token_id,omitempty"`
+	Error   *struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	} `json:"error,omitempty"`
 }
 
 // PingResponse represents the response from the ping endpoint
@@ -149,7 +154,13 @@ func (c *Client) StoreTokens(ctx context.Context, service, accessToken, refreshT
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return &tokenResp, fmt.Errorf("token storage failed with status %d: %s", resp.StatusCode, tokenResp.Message)
+		errorMsg := "unknown error"
+		if tokenResp.Error != nil && tokenResp.Error.Message != "" {
+			errorMsg = tokenResp.Error.Message
+		} else if tokenResp.Message != "" {
+			errorMsg = tokenResp.Message
+		}
+		return &tokenResp, fmt.Errorf("token storage failed with status %d: %s", resp.StatusCode, errorMsg)
 	}
 
 	return &tokenResp, nil
