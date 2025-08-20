@@ -1,0 +1,757 @@
+{
+  "services": {
+    "google": {
+      "name": "Google APIs",
+      "baseURL": "https://www.googleapis.com",
+      "auth": {
+        "type": "oauth2_device",
+        "config": {
+          "clientId": "${GOOGLE_CLIENT_ID}",
+          "scope": "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive",
+          "authorizationURL": "https://oauth2.googleapis.com/device/code",
+          "tokenURL": "https://oauth2.googleapis.com/token"
+        }
+      },
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "30s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": ["network_error", "timeout", "server_error", "rate_limited"]
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 5,
+        "successThreshold": 3,
+        "timeout": "30s",
+        "halfOpenMaxCalls": 3,
+        "resetTimeout": "60s"
+      },
+      "endpoints": [
+        {
+          "id": "profile_get",
+          "name": "Get User Profile",
+          "description": "Get the current user's profile information from Google",
+          "method": "GET",
+          "path": "/oauth2/v2/userinfo",
+          "parameters": [],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "30m"
+            }
+          }
+        },
+        {
+          "id": "calendar_events_list",
+          "name": "List Calendar Events",
+          "description": "List events from Google Calendar",
+          "method": "GET",
+          "path": "/calendar/v3/calendars/primary/events",
+          "parameters": [
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "timeMin",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "timeMax",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "maxResults",
+              "description": "Maximum number of events returned (1-2500)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minLength": 1,
+                "maxLength": 2500
+              }
+            },
+            {
+              "name": "singleEvents",
+              "description": "Whether to expand recurring events",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": true
+            },
+            {
+              "name": "orderBy",
+              "description": "Order of events returned",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "startTime",
+              "validation": {
+                "enum": ["startTime", "updated"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "items",
+              "pageSize": 250
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            },
+            "transform": ".items | map({id: .id, summary: .summary, start: .start.dateTime // .start.date, end: .end.dateTime // .end.date, location: .location, description: .description})"
+          }
+        },
+        {
+          "id": "calendar_event_create",
+          "name": "Create Calendar Event",
+          "description": "Create a new event in Google Calendar",
+          "method": "POST",
+          "path": "/calendar/v3/calendars/primary/events",
+          "parameters": [
+            {
+              "name": "summary",
+              "description": "Event title/summary",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "description",
+              "description": "Event description",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "location",
+              "description": "Event location",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "startDateTime",
+              "description": "Start time in RFC3339 format (e.g., 2025-01-15T10:00:00Z)",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "transform": {
+                "targetName": "start.dateTime",
+                "expression": "."
+              }
+            },
+            {
+              "name": "endDateTime",
+              "description": "End time in RFC3339 format (e.g., 2025-01-15T11:00:00Z)",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "transform": {
+                "targetName": "end.dateTime",
+                "expression": "."
+              }
+            },
+            {
+              "name": "timeZone",
+              "description": "Time zone (default: UTC)",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "UTC",
+              "transform": {
+                "targetName": "start.timeZone",
+                "expression": "."
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          },
+          "retry": {
+            "enabled": true,
+            "maxAttempts": 5,
+            "strategy": "exponential",
+            "baseDelay": "2s",
+            "maxDelay": "60s",
+            "jitter": true,
+            "backoffFactor": 2.0,
+            "retryableErrors": ["network_error", "timeout", "server_error", "rate_limited"]
+          }
+        },
+        {
+          "id": "calendar_event_get",
+          "name": "Get Calendar Event",
+          "description": "Get a specific calendar event by ID",
+          "method": "GET",
+          "path": "/calendar/v3/calendars/primary/events/{eventId}",
+          "parameters": [
+            {
+              "name": "eventId",
+              "description": "The ID of the event to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "10m"
+            }
+          }
+        },
+        {
+          "id": "calendar_event_update",
+          "name": "Update Calendar Event",
+          "description": "Update an existing calendar event",
+          "method": "PUT",
+          "path": "/calendar/v3/calendars/primary/events/{eventId}",
+          "parameters": [
+            {
+              "name": "eventId",
+              "description": "The ID of the event to update",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "summary",
+              "description": "Event title/summary",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "description",
+              "description": "Event description",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "location",
+              "description": "Event location",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "startDateTime",
+              "description": "Start time in RFC3339 format",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "transform": {
+                "targetName": "start.dateTime",
+                "expression": "."
+              }
+            },
+            {
+              "name": "endDateTime",
+              "description": "End time in RFC3339 format",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "transform": {
+                "targetName": "end.dateTime",
+                "expression": "."
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "calendar_event_delete",
+          "name": "Delete Calendar Event",
+          "description": "Delete a calendar event",
+          "method": "DELETE",
+          "path": "/calendar/v3/calendars/primary/events/{eventId}",
+          "parameters": [
+            {
+              "name": "eventId",
+              "description": "The ID of the event to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "text"
+          }
+        },
+        {
+          "id": "gmail_messages_list",
+          "name": "List Gmail Messages",
+          "description": "List messages from Gmail inbox",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/messages",
+          "parameters": [
+            {
+              "name": "q",
+              "description": "Gmail search query (e.g., 'is:unread', 'from:example@gmail.com')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "labelIds",
+              "description": "Label IDs to filter by (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "INBOX"
+            },
+            {
+              "name": "maxResults",
+              "description": "Maximum number of messages to return (1-500)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            {
+              "name": "includeSpamTrash",
+              "description": "Include messages from SPAM and TRASH",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": false
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "messages",
+              "pageSize": 100
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "2m"
+            }
+          }
+        },
+        {
+          "id": "gmail_message_get",
+          "name": "Get Gmail Message",
+          "description": "Get a specific Gmail message by ID with full content",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/messages/{messageId}",
+          "parameters": [
+            {
+              "name": "messageId",
+              "description": "The ID of the message to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "format",
+              "description": "Format of the message returned",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "full",
+              "validation": {
+                "enum": ["minimal", "full", "raw", "metadata"]
+              }
+            },
+            {
+              "name": "metadataHeaders",
+              "description": "Headers to include when format is metadata",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "Subject,From,To,Date"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "15m"
+            },
+            "transform": "{id: .id, threadId: .threadId, snippet: .snippet, internalDate: .internalDate, payload: {headers: [.payload.headers[] | select(.name | test(\"Subject|From|To|Date\"; \"i\"))], body: .payload.body.data, parts: .payload.parts}}"
+          }
+        },
+        {
+          "id": "gmail_message_send",
+          "name": "Send Gmail Message",
+          "description": "Send a new email message through Gmail",
+          "method": "POST",
+          "path": "/gmail/v1/users/me/messages/send",
+          "parameters": [
+            {
+              "name": "to",
+              "description": "Recipient email address",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "subject",
+              "description": "Email subject line",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Email body content (plain text)",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "cc",
+              "description": "CC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "bcc",
+              "description": "BCC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_search_messages",
+          "name": "Search Gmail Messages",
+          "description": "Search Gmail messages with advanced query syntax",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/messages",
+          "parameters": [
+            {
+              "name": "query",
+              "description": "Advanced Gmail search query (e.g., 'from:sender@example.com subject:urgent')",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "transform": {
+                "targetName": "q",
+                "expression": "."
+              }
+            },
+            {
+              "name": "maxResults",
+              "description": "Maximum number of messages to return (1-500)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minLength": 1,
+                "maxLength": 500
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "messages",
+              "pageSize": 100
+            }
+          }
+        },
+        {
+          "id": "drive_files_list",
+          "name": "List Google Drive Files",
+          "description": "List files and folders in Google Drive",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "parameters": [
+            {
+              "name": "q",
+              "description": "Query to filter files (e.g., 'mimeType=\"application/vnd.google-apps.folder\"' for folders)",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "pageSize",
+              "description": "Maximum number of files to return (1-1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minLength": 1,
+                "maxLength": 1000
+              }
+            },
+            {
+              "name": "fields",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "nextPageToken,files(id,name,mimeType,size,modifiedTime,parents,webViewLink)"
+            },
+            {
+              "name": "orderBy",
+              "description": "Order files by field",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "modifiedTime desc",
+              "validation": {
+                "enum": ["createdTime", "folder", "modifiedByMeTime", "modifiedTime", "name", "quotaBytesUsed", "recency", "sharedWithMeTime", "starred", "viewedByMeTime"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "files",
+              "pageSize": 100
+            },
+            "caching": {
+              "enabled": true,
+              "ttl": "5m"
+            },
+            "transform": ".files | map({id: .id, name: .name, type: .mimeType, size: .size, modified: .modifiedTime, link: .webViewLink, parents: .parents})"
+          }
+        },
+        {
+          "id": "drive_file_get",
+          "name": "Get Google Drive File",
+          "description": "Get metadata for a specific file in Google Drive",
+          "method": "GET",
+          "path": "/drive/v3/files/{fileId}",
+          "parameters": [
+            {
+              "name": "fileId",
+              "description": "The ID of the file to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "id,name,mimeType,size,modifiedTime,parents,webViewLink,webContentLink,description"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "10m"
+            }
+          }
+        },
+        {
+          "id": "drive_file_download",
+          "name": "Download Google Drive File Content",
+          "description": "Download the content of a file from Google Drive",
+          "method": "GET",
+          "path": "/drive/v3/files/{fileId}",
+          "parameters": [
+            {
+              "name": "fileId",
+              "description": "The ID of the file to download",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "alt",
+              "description": "Alternative representation type",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "media",
+              "validation": {
+                "enum": ["media"]
+              }
+            }
+          ],
+          "response": {
+            "type": "binary"
+          }
+        },
+        {
+          "id": "drive_file_create",
+          "name": "Create Google Drive File",
+          "description": "Create a new file in Google Drive",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Name of the file to create",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "parents",
+              "description": "Parent folder IDs (array of strings)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "description",
+              "description": "File description",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "mimeType",
+              "description": "MIME type of the file",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "text/plain"
+            },
+            {
+              "name": "uploadType",
+              "description": "Type of upload",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "multipart",
+              "validation": {
+                "enum": ["media", "multipart", "resumable"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "drive_file_delete",
+          "name": "Delete Google Drive File",
+          "description": "Delete a file from Google Drive",
+          "method": "DELETE",
+          "path": "/drive/v3/files/{fileId}",
+          "parameters": [
+            {
+              "name": "fileId",
+              "description": "The ID of the file to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "text"
+          }
+        },
+        {
+          "id": "drive_file_share",
+          "name": "Share Google Drive File",
+          "description": "Share a file in Google Drive with specific permissions",
+          "method": "POST",
+          "path": "/drive/v3/files/{fileId}/permissions",
+          "parameters": [
+            {
+              "name": "fileId",
+              "description": "The ID of the file to share",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "role",
+              "description": "Permission role",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "validation": {
+                "enum": ["reader", "writer", "commenter", "owner"]
+              }
+            },
+            {
+              "name": "type",
+              "description": "Permission type",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "validation": {
+                "enum": ["user", "group", "domain", "anyone"]
+              }
+            },
+            {
+              "name": "emailAddress",
+              "description": "Email address (required for user/group type)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "domain",
+              "description": "Domain name (required for domain type)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "sendNotificationEmail",
+              "description": "Whether to send notification emails",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": true
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        }
+      ]
+    }
+  }
+}

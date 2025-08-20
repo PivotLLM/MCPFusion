@@ -1,0 +1,1392 @@
+{
+  "services": {
+    "microsoft365": {
+      "name": "Microsoft 365",
+      "baseURL": "https://graph.microsoft.com/v1.0",
+      "auth": {
+        "type": "oauth2_device",
+        "config": {
+          "clientId": "${MS365_CLIENT_ID}",
+          "tenantId": "${MS365_TENANT_ID}",
+          "scope": "openid profile User.Read Calendars.Read Calendars.Read.Shared Contacts.Read Contacts.Read.Shared Files.Read Files.Read.All Mail.Read Mail.Read.Shared Sites.Read.All offline_access",
+          "authorizationURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/devicecode",
+          "tokenURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token"
+        }
+      },
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "30s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": ["network_error", "timeout", "server_error", "rate_limited"]
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 5,
+        "successThreshold": 3,
+        "timeout": "30s",
+        "halfOpenMaxCalls": 3,
+        "resetTimeout": "60s"
+      },
+      "endpoints": [
+        {
+          "id": "calendar_read_summary",
+          "name": "Read Calendar Summary",
+          "description": "Get calendar events with basic information (start, end, subject)",
+          "method": "GET",
+          "path": "/me/calendarView",
+          "parameters": [
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,start,end"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100,
+             "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "calendar_read_details",
+          "name": "Read Calendar Details",
+          "description": "Get calendar events with full details",
+          "method": "GET",
+          "path": "/me/calendarView",
+          "parameters": [
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,body,bodyPreview,organizer,attendees,start,end,location"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "calendars_list",
+          "name": "List Calendars",
+          "description": "Get all calendars for the user",
+          "method": "GET",
+          "path": "/me/calendars",
+          "parameters": [
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,id,owner,isDefaultCalendar"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 1000,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "calendar_read_event",
+          "name": "Read Calendar Event",
+          "description": "Get a specific calendar event by ID",
+          "method": "GET",
+          "path": "/me/events/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Event ID to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "calendar_events_read_summary",
+          "name": "Read Calendar Events Summary",
+          "description": "Get calendar events from a specific calendar with basic information",
+          "method": "GET",
+          "path": "/me/calendars/{calendarId}/events",
+          "parameters": [
+            {
+              "name": "calendarId",
+              "description": "Calendar ID to retrieve events from",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,start,end"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "calendar_events_read_details",
+          "name": "Read Calendar Events Details",
+          "description": "Get calendar events from a specific calendar with full details",
+          "method": "GET",
+          "path": "/me/calendars/{calendarId}/events",
+          "parameters": [
+            {
+              "name": "calendarId",
+              "description": "Calendar ID to retrieve events from",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,body,bodyPreview,organizer,attendees,start,end,location"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "mail_read_inbox",
+          "name": "Read Inbox Messages",
+          "description": "Get inbox messages with basic information",
+          "method": "GET",
+          "path": "/me/messages",
+          "parameters": [
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of messages to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,from,receivedDateTime,isRead"
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "Filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: 'isRead eq false', 'receivedDateTime ge #DAYS-1', 'receivedDateTime le #DAYS+7', 'receivedDateTime ge #HOURS-12 and isRead eq false'",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "isRead eq false",
+                "receivedDateTime ge #DAYS-0",
+                "receivedDateTime ge #DAYS-1",
+                "receivedDateTime ge #DAYS-3",
+                "receivedDateTime ge #HOURS-6",
+                "receivedDateTime ge #HOURS-24",
+                "isRead eq false and receivedDateTime ge #DAYS-1",
+                "hasAttachments eq true and receivedDateTime ge #DAYS-7"
+              ]
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "mail_folders_list",
+          "name": "List Mail Folders",
+          "description": "Get all mail folders for the user",
+          "method": "GET",
+          "path": "/me/mailFolders",
+          "parameters": [
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "displayName,id,parentFolderId,childFolderCount,unreadItemCount,totalItemCount"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 1000,
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "mail_folder_messages",
+          "name": "Read Mail Folder Messages",
+          "description": "Get messages from a specific mail folder",
+          "method": "GET",
+          "path": "/me/mailFolders/{folderId}/messages",
+          "parameters": [
+            {
+              "name": "folderId",
+              "description": "Mail folder ID to retrieve messages from",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of messages to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,from,receivedDateTime,bodyPreview,isRead"
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "Filter expression (e.g., 'isRead eq false')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "mail_read_message",
+          "name": "Read Mail Message",
+          "description": "Get a specific email message by ID",
+          "method": "GET",
+          "path": "/me/messages/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Message ID to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "profile_get",
+          "name": "Get User Profile",
+          "description": "Get the current user's profile information. This is a good way to test connectivity a log in.",
+          "method": "GET",
+          "path": "/me",
+          "parameters": [
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "displayName,mail,userPrincipalName,jobTitle,department,companyName"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "contacts_list",
+          "name": "List Contacts",
+          "description": "Get contacts from the user's address book",
+          "method": "GET",
+          "path": "/me/contacts",
+          "parameters": [
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of contacts to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "displayName,emailAddresses,businessPhones,jobTitle,companyName"
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "Filter expression",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "contacts_read_contact",
+          "name": "Read Contact",
+          "description": "Get a specific contact by ID",
+          "method": "GET",
+          "path": "/me/contacts/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Contact ID to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "calendar_search",
+          "name": "Search Calendar Events",
+          "description": "Search calendar events with flexible filtering by subject, attendees, location, and date range",
+          "method": "GET",
+          "path": "/me/calendarView",
+          "parameters": [
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "startDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "endDateTime",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: contains(subject,'Meeting'), contains(subject,'Project') and start/dateTime ge #DAYS-7, start/dateTime le #DAYS+30, attendees/any(a:contains(a/emailAddress/address,'john@example.com'))",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "contains(subject,'Meeting')",
+                "contains(subject,'Project')",
+                "start/dateTime ge #DAYS-7",
+                "start/dateTime ge #DAYS-1 and start/dateTime le #DAYS-0",
+                "attendees/any(a:contains(a/emailAddress/address,'john@example.com'))",
+                "contains(location/displayName,'Room 101')",
+                "contains(subject,'Standup') and start/dateTime ge #DAYS-3",
+                "createdDateTime ge #HOURS-24"
+              ]
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,start,end,location,organizer,attendees"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 50,
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "mail_search",
+          "name": "Search Mail Messages",
+          "description": "Search mail messages with flexible filtering by subject, sender, recipient, content, and date range",
+          "method": "GET",
+          "path": "/me/messages",
+          "parameters": [
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: contains(subject,'Invoice'), contains(from/emailAddress/address,'boss@company.com'), receivedDateTime ge #DAYS-3, receivedDateTime le #DAYS+1, isRead eq false",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "contains(subject,'Invoice')",
+                "contains(from/emailAddress/address,'boss@company.com')",
+                "receivedDateTime ge #DAYS-0",
+                "receivedDateTime ge #DAYS-3",
+                "receivedDateTime ge #HOURS-6",
+                "isRead eq false and receivedDateTime ge #DAYS-1",
+                "hasAttachments eq true and receivedDateTime ge #DAYS-7",
+                "contains(bodyPreview,'urgent') and receivedDateTime ge #HOURS-24",
+                "toRecipients/any(r:contains(r/emailAddress/address,'team@company.com')) and receivedDateTime ge #DAYS-1"
+              ]
+            },
+            {
+              "name": "$search",
+              "alias": "search",
+              "description": "Full-text search across message content. Examples: 'invoice payment', 'from:john@company.com', 'subject:meeting', 'attachment:*.pdf'",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "invoice payment",
+                "from:john@company.com",
+                "subject:meeting",
+                "attachment:*.pdf",
+                "urgent OR important",
+                "has:attachment"
+              ]
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            },
+            {
+              "name": "$orderby",
+              "alias": "orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "receivedDateTime desc",
+              "enum": [
+                "receivedDateTime desc",
+                "receivedDateTime asc", 
+                "subject asc",
+                "subject desc",
+                "from/emailAddress/address asc",
+                "from/emailAddress/address desc"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "files_search",
+          "name": "Search OneDrive Files",
+          "description": "Search files in OneDrive with flexible filtering by name, content type, and modification date",
+          "method": "GET",
+          "path": "/me/drive/root/search(q='{searchQuery}')",
+          "parameters": [
+            {
+              "name": "searchQuery",
+              "description": "Search query for file names and content. Examples: 'invoice', '*.pdf', 'report 2025', 'presentation'",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "examples": [
+                "invoice",
+                "*.pdf",
+                "report 2025",
+                "presentation",
+                "*.docx",
+                "budget"
+              ]
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "OData filter expression. Examples: file/mimeType eq 'application/pdf', lastModifiedDateTime ge 2025-01-01T00:00:00Z, size gt 1048576",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file/mimeType eq 'application/pdf'",
+                "lastModifiedDateTime ge 2025-01-01T00:00:00Z",
+                "size gt 1048576",
+                "folder ne null",
+                "file ne null"
+              ]
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 50,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$orderby",
+              "alias": "orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "lastModifiedDateTime desc",
+              "enum": [
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "name asc",
+                "name desc",
+                "size desc",
+                "size asc"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "files_list",
+          "name": "List OneDrive Files",
+          "description": "List files and folders in OneDrive root directory",
+          "method": "GET",
+          "path": "/me/drive/root/children",
+          "parameters": [
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "OData filter expression. Examples: file/mimeType eq 'application/pdf', folder ne null, file ne null",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file ne null",
+                "folder ne null",
+                "file/mimeType eq 'application/pdf'",
+                "lastModifiedDateTime ge 2025-01-01T00:00:00Z"
+              ]
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,parentReference"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100,
+               "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$orderby",
+              "alias": "orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name asc",
+              "enum": [
+                "name asc",
+                "name desc",
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "size desc",
+                "size asc"
+              ]
+            },
+            {
+              "name": "$expand",
+              "alias": "expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "files_read_file",
+          "name": "Read File Details",
+          "description": "Get detailed information about a specific file by ID",
+          "method": "GET",
+          "path": "/me/drive/items/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "File ID to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,parentReference,createdDateTime,lastModifiedBy"
+            },
+            {
+              "name": "$expand",
+              "alias": "expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "files_download_content",
+          "name": "Download File Content",
+          "description": "Download the actual content of a file (binary or text)",
+          "method": "GET",
+          "path": "/me/drive/items/{id}/content",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "File ID to download",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "binary"
+          }
+        },
+        {
+          "id": "files_list_children",
+          "name": "List Folder Contents",
+          "description": "List files and folders within a specific directory",
+          "method": "GET",
+          "path": "/me/drive/items/{id}/children",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Folder ID to list contents",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 200,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$orderby",
+              "alias": "orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name asc",
+              "enum": [
+                "name asc",
+                "name desc",
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "size desc",
+                "size asc"
+              ]
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "Filter results by type or properties",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file ne null",
+                "folder ne null",
+                "file/mimeType eq 'application/pdf'",
+                "lastModifiedDateTime ge 2025-01-01T00:00:00Z"
+              ]
+            },
+            {
+              "name": "$expand",
+              "alias": "expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "files_get_by_path",
+          "name": "Get File/Folder by Path",
+          "description": "Get file or folder metadata using file system path",
+          "method": "GET",
+          "path": "/me/drive/root:/{filePath}",
+          "parameters": [
+            {
+              "name": "filePath",
+              "description": "File or folder path from root (e.g., 'Documents/report.docx', 'Projects/MyFolder')",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "examples": [
+                "Documents/report.docx",
+                "Projects/MyFolder",
+                "Presentations/Q1-Review.pptx",
+                "Data/analysis.xlsx"
+              ]
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,createdDateTime"
+            },
+            {
+              "name": "$expand",
+              "alias": "expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "files_recent",
+          "name": "List Recent Files",
+          "description": "List recently accessed files across all drives (OneDrive, SharePoint, Teams)",
+          "method": "GET",
+          "path": "/me/drive/recent",
+          "parameters": [
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,lastAccessedDateTime,remoteItem"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of recent items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 50,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$expand",
+              "alias": "expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "files_list_folder_by_path",
+          "name": "List Folder Contents by Path",
+          "description": "Navigate to folder by path and list its contents",
+          "method": "GET",
+          "path": "/me/drive/root:/{folderPath}:/children",
+          "parameters": [
+            {
+              "name": "folderPath",
+              "description": "Folder path from root (e.g., 'Documents', 'Projects/Current', 'Shared Documents')",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "examples": [
+                "Documents",
+                "Projects/Current",
+                "Shared Documents",
+                "Archive/2024",
+                "Teams/ProjectAlpha"
+              ]
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of items to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 200,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$orderby",
+              "alias": "orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name asc",
+              "enum": [
+                "name asc",
+                "name desc",
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "size desc",
+                "size asc"
+              ]
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "Filter results by type or properties",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "file ne null",
+                "folder ne null",
+                "file/mimeType eq 'application/pdf'",
+                "size gt 1048576"
+              ]
+            },
+            {
+              "name": "$expand",
+              "alias": "expand",
+              "description": "Related data to include in response (e.g., 'permissions', 'children', 'thumbnails')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "permissions",
+                "children",
+                "thumbnails",
+                "children($select=name,id,size)",
+                "permissions($select=id,roles,grantedTo)"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        }
+      ]
+    }
+  }
+}

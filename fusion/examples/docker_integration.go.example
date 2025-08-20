@@ -1,0 +1,315 @@
+// Package main demonstrates Docker-based deployment of MCPFusion with Fusion provider.
+// This example shows how to configure the application for containerized environments
+// with proper health checks, metrics, and environment-based configuration.
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/PivotLLM/MCPFusion/fusion"
+	"github.com/PivotLLM/MCPFusion/globalMetrics"
+	"github.com/PivotLLM/MCPFusion/mcpserver"
+	"github.com/PivotLLM/MCPFusion/mlogger"
+)
+
+// main demonstrates Docker-ready MCPFusion deployment
+func main() {
+	// Configure logging for container environment
+	logger, err := createContainerLogger()
+	if err != nil {
+		log.Fatal("Failed to create logger:", err)
+	}
+	defer logger.Close()
+
+	logger.Info("Starting MCPFusion server in container mode...")
+
+	// Load configuration from environment
+	config := loadConfigFromEnvironment()
+	logConfiguration(logger, config)
+
+	// Create Fusion provider with environment-based configuration
+	fusionProvider := createFusionProvider(logger, config)
+
+	// Validate configuration
+	if err := fusionProvider.Validate(); err != nil {
+		logger.Fatalf("Configuration validation failed: %v", err)
+	}
+
+	// Create server with container-friendly settings
+	server := createMCPServer(logger, config)
+
+	// Register providers
+	server.AddToolProvider(fusionProvider)
+	server.AddResourceProvider(fusionProvider)
+	server.AddPromptProvider(fusionProvider)
+
+	// Set up health check endpoint
+	setupHealthCheck(fusionProvider, config.Port)
+
+	// Start server with graceful shutdown
+	runServerWithGracefulShutdown(logger, server, fusionProvider, config.ShutdownTimeout)
+}
+
+// ContainerConfig holds environment-based configuration
+type ContainerConfig struct {
+	Port            int
+	LogLevel        string
+	ConfigPaths     []string
+	ShutdownTimeout time.Duration
+	MetricsEnabled  bool
+	HealthEnabled   bool
+	CacheEnabled    bool
+}
+
+// loadConfigFromEnvironment loads configuration from environment variables
+func loadConfigFromEnvironment() *ContainerConfig {
+	config := &ContainerConfig{
+		Port:            8080,
+		LogLevel:        "info",
+		ConfigPaths:     []string{},
+		ShutdownTimeout: 10 * time.Second,
+		MetricsEnabled:  true,
+		HealthEnabled:   true,
+		CacheEnabled:    true,
+	}
+
+	// Port configuration
+	if portStr := os.Getenv("PORT"); portStr != "" {
+		if port, err := strconv.Atoi(portStr); err == nil {
+			config.Port = port
+		}
+	}
+
+	// Log level
+	if level := os.Getenv("LOG_LEVEL"); level != "" {
+		config.LogLevel = level
+	}
+
+	// Configuration paths
+	if configPaths := os.Getenv("CONFIG_PATHS"); configPaths != "" {
+		config.ConfigPaths = strings.Split(configPaths, ",")
+		for i := range config.ConfigPaths {
+			config.ConfigPaths[i] = strings.TrimSpace(config.ConfigPaths[i])
+		}
+	} else {
+		// Default configuration paths for container
+		config.ConfigPaths = []string{
+			"/app/configs/microsoft365.json",
+			"/app/configs/google.json",
+		}
+	}
+
+	// Shutdown timeout
+	if timeoutStr := os.Getenv("SHUTDOWN_TIMEOUT"); timeoutStr != "" {
+		if timeout, err := time.ParseDuration(timeoutStr); err == nil {
+			config.ShutdownTimeout = timeout
+		}
+	}
+
+	// Feature flags
+	config.MetricsEnabled = getBoolEnv("METRICS_ENABLED", true)
+	config.HealthEnabled = getBoolEnv("HEALTH_ENABLED", true)
+	config.CacheEnabled = getBoolEnv("CACHE_ENABLED", true)
+
+	return config
+}
+
+// createContainerLogger creates a logger suitable for container environments
+func createContainerLogger() (globalMetrics.Logger, error) {
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+
+	// In containers, log to stdout for container log aggregation
+	debug := logLevel == "debug"
+	return mlogger.New(
+		mlogger.WithPrefix("FUSION"),
+		mlogger.WithDateFormat("2006-01-02 15:04:05"),
+		mlogger.WithLogStdout(true),           // Container logs go to stdout
+		mlogger.WithDebug(debug),              // Enable debug based on level
+	)
+}
+
+// createFusionProvider creates Fusion provider with container configuration
+func createFusionProvider(logger globalMetrics.Logger, config *ContainerConfig) *fusion.Fusion {
+	options := []fusion.Option{
+		fusion.WithLogger(logger),
+	}
+
+	// Add configuration files
+	for _, configPath := range config.ConfigPaths {
+		if _, err := os.Stat(configPath); err == nil {
+			options = append(options, fusion.WithJSONConfig(configPath))
+			logger.Infof("Loading configuration: %s", configPath)
+		} else {
+			logger.Warningf("Configuration file not found: %s", configPath)
+		}
+	}
+
+	// Container-specific options
+	options = append(options,
+		fusion.WithTimeout(30*time.Second),    // Conservative timeout for containers
+		fusion.WithMaxRetries(3),              // Moderate retry for container environments
+	)
+
+	if config.CacheEnabled {
+		options = append(options, fusion.WithInMemoryCache())
+	}
+
+	if config.MetricsEnabled {
+		options = append(options, fusion.WithMetricsCollection(true))
+	}
+
+	// Circuit breaker for resilience in distributed environments
+	options = append(options, fusion.WithCircuitBreaker(true))
+
+	return fusion.New(options...)
+}
+
+// createMCPServer creates MCP server with container configuration
+func createMCPServer(logger globalMetrics.Logger, config *ContainerConfig) *mcpserver.MCPServer {
+	return mcpserver.New(
+		mcpserver.WithPort(config.Port),
+		mcpserver.WithLogger(logger),
+		mcpserver.WithCORS(true),                      // Enable CORS for container networking
+		mcpserver.WithRateLimit(500),                  // Conservative rate limit
+		mcpserver.WithTimeout(45*time.Second),         // Extended timeout for API operations
+		mcpserver.WithGracefulShutdown(config.ShutdownTimeout),
+		mcpserver.WithHealthCheck(true),               // Enable health checks
+	)
+}
+
+// setupHealthCheck sets up Kubernetes/Docker health check endpoint
+func setupHealthCheck(fusionProvider *fusion.Fusion, port int) {
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		// Basic health check
+		if fusionProvider == nil {
+			http.Error(w, "Service not ready", http.StatusServiceUnavailable)
+			return
+		}
+
+		// Check if services are configured
+		serviceNames := fusionProvider.GetServiceNames()
+		if len(serviceNames) == 0 {
+			http.Error(w, "No services configured", http.StatusServiceUnavailable)
+			return
+		}
+
+		// Return health status
+		health := map[string]interface{}{
+			"status":   "healthy",
+			"services": serviceNames,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		
+		// Simple JSON encoding for health check
+		fmt.Fprintf(w, `{"status":"healthy","services":%d,"timestamp":"%s"}`,
+			len(serviceNames), time.Now().UTC().Format(time.RFC3339))
+	})
+
+	// Readiness check for Kubernetes
+	http.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		// Check if all services are ready
+		if fusionProvider.IsReady() {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "ready")
+		} else {
+			http.Error(w, "not ready", http.StatusServiceUnavailable)
+		}
+	})
+
+	// Start health check server in background
+	go func() {
+		healthPort := port + 1000 // Health check on different port
+		log.Printf("Health check server starting on port %d", healthPort)
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", healthPort), nil); err != nil {
+			log.Printf("Health check server error: %v", err)
+		}
+	}()
+}
+
+// runServerWithGracefulShutdown handles server lifecycle with proper shutdown
+func runServerWithGracefulShutdown(logger globalMetrics.Logger, server *mcpserver.MCPServer,
+	fusionProvider *fusion.Fusion, shutdownTimeout time.Duration) {
+	
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle shutdown signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start server
+	serverErrChan := make(chan error, 1)
+	go func() {
+		logger.Info("MCPFusion server starting...")
+		logger.Infof("Server listening on port %d", server.GetPort())
+		logger.Infof("Health checks available on port %d", server.GetPort()+1000)
+		
+		if err := server.Start(ctx); err != nil {
+			serverErrChan <- err
+		}
+	}()
+
+	// Wait for shutdown signal or error
+	select {
+	case sig := <-sigChan:
+		logger.Infof("Received signal %v, initiating graceful shutdown...", sig)
+	case err := <-serverErrChan:
+		logger.Errorf("Server error: %v", err)
+	}
+
+	// Graceful shutdown
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer shutdownCancel()
+
+	logger.Info("Shutting down server...")
+	
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Errorf("Server shutdown error: %v", err)
+	} else {
+		logger.Info("Server shutdown completed successfully")
+	}
+
+	// Clean up Fusion resources
+	if err := fusionProvider.Close(); err != nil {
+		logger.Errorf("Fusion cleanup error: %v", err)
+	} else {
+		logger.Info("Fusion provider cleanup completed")
+	}
+}
+
+// logConfiguration logs the current configuration for debugging
+func logConfiguration(logger globalMetrics.Logger, config *ContainerConfig) {
+	logger.Infof("Container configuration:")
+	logger.Infof("  Port: %d", config.Port)
+	logger.Infof("  Log Level: %s", config.LogLevel)
+	logger.Infof("  Config Paths: %v", config.ConfigPaths)
+	logger.Infof("  Shutdown Timeout: %v", config.ShutdownTimeout)
+	logger.Infof("  Metrics Enabled: %t", config.MetricsEnabled)
+	logger.Infof("  Health Enabled: %t", config.HealthEnabled)
+	logger.Infof("  Cache Enabled: %t", config.CacheEnabled)
+}
+
+// getBoolEnv gets a boolean environment variable with default
+func getBoolEnv(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if parsed, err := strconv.ParseBool(value); err == nil {
+			return parsed
+		}
+	}
+	return defaultValue
+}
