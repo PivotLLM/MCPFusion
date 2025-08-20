@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
 )
@@ -27,6 +28,7 @@ func NewValidator(logger global.Logger) *Validator {
 }
 
 // ValidateParameters validates input parameters against their definitions
+// It may modify the args map to auto-convert compatible date formats
 func (v *Validator) ValidateParameters(params []ParameterConfig, args map[string]interface{}) error {
 	if v.logger != nil {
 		v.logger.Debugf("Validating %d parameters", len(params))
@@ -65,7 +67,7 @@ func (v *Validator) ValidateParameters(params []ParameterConfig, args map[string
 
 		// Apply additional validation rules
 		if param.Validation != nil {
-			if err := v.applyValidationRules(param, value); err != nil {
+			if err := v.applyValidationRules(param, value, args); err != nil {
 				if v.logger != nil {
 					v.logger.Errorf("Validation rule failed for parameter %s: %v", param.Name, err)
 				}
@@ -150,7 +152,8 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 }
 
 // applyValidationRules applies additional validation rules to a parameter
-func (v *Validator) applyValidationRules(param ParameterConfig, value interface{}) error {
+// It may modify the args map to auto-convert compatible date formats
+func (v *Validator) applyValidationRules(param ParameterConfig, value interface{}, args map[string]interface{}) error {
 	validation := param.Validation
 
 	// Pattern validation for strings
@@ -167,6 +170,18 @@ func (v *Validator) applyValidationRules(param ParameterConfig, value interface{
 		}
 
 		if !pattern.MatchString(str) {
+			// Check if this is a YYYYMMDD pattern and try ISO date conversion
+			if validation.Pattern == "^\\d{8}$" {
+				convertedDate := v.tryConvertISOToYYYYMMDD(str)
+				if convertedDate != "" {
+					// Successfully converted, update the args map
+					args[param.Name] = convertedDate
+					if v.logger != nil {
+						v.logger.Debugf("Auto-converted ISO date '%s' to YYYYMMDD '%s' for parameter %s", str, convertedDate, param.Name)
+					}
+					return nil
+				}
+			}
 			return NewValidationError(param.Name, str, "pattern",
 				fmt.Sprintf("value does not match pattern: %s", validation.Pattern))
 		}
@@ -207,6 +222,29 @@ func (v *Validator) applyValidationRules(param ParameterConfig, value interface{
 	// Numeric range validation not supported yet in ValidationConfig
 
 	return nil
+}
+
+// tryConvertISOToYYYYMMDD attempts to convert an ISO date string to YYYYMMDD format
+// Returns the converted date string if successful, empty string if conversion fails
+func (v *Validator) tryConvertISOToYYYYMMDD(isoDate string) string {
+	// Try parsing common ISO date formats
+	formats := []string{
+		"2006-01-02T15:04:05Z",     // RFC3339 with Z
+		"2006-01-02T15:04:05.000Z", // RFC3339 with milliseconds and Z
+		"2006-01-02T15:04:05-07:00", // RFC3339 with timezone
+		"2006-01-02T15:04:05.000-07:00", // RFC3339 with milliseconds and timezone
+		"2006-01-02",               // Date only
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, isoDate); err == nil {
+			// Successfully parsed, convert to YYYYMMDD
+			return t.Format("20060102")
+		}
+	}
+
+	// No successful conversion
+	return ""
 }
 
 // ValidateEndpoint validates an endpoint configuration
