@@ -849,32 +849,6 @@
                 "minimum": 1,
                 "maximum": 1000
               }
-            },
-            {
-              "name": "$skip",
-              "alias": "skip",
-              "description": "Number of items to skip (for pagination offset)",
-              "type": "number",
-              "required": false,
-              "location": "query",
-              "default": 0
-            },
-            {
-              "name": "$orderby",
-              "alias": "orderby",
-              "description": "Sort order for results",
-              "type": "string",
-              "required": false,
-              "location": "query",
-              "default": "receivedDateTime desc",
-              "enum": [
-                "receivedDateTime desc",
-                "receivedDateTime asc", 
-                "subject asc",
-                "subject desc",
-                "from/emailAddress/address asc",
-                "from/emailAddress/address desc"
-              ]
             }
           ],
           "response": {
