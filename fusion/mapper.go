@@ -48,6 +48,15 @@ func (m *Mapper) BuildURL(baseURL, path string, params []ParameterConfig, args m
 			// Apply time token substitution first
 			value = m.timeTokenProcessor.ProcessValue(value)
 
+			// Apply quoting if specified
+			if param.Quoted {
+				valueStr := fmt.Sprintf("%v", value)
+				// Escape existing quotes
+				valueStr = strings.ReplaceAll(valueStr, `"`, `\"`)
+				// Wrap in quotes
+				value = `"` + valueStr + `"`
+			}
+
 			// Apply transformation if specified
 			if param.Transform != nil {
 				transformedValue, err := m.transformParameter(param, value)
@@ -93,6 +102,15 @@ func (m *Mapper) ApplyQueryParams(req *http.Request, params []ParameterConfig, a
 
 		// Apply time token substitution first
 		value = m.timeTokenProcessor.ProcessValue(value)
+
+		// Apply quoting if specified
+		if param.Quoted {
+			valueStr := fmt.Sprintf("%v", value)
+			// Escape existing quotes
+			valueStr = strings.ReplaceAll(valueStr, `"`, `\"`)
+			// Wrap in quotes
+			value = `"` + valueStr + `"`
+		}
 
 		// Apply transformation if specified
 		if param.Transform != nil {
@@ -145,6 +163,15 @@ func (m *Mapper) ApplyHeaders(req *http.Request, params []ParameterConfig, args 
 		// Apply time token substitution first
 		value = m.timeTokenProcessor.ProcessValue(value)
 
+		// Apply quoting if specified
+		if param.Quoted {
+			valueStr := fmt.Sprintf("%v", value)
+			// Escape existing quotes
+			valueStr = strings.ReplaceAll(valueStr, `"`, `\"`)
+			// Wrap in quotes
+			value = `"` + valueStr + `"`
+		}
+
 		// Apply transformation if specified
 		if param.Transform != nil {
 			transformedValue, err := m.transformParameter(param, value)
@@ -183,6 +210,15 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 
 		// Apply time token substitution first
 		value = m.timeTokenProcessor.ProcessValue(value)
+
+		// Apply quoting if specified
+		if param.Quoted {
+			valueStr := fmt.Sprintf("%v", value)
+			// Escape existing quotes
+			valueStr = strings.ReplaceAll(valueStr, `"`, `\"`)
+			// Wrap in quotes
+			value = `"` + valueStr + `"`
+		}
 
 		// Apply transformation if specified
 		if param.Transform != nil {

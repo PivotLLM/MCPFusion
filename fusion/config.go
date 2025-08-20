@@ -85,21 +85,21 @@ type AuthConfig struct {
 
 // EndpointConfig represents configuration for a single API endpoint
 type EndpointConfig struct {
-	ID          string               `json:"id"`
-	Name        string               `json:"name"`
-	Description string               `json:"description"`
-	Method      string               `json:"method"`
-	Path        string               `json:"path"`
-	Parameters  []ParameterConfig    `json:"parameters"`
-	Response    ResponseConfig       `json:"response"`
-	Retry       *RetryConfig         `json:"retry,omitempty"`
-	Connection  *ConnectionConfig    `json:"connection,omitempty"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Method      string            `json:"method"`
+	Path        string            `json:"path"`
+	Parameters  []ParameterConfig `json:"parameters"`
+	Response    ResponseConfig    `json:"response"`
+	Retry       *RetryConfig      `json:"retry,omitempty"`
+	Connection  *ConnectionConfig `json:"connection,omitempty"`
 }
 
 // ParameterConfig represents configuration for a parameter
 type ParameterConfig struct {
 	Name        string            `json:"name"`
-	Alias       string            `json:"alias,omitempty"`      // MCP-compliant name alias
+	Alias       string            `json:"alias,omitempty"` // MCP-compliant name alias
 	Description string            `json:"description"`
 	Type        ParameterType     `json:"type"`
 	Required    bool              `json:"required"`
@@ -108,6 +108,7 @@ type ParameterConfig struct {
 	Examples    []interface{}     `json:"examples,omitempty"`
 	Validation  *ValidationConfig `json:"validation,omitempty"`
 	Transform   *TransformConfig  `json:"transform,omitempty"`
+	Quoted      bool              `json:"quoted,omitempty"` // Whether to quote the parameter value
 }
 
 // ValidationConfig represents validation rules for a parameter
