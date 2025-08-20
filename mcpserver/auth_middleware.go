@@ -425,3 +425,64 @@ func (avm *AuthValidationMiddleware) writeError(w http.ResponseWriter, statusCod
 	w.WriteHeader(statusCode)
 	_, _ = w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
 }
+
+// SimpleMiddleware provides a simplified middleware that ONLY validates bearer tokens
+// and extracts tenant context without service resolution or tool-specific logic.
+// This is intended for use at the HTTP transport level where MCP-level authentication
+// will handle tool-specific validation.
+func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check if this path should skip authentication
+		if am.shouldSkipAuth(r.URL.Path) {
+			if am.logger != nil {
+				am.logger.Debugf("Simple Auth: Skipping authentication for path: %s", r.URL.Path)
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Extract and validate bearer token
+		token := am.extractBearerToken(r)
+		if token == "" {
+			if am.requireAuth {
+				if am.logger != nil {
+					am.logger.Warningf("Simple Auth: Missing bearer token for authenticated request to %s", r.URL.Path)
+				}
+				am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+				return
+			} else {
+				// Auth not required, continue without tenant context
+				if am.logger != nil {
+					am.logger.Debugf("Simple Auth: No bearer token provided, continuing without authentication for %s", r.URL.Path)
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		// Extract tenant context from token
+		tenantContext, err := am.authManager.ExtractTenantFromToken(token)
+		if err != nil {
+			if am.logger != nil {
+				am.logger.Errorf("Simple Auth: Failed to extract tenant context from token: %v", err)
+			}
+			am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+			return
+		}
+
+		// Add request ID to tenant context
+		tenantContext.RequestID = am.generateRequestID(r)
+
+		if am.logger != nil {
+			am.logger.Debugf("Simple Auth: Extracted tenant context: %s for request %s %s",
+				tenantContext.String(), r.Method, r.URL.Path)
+		}
+
+		// Add tenant context to request context without service resolution
+		ctx := context.WithValue(r.Context(), global.TenantContextKey, tenantContext)
+		r = r.WithContext(ctx)
+
+		// Continue to next handler - service validation will happen at MCP level
+		next.ServeHTTP(w, r)
+	})
+}
