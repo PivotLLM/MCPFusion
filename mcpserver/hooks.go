@@ -8,6 +8,7 @@ package mcpserver
 import (
 	"context"
 
+	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -40,9 +41,9 @@ func (s *MCPServer) hookAfterListResourceTemplates(ctx context.Context, id any, 
 
 //goland:noinspection GoUnusedParameter
 func (s *MCPServer) hookAfterListTools(ctx context.Context, id any, request *mcp.ListToolsRequest, result *mcp.ListToolsResult) {
-	if s.debug {
+	if global.DumpTools && s.debug {
 		s.logger.Debugf("%s: %v", request.Request.Method, result.Tools)
 	} else {
-		s.logger.Infof("%s: %s items returned", request.Request.Method, len(result.Tools))
+		s.logger.Infof("%s: %d tools returned", request.Request.Method, len(result.Tools))
 	}
 }

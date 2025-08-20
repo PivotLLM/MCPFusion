@@ -5,6 +5,9 @@
 
 package global
 
+// DumpTools causes extended debugging
+const DumpTools = false
+
 // Logger is an interface for log messages
 type Logger interface {
 	Debug(string)

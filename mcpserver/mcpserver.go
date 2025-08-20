@@ -220,15 +220,33 @@ func New(options ...Option) (*MCPServer, error) {
 	hooks.AddAfterListResourceTemplates(m.hookAfterListResourceTemplates)
 	hooks.AddAfterListTools(m.hookAfterListTools)
 
-	// Create an MCP server using the mcp-go library
-	m.srv = server.NewMCPServer(
-		m.name,
-		m.version,
+	// Create an MCP server using the mcp-go library with proper middleware ordering
+	// 1. Basic server capabilities (logging, recovery)
+	// 2. Request logging for debugging 
+	// 3. MCP-level authentication for tool-specific validation
+	// 4. Hooks for provider integration
+	serverOptions := []server.ServerOption{
 		server.WithLogging(),
 		server.WithRecovery(),
-		server.WithHooks(hooks),
 		WithRequestLogging(m.logger), // Our custom request logging middleware
-	)
+	}
+	
+	// Add MCP authentication middleware if configured
+	if m.authManager != nil {
+		authOptions := []MCPAuthOption{
+			WithMCPAuthManager(m.authManager),
+			WithMCPLogger(m.logger),
+		}
+		if m.configManager != nil {
+			authOptions = append(authOptions, WithMCPServiceProvider(m.configManager))
+		}
+		serverOptions = append(serverOptions, WithMCPAuthentication(authOptions...))
+	}
+	
+	// Add hooks last to ensure they see the fully processed requests
+	serverOptions = append(serverOptions, server.WithHooks(hooks))
+	
+	m.srv = server.NewMCPServer(m.name, m.version, serverOptions...)
 
 	// Tools are in a separate file for better organization
 	m.AddTools()
@@ -268,54 +286,44 @@ func (s *MCPServer) Start() error {
 			s.transport = s.sseServer
 		}
 
-		// Check if OAuth API functionality should be enabled
-		if s.database != nil && s.authManager != nil && s.configManager != nil {
+		// Apply HTTP-level authentication for all requests (simple token validation)
+		// MCP-level authentication will handle tool-specific validation
+		if s.authMiddleware != nil {
 			if s.logger != nil {
-				s.logger.Info("Enabling OAuth API endpoints with extended transport")
-			}
-			// Use ExtendedTransport that includes OAuth API endpoints
-			if s.authMiddleware != nil {
-				s.transport = NewExtendedTransport(s.transport, s.database, s.authManager, 
-					s.configManager, s.authMiddleware.Middleware, s.logger)
-			} else {
-				if s.logger != nil {
-					s.logger.Warning("OAuth API enabled but no auth middleware configured")
+				if s.noStreaming {
+					s.logger.Info("Applying simple HTTP authentication middleware to HTTP server")
+				} else {
+					s.logger.Info("Applying simple HTTP authentication middleware to SSE server")
 				}
-				s.transport = NewExtendedTransport(s.transport, s.database, s.authManager, 
-					s.configManager, nil, s.logger)
 			}
+			s.transport = NewAuthenticatedTransport(s.transport, s.authMiddleware.SimpleMiddleware, s.logger)
 			if s.transport == nil {
 				if s.logger != nil {
-					s.logger.Error("Failed to create extended transport, falling back to basic transport")
+					s.logger.Error("Failed to create authenticated transport, continuing without HTTP authentication")
 				}
-				// Fallback to basic transport
 				if s.noStreaming {
 					s.transport = s.httpServer
 				} else {
 					s.transport = s.sseServer
 				}
 			}
-		} else {
-			// Apply auth middleware to basic transport if configured
-			if s.authMiddleware != nil {
+		}
+
+		// Check if OAuth API functionality should be enabled
+		if s.database != nil && s.authManager != nil && s.configManager != nil {
+			if s.logger != nil {
+				s.logger.Info("Enabling OAuth API endpoints with extended transport")
+			}
+			// Wrap with ExtendedTransport to add OAuth API endpoints
+			// This should preserve the existing transport with simple auth
+			originalTransport := s.transport
+			s.transport = NewExtendedTransport(originalTransport, s.database, s.authManager, 
+				s.configManager, nil, s.logger) // OAuth API uses its own auth for /api/v1/oauth/* routes
+			if s.transport == nil {
 				if s.logger != nil {
-					if s.noStreaming {
-						s.logger.Info("Applying authentication middleware to HTTP server")
-					} else {
-						s.logger.Info("Applying authentication middleware to SSE server")
-					}
+					s.logger.Error("Failed to create extended transport, falling back to original transport")
 				}
-				s.transport = NewAuthenticatedTransport(s.transport, s.authMiddleware.Middleware, s.logger)
-				if s.transport == nil {
-					if s.logger != nil {
-						s.logger.Error("Failed to create authenticated transport, continuing without authentication")
-					}
-					if s.noStreaming {
-						s.transport = s.httpServer
-					} else {
-						s.transport = s.sseServer
-					}
-				}
+				s.transport = originalTransport
 			}
 		}
 
