@@ -209,9 +209,22 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 		return err
 	}
 
+	// Create MCP client
+	mcpClient := mcp.NewClient(cfg.FusionURL, cfg.APIToken)
+
+	// Test connectivity and authentication first
 	if flags.verbose {
+		log.Printf("Testing connection to MCPFusion server at %s...", cfg.FusionURL)
+	}
+
+	pingResp, err := mcpClient.Ping(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to MCPFusion server: %w\n\nPlease verify:\n1. The MCPFusion server URL is correct: %s\n2. The API token is valid\n3. The server is running and accessible", err, cfg.FusionURL)
+	}
+
+	if flags.verbose {
+		log.Printf("Successfully connected to MCPFusion server (tenant: %s)", pingResp.TenantID)
 		log.Printf("Starting OAuth flow for service: %s", provider.GetDisplayName())
-		log.Printf("MCPFusion URL: %s", cfg.FusionURL)
 	}
 
 	// Create OAuth flow executor
@@ -219,7 +232,7 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 		Provider:  provider,
 		Config:    cfg,
 		Registry:  registry,
-		MCPClient: mcp.NewClient(cfg.FusionURL, cfg.APIToken),
+		MCPClient: mcpClient,
 		Verbose:   flags.verbose,
 	}
 

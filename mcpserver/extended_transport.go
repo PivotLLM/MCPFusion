@@ -38,8 +38,10 @@ func NewExtendedTransport(underlying MCPServerTransport, database *db.DB,
 	oauthHandler.RegisterRoutes(tempMux)
 	if authMiddleware != nil {
 		mux.Handle("/api/", authMiddleware(tempMux))
+		mux.Handle("/ping", authMiddleware(tempMux))
 	} else {
 		mux.Handle("/api/", tempMux)
+		mux.Handle("/ping", tempMux)
 	}
 
 	// Handle MCP requests by delegating to the underlying transport

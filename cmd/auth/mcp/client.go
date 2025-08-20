@@ -50,6 +50,61 @@ type TokenResponse struct {
 	TokenID string `json:"token_id,omitempty"`
 }
 
+// PingResponse represents the response from the ping endpoint
+type PingResponse struct {
+	Success   bool   `json:"success"`
+	Message   string `json:"message"`
+	TenantID  string `json:"tenant_id,omitempty"`
+	Timestamp int64  `json:"timestamp,omitempty"`
+}
+
+// Ping tests connectivity and authentication with the MCPFusion server
+func (c *Client) Ping(ctx context.Context) (*PingResponse, error) {
+	endpoint := fmt.Sprintf("%s/ping", c.baseURL)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ping request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.apiToken)
+	req.Header.Set("User-Agent", "fusion-auth/1.0")
+
+	// Log the request if debug is enabled
+	debug.LogHTTPRequest(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("ping request failed: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
+
+	// Log the response if debug is enabled
+	debug.LogHTTPResponse(resp)
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ping response: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("authentication failed: invalid API token")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("ping failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var pingResp PingResponse
+	if err := json.Unmarshal(body, &pingResp); err != nil {
+		return nil, fmt.Errorf("failed to decode ping response: %w", err)
+	}
+
+	return &pingResp, nil
+}
+
 // StoreTokens sends OAuth tokens to MCPFusion for storage
 func (c *Client) StoreTokens(ctx context.Context, service, accessToken, refreshToken string) (*TokenResponse, error) {
 	req := &TokenRequest{

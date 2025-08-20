@@ -68,11 +68,45 @@ type AuthVerifyResponse struct {
 
 // RegisterRoutes registers the OAuth API routes with the given mux
 func (h *OAuthAPIHandler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/ping", h.handlePing)
 	mux.HandleFunc("/api/v1/oauth/tokens", h.handleOAuthTokens)
 	mux.HandleFunc("/api/v1/auth/verify", h.handleAuthVerify)
 	mux.HandleFunc("/api/v1/services/", h.handleServiceConfig)
 	mux.HandleFunc("/api/v1/oauth/success", h.handleOAuthSuccess)
 	mux.HandleFunc("/api/v1/oauth/error", h.handleOAuthError)
+}
+
+// handlePing handles GET /ping - simple authenticated endpoint for connectivity testing
+func (h *OAuthAPIHandler) handlePing(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.writeErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extract tenant context from middleware - if it's present, the request is authenticated
+	tenantContext, ok := r.Context().Value(global.TenantContextKey).(*fusion.TenantContext)
+	if !ok {
+		h.logger.Error("Missing tenant context in ping request")
+		h.writeErrorResponse(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	// Log the ping request if needed
+	h.logger.Infof("Ping request from tenant %s", tenantContext.TenantHash)
+
+	// Return simple success response
+	response := map[string]interface{}{
+		"success": true,
+		"message": "pong",
+		"tenant_id": tenantContext.TenantHash,
+		"timestamp": time.Now().Unix(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		h.logger.Errorf("Failed to encode ping response: %v", err)
+	}
 }
 
 // handleOAuthTokens handles POST /api/v1/oauth/tokens
