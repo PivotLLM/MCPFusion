@@ -41,7 +41,7 @@
           "parameters": [
             {
               "name": "startDate",
-              "description": "Start date in YYYYMMDD format",
+              "description": "Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS-7 for last week, #DAYS+0 for today)",
               "type": "string",
               "required": true,
               "location": "query",
@@ -55,7 +55,7 @@
             },
             {
               "name": "endDate",
-              "description": "End date in YYYYMMDD format",
+              "description": "End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS+7 for next week, #DAYS+0 for today)",
               "type": "string",
               "required": true,
               "location": "query",
@@ -112,7 +112,7 @@
           "parameters": [
             {
               "name": "startDate",
-              "description": "Start date in YYYYMMDD format",
+              "description": "Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS-7 for last week, #DAYS+0 for today)",
               "type": "string",
               "required": true,
               "location": "query",
@@ -126,7 +126,7 @@
             },
             {
               "name": "endDate",
-              "description": "End date in YYYYMMDD format",
+              "description": "End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS+7 for next week, #DAYS+0 for today)",
               "type": "string",
               "required": true,
               "location": "query",
@@ -262,7 +262,7 @@
             },
             {
               "name": "startDate",
-              "description": "Start date in YYYYMMDD format",
+              "description": "Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS-7 for last week, #DAYS+0 for today)",
               "type": "string",
               "required": false,
               "location": "query",
@@ -276,7 +276,7 @@
             },
             {
               "name": "endDate",
-              "description": "End date in YYYYMMDD format",
+              "description": "End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS+7 for next week, #DAYS+0 for today)",
               "type": "string",
               "required": false,
               "location": "query",
@@ -341,7 +341,7 @@
             },
             {
               "name": "startDate",
-              "description": "Start date in YYYYMMDD format",
+              "description": "Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS-7 for last week, #DAYS+0 for today)",
               "type": "string",
               "required": false,
               "location": "query",
@@ -355,7 +355,7 @@
             },
             {
               "name": "endDate",
-              "description": "End date in YYYYMMDD format",
+              "description": "End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS+7 for next week, #DAYS+0 for today)",
               "type": "string",
               "required": false,
               "location": "query",
@@ -549,7 +549,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "Filter expression (e.g., 'isRead eq false')",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: 'isRead eq false', 'receivedDateTime ge #DAYS-1', 'receivedDateTime le #DAYS+7'",
               "type": "string",
               "required": false,
               "location": "query"
@@ -649,7 +649,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "Filter expression",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: 'isRead eq false', 'receivedDateTime ge #DAYS-1', 'createdDateTime le #DAYS+30'",
               "type": "string",
               "required": false,
               "location": "query"
@@ -705,7 +705,7 @@
           "parameters": [
             {
               "name": "startDate",
-              "description": "Start date in YYYYMMDD format",
+              "description": "Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS-7 for last week, #DAYS+0 for today)",
               "type": "string",
               "required": true,
               "location": "query",
@@ -719,7 +719,7 @@
             },
             {
               "name": "endDate",
-              "description": "End date in YYYYMMDD format",
+              "description": "End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future (e.g., #DAYS+7 for next week, #DAYS+0 for today)",
               "type": "string",
               "required": true,
               "location": "query",
@@ -907,7 +907,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "OData filter expression. Examples: file/mimeType eq 'application/pdf', lastModifiedDateTime ge 2025-01-01T00:00:00Z, size gt 1048576",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: file/mimeType eq 'application/pdf', lastModifiedDateTime ge #DAYS-7, size gt 1048576, createdDateTime le #DAYS+30",
               "type": "string",
               "required": false,
               "location": "query",
@@ -974,7 +974,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "OData filter expression. Examples: file/mimeType eq 'application/pdf', folder ne null, file ne null",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future). Examples: file/mimeType eq 'application/pdf', folder ne null, file ne null, lastModifiedDateTime ge #DAYS-30",
               "type": "string",
               "required": false,
               "location": "query",
@@ -1163,7 +1163,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "Filter results by type or properties",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future) for date filtering. Examples: givenName eq 'John', department eq 'Engineering', createdDateTime ge #DAYS-30",
               "type": "string",
               "required": false,
               "location": "query",
@@ -1355,7 +1355,7 @@
             {
               "name": "$filter",
               "alias": "filter",
-              "description": "Filter results by type or properties",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future) for date filtering. Examples: givenName eq 'John', department eq 'Engineering', createdDateTime ge #DAYS-30",
               "type": "string",
               "required": false,
               "location": "query",

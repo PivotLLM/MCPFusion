@@ -133,7 +133,7 @@ func main() {
 	}
 
 	// My default log in the current directory
-	logfile := "mcp.log"
+	logfile := "mcpfusion.log"
 
 	// If MCP_FUSION_LOGFILE is set, use it instead
 	value, exists := os.LookupEnv("MCP_FUSION_LOGFILE")
