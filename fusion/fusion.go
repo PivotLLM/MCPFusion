@@ -494,6 +494,15 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 	// Create tool parameters from endpoint parameters
 	var parameters []global.Parameter
 	for _, param := range endpoint.Parameters {
+		// Skip static parameters - they are not exposed to MCP
+		if param.Static {
+			if f.logger != nil {
+				f.logger.Debugf("Skipping static parameter '%s' in %s_%s (will use default: %v)",
+					param.Name, serviceName, endpoint.ID, param.Default)
+			}
+			continue
+		}
+
 		// Use MCP-compliant name (alias or sanitized)
 		mcpName := GetMCPParameterName(&param)
 

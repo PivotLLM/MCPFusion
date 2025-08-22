@@ -216,7 +216,9 @@ Use curly braces for path placeholders:
 | `default` | any | No | Default value if not provided |
 | `examples` | array | No | Example values for LLM |
 | `validation` | object | No | Validation rules |
-| `transform` | object | No | Parameter transformation rules
+| `transform` | object | No | Parameter transformation rules |
+| `quoted` | boolean | No | Whether to quote the parameter value |
+| `static` | boolean | No | **Static parameter** - not exposed to MCP, always uses default value |
 
 ### ⚠️ **MCP Parameter Naming Requirements**
 
@@ -293,6 +295,46 @@ Use curly braces for path placeholders:
 - `minimum`/`maximum`: Numeric range constraints  
 - `enum`: List of valid values
 - `format`: Format hint (email, date, uri, etc.)
+
+### Static Parameters
+
+Static parameters are fixed values that are not exposed to MCP clients. They are always sent with their default value and cannot be overridden by users. This is useful for:
+- API keys or client IDs that should be fixed per deployment
+- API version parameters that should remain constant
+- Service-specific configuration values
+
+**Configuration Example:**
+```json
+{
+  "parameters": [
+    {
+      "name": "client_id",
+      "description": "Application client ID",
+      "type": "string",
+      "required": false,
+      "location": "query",
+      "default": "${CLIENT_ID}",
+      "static": true  // This parameter is not exposed to MCP
+    },
+    {
+      "name": "api_version",
+      "description": "API version",
+      "type": "string", 
+      "required": false,
+      "location": "header",
+      "default": "v2.0",
+      "static": true  // Always uses "v2.0"
+    }
+  ]
+}
+```
+
+**Important Notes:**
+- Static parameters **MUST** have a `default` value
+- They are not visible in the MCP tool schema
+- Users cannot provide or override these values
+- Combine with environment variables for deployment-specific fixed values
+- Set `required: false` since the value comes from the default
 
 ### Parameter Transformation
 
@@ -770,6 +812,89 @@ When creating configurations, include this guidance for LLMs:
 ```
 
 ## Complete Examples
+
+### API with Static Parameters
+
+This example shows how to use static parameters for fixed API configuration:
+
+```json
+{
+  "services": {
+    "enterprise_api": {
+      "name": "Enterprise API Service",
+      "baseURL": "https://api.enterprise.com",
+      "auth": {
+        "type": "oauth2_device",
+        "config": {
+          "clientId": "${CLIENT_ID}",
+          "scope": "read write",
+          "authorizationURL": "https://auth.enterprise.com/device",
+          "tokenURL": "https://auth.enterprise.com/token"
+        }
+      },
+      "endpoints": [
+        {
+          "id": "data_query",
+          "name": "Query Data",
+          "description": "Query enterprise data with fixed client context",
+          "method": "POST",
+          "path": "/api/query",
+          "parameters": [
+            {
+              "name": "client_id",
+              "description": "Client application ID",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "${APP_CLIENT_ID}",
+              "static": true  // Fixed per deployment
+            },
+            {
+              "name": "api_version",
+              "description": "API version",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "2024-01-01",
+              "static": true  // Fixed version
+            },
+            {
+              "name": "tenant_id",
+              "description": "Tenant identifier",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "${TENANT_ID}",
+              "static": true  // Fixed per deployment
+            },
+            {
+              "name": "query",
+              "description": "The query to execute",
+              "type": "string",
+              "required": true,
+              "location": "body"  // User-provided parameter
+            },
+            {
+              "name": "limit",
+              "description": "Maximum results to return",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100  // User can override this
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+In this example:
+- `client_id`, `api_version`, and `tenant_id` are static parameters that are always sent with fixed values
+- These static parameters are not exposed in the MCP tool interface
+- `query` and `limit` are regular parameters that users can provide
+- Static parameters use environment variables for deployment-specific configuration
 
 ### Simple REST API with Bearer Token
 
