@@ -166,7 +166,7 @@ After successful authentication:
 
 ## Step 5: Available Microsoft 365 Tools
 
-Once configured, these 19 MCP tools are available using the supplied microsoft365.json configuration file.
+Once configured, these 23 MCP tools are available using the supplied microsoft365.json configuration file.
 
 ### 5.1 Profile Management
 **Tool**: `microsoft365_profile_get`
