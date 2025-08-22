@@ -1,0 +1,113 @@
+{
+  "services": {
+    "google": {
+      "name": "Google Custom Search",
+      "baseURL": "https://customsearch.googleapis.com",
+      "auth": {
+        "type": "none"
+      },
+      "endpoints": [
+        {
+          "id": "search",
+          "name": "Search",
+          "description": "Search the web using Google Custom Search API",
+          "method": "GET",
+          "path": "/customsearch/v1",
+          "parameters": [
+            {
+              "name": "key",
+              "description": "API key for authentication",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "${GOOGLE_SEARCH_APIKEY}",
+              "static": true
+            },
+            {
+              "name": "cx",
+              "description": "Custom search engine ID",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "${GOOGLE_SEARCH_CX}",
+              "static": true
+            },
+            {
+              "name": "q",
+              "description": "Query string to search for",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "num",
+              "description": "Number of search results to return (1-10)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 10
+              }
+            },
+            {
+              "name": "start",
+              "description": "Starting index for results (1-based)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 1,
+              "validation": {
+                "minimum": 1,
+                "maximum": 91
+              }
+            },
+            {
+              "name": "safe",
+              "description": "Safe search level (active, moderate, off)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "off",
+              "validation": {
+                "enum": ["active", "moderate", "off"]
+              }
+            },
+            {
+              "name": "lr",
+              "description": "Language restriction (e.g., 'lang_en' for English)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": ["lang_en", "lang_es", "lang_fr", "lang_de", "lang_ja"]
+            },
+            {
+              "name": "gl",
+              "description": "Geolocation of end user (2-letter country code)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": ["us", "uk", "ca", "au", "jp"],
+              "validation": {
+                "pattern": "^[a-z]{2}$"
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          },
+          "retry": {
+            "enabled": true,
+            "maxAttempts": 3,
+            "strategy": "exponential",
+            "baseDelay": "1s",
+            "maxDelay": "10s",
+            "jitter": true,
+            "backoffFactor": 2.0
+          }
+        }
+      ]
+    }
+  }
+}

@@ -87,6 +87,15 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, authConfig.Type)
 	}
 
+	// For "none" auth type, return nil token (no authentication needed)
+	if authConfig.Type == AuthTypeNone {
+		if mtam.logger != nil {
+			mtam.logger.Debugf("No authentication required for tenant %s service %s",
+				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+		}
+		return nil, nil
+	}
+
 	mtam.mu.RLock()
 	strategy, exists := mtam.strategies[authConfig.Type]
 	mtam.mu.RUnlock()
@@ -226,6 +235,15 @@ func (mtam *MultiTenantAuthManager) ApplyAuthentication(ctx context.Context, req
 				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
 		}
 		return err
+	}
+
+	// For "none" auth type, skip authentication entirely
+	if authConfig.Type == AuthTypeNone {
+		if mtam.logger != nil {
+			mtam.logger.Debugf("Skipping authentication for tenant %s service %s (auth type: none)",
+				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+		}
+		return nil
 	}
 
 	mtam.mu.RLock()

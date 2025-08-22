@@ -25,6 +25,7 @@ const (
 	AuthTypeBearer       AuthType = "bearer"
 	AuthTypeAPIKey       AuthType = "api_key"
 	AuthTypeBasic        AuthType = "basic"
+	AuthTypeNone         AuthType = "none"
 )
 
 // ParameterType represents the type of a parameter
@@ -585,6 +586,11 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 		if logger != nil {
 			logger.Debugf("Service %s: basic auth configuration validated", serviceName)
 		}
+	case AuthTypeNone:
+		if logger != nil {
+			logger.Debugf("Service %s: no authentication configured", serviceName)
+		}
+		// No validation needed for none auth type
 	default:
 		if logger != nil {
 			logger.Errorf("Service %s: unsupported auth type: %s", serviceName, a.Type)
