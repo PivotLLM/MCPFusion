@@ -40,7 +40,15 @@ func (m *Mapper) BuildURL(baseURL, path string, params []ParameterConfig, args m
 		}
 
 		value, exists := args[param.Name]
-		if !exists && param.Required {
+
+		// For static parameters, always use the default value
+		if param.Static {
+			if param.Default == nil {
+				return "", fmt.Errorf("static path parameter %s must have a default value", param.Name)
+			}
+			value = param.Default
+			exists = true
+		} else if !exists && param.Required {
 			return "", fmt.Errorf("required path parameter %s not provided", param.Name)
 		}
 
@@ -90,7 +98,14 @@ func (m *Mapper) ApplyQueryParams(req *http.Request, params []ParameterConfig, a
 		}
 
 		value, exists := args[param.Name]
-		if !exists {
+
+		// For static parameters, always use the default value
+		if param.Static {
+			if param.Default == nil {
+				return fmt.Errorf("static query parameter %s must have a default value", param.Name)
+			}
+			value = param.Default
+		} else if !exists {
 			if param.Default != nil {
 				value = param.Default
 			} else if param.Required {
@@ -150,7 +165,14 @@ func (m *Mapper) ApplyHeaders(req *http.Request, params []ParameterConfig, args 
 		}
 
 		value, exists := args[param.Name]
-		if !exists {
+
+		// For static parameters, always use the default value
+		if param.Static {
+			if param.Default == nil {
+				return fmt.Errorf("static header parameter %s must have a default value", param.Name)
+			}
+			value = param.Default
+		} else if !exists {
 			if param.Default != nil {
 				value = param.Default
 			} else if param.Required {
@@ -198,7 +220,14 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 		}
 
 		value, exists := args[param.Name]
-		if !exists {
+
+		// For static parameters, always use the default value
+		if param.Static {
+			if param.Default == nil {
+				return nil, fmt.Errorf("static body parameter %s must have a default value", param.Name)
+			}
+			value = param.Default
+		} else if !exists {
 			if param.Default != nil {
 				value = param.Default
 			} else if param.Required {

@@ -109,6 +109,7 @@ type ParameterConfig struct {
 	Validation  *ValidationConfig `json:"validation,omitempty"`
 	Transform   *TransformConfig  `json:"transform,omitempty"`
 	Quoted      bool              `json:"quoted,omitempty"` // Whether to quote the parameter value
+	Static      bool              `json:"static,omitempty"` // Whether this is a static parameter (not exposed to MCP, always uses default)
 }
 
 // ValidationConfig represents validation rules for a parameter

@@ -166,13 +166,13 @@ After successful authentication:
 
 ## Step 5: Available Microsoft 365 Tools
 
-Once configured, these 19 MCP tools are available:
+Once configured, these 19 MCP tools are available using the supplied microsoft365.json configuration file.
 
 ### 5.1 Profile Management
 **Tool**: `microsoft365_profile_get`
 **Description**: Get your Microsoft 365 profile information
 **Parameters**: 
-- `$select` (optional): Fields to include (default: displayName,mail,userPrincipalName,jobTitle,department,companyName)
+- `select` (optional): Fields to include (default: displayName,mail,userPrincipalName,jobTitle,department,companyName)
 
 ### 5.2 Calendar Management
 
@@ -180,51 +180,56 @@ Once configured, these 19 MCP tools are available:
 **Tool**: `microsoft365_calendars_list`
 **Description**: Get all user calendars
 **Parameters**:
-- `$select` (optional): Fields to include (default: name,id,owner,isDefaultCalendar)
-- `$top` (optional): Number of calendars (default: 1000)
+- `select` (optional): Fields to include (default: name,id,owner,isDefaultCalendar)
+- `top` (optional): Number of calendars (default: 1000, max: 1000)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Calendar Events (All Calendars)**
 **Tool**: `microsoft365_calendar_read_summary`
 **Description**: Get calendar events with basic information
 **Parameters**:
-- `startDate` (required): Start date in YYYYMMDD format
-- `endDate` (required): End date in YYYYMMDD format
-- `$select` (optional): Fields to include (default: subject,start,end)
-- `$top` (optional): Number of events (default: 100)
+- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `select` (optional): Fields to include (default: subject,start,end)
+- `top` (optional): Number of events (default: 100, max: 1000)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Tool**: `microsoft365_calendar_read_details`
 **Description**: Get calendar events with full details
 **Parameters**:
-- `startDate` (required): Start date in YYYYMMDD format
-- `endDate` (required): End date in YYYYMMDD format  
-- `$select` (optional): Fields to include (default: subject,body,bodyPreview,organizer,attendees,start,end,location)
-- `$top` (optional): Number of events (default: 10)
+- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `select` (optional): Fields to include (default: subject,body,bodyPreview,organizer,attendees,start,end,location)
+- `top` (optional): Number of events (default: 10, max: 1000)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Calendar Events (Specific Calendar)**
 **Tool**: `microsoft365_calendar_events_read_summary`
 **Description**: Get events from a specific calendar (summary)
 **Parameters**:
 - `calendarId` (required): Calendar ID to retrieve events from
-- `startDate` (optional): Start date in YYYYMMDD format
-- `endDate` (optional): End date in YYYYMMDD format
-- `$select` (optional): Fields to include (default: subject,start,end)
-- `$top` (optional): Number of events (default: 100)
+- `startDate` (optional): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `endDate` (optional): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `select` (optional): Fields to include (default: subject,start,end)
+- `top` (optional): Number of events (default: 100, max: 1000)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Tool**: `microsoft365_calendar_events_read_details`
 **Description**: Get events from a specific calendar (detailed)
 **Parameters**:
 - `calendarId` (required): Calendar ID to retrieve events from
-- `startDate` (optional): Start date in YYYYMMDD format
-- `endDate` (optional): End date in YYYYMMDD format
-- `$select` (optional): Fields to include (default: subject,body,bodyPreview,organizer,attendees,start,end,location)
-- `$top` (optional): Number of events (default: 10)
+- `startDate` (optional): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `endDate` (optional): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `select` (optional): Fields to include (default: subject,body,bodyPreview,organizer,attendees,start,end,location)
+- `top` (optional): Number of events (default: 10, max: 1000)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Individual Calendar Event**
 **Tool**: `microsoft365_calendar_read_event`
 **Description**: Get a specific calendar event by ID
 **Parameters**:
 - `id` (required): Event ID to retrieve
-- `$select` (optional): Fields to include
+- `select` (optional): Fields to include
 
 ### 5.3 Mail Management
 
@@ -232,32 +237,36 @@ Once configured, these 19 MCP tools are available:
 **Tool**: `microsoft365_mail_folders_list`
 **Description**: Get all mail folders for the user
 **Parameters**:
-- `$select` (optional): Fields to include (default: displayName,id,parentFolderId,childFolderCount,unreadItemCount,totalItemCount)
-- `$top` (optional): Number of folders (default: 1000)
+- `select` (optional): Fields to include (default: displayName,id,parentFolderId,childFolderCount,unreadItemCount,totalItemCount)
+- `top` (optional): Number of folders (default: 1000, max: 1000)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Mail Messages (Inbox)**
 **Tool**: `microsoft365_mail_read_inbox`
 **Description**: Get inbox messages with basic information
 **Parameters**:
-- `$top` (optional): Number of messages (default: 10, max: 1000)
-- `$select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead)
-- `$filter` (optional): Filter expression (e.g., 'isRead eq false')
+- `top` (optional): Number of messages (default: 10, max: 1000)
+- `select` (optional): Fields to include (default: subject,from,receivedDateTime,isRead)
+- `filter` (optional): Filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+  - Examples: 'isRead eq false', 'receivedDateTime ge #DAYS-1', 'hasAttachments eq true and receivedDateTime ge #DAYS-7'
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Mail Messages (Specific Folder)**
 **Tool**: `microsoft365_mail_folder_messages`
 **Description**: Get messages from a specific mail folder
 **Parameters**:
 - `folderId` (required): Mail folder ID to retrieve messages from
-- `$top` (optional): Number of messages (default: 10, max: 1000)
-- `$select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead)
-- `$filter` (optional): Filter expression (e.g., 'isRead eq false')
+- `top` (optional): Number of messages (default: 10, max: 1000)
+- `select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Individual Mail Message**
 **Tool**: `microsoft365_mail_read_message`
 **Description**: Get a specific email message by ID
 **Parameters**:
 - `id` (required): Message ID to retrieve
-- `$select` (optional): Fields to include
+- `select` (optional): Fields to include
 
 ### 5.4 Contacts Management
 
@@ -265,16 +274,17 @@ Once configured, these 19 MCP tools are available:
 **Tool**: `microsoft365_contacts_list`
 **Description**: Get contacts from the user's address book
 **Parameters**:
-- `$top` (optional): Number of contacts (default: 25, max: 1000)
-- `$select` (optional): Fields to include (default: displayName,emailAddresses,businessPhones,jobTitle,companyName)
-- `$filter` (optional): Filter expression
+- `top` (optional): Number of contacts (default: 25, max: 1000)
+- `select` (optional): Fields to include (default: displayName,emailAddresses,businessPhones,jobTitle,companyName)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Individual Contact**
 **Tool**: `microsoft365_contacts_read_contact`
 **Description**: Get a specific contact by ID
 **Parameters**:
 - `id` (required): Contact ID to retrieve
-- `$select` (optional): Fields to include
+- `select` (optional): Fields to include
 
 ### 5.5 Search Capabilities
 
@@ -282,26 +292,26 @@ Once configured, these 19 MCP tools are available:
 **Tool**: `microsoft365_calendar_search`
 **Description**: Search calendar events with flexible filtering by subject, attendees, location, and date range
 **Parameters**:
-- `startDate` (required): Start date in YYYYMMDD format
-- `endDate` (required): End date in YYYYMMDD format
-- `$filter` (optional): OData filter expression
-  - Examples: `contains(subject,'Meeting')`, `contains(subject,'Project') and start/dateTime ge '2025-01-01T00:00:00Z'`
-  - `attendees/any(a:contains(a/emailAddress/address,'john@example.com'))`, `contains(location/displayName,'Room')`
-- `$select` (optional): Fields to include (default: subject,start,end,location,organizer,attendees)
-- `$top` (optional): Number of events (default: 50)
+- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+  - Examples: `contains(subject,'Meeting')`, `contains(subject,'Project')`, `start/dateTime ge #DAYS-7`
+  - `attendees/any(a:contains(a/emailAddress/address,'john@example.com'))`, `contains(location/displayName,'Room 101')`
+- `select` (optional): Fields to include (default: subject,start,end,location,organizer,attendees)
+- `top` (optional): Number of events (default: 50, max: 1000)
+- `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Search Mail Messages**
 **Tool**: `microsoft365_mail_search`
 **Description**: Search mail messages with flexible filtering and full-text search
 **Parameters**:
-- `$filter` (optional): OData filter expression
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
   - Examples: `contains(subject,'Invoice')`, `contains(from/emailAddress/address,'boss@company.com')`
-  - `contains(subject,'Project') and receivedDateTime ge 2025-01-01T00:00:00Z`, `isRead eq false`, `hasAttachments eq true`
-- `$search` (optional): Full-text search across message content
-  - Examples: `'invoice payment'`, `'from:john@company.com'`, `'subject:meeting'`, `'attachment:*.pdf'`
-- `$select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments)
-- `$top` (optional): Number of messages (default: 25)
-- `$orderby` (optional): Sort order (default: receivedDateTime desc)
+  - `receivedDateTime ge #DAYS-3`, `isRead eq false and receivedDateTime ge #DAYS-1`, `hasAttachments eq true and receivedDateTime ge #DAYS-7`
+- `search` (optional): Full-text search across message content
+  - Examples: `invoice payment`, `from:john@company.com`, `subject:meeting`, `attachment:*.pdf`, `urgent OR important`
+- `select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments)
+- `top` (optional): Number of messages (default: 25, max: 1000)
 
 ### 5.6 File Management
 
@@ -309,30 +319,80 @@ Once configured, these 19 MCP tools are available:
 **Tool**: `microsoft365_files_list`
 **Description**: List files and folders in OneDrive root directory
 **Parameters**:
-- `$filter` (optional): OData filter expression
-  - Examples: `file ne null`, `folder ne null`, `file/mimeType eq 'application/pdf'`
-- `$select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,parentReference)
-- `$top` (optional): Number of items (default: 100)
-- `$orderby` (optional): Sort order (default: name asc)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+  - Examples: `file ne null`, `folder ne null`, `file/mimeType eq 'application/pdf'`, `lastModifiedDateTime ge #DAYS-30`
+- `select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,parentReference)
+- `top` (optional): Number of items (default: 100, max: 1000)
+- `orderby` (optional): Sort order (default: name asc)
+  - Options: name asc, name desc, lastModifiedDateTime desc, lastModifiedDateTime asc, size desc, size asc
+- `expand` (optional): Related data to include (e.g., 'permissions', 'children', 'thumbnails')
 
 **Search OneDrive Files**
 **Tool**: `microsoft365_files_search`
 **Description**: Search files in OneDrive with flexible filtering by name, content type, and modification date
 **Parameters**:
 - `searchQuery` (required): Search query for file names and content
-  - Examples: `'invoice'`, `'*.pdf'`, `'report 2025'`, `'presentation'`
-- `$filter` (optional): OData filter expression
-  - Examples: `file/mimeType eq 'application/pdf'`, `lastModifiedDateTime ge 2025-01-01T00:00:00Z`, `size gt 1048576`
-- `$select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder)
-- `$top` (optional): Number of items (default: 50)
-- `$orderby` (optional): Sort order (default: lastModifiedDateTime desc)
+  - Examples: `invoice`, `*.pdf`, `report 2025`, `presentation`, `*.docx`, `budget`
+- `filter` (optional): OData filter expression
+  - Examples: `file/mimeType eq 'application/pdf'`, `lastModifiedDateTime ge 2025-01-01T00:00:00Z`, `size gt 1048576`, `folder ne null`, `file ne null`
+- `select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder)
+- `top` (optional): Number of items (default: 50, max: 1000)
+- `orderby` (optional): Sort order (default: lastModifiedDateTime desc)
+  - Options: lastModifiedDateTime desc, lastModifiedDateTime asc, name asc, name desc, size desc, size asc
 
 **Read File Details**
 **Tool**: `microsoft365_files_read_file`
 **Description**: Get detailed information about a specific file by ID
 **Parameters**:
 - `id` (required): File ID to retrieve
-- `$select` (optional): Fields to include
+- `select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,parentReference,createdDateTime,lastModifiedBy)
+- `expand` (optional): Related data to include (e.g., 'permissions', 'children', 'thumbnails')
+
+**Download File Content**
+**Tool**: `microsoft365_files_download_content`
+**Description**: Download the actual content of a file (binary or text)
+**Parameters**:
+- `id` (required): File ID to download
+
+**List Folder Contents**
+**Tool**: `microsoft365_files_list_children`
+**Description**: List files and folders within a specific directory
+**Parameters**:
+- `id` (required): Folder ID to list contents
+- `select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference)
+- `top` (optional): Number of items (default: 200, max: 1000)
+- `orderby` (optional): Sort order (default: name asc)
+  - Options: name asc, name desc, lastModifiedDateTime desc, lastModifiedDateTime asc, size desc, size asc
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `expand` (optional): Related data to include (e.g., 'permissions', 'children', 'thumbnails')
+
+**Get File/Folder by Path**
+**Tool**: `microsoft365_files_get_by_path`
+**Description**: Get file or folder metadata using file system path
+**Parameters**:
+- `filePath` (required): File or folder path from root (e.g., 'Documents/report.docx', 'Projects/MyFolder')
+- `select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,createdDateTime)
+- `expand` (optional): Related data to include (e.g., 'permissions', 'children', 'thumbnails')
+
+**List Recent Files**
+**Tool**: `microsoft365_files_recent`
+**Description**: List recently accessed files across all drives (OneDrive, SharePoint, Teams)
+**Parameters**:
+- `select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference,lastAccessedDateTime,remoteItem)
+- `top` (optional): Number of recent items (default: 50, max: 1000)
+- `expand` (optional): Related data to include (e.g., 'permissions', 'children', 'thumbnails')
+
+**List Folder Contents by Path**
+**Tool**: `microsoft365_files_list_folder_by_path`
+**Description**: Navigate to folder by path and list its contents
+**Parameters**:
+- `folderPath` (required): Folder path from root (e.g., 'Documents', 'Projects/Current', 'Shared Documents')
+- `select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,id,parentReference)
+- `top` (optional): Number of items (default: 200, max: 1000)
+- `orderby` (optional): Sort order (default: name asc)
+  - Options: name asc, name desc, lastModifiedDateTime desc, lastModifiedDateTime asc, size desc, size asc
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `expand` (optional): Related data to include (e.g., 'permissions', 'children', 'thumbnails')
 
 ## Step 6: Testing the Integration
 
