@@ -40,6 +40,20 @@
               "location": "query"
             },
             {
+              "name": "exactTerms",
+              "description": "A phrase that all documents in the search results must contain",
+              "type": "string",
+              "required": false,
+              "location": "query"
+	    },
+            {
+              "name": "excludeTerms",
+              "description": "A word or phrase that should not appear in any documents in the search results.",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
               "name": "num",
               "description": "Number of search results to return (1-10)",
               "type": "number",
@@ -60,7 +74,7 @@
               "default": 1,
               "validation": {
                 "minimum": 1,
-                "maximum": 91
+                "maximum": 99
               }
             },
             {
