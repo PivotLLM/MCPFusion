@@ -9,6 +9,7 @@
 bin/
 vendor/
 private/
+.claude/
 .idea
 .idea/*
 .vs
