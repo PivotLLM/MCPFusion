@@ -48,7 +48,7 @@ MS365_TENANT_ID=common
    '''
    
 ### **Client Configuration**
-- **URL**: http://localhost:8888/sss (adjust as required for your listen address/port)
+- **URL**: http://localhost:8888/sse (adjust as required for your listen address/port)
 - **Authentication**: Send the token generated above as a Bearer in a standard Authorization header.
   (eg. "Authorization: Bearer <TOKEN>" )
 
@@ -265,7 +265,7 @@ MCPFusion automatically handles parameter name conflicts between API requirement
 
 ## Testing
 
-MCPFusion includes a comprehensive test suite for all endpoints:
+MCPFusion includes a test suite:
 
 ```bash
 # Run all tests
@@ -287,35 +287,9 @@ cd tests && ./run_all_tests.sh
 
 See [Testing Guide](tests/README.md) for detailed testing documentation.
 
-## Example Usage
+## Legal
 
-Once connected through your MCP client, you can use natural language to interact with APIs:
-
-**"Show me my calendar events for next week"**
-→ Automatically calls `microsoft365_calendar_read_summary` with appropriate date range
-
-**"List all my mail folders"**
-→ Calls `microsoft365_mail_folders_list` to show folder structure
-
-**"Get unread emails from my inbox"**
-→ Calls `microsoft365_mail_folder_messages` with inbox ID and unread filter
-
-**"Show details for calendar event {event-id}"**
-→ Calls `microsoft365_calendar_read_event` with the specific event ID
-
-**"Find all my meetings with John from last month"**
-→ Calls `microsoft365_calendar_search` with date range and attendee filter
-
-**"Search emails from boss@company.com about project status"**
-→ Calls `microsoft365_mail_search` with sender and subject filters
-
-**"Find all PDF files in my OneDrive modified this year"**
-→ Calls `microsoft365_files_search` with file type and date filters
-
-The enhanced parameter system ensures the AI has all the context needed to make proper API calls with appropriate
-defaults and validation.
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
+Copyright (c) 2025 Tenebris Technologies Inc.
+All rights reserved.
+Distribution prohibited.
 
