@@ -497,8 +497,8 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 		// Skip static parameters - they are not exposed to MCP
 		if param.Static {
 			if f.logger != nil {
-				f.logger.Debugf("Skipping static parameter '%s' in %s_%s (will use default: %v)",
-					param.Name, serviceName, endpoint.ID, param.Default)
+				f.logger.Debugf("Skipping static parameter '%s' in %s_%s (will use default)",
+					param.Name, serviceName, endpoint.ID)
 			}
 			continue
 		}
