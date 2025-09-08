@@ -19,8 +19,10 @@ type TimeTokenProcessor struct {
 	logger         global.Logger
 	daysRegex      *regexp.Regexp
 	hoursRegex     *regexp.Regexp
+	minsRegex      *regexp.Regexp
 	daysPlusRegex  *regexp.Regexp
 	hoursPlusRegex *regexp.Regexp
+	minsPlusRegex  *regexp.Regexp
 }
 
 // NewTimeTokenProcessor creates a new time token processor
@@ -29,8 +31,10 @@ func NewTimeTokenProcessor(logger global.Logger) *TimeTokenProcessor {
 		logger:         logger,
 		daysRegex:      regexp.MustCompile(`#DAYS-(\d+)`),
 		hoursRegex:     regexp.MustCompile(`#HOURS-(\d+)`),
+		minsRegex:      regexp.MustCompile(`#MINS-(\d+)`),
 		daysPlusRegex:  regexp.MustCompile(`#DAYS\+(\d+)`),
 		hoursPlusRegex: regexp.MustCompile(`#HOURS\+(\d+)`),
+		minsPlusRegex:  regexp.MustCompile(`#MINS\+(\d+)`),
 	}
 }
 
@@ -105,6 +109,32 @@ func (ttp *TimeTokenProcessor) substituteTimeTokens(value string) string {
 		return timestamp.Format(time.RFC3339)
 	})
 
+	// Process #MINS-N tokens
+	result = ttp.minsRegex.ReplaceAllStringFunc(result, func(match string) string {
+		// Extract the number from the match
+		matches := ttp.minsRegex.FindStringSubmatch(match)
+		if len(matches) != 2 {
+			if ttp.logger != nil {
+				ttp.logger.Errorf("Invalid #MINS token format: %s", match)
+			}
+			return match // Return original if parsing fails
+		}
+
+		mins, err := strconv.Atoi(matches[1])
+		if err != nil {
+			if ttp.logger != nil {
+				ttp.logger.Errorf("Invalid number in #MINS token: %s", matches[1])
+			}
+			return match // Return original if parsing fails
+		}
+
+		// Calculate N minutes ago from current time
+		timestamp := time.Now().UTC().Add(-time.Duration(mins) * time.Minute)
+
+		// Format as ISO 8601
+		return timestamp.Format(time.RFC3339)
+	})
+
 	// Process #DAYS+N tokens
 	result = ttp.daysPlusRegex.ReplaceAllStringFunc(result, func(match string) string {
 		// Extract the number from the match
@@ -157,13 +187,40 @@ func (ttp *TimeTokenProcessor) substituteTimeTokens(value string) string {
 		return timestamp.Format(time.RFC3339)
 	})
 
+	// Process #MINS+N tokens
+	result = ttp.minsPlusRegex.ReplaceAllStringFunc(result, func(match string) string {
+		// Extract the number from the match
+		matches := ttp.minsPlusRegex.FindStringSubmatch(match)
+		if len(matches) != 2 {
+			if ttp.logger != nil {
+				ttp.logger.Errorf("Invalid #MINS+ token format: %s", match)
+			}
+			return match // Return original if parsing fails
+		}
+
+		mins, err := strconv.Atoi(matches[1])
+		if err != nil {
+			if ttp.logger != nil {
+				ttp.logger.Errorf("Invalid number in #MINS+ token: %s", matches[1])
+			}
+			return match // Return original if parsing fails
+		}
+
+		// Calculate N minutes in the future from current time
+		timestamp := time.Now().UTC().Add(time.Duration(mins) * time.Minute)
+
+		// Format as ISO 8601
+		return timestamp.Format(time.RFC3339)
+	})
+
 	return result
 }
 
 // HasTimeTokens checks if a string contains any time tokens
 func (ttp *TimeTokenProcessor) HasTimeTokens(value string) bool {
 	return ttp.daysRegex.MatchString(value) || ttp.hoursRegex.MatchString(value) ||
-		ttp.daysPlusRegex.MatchString(value) || ttp.hoursPlusRegex.MatchString(value)
+		ttp.minsRegex.MatchString(value) || ttp.daysPlusRegex.MatchString(value) ||
+		ttp.hoursPlusRegex.MatchString(value) || ttp.minsPlusRegex.MatchString(value)
 }
 
 // ValidateTimeTokens validates that time tokens in a string are well-formed
@@ -171,8 +228,10 @@ func (ttp *TimeTokenProcessor) ValidateTimeTokens(value string) error {
 	// Find all potential time tokens
 	daysMatches := ttp.daysRegex.FindAllStringSubmatch(value, -1)
 	hoursMatches := ttp.hoursRegex.FindAllStringSubmatch(value, -1)
+	minsMatches := ttp.minsRegex.FindAllStringSubmatch(value, -1)
 	daysPlusMatches := ttp.daysPlusRegex.FindAllStringSubmatch(value, -1)
 	hoursPlusMatches := ttp.hoursPlusRegex.FindAllStringSubmatch(value, -1)
+	minsPlusMatches := ttp.minsPlusRegex.FindAllStringSubmatch(value, -1)
 
 	// Validate DAYS tokens
 	for _, match := range daysMatches {
@@ -242,6 +301,40 @@ func (ttp *TimeTokenProcessor) ValidateTimeTokens(value string) error {
 		}
 	}
 
+	// Validate MINS tokens
+	for _, match := range minsMatches {
+		if len(match) != 2 {
+			return fmt.Errorf("invalid #MINS token format: %s", match[0])
+		}
+
+		mins, err := strconv.Atoi(match[1])
+		if err != nil {
+			return fmt.Errorf("invalid number in #MINS token: %s", match[1])
+		}
+
+		// Validate reasonable range (0-525600 minutes = 1 year)
+		if mins < 0 || mins > 525600 {
+			return fmt.Errorf("minutes value out of range (0-525600): %d", mins)
+		}
+	}
+
+	// Validate MINS+ tokens
+	for _, match := range minsPlusMatches {
+		if len(match) != 2 {
+			return fmt.Errorf("invalid #MINS+ token format: %s", match[0])
+		}
+
+		mins, err := strconv.Atoi(match[1])
+		if err != nil {
+			return fmt.Errorf("invalid number in #MINS+ token: %s", match[1])
+		}
+
+		// Validate reasonable range (0-525600 minutes = 1 year)
+		if mins < 0 || mins > 525600 {
+			return fmt.Errorf("minutes value out of range (0-525600): %d", mins)
+		}
+	}
+
 	return nil
 }
 
@@ -250,8 +343,10 @@ func (ttp *TimeTokenProcessor) GetSupportedTokens() map[string]string {
 	return map[string]string{
 		"#DAYS-N":  "N days ago at 00:00:00 UTC (e.g., #DAYS-0 = today at midnight, #DAYS-3 = 3 days ago at midnight)",
 		"#HOURS-N": "N hours ago from current time (e.g., #HOURS-6 = 6 hours ago, #HOURS-24 = 24 hours ago)",
+		"#MINS-N":  "N minutes ago from current time (e.g., #MINS-5 = 5 minutes ago, #MINS-30 = 30 minutes ago)",
 		"#DAYS+N":  "N days in the future at 00:00:00 UTC (e.g., #DAYS+0 = today at midnight, #DAYS+7 = 7 days from now at midnight)",
 		"#HOURS+N": "N hours in the future from current time (e.g., #HOURS+6 = 6 hours from now, #HOURS+24 = 24 hours from now)",
+		"#MINS+N":  "N minutes in the future from current time (e.g., #MINS+5 = 5 minutes from now, #MINS+30 = 30 minutes from now)",
 	}
 }
 

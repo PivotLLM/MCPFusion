@@ -188,8 +188,8 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Tool**: `microsoft365_calendar_read_summary`
 **Description**: Get calendar events with basic information
 **Parameters**:
-- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
-- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
+- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
 - `select` (optional): Fields to include (default: subject,start,end)
 - `top` (optional): Number of events (default: 100, max: 1000)
 - `skip` (optional): Number of items to skip for pagination (default: 0)
@@ -197,8 +197,8 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Tool**: `microsoft365_calendar_read_details`
 **Description**: Get calendar events with full details
 **Parameters**:
-- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
-- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
+- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
 - `select` (optional): Fields to include (default: subject,body,bodyPreview,organizer,attendees,start,end,location)
 - `top` (optional): Number of events (default: 10, max: 1000)
 - `skip` (optional): Number of items to skip for pagination (default: 0)
@@ -208,8 +208,8 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Description**: Get events from a specific calendar (summary)
 **Parameters**:
 - `calendarId` (required): Calendar ID to retrieve events from
-- `startDate` (optional): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
-- `endDate` (optional): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `startDate` (optional): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
+- `endDate` (optional): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
 - `select` (optional): Fields to include (default: subject,start,end)
 - `top` (optional): Number of events (default: 100, max: 1000)
 - `skip` (optional): Number of items to skip for pagination (default: 0)
@@ -218,8 +218,8 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Description**: Get events from a specific calendar (detailed)
 **Parameters**:
 - `calendarId` (required): Calendar ID to retrieve events from
-- `startDate` (optional): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
-- `endDate` (optional): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
+- `startDate` (optional): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
+- `endDate` (optional): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
 - `select` (optional): Fields to include (default: subject,body,bodyPreview,organizer,attendees,start,end,location)
 - `top` (optional): Number of events (default: 10, max: 1000)
 - `skip` (optional): Number of items to skip for pagination (default: 0)
@@ -247,7 +247,7 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Parameters**:
 - `top` (optional): Number of messages (default: 10, max: 1000)
 - `select` (optional): Fields to include (default: subject,from,receivedDateTime,isRead)
-- `filter` (optional): Filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `filter` (optional): Filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future)
   - Examples: 'isRead eq false', 'receivedDateTime ge #DAYS-1', 'hasAttachments eq true and receivedDateTime ge #DAYS-7'
 - `skip` (optional): Number of items to skip for pagination (default: 0)
 
@@ -258,7 +258,7 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 - `folderId` (required): Mail folder ID to retrieve messages from
 - `top` (optional): Number of messages (default: 10, max: 1000)
 - `select` (optional): Fields to include (default: subject,from,receivedDateTime,bodyPreview,isRead)
-- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future)
 - `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Individual Mail Message**
@@ -276,7 +276,7 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Parameters**:
 - `top` (optional): Number of contacts (default: 25, max: 1000)
 - `select` (optional): Fields to include (default: displayName,emailAddresses,businessPhones,jobTitle,companyName)
-- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future)
 - `skip` (optional): Number of items to skip for pagination (default: 0)
 
 **Individual Contact**
@@ -292,9 +292,9 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Tool**: `microsoft365_calendar_search`
 **Description**: Search calendar events with flexible filtering by subject, attendees, location, and date range
 **Parameters**:
-- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
-- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future
-- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `startDate` (required): Start date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
+- `endDate` (required): End date in YYYYMMDD format. Use #DAYS-N for N days ago or #DAYS+N for N days in future, #MINS-N for N minutes ago or #MINS+N for N minutes in future
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future)
   - Examples: `contains(subject,'Meeting')`, `contains(subject,'Project')`, `start/dateTime ge #DAYS-7`
   - `attendees/any(a:contains(a/emailAddress/address,'john@example.com'))`, `contains(location/displayName,'Room 101')`
 - `select` (optional): Fields to include (default: subject,start,end,location,organizer,attendees)
@@ -305,7 +305,7 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Tool**: `microsoft365_mail_search`
 **Description**: Search mail messages with flexible filtering and full-text search
 **Parameters**:
-- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future)
   - Examples: `contains(subject,'Invoice')`, `contains(from/emailAddress/address,'boss@company.com')`
   - `receivedDateTime ge #DAYS-3`, `isRead eq false and receivedDateTime ge #DAYS-1`, `hasAttachments eq true and receivedDateTime ge #DAYS-7`
 - `search` (optional): Full-text search across message content
@@ -319,7 +319,7 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Tool**: `microsoft365_files_list`
 **Description**: List files and folders in OneDrive root directory
 **Parameters**:
-- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future)
   - Examples: `file ne null`, `folder ne null`, `file/mimeType eq 'application/pdf'`, `lastModifiedDateTime ge #DAYS-30`
 - `select` (optional): Fields to include (default: name,size,lastModifiedDateTime,webUrl,file,folder,parentReference)
 - `top` (optional): Number of items (default: 100, max: 1000)
@@ -363,7 +363,7 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 - `top` (optional): Number of items (default: 200, max: 1000)
 - `orderby` (optional): Sort order (default: name asc)
   - Options: name asc, name desc, lastModifiedDateTime desc, lastModifiedDateTime asc, size desc, size asc
-- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future)
 - `expand` (optional): Related data to include (e.g., 'permissions', 'children', 'thumbnails')
 
 **Get File/Folder by Path**
@@ -391,7 +391,7 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 - `top` (optional): Number of items (default: 200, max: 1000)
 - `orderby` (optional): Sort order (default: name asc)
   - Options: name asc, name desc, lastModifiedDateTime desc, lastModifiedDateTime asc, size desc, size asc
-- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future)
+- `filter` (optional): OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future)
 - `expand` (optional): Related data to include (e.g., 'permissions', 'children', 'thumbnails')
 
 ## Step 6: Testing the Integration

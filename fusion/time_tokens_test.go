@@ -61,6 +61,30 @@ func TestTimeTokenProcessor_ProcessValue(t *testing.T) {
 			expectChange: true,
 		},
 		{
+			name:         "MINS-0 token (now)",
+			input:        "#MINS-0",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "MINS-5 token (5 minutes ago)",
+			input:        "#MINS-5",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "MINS-30 token (30 minutes ago)",
+			input:        "#MINS-30",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "MINS-60 token (60 minutes ago)",
+			input:        "#MINS-60",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
 			name:         "Mixed tokens in string",
 			input:        "from=#DAYS-7&to=#DAYS-0",
 			expectRegex:  `^from=\d{4}-\d{2}-\d{2}T00:00:00Z&to=\d{4}-\d{2}-\d{2}T00:00:00Z$`,
@@ -109,9 +133,39 @@ func TestTimeTokenProcessor_ProcessValue(t *testing.T) {
 			expectChange: true,
 		},
 		{
+			name:         "MINS+0 token (now in future)",
+			input:        "#MINS+0",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "MINS+5 token (5 minutes from now)",
+			input:        "#MINS+5",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "MINS+30 token (30 minutes from now)",
+			input:        "#MINS+30",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "MINS+60 token (60 minutes from now)",
+			input:        "#MINS+60",
+			expectRegex:  `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
 			name:         "Mixed past and future tokens",
 			input:        "start=#DAYS-7&end=#DAYS+7&now=#HOURS+0",
 			expectRegex:  `^start=\d{4}-\d{2}-\d{2}T00:00:00Z&end=\d{4}-\d{2}-\d{2}T00:00:00Z&now=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
+			expectChange: true,
+		},
+		{
+			name:         "Mixed with minutes tokens",
+			input:        "past=#MINS-15&future=#MINS+45&hour=#HOURS-1",
+			expectRegex:  `^past=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z&future=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z&hour=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`,
 			expectChange: true,
 		},
 		{
@@ -365,6 +419,25 @@ func TestTimeTokenSubstitution_ActualTimeCalculation(t *testing.T) {
 	} else {
 		t.Error("Result should be a string")
 	}
+
+	// Test that MINS tokens preserve the minute precision
+	result = processor.ProcessValue("#MINS-5")
+	if resultStr, ok := result.(string); ok {
+		parsedTime, err := time.Parse(time.RFC3339, resultStr)
+		if err != nil {
+			t.Errorf("Failed to parse result time: %v", err)
+			return
+		}
+
+		// Should be approximately 5 minutes ago (within 1 second tolerance)
+		expectedTime := time.Now().UTC().Add(-5 * time.Minute)
+		diff := expectedTime.Sub(parsedTime)
+		if diff < -time.Second || diff > time.Second {
+			t.Errorf("MINS-5 should be approximately 5 minutes ago, got %s", resultStr)
+		}
+	} else {
+		t.Error("Result should be a string")
+	}
 }
 
 func TestTimeTokenSubstitution_FutureTimeCalculation(t *testing.T) {
@@ -433,6 +506,25 @@ func TestTimeTokenSubstitution_FutureTimeCalculation(t *testing.T) {
 	} else {
 		t.Error("Result should be a string")
 	}
+
+	// Test that MINS+ tokens preserve the minute precision
+	result = processor.ProcessValue("#MINS+30")
+	if resultStr, ok := result.(string); ok {
+		parsedTime, err := time.Parse(time.RFC3339, resultStr)
+		if err != nil {
+			t.Errorf("Failed to parse result time: %v", err)
+			return
+		}
+
+		// Should be approximately 30 minutes from now (within 1 second tolerance)
+		expectedTime := time.Now().UTC().Add(30 * time.Minute)
+		diff := parsedTime.Sub(expectedTime)
+		if diff < -time.Second || diff > time.Second {
+			t.Errorf("MINS+30 should be approximately 30 minutes from now, got %s", resultStr)
+		}
+	} else {
+		t.Error("Result should be a string")
+	}
 }
 
 func TestTimeTokenProcessor_GetSupportedTokens(t *testing.T) {
@@ -442,7 +534,7 @@ func TestTimeTokenProcessor_GetSupportedTokens(t *testing.T) {
 	tokens := processor.GetSupportedTokens()
 
 	// Check that we have all expected token types
-	expectedTokens := []string{"#DAYS-N", "#HOURS-N", "#DAYS+N", "#HOURS+N"}
+	expectedTokens := []string{"#DAYS-N", "#HOURS-N", "#MINS-N", "#DAYS+N", "#HOURS+N", "#MINS+N"}
 	for _, expectedToken := range expectedTokens {
 		if _, exists := tokens[expectedToken]; !exists {
 			t.Errorf("Should include %s token", expectedToken)
