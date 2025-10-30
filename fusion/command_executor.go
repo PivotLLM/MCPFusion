@@ -45,12 +45,12 @@ type ExecutionConfig struct {
 
 // ExecutionResult holds the command execution result
 type ExecutionResult struct {
-	ExitCode  int
-	Stdout    string
-	Stderr    string
-	Duration  time.Duration
-	TimedOut  bool
-	Error     error
+	ExitCode int
+	Stdout   string
+	Stderr   string
+	Duration time.Duration
+	TimedOut bool
+	Error    error
 }
 
 // Execute runs a command with the given configuration
@@ -172,25 +172,25 @@ func (e *CommandExecutor) FormatResponse(result ExecutionResult) string {
 	}
 
 	// Always show stdout section
-	sb.WriteString("\n--- STDOUT ---\n")
+	sb.WriteString("\n--- stdout ---\n")
 	if result.Stdout != "" {
 		sb.WriteString(result.Stdout)
 		if !strings.HasSuffix(result.Stdout, "\n") {
 			sb.WriteString("\n")
 		}
 	} else {
-		sb.WriteString("(empty)\n")
+		sb.WriteString("(none)\n")
 	}
 
 	// Always show stderr section
-	sb.WriteString("\n--- STDERR ---\n")
+	sb.WriteString("\n--- stderr ---\n")
 	if result.Stderr != "" {
 		sb.WriteString(result.Stderr)
 		if !strings.HasSuffix(result.Stderr, "\n") {
 			sb.WriteString("\n")
 		}
 	} else {
-		sb.WriteString("(empty)\n")
+		sb.WriteString("(none)\n")
 	}
 
 	return sb.String()
