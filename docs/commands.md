@@ -1,4 +1,4 @@
-# Command Execution Guide
+ Command Execution Guide
 
 MCPFusion supports executing system commands and scripts through MCP tools. This enables AI clients to interact with command-line utilities, security tools, automation scripts, and any executable program.
 
@@ -27,7 +27,7 @@ Command execution in MCPFusion allows you to:
 
 ### Basic Command Execution
 
-Create a simple command tool in your JSON config:
+Create a simple command tool:
 
 ```json
 {

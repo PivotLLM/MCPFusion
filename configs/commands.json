@@ -1,0 +1,174 @@
+{
+  "services": {},
+  "commands": {
+    "general_commands": {
+      "name": "General Command Execution",
+      "description": "Execute arbitrary system commands with arguments and environment variables",
+      "commands": [
+        {
+          "id": "exec",
+          "name": "Execute Command",
+          "description": "Execute any system command with optional arguments and environment variables. Command runs through shell interpreter for maximum flexibility.",
+          "parameters": [
+            {
+              "name": "command",
+              "description": "Command to execute (can include shell syntax, pipes, redirects, etc.)",
+              "type": "string",
+              "required": true,
+              "location": "argument",
+              "examples": [
+                "echo 'Hello World'",
+                "ls -la /tmp",
+                "curl -s https://api.example.com/data | jq '.results'",
+                "find . -name '*.txt' -exec cat {} \\;"
+              ]
+            },
+            {
+              "name": "environment",
+              "description": "Environment variables as key-value pairs (e.g., {\"API_KEY\": \"secret\", \"LOG_LEVEL\": \"debug\"})",
+              "type": "object",
+              "required": false,
+              "location": "environment",
+              "examples": [
+                {"API_KEY": "your-api-key", "LOG_LEVEL": "info"},
+                {"PATH": "/usr/local/bin:/usr/bin:/bin"},
+                {"HOME": "/tmp", "USER": "testuser"}
+              ]
+            },
+            {
+              "name": "cwd",
+              "description": "Working directory for command execution",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "examples": ["/tmp", "/home/user", "/opt/project"]
+            },
+            {
+              "name": "timeout",
+              "description": "Command timeout in seconds (default: 300)",
+              "type": "integer",
+              "required": false,
+              "location": "control",
+              "default": 300
+            },
+            {
+              "name": "use_shell",
+              "type": "boolean",
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "shell_interpreter",
+              "type": "string",
+              "location": "control",
+              "default": "/bin/sh",
+              "static": true
+            },
+            {
+              "name": "capture_stdout",
+              "type": "boolean",
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "type": "boolean",
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "exec_direct",
+          "name": "Execute Command (Direct)",
+          "description": "Execute a command directly without shell interpretation. Safer for untrusted input but requires exact executable path and separate arguments.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "Full path to executable (e.g., /usr/bin/ls, /bin/cat)",
+              "type": "string",
+              "required": true,
+              "location": "control",
+              "examples": ["/usr/bin/ls", "/bin/cat", "/usr/bin/python3", "/usr/bin/nmap"]
+            },
+            {
+              "name": "arguments",
+              "description": "Array of command-line arguments",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "examples": [
+                ["-la", "/tmp"],
+                ["--version"],
+                ["-p", "80,443", "192.168.1.1"]
+              ]
+            },
+            {
+              "name": "environment",
+              "description": "Environment variables as key-value pairs",
+              "type": "object",
+              "required": false,
+              "location": "environment",
+              "examples": [
+                {"API_KEY": "your-api-key"},
+                {"PATH": "/usr/local/bin:/usr/bin"}
+              ]
+            },
+            {
+              "name": "stdin",
+              "description": "Data to send to command's standard input",
+              "type": "string",
+              "required": false,
+              "location": "stdin",
+              "examples": [
+                "line1\nline2\nline3",
+                "{\"key\": \"value\"}",
+                "test data"
+              ]
+            },
+            {
+              "name": "cwd",
+              "description": "Working directory for command execution",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "examples": ["/tmp", "/home/user"]
+            },
+            {
+              "name": "timeout",
+              "description": "Command timeout in seconds (default: 300)",
+              "type": "integer",
+              "required": false,
+              "location": "control",
+              "default": 300
+            },
+            {
+              "name": "use_shell",
+              "type": "boolean",
+              "location": "control",
+              "default": false,
+              "static": true
+            },
+            {
+              "name": "capture_stdout",
+              "type": "boolean",
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "type": "boolean",
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

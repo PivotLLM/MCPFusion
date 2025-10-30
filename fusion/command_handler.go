@@ -188,18 +188,34 @@ func (h *CommandHandler) handleArglistParameter(config *ExecutionConfig, value i
 
 // handleEnvironmentParameter handles environment variables
 func (h *CommandHandler) handleEnvironmentParameter(config *ExecutionConfig, name string, value interface{}) {
-	strValue := h.valueToString(value)
-	if strValue == "" {
-		return
-	}
-
 	// Initialize env if needed
 	if len(config.Env) == 0 {
 		config.Env = os.Environ()
 	}
 
-	// Add or update environment variable
-	envVar := fmt.Sprintf("%s=%s", name, strValue)
+	// Check if value is an object (map) containing multiple env vars
+	if envMap, ok := value.(map[string]interface{}); ok {
+		for key, val := range envMap {
+			strValue := h.valueToString(val)
+			if strValue != "" {
+				h.setEnvironmentVariable(config, key, strValue)
+			}
+		}
+		return
+	}
+
+	// Otherwise, treat as single env var with parameter name as key
+	strValue := h.valueToString(value)
+	if strValue == "" {
+		return
+	}
+
+	h.setEnvironmentVariable(config, name, strValue)
+}
+
+// setEnvironmentVariable adds or updates an environment variable
+func (h *CommandHandler) setEnvironmentVariable(config *ExecutionConfig, name string, value string) {
+	envVar := fmt.Sprintf("%s=%s", name, value)
 
 	// Check if variable already exists and update it
 	found := false
