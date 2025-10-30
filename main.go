@@ -25,12 +25,6 @@ import (
 	"github.com/PivotLLM/MCPFusion/mlogger"
 )
 
-// Version information
-const (
-	AppName    = "MCPFusion"
-	AppVersion = "0.0.4"
-)
-
 func main() {
 	var err error
 	var listen string
@@ -96,7 +90,7 @@ func main() {
 
 	// Show version and exit if requested
 	if *versionFlag {
-		fmt.Printf("%s version %s\n", AppName, AppVersion)
+		fmt.Printf("%s version %s\n", global.AppName, global.AppVersion)
 		os.Exit(0)
 	}
 
@@ -268,8 +262,8 @@ func main() {
 		mcpserver.WithListen(listen),
 		mcpserver.WithDebug(debug),
 		mcpserver.WithLogger(logger),
-		mcpserver.WithName(AppName),
-		mcpserver.WithVersion(AppVersion),
+		mcpserver.WithName(global.AppName),
+		mcpserver.WithVersion(global.AppVersion),
 		mcpserver.WithNoStreaming(noStreaming),
 
 		// Pass in the tool providers
