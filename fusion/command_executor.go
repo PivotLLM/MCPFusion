@@ -171,22 +171,26 @@ func (e *CommandExecutor) FormatResponse(result ExecutionResult) string {
 		sb.WriteString(fmt.Sprintf("Error: %v\n", result.Error))
 	}
 
-	// Stdout
+	// Always show stdout section
+	sb.WriteString("\n--- STDOUT ---\n")
 	if result.Stdout != "" {
-		sb.WriteString("\n--- STDOUT ---\n")
 		sb.WriteString(result.Stdout)
 		if !strings.HasSuffix(result.Stdout, "\n") {
 			sb.WriteString("\n")
 		}
+	} else {
+		sb.WriteString("(empty)\n")
 	}
 
-	// Stderr
+	// Always show stderr section
+	sb.WriteString("\n--- STDERR ---\n")
 	if result.Stderr != "" {
-		sb.WriteString("\n--- STDERR ---\n")
 		sb.WriteString(result.Stderr)
 		if !strings.HasSuffix(result.Stderr, "\n") {
 			sb.WriteString("\n")
 		}
+	} else {
+		sb.WriteString("(empty)\n")
 	}
 
 	return sb.String()
