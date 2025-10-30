@@ -233,10 +233,21 @@ func main() {
 		// Continue anyway - server can run without configs
 	}
 
-	if configManager.ServiceCount() > 0 {
-		logger.Infof("Loaded %d services from configuration files", configManager.ServiceCount())
+	// Log what was loaded
+	serviceCount := configManager.ServiceCount()
+	commandCount := configManager.CommandCount()
+
+	if serviceCount > 0 || commandCount > 0 {
+		if serviceCount > 0 && commandCount > 0 {
+			logger.Infof("Loaded %d services and %d command groups from configuration files",
+				serviceCount, commandCount)
+		} else if serviceCount > 0 {
+			logger.Infof("Loaded %d services from configuration files", serviceCount)
+		} else {
+			logger.Infof("Loaded %d command groups from configuration files", commandCount)
+		}
 	} else {
-		logger.Warning("No services loaded from configuration files")
+		logger.Warning("No services or commands loaded from configuration files")
 	}
 
 	logger.Info("Multi-tenant authentication system initialized")
@@ -246,8 +257,9 @@ func main() {
 
 	// Add fusion provider if configurations were loaded
 	var fusionProvider *fusion.Fusion
-	if configManager.ServiceCount() > 0 {
-		logger.Infof("Creating fusion provider with %d configured services", configManager.ServiceCount())
+	if serviceCount > 0 || commandCount > 0 {
+		logger.Infof("Creating fusion provider with %d services and %d command groups",
+			serviceCount, commandCount)
 
 		// Configure fusion provider with config manager
 		fusionOpts := []fusion.Option{
