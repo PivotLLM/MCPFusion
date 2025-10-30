@@ -7,6 +7,7 @@ JSON configuration.
 ## Features
 
 - **🔌 Universal API Integration**: Connect to any REST API using JSON configuration
+- **⚡ Command Execution**: Execute system commands and scripts with full parameter control
 - **🔐 Multi-Tenant Authentication**: Complete tenant isolation with database-backed token management
 - **🎫 Bearer Token Support**: Industry-standard `Authorization: Bearer <token>` authentication
 - **⚡ Enhanced Parameter System**: Rich parameter metadata with defaults, validation, and constraints
@@ -60,6 +61,7 @@ setup instructions.
 ### **Configuration & Setup**
 
 - 📚 **[Configuration Guide](docs/config.md)** - Complete guide to creating JSON configurations for any API
+- ⚡ **[Command Execution Guide](docs/commands.md)** - Execute system commands and scripts with parameter control
 - 🔌 **[Client Integration](docs/clients.md)** - Connect Cline, Claude Desktop, and custom MCP clients
 - 🎫 **[Token Management Guide](docs/TOKEN_MANAGEMENT.md)** - Multi-tenant authentication and CLI usage
 - 📧 **[Microsoft 365 Setup](docs/Microsoft365.md)** - Azure app registration and authentication
@@ -201,6 +203,38 @@ Create tools for any REST API using [JSON configuration](docs/config.md). Suppor
 - **Parameter Types**: String, number, boolean, array, object with validation
 - **Response Handling**: JSON, text, binary with pagination support
 - **Advanced Features**: Caching, retry logic, circuit breakers
+
+## Command Execution
+
+MCPFusion supports executing system commands and scripts with full parameter control. Create command-line tools from security scanners, automation scripts, or any executable.
+
+**Key Capabilities:**
+- **Flexible Parameter Handling**: Arguments, flags, environment variables, stdin, execution control
+- **Shell & Direct Execution**: Run commands directly or through shell interpreters
+- **Timeout Management**: Configure timeouts and grace periods for long-running commands
+- **Structured Output**: Captures stdout, stderr, exit code, and execution time
+- **Security Tools Ready**: Pre-configured templates for nmap, sqlmap, metasploit, and more
+
+**Quick Example:**
+```json
+{
+  "commands": {
+    "security_tools": {
+      "name": "Security Tools",
+      "commands": [{
+        "id": "nmap",
+        "name": "Network Scanner",
+        "parameters": [
+          {"name": "target", "type": "string", "location": "argument"},
+          {"name": "ports", "type": "string", "location": "argument", "prefix": "-p"}
+        ]
+      }]
+    }
+  }
+}
+```
+
+See the [Command Execution Guide](docs/commands.md) for complete documentation and examples.
 
 ## Key Features
 

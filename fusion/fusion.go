@@ -468,9 +468,19 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 
 	var tools []global.ToolDefinition
 
+	// Register service tools (existing)
 	for serviceName, service := range f.config.Services {
 		for _, endpoint := range service.Endpoints {
 			tool := f.createToolDefinition(serviceName, service, &endpoint)
+			tools = append(tools, tool)
+		}
+	}
+
+	// Register command tools (NEW)
+	for groupName, commandGroup := range f.config.Commands {
+		for i := range commandGroup.Commands {
+			command := &commandGroup.Commands[i]
+			tool := f.createCommandToolDefinition(groupName, commandGroup, command)
 			tools = append(tools, tool)
 		}
 	}
@@ -575,6 +585,88 @@ func (f *Fusion) createToolHandler(_ string, service *ServiceConfig, endpoint *E
 	}
 
 	return contextHandler.Call
+}
+
+// createCommandToolDefinition creates a tool definition from command configuration
+func (f *Fusion) createCommandToolDefinition(groupName string, commandGroup *CommandGroupConfig, command *CommandConfig) global.ToolDefinition {
+	// Create tool parameters from command parameters (skip static ones)
+	var parameters []global.Parameter
+	for _, param := range command.Parameters {
+		// Skip static parameters - they are not exposed to MCP
+		if param.Static {
+			if f.logger != nil {
+				f.logger.Debugf("Skipping static parameter '%s' in command_%s (will use default)",
+					param.Name, command.ID)
+			}
+			continue
+		}
+
+		// Skip control parameters that are always static
+		if param.Location == ParameterLocationControl {
+			// Only expose control parameters that are explicitly not static
+			if param.Static {
+				continue
+			}
+		}
+
+		globalParam := global.Parameter{
+			Name:        param.Name,
+			Description: param.Description,
+			Required:    param.Required,
+			Type:        string(param.Type),
+			Default:     param.Default,
+			Examples:    param.Examples,
+		}
+
+		// Copy validation rules if present
+		if param.Validation != nil {
+			globalParam.Pattern = param.Validation.Pattern
+			globalParam.Format = param.Validation.Format
+			globalParam.Enum = param.Validation.Enum
+			if param.Validation.MinLength != nil {
+				globalParam.MinLength = param.Validation.MinLength
+			}
+			if param.Validation.MaxLength != nil {
+				globalParam.MaxLength = param.Validation.MaxLength
+			}
+			if param.Validation.Minimum != nil {
+				globalParam.Minimum = param.Validation.Minimum
+			}
+			if param.Validation.Maximum != nil {
+				globalParam.Maximum = param.Validation.Maximum
+			}
+		}
+
+		// Use enhanced description
+		globalParam.Description = globalParam.EnhancedDescription()
+
+		parameters = append(parameters, globalParam)
+	}
+
+	// Create the tool handler
+	handler := f.createCommandToolHandler(commandGroup, command)
+
+	// Generate tool name: command_{id}
+	toolName := fmt.Sprintf("command_%s", command.ID)
+
+	return global.ToolDefinition{
+		Name:        toolName,
+		Description: command.Description,
+		Parameters:  parameters,
+		Handler:     handler,
+	}
+}
+
+// createCommandToolHandler creates a handler for command execution
+func (f *Fusion) createCommandToolHandler(commandGroup *CommandGroupConfig, command *CommandConfig) global.ToolHandler {
+	return func(args map[string]interface{}) (string, error) {
+		// Create command handler
+		handler := NewCommandHandler(f, commandGroup, command)
+
+		// Execute command
+		ctx := context.Background()
+		return handler.Handle(ctx, args)
+	}
 }
 
 // contextAwareHandler holds the HTTP handler and provides both legacy and context-aware interfaces

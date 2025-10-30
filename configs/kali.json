@@ -1,0 +1,780 @@
+{
+  "services": {},
+  "commands": {
+    "kali": {
+      "name": "Kali Linux Security Tools",
+      "description": "Security testing and penetration testing tools from Kali Linux",
+      "commands": [
+        {
+          "id": "exec",
+          "name": "Execute Arbitrary Command",
+          "description": "Execute any shell command with full control. Equivalent to legacy /api/command endpoint.",
+          "parameters": [
+            {
+              "name": "command",
+              "description": "Full shell command string to execute",
+              "type": "string",
+              "required": true,
+              "location": "argument"
+            },
+            {
+              "name": "use_shell",
+              "description": "Execute command through shell interpreter",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "shell_interpreter",
+              "description": "Shell to use for execution",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/bin/bash",
+              "static": true
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 180
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture standard output",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture standard error",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "nmap",
+          "name": "Nmap Network Scanner",
+          "description": "Network exploration and security auditing tool. Equivalent to legacy /api/tools/nmap endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "Nmap executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/nmap",
+              "static": true
+            },
+            {
+              "name": "scan_type",
+              "description": "Nmap scan type arguments (e.g., '-sS', '-sV', '-A')",
+              "type": "string",
+              "required": false,
+              "location": "argument"
+            },
+            {
+              "name": "ports",
+              "description": "Port specification (e.g., '80,443', '1-1000')",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "prefix": "-p"
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional nmap arguments as array",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "target",
+              "description": "Target host or IP address",
+              "type": "string",
+              "required": true,
+              "location": "argument"
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 300
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "gobuster",
+          "name": "Gobuster Directory/DNS Brute-forcer",
+          "description": "Directory, DNS, and VHost brute-forcing tool. Equivalent to legacy /api/tools/gobuster endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "Gobuster executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/gobuster",
+              "static": true
+            },
+            {
+              "name": "mode",
+              "description": "Gobuster mode: dir, dns, fuzz, or vhost",
+              "type": "string",
+              "required": true,
+              "location": "argument",
+              "validation": {
+                "enum": ["dir", "dns", "fuzz", "vhost"]
+              }
+            },
+            {
+              "name": "url",
+              "description": "Target URL",
+              "type": "string",
+              "required": true,
+              "location": "argument",
+              "prefix": "-u"
+            },
+            {
+              "name": "wordlist",
+              "description": "Path to wordlist file",
+              "type": "string",
+              "required": true,
+              "location": "argument",
+              "prefix": "-w"
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional gobuster arguments as array",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 600
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "dirb",
+          "name": "DIRB Web Content Scanner",
+          "description": "Web content scanner. Equivalent to legacy /api/tools/dirb endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "DIRB executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/dirb",
+              "static": true
+            },
+            {
+              "name": "url",
+              "description": "Target URL",
+              "type": "string",
+              "required": true,
+              "location": "argument"
+            },
+            {
+              "name": "wordlist",
+              "description": "Path to wordlist file",
+              "type": "string",
+              "required": false,
+              "location": "argument"
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional DIRB arguments as array",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 600
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "nikto",
+          "name": "Nikto Web Server Scanner",
+          "description": "Web server vulnerability scanner. Equivalent to legacy /api/tools/nikto endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "Nikto executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/nikto",
+              "static": true
+            },
+            {
+              "name": "target",
+              "description": "Target host or domain",
+              "type": "string",
+              "required": true,
+              "location": "argument",
+              "prefix": "-h"
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional Nikto arguments as array",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 600
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "sqlmap",
+          "name": "SQLMap SQL Injection Tool",
+          "description": "Automatic SQL injection and database takeover tool. Equivalent to legacy /api/tools/sqlmap endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "SQLMap executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/sqlmap",
+              "static": true
+            },
+            {
+              "name": "url",
+              "description": "Target URL",
+              "type": "string",
+              "required": true,
+              "location": "argument",
+              "prefix": "-u"
+            },
+            {
+              "name": "--batch",
+              "description": "Never ask for user input, use default behavior",
+              "type": "boolean",
+              "required": false,
+              "location": "argument",
+              "default": true
+            },
+            {
+              "name": "data",
+              "description": "POST data string (e.g., 'id=1&name=test')",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "prefix": "--data"
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional SQLMap arguments as array",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 900
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "metasploit",
+          "name": "Metasploit Framework",
+          "description": "Metasploit Framework module execution. Creates resource file and executes. Equivalent to legacy /api/tools/metasploit endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "Shell to execute resource file creation and msfconsole",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/bin/bash",
+              "static": true
+            },
+            {
+              "name": "module",
+              "description": "Metasploit module to use (e.g., 'exploit/windows/smb/ms17_010_eternalblue')",
+              "type": "string",
+              "required": true,
+              "location": "argument"
+            },
+            {
+              "name": "options",
+              "description": "Module options as key=value pairs (will be converted to 'set KEY value' commands). Provide as array like ['RHOSTS=10.0.0.1', 'LHOST=192.168.1.1']",
+              "type": "array",
+              "required": false,
+              "location": "argument",
+              "default": []
+            },
+            {
+              "name": "use_shell",
+              "description": "Execute through shell to allow resource file creation",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "shell_interpreter",
+              "description": "Shell interpreter",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/bin/bash",
+              "static": true
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 900
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "hydra",
+          "name": "Hydra Password Cracker",
+          "description": "Network logon cracker supporting many protocols. Equivalent to legacy /api/tools/hydra endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "Hydra executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/hydra",
+              "static": true
+            },
+            {
+              "name": "-t",
+              "description": "Number of parallel connections",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "default": "4"
+            },
+            {
+              "name": "username",
+              "description": "Single username to test",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "prefix": "-l"
+            },
+            {
+              "name": "username_file",
+              "description": "Path to username list file",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "prefix": "-L"
+            },
+            {
+              "name": "password",
+              "description": "Single password to test",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "prefix": "-p"
+            },
+            {
+              "name": "password_file",
+              "description": "Path to password list file",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "prefix": "-P"
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional Hydra arguments as array",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "target",
+              "description": "Target host or IP",
+              "type": "string",
+              "required": true,
+              "location": "argument"
+            },
+            {
+              "name": "service",
+              "description": "Service to attack (e.g., 'ssh', 'ftp', 'http-post-form')",
+              "type": "string",
+              "required": true,
+              "location": "argument"
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 1800
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "john",
+          "name": "John the Ripper",
+          "description": "Password cracking tool. Equivalent to legacy /api/tools/john endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "John executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/john",
+              "static": true
+            },
+            {
+              "name": "format",
+              "description": "Hash format (e.g., 'md5', 'sha256', 'nt')",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "prefix": "--format"
+            },
+            {
+              "name": "wordlist",
+              "description": "Path to wordlist file",
+              "type": "string",
+              "required": false,
+              "location": "argument",
+              "prefix": "--wordlist"
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional John arguments as array",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "hash_file",
+              "description": "Path to file containing hashes",
+              "type": "string",
+              "required": true,
+              "location": "argument"
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 1800
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "wpscan",
+          "name": "WPScan WordPress Scanner",
+          "description": "WordPress vulnerability scanner. Equivalent to legacy /api/tools/wpscan endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "WPScan executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/wpscan",
+              "static": true
+            },
+            {
+              "name": "url",
+              "description": "Target WordPress URL",
+              "type": "string",
+              "required": true,
+              "location": "argument",
+              "prefix": "--url"
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional WPScan arguments as array",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 600
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        },
+        {
+          "id": "enum4linux",
+          "name": "Enum4linux SMB Enumerator",
+          "description": "Tool for enumerating information from Windows and Samba systems. Equivalent to legacy /api/tools/enum4linux endpoint.",
+          "parameters": [
+            {
+              "name": "executable",
+              "description": "Enum4linux executable path",
+              "type": "string",
+              "required": false,
+              "location": "control",
+              "default": "/usr/bin/enum4linux",
+              "static": true
+            },
+            {
+              "name": "additional_args",
+              "description": "Additional enum4linux arguments as array (e.g., ['-a'] for all enumeration)",
+              "type": "array",
+              "required": false,
+              "location": "arglist",
+              "default": []
+            },
+            {
+              "name": "target",
+              "description": "Target host or IP",
+              "type": "string",
+              "required": true,
+              "location": "argument"
+            },
+            {
+              "name": "timeout",
+              "description": "Maximum execution time in seconds",
+              "type": "number",
+              "required": false,
+              "location": "control",
+              "default": 300
+            },
+            {
+              "name": "capture_stdout",
+              "description": "Capture stdout",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            },
+            {
+              "name": "capture_stderr",
+              "description": "Capture stderr",
+              "type": "boolean",
+              "required": false,
+              "location": "control",
+              "default": true,
+              "static": true
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
