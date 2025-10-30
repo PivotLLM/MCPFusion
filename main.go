@@ -101,7 +101,6 @@ func main() {
 	// Load environment variables from config files in priority order:
 	// 1. /opt/mcpfusion/env
 	// 2. ~/.mcpfusion
-	// 3. ~/.mcp (for backwards compatibility)
 	envFiles := []string{
 		"/opt/mcpfusion/env",
 	}
@@ -109,10 +108,7 @@ func main() {
 	// Add user-specific config files if home directory is available
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
-		envFiles = append(envFiles,
-			homeDir+string(os.PathSeparator)+".mcpfusion",
-			homeDir+string(os.PathSeparator)+".mcp",
-		)
+		envFiles = append(envFiles, homeDir+string(os.PathSeparator)+".mcpfusion")
 	}
 
 	// Track which environment file was loaded
