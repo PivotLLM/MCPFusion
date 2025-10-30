@@ -81,10 +81,23 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 			serviceName, err := global.ExtractServiceFromToolName(request.Params.Name)
 			if err != nil {
 				if config.logger != nil {
-					config.logger.Errorf("MCP Auth: Failed to extract service from tool name %s: %v", 
+					config.logger.Errorf("MCP Auth: Failed to extract service from tool name %s: %v",
 						request.Params.Name, err)
 				}
 				return nil, fmt.Errorf("invalid tool name: %s", request.Params.Name)
+			}
+
+			// Check if this is a command tool (not a service tool)
+			// Command tools follow the pattern: command_{commandId}
+			// They don't require service validation or tenant access checks
+			if serviceName == "command" {
+				if config.logger != nil {
+					config.logger.Debugf("MCP Auth: Tool %s is a command tool, skipping service validation",
+						request.Params.Name)
+				}
+				// Command tools are available to all authenticated tenants
+				// Continue to tool handler without service-specific validation
+				return next(ctx, request)
 			}
 
 			// Validate that this service exists in our configuration
