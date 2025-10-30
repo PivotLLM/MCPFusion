@@ -115,12 +115,16 @@ func main() {
 		)
 	}
 
+	// Track which environment file was loaded
+	var loadedEnvFile string
+
 	// Try to load each config file in order
 	for _, envFile := range envFiles {
 		if _, err := os.Stat(envFile); err == nil {
 			err = godotenv.Load(envFile)
 			if err == nil {
 				// Stop after loading the first successful file. Note that logger is not configured yet.
+				loadedEnvFile = envFile
 				break
 			}
 		}
@@ -147,6 +151,16 @@ func main() {
 	if err != nil {
 		fmt.Printf("Unable to create logger: %v", err)
 		os.Exit(1)
+	}
+
+	// Log startup banner
+	logger.Infof("Starting %s v%s", global.AppName, global.AppVersion)
+
+	// Log environment file loading status
+	if loadedEnvFile != "" {
+		logger.Infof("Loaded environment from: %s", loadedEnvFile)
+	} else {
+		logger.Debug("No environment file loaded (searched: /opt/mcpfusion/env, ~/.mcpfusion, ~/.mcp)")
 	}
 
 	// Now that env files are loaded, check for fusion configs
