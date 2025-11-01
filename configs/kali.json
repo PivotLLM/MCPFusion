@@ -8,7 +8,7 @@
         {
           "id": "exec",
           "name": "Execute Arbitrary Command",
-          "description": "Execute any shell command with full control. Equivalent to legacy /api/command endpoint.",
+          "description": "Execute any shell command with full control.",
           "parameters": [
             {
               "name": "command",
@@ -66,7 +66,7 @@
         {
           "id": "nmap",
           "name": "Nmap Network Scanner",
-          "description": "Network exploration and security auditing tool. Equivalent to legacy /api/tools/nmap endpoint.",
+          "description": "Network exploration and security auditing tool.",
           "parameters": [
             {
               "name": "executable",
@@ -138,7 +138,7 @@
         {
           "id": "gobuster",
           "name": "Gobuster Directory/DNS Brute-forcer",
-          "description": "Directory, DNS, and VHost brute-forcing tool. Equivalent to legacy /api/tools/gobuster endpoint.",
+          "description": "Directory, DNS, and VHost brute-forcing tool.",
           "parameters": [
             {
               "name": "executable",
@@ -214,7 +214,7 @@
         {
           "id": "dirb",
           "name": "DIRB Web Content Scanner",
-          "description": "Web content scanner. Equivalent to legacy /api/tools/dirb endpoint.",
+          "description": "Web content scanner.",
           "parameters": [
             {
               "name": "executable",
@@ -278,7 +278,7 @@
         {
           "id": "nikto",
           "name": "Nikto Web Server Scanner",
-          "description": "Web server vulnerability scanner. Equivalent to legacy /api/tools/nikto endpoint.",
+          "description": "Web server vulnerability scanner.",
           "parameters": [
             {
               "name": "executable",
@@ -336,7 +336,7 @@
         {
           "id": "sqlmap",
           "name": "SQLMap SQL Injection Tool",
-          "description": "Automatic SQL injection and database takeover tool. Equivalent to legacy /api/tools/sqlmap endpoint.",
+          "description": "Automatic SQL injection and database takeover tool.",
           "parameters": [
             {
               "name": "executable",
@@ -410,7 +410,7 @@
         {
           "id": "metasploit",
           "name": "Metasploit Framework",
-          "description": "Metasploit Framework module execution. Creates resource file and executes. Equivalent to legacy /api/tools/metasploit endpoint.",
+          "description": "Metasploit Framework module execution. Creates resource file and executes.",
           "parameters": [
             {
               "name": "executable",
@@ -485,7 +485,7 @@
         {
           "id": "hydra",
           "name": "Hydra Password Cracker",
-          "description": "Network logon cracker supporting many protocols. Equivalent to legacy /api/tools/hydra endpoint.",
+          "description": "Network logon cracker supporting many protocols.",
           "parameters": [
             {
               "name": "executable",
@@ -589,7 +589,7 @@
         {
           "id": "john",
           "name": "John the Ripper",
-          "description": "Password cracking tool. Equivalent to legacy /api/tools/john endpoint.",
+          "description": "Password cracking tool.",
           "parameters": [
             {
               "name": "executable",
@@ -662,7 +662,7 @@
         {
           "id": "wpscan",
           "name": "WPScan WordPress Scanner",
-          "description": "WordPress vulnerability scanner. Equivalent to legacy /api/tools/wpscan endpoint.",
+          "description": "WordPress vulnerability scanner.",
           "parameters": [
             {
               "name": "executable",
@@ -720,7 +720,7 @@
         {
           "id": "enum4linux",
           "name": "Enum4linux SMB Enumerator",
-          "description": "Tool for enumerating information from Windows and Samba systems. Equivalent to legacy /api/tools/enum4linux endpoint.",
+          "description": "Tool for enumerating information from Windows and Samba systems.",
           "parameters": [
             {
               "name": "executable",
