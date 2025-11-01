@@ -58,12 +58,36 @@ func (e *CommandExecutor) Execute(ctx context.Context, config ExecutionConfig) E
 	startTime := time.Now()
 	result := ExecutionResult{}
 
-	// Create context with timeout if specified
+	// Create independent context with timeout for command execution
+	// Use Background() to decouple from HTTP request context timeout
+	// This allows commands to run for their full configured timeout even if
+	// the HTTP client has a shorter timeout
+	var cmdCtx context.Context
 	var cancel context.CancelFunc
 	if config.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(config.Timeout)*time.Second)
+		cmdCtx, cancel = context.WithTimeout(context.Background(), time.Duration(config.Timeout)*time.Second)
 		defer cancel()
+	} else {
+		cmdCtx = context.Background()
 	}
+
+	// Monitor parent context cancellation in background (for server shutdown)
+	// This ensures we respect graceful shutdown even though command uses independent context
+	parentDone := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			// Parent context cancelled (server shutdown or client disconnect)
+			// Cancel command context to stop execution
+			if cancel != nil {
+				cancel()
+			}
+		case <-parentDone:
+			// Command completed normally
+			return
+		}
+	}()
+	defer close(parentDone)
 
 	// Build command
 	var cmd *exec.Cmd
@@ -84,10 +108,10 @@ func (e *CommandExecutor) Execute(ctx context.Context, config ExecutionConfig) E
 			fullCommand = config.Executable
 		}
 
-		cmd = exec.CommandContext(ctx, shellInterpreter, "-c", fullCommand)
+		cmd = exec.CommandContext(cmdCtx, shellInterpreter, "-c", fullCommand)
 	} else {
 		// Direct execution
-		cmd = exec.CommandContext(ctx, config.Executable, config.Args...)
+		cmd = exec.CommandContext(cmdCtx, config.Executable, config.Args...)
 	}
 
 	// Set working directory if specified
@@ -127,7 +151,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, config ExecutionConfig) E
 	}
 
 	// Check for timeout
-	if ctx.Err() == context.DeadlineExceeded {
+	if cmdCtx.Err() == context.DeadlineExceeded {
 		result.TimedOut = true
 		result.Error = fmt.Errorf("command timed out after %d seconds", config.Timeout)
 		result.ExitCode = -1

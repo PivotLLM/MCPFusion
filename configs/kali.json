@@ -410,77 +410,91 @@
         {
           "id": "metasploit",
           "name": "Metasploit Framework",
-          "description": "Metasploit Framework module execution. Creates resource file and executes.",
+          "description": "Metasploit Framework module execution.",
           "parameters": [
             {
               "name": "executable",
-              "description": "Shell to execute resource file creation and msfconsole",
-              "type": "string",
-              "required": false,
-              "location": "control",
-              "default": "/bin/bash",
-              "static": true
-            },
-            {
-              "name": "module",
-              "description": "Metasploit module to use (e.g., 'exploit/windows/smb/ms17_010_eternalblue')",
+              "description": "Full path to metasploit",
               "type": "string",
               "required": true,
-              "location": "argument"
+              "location": "control",
+              "default": "/usr/bin/msfconsole",
+	      "static": true
             },
             {
-              "name": "options",
-              "description": "Module options as key=value pairs (will be converted to 'set KEY value' commands). Provide as array like ['RHOSTS=10.0.0.1', 'LHOST=192.168.1.1']",
+              "name": "arguments",
+              "description": "Array of command-line arguments",
               "type": "array",
               "required": false,
-              "location": "argument",
-              "default": []
+              "location": "arglist",
+              "examples": [
+                ["help"]
+              ]
             },
             {
-              "name": "use_shell",
-              "description": "Execute through shell to allow resource file creation",
-              "type": "boolean",
+              "name": "environment",
+              "description": "Environment variables as key-value pairs",
+              "type": "object",
               "required": false,
-              "location": "control",
-              "default": true,
-              "static": true
+              "location": "environment",
+              "examples": [
+                {"API_KEY": "your-api-key"},
+                {"PATH": "/usr/local/bin:/usr/bin"}
+              ]
             },
             {
-              "name": "shell_interpreter",
-              "description": "Shell interpreter",
+              "name": "stdin",
+              "description": "Data to send to command's standard input",
+              "type": "string",
+              "required": false,
+              "location": "stdin",
+              "examples": [
+                "line1\nline2\nline3",
+                "{\"key\": \"value\"}",
+                "test data"
+              ]
+            },
+            {
+              "name": "cwd",
+              "description": "Working directory for command execution",
               "type": "string",
               "required": false,
               "location": "control",
-              "default": "/bin/bash",
-              "static": true
+	      "default": "/tmp",
+              "examples": ["/tmp"],
+	      "static": true
             },
             {
               "name": "timeout",
-              "description": "Maximum execution time in seconds",
-              "type": "number",
+              "description": "Command timeout in seconds (default: 300)",
+              "type": "integer",
               "required": false,
               "location": "control",
-              "default": 900
+              "default": 300
+            },
+            {
+              "name": "use_shell",
+              "type": "boolean",
+              "location": "control",
+              "default": false,
+              "static": true
             },
             {
               "name": "capture_stdout",
-              "description": "Capture stdout",
               "type": "boolean",
-              "required": false,
               "location": "control",
               "default": true,
               "static": true
             },
             {
               "name": "capture_stderr",
-              "description": "Capture stderr",
               "type": "boolean",
-              "required": false,
               "location": "control",
               "default": true,
               "static": true
             }
           ]
+
         },
         {
           "id": "hydra",
