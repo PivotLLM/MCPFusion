@@ -65,8 +65,11 @@ func (at *AuthenticatedTransport) Start(addr string) error {
 
 	// Create HTTP server with our wrapped handler
 	at.server = &http.Server{
-		Addr:    addr,
-		Handler: at.handler,
+		Addr:         addr,
+		Handler:      at.handler,
+		ReadTimeout:  0,                      // No timeout for reading request
+		WriteTimeout: 3600 * time.Second,     // 1 hour timeout for writing response (allows long-running commands)
+		IdleTimeout:  120 * time.Second,      // 2 minutes idle timeout
 	}
 
 	return at.server.ListenAndServe()

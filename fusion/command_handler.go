@@ -45,6 +45,24 @@ func (h *CommandHandler) Handle(ctx context.Context, args map[string]interface{}
 	// Execute command
 	result := h.executor.Execute(ctx, execConfig)
 
+	// Log execution result
+	if h.fusion.logger != nil {
+		status := "success"
+		if result.TimedOut {
+			status = "timeout"
+		} else if result.ExitCode != 0 {
+			status = "failed"
+		}
+		h.fusion.logger.Infof("Command %s_%s completed: status=%s exit_code=%d duration=%.2fs",
+			h.commandGroup.Name, h.command.ID, status, result.ExitCode, result.Duration.Seconds())
+	}
+
+	// Return error on timeout so MCP client knows it's not a normal success
+	if result.TimedOut {
+		return h.executor.FormatResponse(result),
+			fmt.Errorf("command timed out after %d seconds (configured timeout limit reached)", execConfig.Timeout)
+	}
+
 	// Format and return response
 	return h.executor.FormatResponse(result), nil
 }
