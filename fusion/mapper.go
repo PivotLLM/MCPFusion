@@ -77,7 +77,9 @@ func (m *Mapper) BuildURL(baseURL, path string, params []ParameterConfig, args m
 			// Replace placeholder in path
 			placeholder := "{" + param.Name + "}"
 			valueStr := fmt.Sprintf("%v", value)
-			fullURL = strings.ReplaceAll(fullURL, placeholder, url.PathEscape(valueStr))
+			// Use QueryEscape instead of PathEscape to ensure all special characters
+			// (including '=' in base64-encoded IDs) are properly encoded for Microsoft Graph
+			fullURL = strings.ReplaceAll(fullURL, placeholder, url.QueryEscape(valueStr))
 		}
 	}
 
