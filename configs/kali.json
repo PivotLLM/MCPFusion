@@ -12,7 +12,7 @@
           "parameters": [
             {
               "name": "command",
-              "description": "Full shell command string to execute",
+              "description": "Full shell command string to execute including any arguments",
               "type": "string",
               "required": true,
               "location": "argument"
@@ -34,6 +34,17 @@
               "location": "control",
               "default": "/bin/bash",
               "static": true
+            },
+            {
+              "name": "environment",
+              "description": "Environment variables as key-value pairs",
+              "type": "object",
+              "required": false,
+              "location": "environment",
+              "examples": [
+                {"API_KEY": "your-api-key"},
+                {"PATH": "/usr/local/bin:/usr/bin"}
+              ]
             },
             {
               "name": "timeout",
