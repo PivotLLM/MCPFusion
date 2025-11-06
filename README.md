@@ -127,7 +127,7 @@ See [Testing Guide](tests/README.md) for detailed testing documentation.
 
 ## Copyright and license
 
-Copyright (c) 2024-2025 by Tenebris Technologies Inc. and available for use under Apache License 2.0. Please see the LICENSE file for full information.
+Copyright (c) 2025 by Tenebris Technologies Inc. and available for use under Apache License 2.0. Please see the LICENSE file for full information.
 
 ## No Warranty (zilch, none, void, nil, null, "", {}, 0x00, 0b00000000, EOF)
 
