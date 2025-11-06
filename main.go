@@ -33,6 +33,7 @@ func main() {
 	debugFlag := flag.Bool("debug", true, "Enable debug mode")
 	portFlag := flag.Int("port", 8888, "Port to listen on")
 	noStreamingFlag := flag.Bool("no-streaming", false, "Disable streaming (use plain HTTP instead of SSE)")
+	noAuthFlag := flag.Bool("no-auth", false, "Disable authentication (INSECURE - testing only)")
 	configFlag := flag.String("config", "", "Comma-separated list of configuration files (optional)")
 	helpFlag := flag.Bool("help", false, "Show help information")
 	versionFlag := flag.Bool("version", false, "Show version information")
@@ -55,6 +56,8 @@ func main() {
 		fmt.Printf("        Enable debug mode (default true)\n")
 		fmt.Printf("  -help\n")
 		fmt.Printf("        Show help information\n")
+		fmt.Printf("  -no-auth\n")
+		fmt.Printf("        Disable authentication (INSECURE - testing only)\n")
 		fmt.Printf("  -no-streaming\n")
 		fmt.Printf("        Disable streaming (use plain HTTP instead of SSE)\n")
 		fmt.Printf("  -port int\n")
@@ -97,6 +100,7 @@ func main() {
 	// Use the flag values
 	debug := *debugFlag
 	noStreaming := *noStreamingFlag
+	noAuth := *noAuthFlag
 
 	// Load environment variables from config files in priority order:
 	// 1. /opt/mcpfusion/env
@@ -151,6 +155,15 @@ func main() {
 
 	// Log startup banner
 	logger.Infof("Starting %s v%s", global.AppName, global.AppVersion)
+
+	// Log warning if no-auth mode is enabled
+	if noAuth {
+		logger.Warning("**************************************************************")
+		logger.Warning("* SECURITY WARNING: Authentication is DISABLED              *")
+		logger.Warning("* This mode is INSECURE and should ONLY be used for testing *")
+		logger.Warning("* All requests will use the 'NOAUTH' tenant context         *")
+		logger.Warning("**************************************************************")
+	}
 
 	// Log environment file loading status
 	if loadedEnvFile != "" {
@@ -301,14 +314,18 @@ func main() {
 	mcpOpts = append(mcpOpts, mcpserver.WithAuthManager(multiTenantAuth))
 	mcpOpts = append(mcpOpts, mcpserver.WithConfigManager(configManager))
 
-	// Add multi-tenant authentication middleware (always enabled)
+	// Add multi-tenant authentication middleware
 	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, configManager,
 		mcpserver.WithAuthLogger(logger),
-		mcpserver.WithRequireAuth(true),
+		mcpserver.WithRequireAuth(!noAuth),
 		mcpserver.WithSkipPaths("/health", "/metrics", "/status", "/capabilities"),
 	)
 	mcpOpts = append(mcpOpts, mcpserver.WithAuthMiddleware(authMiddleware))
-	logger.Info("Multi-tenant authentication middleware enabled")
+	if noAuth {
+		logger.Warning("Multi-tenant authentication middleware in NO-AUTH mode (insecure)")
+	} else {
+		logger.Info("Multi-tenant authentication middleware enabled")
+	}
 	logger.Info("OAuth API endpoints will be available at /api/v1/oauth/*")
 
 	mcp, err := mcpserver.New(mcpOpts...)

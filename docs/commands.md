@@ -1,4 +1,4 @@
- Command Execution Guide
+ # Command Execution Guide
 
 MCPFusion supports executing system commands and scripts through MCP tools. This enables AI clients to interact with command-line utilities, security tools, automation scripts, and any executable program.
 
@@ -691,27 +691,12 @@ Safe command configuration template:
 }
 ```
 
-## Testing Commands
-
-Test your command configurations:
-
-```bash
-# Run command tests
-go test ./fusion -run TestCommand -v
-
-# Test with your config
-go test ./fusion -run TestKaliConfig -v
-```
-
-See the [Testing Guide](../tests/README.md) for more details.
-
 ## Examples
 
 Complete working examples are available in:
 
-- **Kali Linux Tools**: `/configs/kali.json` - 11 security tools (nmap, sqlmap, metasploit, etc.)
-- **Basic Commands**: See Quick Start section above
-- **Custom Scripts**: See Example 2 (Script with Environment and Stdin)
+- **Kali Linux Tools**: `/configs/kali.json`
+- **Arbitrary Comments**: `/configs/commands.json`
 
 ## Additional Resources
 

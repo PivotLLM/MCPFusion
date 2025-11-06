@@ -19,6 +19,10 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
+// NoAuthTenantHash is the special tenant hash used when authentication is disabled
+// This is INSECURE and should only be used for testing purposes
+const NoAuthTenantHash = "NOAUTH"
+
 // TenantContext represents tenant-specific context information
 type TenantContext struct {
 	TenantHash  string            `json:"tenant_hash"`
@@ -494,14 +498,28 @@ func (mtam *MultiTenantAuthManager) convertOAuthTokenDataToTokenInfo(tokenData *
 }
 
 // ExtractTenantFromToken extracts tenant information from a bearer token
+// If token is empty, returns a NOAUTH tenant context for no-auth mode
 func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*TenantContext, error) {
-	if token == "" {
-		return nil, fmt.Errorf("invalid token")
-	}
-
 	// Remove "Bearer " prefix if present
 	if strings.HasPrefix(token, "Bearer ") {
 		token = strings.TrimPrefix(token, "Bearer ")
+	}
+
+	// If token is empty, create a NOAUTH tenant context (for no-auth mode)
+	if token == "" {
+		tenantContext := &TenantContext{
+			TenantHash:  NoAuthTenantHash,
+			ServiceName: "default",
+			Description: "No Authentication Mode (INSECURE)",
+			Metadata:    make(map[string]string),
+			CreatedAt:   time.Now(),
+		}
+
+		if mtam.logger != nil {
+			mtam.logger.Debugf("Created NOAUTH tenant context (no-auth mode)")
+		}
+
+		return tenantContext, nil
 	}
 
 	// Validate the token against the database

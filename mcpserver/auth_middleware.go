@@ -134,10 +134,27 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 				am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
 				return
 			} else {
-				// Auth not required, continue without tenant context
+				// Auth not required, create NOAUTH tenant context
 				if am.logger != nil {
-					am.logger.Debugf("No bearer token provided, continuing without authentication for %s", r.URL.Path)
+					am.logger.Debugf("No bearer token provided, using NOAUTH tenant context for %s", r.URL.Path)
 				}
+				// Create NOAUTH tenant context using ExtractTenantFromToken with empty token
+				tenantContext, err := am.authManager.ExtractTenantFromToken("")
+				if err != nil {
+					if am.logger != nil {
+						am.logger.Errorf("Failed to create NOAUTH tenant context: %v", err)
+					}
+					am.writeErrorResponse(w, http.StatusInternalServerError, "Internal error")
+					return
+				}
+
+				// Add request ID to tenant context
+				tenantContext.RequestID = am.generateRequestID(r)
+
+				// Add tenant context to request context
+				ctx := context.WithValue(r.Context(), global.TenantContextKey, tenantContext)
+				r = r.WithContext(ctx)
+
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -451,10 +468,27 @@ func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
 				am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
 				return
 			} else {
-				// Auth not required, continue without tenant context
+				// Auth not required, create NOAUTH tenant context
 				if am.logger != nil {
-					am.logger.Debugf("Simple Auth: No bearer token provided, continuing without authentication for %s", r.URL.Path)
+					am.logger.Debugf("Simple Auth: No bearer token provided, using NOAUTH tenant context for %s", r.URL.Path)
 				}
+				// Create NOAUTH tenant context using ExtractTenantFromToken with empty token
+				tenantContext, err := am.authManager.ExtractTenantFromToken("")
+				if err != nil {
+					if am.logger != nil {
+						am.logger.Errorf("Simple Auth: Failed to create NOAUTH tenant context: %v", err)
+					}
+					am.writeErrorResponse(w, http.StatusInternalServerError, "Internal error")
+					return
+				}
+
+				// Add request ID to tenant context
+				tenantContext.RequestID = am.generateRequestID(r)
+
+				// Add tenant context to request context
+				ctx := context.WithValue(r.Context(), global.TenantContextKey, tenantContext)
+				r = r.WithContext(ctx)
+
 				next.ServeHTTP(w, r)
 				return
 			}

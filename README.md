@@ -18,12 +18,26 @@ Users should carefully review their configuration to understand what access MCPF
 - **Reliability**: Circuit breakers, retry logic, caching, and comprehensive error handling
 - **CLI Token Management**: Command-line token management
 
+## Security Warning
+
+**IMPORTANT**: MCPFusion requires authentication by default using bearer tokens. While a `--no-auth` flag is available for **testing purposes**, this mode is **insecure** and should **not** be used outside trusted environments.
+
+### No-Auth Mode (Testing Only)
+
+The `--no-auth` flag disables authentication requirements:
+- **USE CASE**: Local development and testing
+- **SECURITY**: All requests will share a single "NOAUTH" tenant context
+- **RISK**: Anyone with network access can execute commands and access configured APIs
+- **OAUTH TOKENS**: OAuth tokens obtained in no-auth mode are stored with the "NOAUTH" tenant identifier
+
+**For production use, always generate and use proper API tokens** (see Quick Start below).
+
 ## Quick Start
 
 1. **Create an environment file**:
 /opt/mcpfusion/env is recommended. For example:
  ```
-MCP_FUSION_CONFIG=/Users/eric/source/MCPFusion/configs/microsoft365.json
+MCP_FUSION_CONFIG=/opt/mcpfusion/microsoft365.json
 MCP_FUSION_LISTEN=127.0.0.1:8888
 MCP_FUSION_DB_DIR=/opt/mcpfusion/db
 
@@ -45,10 +59,13 @@ MS365_TENANT_ID=common
    ```bash
    # Start server
    ./mcpfusion
-   
+
    # Optionally pass a config and port to the application
    ./mcpfusion -config configs/microsoft365.json -port 8888
-   '''
+
+   # For testing only: start without authentication (INSECURE)
+   ./mcpfusion --no-auth
+   ```
    
 ### **Client Configuration**
 - **URL**: http://localhost:8888/sse (adjust as required for your listen address/port)
