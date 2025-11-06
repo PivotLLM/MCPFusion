@@ -55,7 +55,7 @@
               "type": "number",
               "required": false,
               "location": "control",
-              "default": 300
+              "default": 900
             },
             {
               "name": "capture_stdout",

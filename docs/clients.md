@@ -34,7 +34,11 @@ For clients unable or unwilling to support MCP over HTTP, it may be preferable t
 ## Claude Code
 MCP servers can be added to Claude code via the command line. To add an MCP server scoped to the user (all projects):
 
-`claude mcp add --transport sse Fusion --scope user http://127.0.0.1:8888/sse --header "Authorization: Bearer <token>"`
+`claude mcp add --transport http Fusion --scope user http://127.0.0.1:8888/mcp --header "Authorization: Bearer <token>"`
+
+To list configured MCP servers:
+
+`claude mcp list`
 
 For further information use:
 
@@ -45,7 +49,9 @@ For further information use:
 
 Claude Desktop does not support HTTP header bearer tokens, nor will it support HTTP (as opposed to HTTPS) even on localhost. The author's decision to only support OAUTH authentication may be future-facing, but it ignore the practical solutions required today.
 
-One workaround is to use the MCPRelay utility:
+Since Claude Desktop does fully support "Local MCP servers" that use the stdio transport, you can use a utility such as MCPRelay to bridge between a stdio transport and a network-accessible MCP server.
+
+Example:
 
 ```json
 {
@@ -66,6 +72,8 @@ One workaround is to use the MCPRelay utility:
 }
 ```
 
+To access the configuration in Claude Desktop, click on your name at the lower left, then "Settings". Scroll to the bottom of the settings and click on "Developer". Local MCP servers will be displayed on the right pane. Click "Edit Config" to access the configuration file.
+
 Please see https://github.com/PivotLLM/MCPRelay for further information.
 
 ## Cline
@@ -75,7 +83,7 @@ Please see https://github.com/PivotLLM/MCPRelay for further information.
 **NOTE: An open issue in Cline causes the Authorization header to not be sent:
 https://github.com/cline/cline/issues/4391**
 
-**A temporary workaround in secure environments may be to use MCPFusion's -no-auth command line switch or MCPRelay.**
+**A temporary workaround in secure environments may be to use MCPFusion's -no-auth command line switch or use MCPRelay to bridge between a stdio MCP transport and the network.**
 
 ### Configuration File Location
 
