@@ -44,19 +44,23 @@ For further information use:
 
 Claude Desktop does not support HTTP header bearer tokens, nor will it support HTTP (as opposed to HTTPS) even on localhost. The author's decision to only support OAUTH authentication may be future-facing, but it ignore the practical solutions required today.
 
-One workaround is to use a local program to relay between stdio and HTTP/SSE.
+One workaround is to use the MCPRelay utility:
 
 ```json
 {
-  "Fusion": {
-    "command": "/opt/mcpfusion/mcprelay",
-    "args": [
-      "-url",
-      "http://127.0.0.1:8888/sse",
-      "-log",
-      "/tmp/relay-fusion.log",
-      "-debug"
-    ]
+  "mcpServers": {
+    "Fusion": {
+      "command": "/opt/mcprelay/mcprelay",
+      "args": [
+        "-url",
+        "http://127.0.0.1:8888/sse",
+        "-headers",
+        "{\"Authorization\":\"Bearer <token>\"}",
+        "-log",
+        "/opt/mcprelay/relay-fusion.log",
+        "-debug"
+      ]
+    }
   }
 }
 ```
@@ -70,7 +74,7 @@ Please see https://github.com/PivotLLM/MCPRelay for further information.
 **NOTE: An open issue in Cline causes the Authorization header to not be sent:
 https://github.com/cline/cline/issues/4391**
 
-**A temporary workaround in secure environments may be to use MCPFusion's -no-auth command line switch.**
+**A temporary workaround in secure environments may be to use MCPFusion's -no-auth command line switch or MCPRelay.**
 
 ### Configuration File Location
 
