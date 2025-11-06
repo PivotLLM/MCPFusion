@@ -48,3 +48,42 @@ func (s *MCPServer) hookAfterListTools(ctx context.Context, id any, request *mcp
 		s.logger.Infof("%s: %d tools returned", request.Request.Method, len(result.Tools))
 	}
 }
+
+//goland:noinspection GoUnusedParameter
+func (s *MCPServer) hookAfterCallTool(ctx context.Context, id any, request *mcp.CallToolRequest, result *mcp.CallToolResult) {
+	// Calculate response size
+	var responseSize int
+	if result != nil {
+		// Count content items and their sizes
+		for _, content := range result.Content {
+			// Use type assertion to check content type (note: these are value types, not pointers)
+			switch c := content.(type) {
+			case mcp.TextContent:
+				responseSize += len(c.Text)
+			case *mcp.TextContent:
+				responseSize += len(c.Text)
+			case mcp.ImageContent:
+				responseSize += len(c.Data)
+			case *mcp.ImageContent:
+				responseSize += len(c.Data)
+			case mcp.EmbeddedResource:
+				// Count embedded resource content
+				if textResource, ok := c.Resource.(*mcp.TextResourceContents); ok {
+					responseSize += len(textResource.Text)
+				}
+			case *mcp.EmbeddedResource:
+				// Count embedded resource content
+				if textResource, ok := c.Resource.(*mcp.TextResourceContents); ok {
+					responseSize += len(textResource.Text)
+				}
+			}
+		}
+	}
+
+	toolName := request.Params.Name
+	if s.debug {
+		s.logger.Debugf("tools/call: %s completed, response size: %d bytes", toolName, responseSize)
+	} else {
+		s.logger.Infof("tools/call: %s completed (%d bytes)", toolName, responseSize)
+	}
+}

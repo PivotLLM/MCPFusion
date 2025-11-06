@@ -32,7 +32,6 @@ func main() {
 	// Define command line flags
 	debugFlag := flag.Bool("debug", true, "Enable debug mode")
 	portFlag := flag.Int("port", 8888, "Port to listen on")
-	noStreamingFlag := flag.Bool("no-streaming", false, "Disable streaming (use plain HTTP instead of SSE)")
 	noAuthFlag := flag.Bool("no-auth", false, "Disable authentication (INSECURE - testing only)")
 	configFlag := flag.String("config", "", "Comma-separated list of configuration files (optional)")
 	helpFlag := flag.Bool("help", false, "Show help information")
@@ -58,8 +57,6 @@ func main() {
 		fmt.Printf("        Show help information\n")
 		fmt.Printf("  -no-auth\n")
 		fmt.Printf("        Disable authentication (INSECURE - testing only)\n")
-		fmt.Printf("  -no-streaming\n")
-		fmt.Printf("        Disable streaming (use plain HTTP instead of SSE)\n")
 		fmt.Printf("  -port int\n")
 		fmt.Printf("        Port to listen on (default 8888)\n")
 		fmt.Printf("  -version\n")
@@ -99,7 +96,6 @@ func main() {
 
 	// Use the flag values
 	debug := *debugFlag
-	noStreaming := *noStreamingFlag
 	noAuth := *noAuthFlag
 
 	// Load environment variables from config files in priority order:
@@ -299,7 +295,6 @@ func main() {
 		mcpserver.WithLogger(logger),
 		mcpserver.WithName(global.AppName),
 		mcpserver.WithVersion(global.AppVersion),
-		mcpserver.WithNoStreaming(noStreaming),
 
 		// Pass in the tool providers
 		mcpserver.WithToolProviders(providers),

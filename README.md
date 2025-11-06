@@ -68,9 +68,16 @@ MS365_TENANT_ID=common
    ```
    
 ### **Client Configuration**
-- **URL**: http://localhost:8888/sse (adjust as required for your listen address/port)
-- **Authentication**: Send the token generated above as a Bearer in a standard Authorization header.
-  (eg. "Authorization: Bearer <TOKEN>" )
+
+MCPFusion provides both legacy and modern MCP transports simultaneously:
+
+- **SSE Transport (legacy)**:
+  - Stream: `http://localhost:8888/sse`
+  - Messages: `http://localhost:8888/message`
+- **Streamable HTTP Transport (modern)**: `http://localhost:8888/mcp`
+
+**Authentication**: All endpoints require the API token as a Bearer token in the Authorization header:
+  `Authorization: Bearer <TOKEN>`
 
 See [Client Configuration Guide](docs/clients.md) and [Token Management Guide](docs/TOKEN_MANAGEMENT.md) for detailed
 setup instructions.

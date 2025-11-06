@@ -14,16 +14,17 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
-// ExtendedTransport wraps an MCPServerTransport and adds custom API endpoints
+// ExtendedTransport wraps multiple MCP transports and adds custom API endpoints
 type ExtendedTransport struct {
-	underlying    MCPServerTransport
+	sseTransport  MCPServerTransport
+	httpTransport MCPServerTransport
 	server        *http.Server
 	logger        global.Logger
 	oauthHandler  *OAuthAPIHandler
 }
 
-// NewExtendedTransport creates a transport that combines MCP functionality with custom API endpoints
-func NewExtendedTransport(underlying MCPServerTransport, database *db.DB, 
+// NewExtendedTransport creates a transport that combines both MCP transports with custom API endpoints
+func NewExtendedTransport(sseTransport, httpTransport MCPServerTransport, database *db.DB,
 	authManager *fusion.MultiTenantAuthManager, configManager ServiceProvider,
 	authMiddleware func(http.Handler) http.Handler, logger global.Logger) *ExtendedTransport {
 
@@ -44,30 +45,40 @@ func NewExtendedTransport(underlying MCPServerTransport, database *db.DB,
 		mux.Handle("/ping", tempMux)
 	}
 
-	// Handle MCP requests by delegating to the underlying transport
-	// The underlying transport should implement http.Handler
-	if mcpHandler, ok := underlying.(http.Handler); ok {
-		// For all other paths, delegate to the MCP handler
-		mux.Handle("/", mcpHandler)
+	// Mount SSE transport endpoints (/sse and /message)
+	// The SSEServer handles both internally when it gets requests to these paths
+	if sseHandler, ok := sseTransport.(http.Handler); ok {
+		// SSEServer's ServeHTTP will route between /sse and /message internally
+		mux.Handle("/sse", sseHandler)
+		mux.Handle("/message", sseHandler)
+		logger.Info("Mounted SSE transport at /sse and /message")
 	} else {
-		logger.Error("Underlying transport does not implement http.Handler")
-		return nil
+		logger.Error("SSE transport does not implement http.Handler")
+	}
+
+	// Mount Streamable HTTP transport at /mcp (per MCP specification)
+	if httpHandler, ok := httpTransport.(http.Handler); ok {
+		mux.Handle("/mcp", httpHandler)
+		logger.Info("Mounted Streamable HTTP transport at /mcp")
+	} else {
+		logger.Error("HTTP transport does not implement http.Handler")
 	}
 
 	return &ExtendedTransport{
-		underlying:   underlying,
-		logger:       logger,
-		oauthHandler: oauthHandler,
+		sseTransport:  sseTransport,
+		httpTransport: httpTransport,
+		logger:        logger,
+		oauthHandler:  oauthHandler,
 		server: &http.Server{
 			Handler: mux,
 		},
 	}
 }
 
-// Start starts the extended transport with both MCP and API functionality
+// Start starts the extended transport with both MCP transports and API functionality
 func (et *ExtendedTransport) Start(addr string) error {
 	if et.logger != nil {
-		et.logger.Infof("Starting extended transport with OAuth API on %s", addr)
+		et.logger.Infof("Starting extended transport with both MCP transports and OAuth API on %s", addr)
 	}
 
 	et.server.Addr = addr

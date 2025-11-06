@@ -10,20 +10,22 @@ This guide explains how to configure various MCP clients to connect to MCPFusion
 - [Cline IDE Integration](#cline)
 
 
-
 ## Overview
 
-MCPFusion serves as an MCP (Model Context Protocol) server that provides AI clients with access to external APIs through standardized tools. Clients connect to MCPFusion using either SSE (Server-Sent Events) or HTTP transport.
+MCPFusion serves as an MCP (Model Context Protocol) server that provides AI clients with access to external APIs through standardized tools. Clients connect to MCPFusion using either the legacy SSE transport or the modern Streamable HTTP transport.
 
 **Supported Transports**
 
-- **SSE (Server-Sent Events)**: Real-time bidirectional communication (recommended)
-- **HTTP**: Simple request/response for basic integrations
+Both transports are always available simultaneously - clients can use whichever they support:
 
-**Endpoints**
+- **Streamable HTTP Transport (modern)**: Unified HTTP endpoint per MCP specification
+    - Unified endpoint: `http://localhost:8888/mcp`
 
-- **SSE Endpoint**: `http://localhost:8888/sse`
-- **HTTP Endpoint**: `http://localhost:8888/http`
+- **SSE Transport (legacy)**: Server-Sent Events for real-time bidirectional communication
+  - Stream endpoint: `http://localhost:8888/sse`
+  - Message endpoint: `http://localhost:8888/message`
+
+**Note**: Replace `localhost:8888` with your actual server address and port.
 
 **Unsupported Clients**
 
@@ -37,7 +39,6 @@ MCP servers can be added to Claude code via the command line. To add an MCP serv
 For further information use:
 
 `claude mcp -h`
-
 
 
 ## Claude Desktop
@@ -120,6 +121,27 @@ Create or edit the Cline configuration file:
 | `transportType` | string  | Yes      | Transport protocol ("sse" or "http")            |
 
 For more information please refer to https://docs.cline.bot/mcp/configuring-mcp-servers
+
+## Visual Studio Code with GitHub Copilot
+
+The is more than one way to configure VS Code with Copilot. Opening the command palate and searching for @mcp should find "MCP: Open User Configuration."
+
+VS Code appears to prefer the more modern streaming HTTP. The following configuration is recommended:
+
+```json
+{
+  "servers": {
+    "Fusion": {
+    "type": "http",
+	  "url": "http://localhost:8888/mcp",
+      "headers": {
+        "Authorization": "Bearer <your-key>"
+      }
+    }
+  },
+  "inputs": []
+}
+```
 
 Copyright (c) 2025 Tenebris Technologies Inc. All rights reserved.
 

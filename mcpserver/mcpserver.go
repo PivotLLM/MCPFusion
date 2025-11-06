@@ -106,7 +106,6 @@ type MCPServer struct {
 	debug             bool
 	name              string
 	version           string
-	noStreaming       bool
 	toolProviders     []global.ToolProvider
 	resourceProviders []global.ResourceProvider
 	promptProviders   []global.PromptProvider
@@ -164,12 +163,6 @@ func WithPromptProviders(providers []global.PromptProvider) Option {
 	}
 }
 
-func WithNoStreaming(noStreaming bool) Option {
-	return func(m *MCPServer) {
-		m.noStreaming = noStreaming
-	}
-}
-
 func WithAuthMiddleware(authMiddleware *AuthMiddleware) Option {
 	return func(m *MCPServer) {
 		m.authMiddleware = authMiddleware
@@ -200,19 +193,18 @@ func New(options ...Option) (*MCPServer, error) {
 	// Create a new MCPServer instance with default values
 	// This is a wrapper around the mcp-go server
 	m := &MCPServer{
-		listen:      "localhost:8080",
-		srv:         nil,
-		sseServer:   nil,
-		httpServer:  nil,
-		transport:   nil,
-		ctx:         nil,
-		cancel:      nil,
-		logger:      nil,
-		debug:       false,
-		name:        "Generic-MCP",
-		version:     "0.0.1",
-		noStreaming: false,
-		wg:          sync.WaitGroup{},
+		listen:     "localhost:8080",
+		srv:        nil,
+		sseServer:  nil,
+		httpServer: nil,
+		transport:  nil,
+		ctx:        nil,
+		cancel:     nil,
+		logger:     nil,
+		debug:      false,
+		name:       "Generic-MCP",
+		version:    "0.0.1",
+		wg:         sync.WaitGroup{},
 	}
 
 	// Apply options
@@ -231,6 +223,7 @@ func New(options ...Option) (*MCPServer, error) {
 	hooks.AddAfterListResources(m.hookAfterListResources)
 	hooks.AddAfterListResourceTemplates(m.hookAfterListResourceTemplates)
 	hooks.AddAfterListTools(m.hookAfterListTools)
+	hooks.AddAfterCallTool(m.hookAfterCallTool)
 
 	// Create an MCP server using the mcp-go library with proper middleware ordering
 	// 1. Basic server capabilities (logging, recovery)
@@ -280,63 +273,51 @@ func (s *MCPServer) Start() error {
 	go func() {
 		defer s.wg.Done()
 
-		// Log the start
-		if s.noStreaming {
-			s.logger.Infof("MCP server listening on TCP port %s (HTTP mode)", s.listen)
-		} else {
-			s.logger.Infof("MCP server listening on TCP port %s (SSE mode)", s.listen)
-		}
+		// Log the start - both transports are always available
+		s.logger.Infof("MCP server listening on TCP port %s", s.listen)
+		s.logger.Info("Available endpoints: /sse, /message (SSE mode), /mcp (Streamable HTTP mode)")
 
-		// Create the appropriate server based on streaming preference
-		if s.noStreaming {
-			// Create HTTP server for non-streaming mode
-			s.httpServer = server.NewStreamableHTTPServer(s.srv)
-			s.transport = s.httpServer
-		} else {
-			// Create SSE server for streaming mode (default)
-			s.sseServer = server.NewSSEServer(s.srv)
-			s.transport = s.sseServer
-		}
+		// Create both transports - clients can use either
+		s.sseServer = server.NewSSEServer(s.srv)           // Handles /sse and /message
+		s.httpServer = server.NewStreamableHTTPServer(s.srv) // Handles /mcp
 
-		// Apply HTTP-level authentication for all requests (simple token validation)
-		// MCP-level authentication will handle tool-specific validation
+		// Apply HTTP-level authentication to both transports
+		var authenticatedSSE, authenticatedHTTP MCPServerTransport
+		authenticatedSSE = s.sseServer
+		authenticatedHTTP = s.httpServer
+
 		if s.authMiddleware != nil {
-			if s.logger != nil {
-				if s.noStreaming {
-					s.logger.Info("Applying simple HTTP authentication middleware to HTTP server")
-				} else {
-					s.logger.Info("Applying simple HTTP authentication middleware to SSE server")
-				}
+			s.logger.Info("Applying HTTP authentication middleware to both transports")
+
+			// Wrap SSE transport with auth
+			authenticatedSSE = NewAuthenticatedTransport(s.sseServer, s.authMiddleware.SimpleMiddleware, s.logger)
+			if authenticatedSSE == nil {
+				s.logger.Error("Failed to create authenticated SSE transport, using unauthenticated")
+				authenticatedSSE = s.sseServer
 			}
-			s.transport = NewAuthenticatedTransport(s.transport, s.authMiddleware.SimpleMiddleware, s.logger)
-			if s.transport == nil {
-				if s.logger != nil {
-					s.logger.Error("Failed to create authenticated transport, continuing without HTTP authentication")
-				}
-				if s.noStreaming {
-					s.transport = s.httpServer
-				} else {
-					s.transport = s.sseServer
-				}
+
+			// Wrap HTTP transport with auth
+			authenticatedHTTP = NewAuthenticatedTransport(s.httpServer, s.authMiddleware.SimpleMiddleware, s.logger)
+			if authenticatedHTTP == nil {
+				s.logger.Error("Failed to create authenticated HTTP transport, using unauthenticated")
+				authenticatedHTTP = s.httpServer
 			}
 		}
 
 		// Check if OAuth API functionality should be enabled
 		if s.database != nil && s.authManager != nil && s.configManager != nil {
-			if s.logger != nil {
-				s.logger.Info("Enabling OAuth API endpoints with extended transport")
-			}
-			// Wrap with ExtendedTransport to add OAuth API endpoints
-			// This should preserve the existing transport with simple auth
-			originalTransport := s.transport
-			s.transport = NewExtendedTransport(originalTransport, s.database, s.authManager, 
-				s.configManager, nil, s.logger) // OAuth API uses its own auth for /api/v1/oauth/* routes
+			s.logger.Info("Enabling OAuth API endpoints with extended transport")
+			// Wrap both transports with ExtendedTransport to add OAuth API endpoints
+			s.transport = NewExtendedTransport(authenticatedSSE, authenticatedHTTP, s.database, s.authManager,
+				s.configManager, nil, s.logger)
 			if s.transport == nil {
-				if s.logger != nil {
-					s.logger.Error("Failed to create extended transport, falling back to original transport")
-				}
-				s.transport = originalTransport
+				s.logger.Error("Failed to create extended transport, falling back to SSE transport only")
+				s.transport = authenticatedSSE
 			}
+		} else {
+			// No OAuth API - just use SSE transport with both available through routing
+			s.logger.Warning("OAuth API disabled - using SSE transport only")
+			s.transport = authenticatedSSE
 		}
 
 		// Start the server
