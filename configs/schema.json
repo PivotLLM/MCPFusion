@@ -10,9 +10,19 @@
       "additionalProperties": {
         "$ref": "#/definitions/ServiceConfig"
       }
+    },
+    "commands": {
+      "type": "object",
+      "description": "Collection of command group configurations",
+      "additionalProperties": {
+        "$ref": "#/definitions/CommandGroupConfig"
+      }
     }
   },
-  "required": ["services"],
+  "anyOf": [
+    {"required": ["services"]},
+    {"required": ["commands"]}
+  ],
   "definitions": {
     "ServiceConfig": {
       "type": "object",
@@ -158,6 +168,14 @@
           "type": "string",
           "description": "Parameter name"
         },
+        "alias": {
+          "type": "string",
+          "description": "MCP-friendly alias for parameters with special characters"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Prefix for command-line arguments (e.g., '-p' for '-p 80')"
+        },
         "description": {
           "type": "string",
           "description": "Parameter description"
@@ -173,11 +191,27 @@
         },
         "location": {
           "type": "string",
-          "enum": ["path", "query", "body", "header"],
-          "description": "Where the parameter should be placed in the request"
+          "enum": ["path", "query", "body", "header", "argument", "arglist", "environment", "stdin", "control"],
+          "description": "Where the parameter should be placed (API requests or command execution)"
         },
         "default": {
           "description": "Default value for the parameter"
+        },
+        "static": {
+          "type": "boolean",
+          "description": "If true, parameter uses default value and is not exposed to MCP clients"
+        },
+        "enum": {
+          "type": "array",
+          "description": "List of allowed values"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regular expression pattern for validation"
+        },
+        "examples": {
+          "type": "array",
+          "description": "Example values for the parameter"
         },
         "validation": {
           "$ref": "#/definitions/ValidationConfig"
@@ -186,7 +220,7 @@
           "$ref": "#/definitions/TransformConfig"
         }
       },
-      "required": ["name", "description", "type", "required", "location"]
+      "required": ["name", "type", "location"]
     },
     "ValidationConfig": {
       "type": "object",
@@ -268,6 +302,55 @@
         }
       },
       "required": ["nextPageTokenPath", "dataPath", "pageSize"]
+    },
+    "CommandGroupConfig": {
+      "type": "object",
+      "description": "Configuration for a command group",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable name of the command group"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the command group"
+        },
+        "commands": {
+          "type": "array",
+          "description": "List of commands in this group",
+          "items": {
+            "$ref": "#/definitions/CommandConfig"
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["name", "commands"]
+    },
+    "CommandConfig": {
+      "type": "object",
+      "description": "Configuration for a single command",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the command (used in MCP tool name as command_{id})"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name of the command"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what the command does"
+        },
+        "parameters": {
+          "type": "array",
+          "description": "List of parameters for the command",
+          "items": {
+            "$ref": "#/definitions/ParameterConfig"
+          }
+        }
+      },
+      "required": ["id", "name", "description", "parameters"]
     }
   }
 }

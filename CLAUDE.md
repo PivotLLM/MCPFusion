@@ -20,7 +20,7 @@ MCPFusion is a Model Context Protocol (MCP) server implementation in Go that ena
 
 ### Running the Server
 ```bash
-# Basic run (defaults to port 8080)
+# Basic run (defaults to port 8888)
 go run .
 
 # Run with custom port
@@ -29,12 +29,11 @@ go run . -port 8081
 # Run with debug logging
 go run . -debug
 
-# Run without SSE streaming
-go run . -no-streaming
-
 # Build the binary
 go build -o mcpfusion .
 ```
+
+**Note**: Both SSE and Streamable HTTP transports are always available simultaneously.
 
 ### Testing
 ```bash
@@ -67,8 +66,9 @@ cd tests && ./test_profile.sh > profile_output.log
    - All providers implement `RegisterTools()`, `RegisterResources()`, or `RegisterPrompts()`
 
 3. **Transport Layer**
-   - SSE transport for real-time communication (default)
-   - HTTP transport for simpler request/response
+   - Both transports are always available simultaneously
+   - **SSE Transport (legacy)**: `/sse` and `/message` endpoints for real-time communication
+   - **Streamable HTTP Transport (modern)**: `/mcp` endpoint per MCP specification
 
 ### Handler Patterns
 

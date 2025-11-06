@@ -25,12 +25,6 @@ import (
 	"github.com/PivotLLM/MCPFusion/mlogger"
 )
 
-// Version information
-const (
-	AppName    = "MCPFusion"
-	AppVersion = "0.0.4"
-)
-
 func main() {
 	var err error
 	var listen string
@@ -38,7 +32,7 @@ func main() {
 	// Define command line flags
 	debugFlag := flag.Bool("debug", true, "Enable debug mode")
 	portFlag := flag.Int("port", 8888, "Port to listen on")
-	noStreamingFlag := flag.Bool("no-streaming", false, "Disable streaming (use plain HTTP instead of SSE)")
+	noAuthFlag := flag.Bool("no-auth", false, "Disable authentication (INSECURE - testing only)")
 	configFlag := flag.String("config", "", "Comma-separated list of configuration files (optional)")
 	helpFlag := flag.Bool("help", false, "Show help information")
 	versionFlag := flag.Bool("version", false, "Show version information")
@@ -61,8 +55,8 @@ func main() {
 		fmt.Printf("        Enable debug mode (default true)\n")
 		fmt.Printf("  -help\n")
 		fmt.Printf("        Show help information\n")
-		fmt.Printf("  -no-streaming\n")
-		fmt.Printf("        Disable streaming (use plain HTTP instead of SSE)\n")
+		fmt.Printf("  -no-auth\n")
+		fmt.Printf("        Disable authentication (INSECURE - testing only)\n")
 		fmt.Printf("  -port int\n")
 		fmt.Printf("        Port to listen on (default 8888)\n")
 		fmt.Printf("  -version\n")
@@ -96,18 +90,17 @@ func main() {
 
 	// Show version and exit if requested
 	if *versionFlag {
-		fmt.Printf("%s version %s\n", AppName, AppVersion)
+		fmt.Printf("%s version %s\n", global.AppName, global.AppVersion)
 		os.Exit(0)
 	}
 
 	// Use the flag values
 	debug := *debugFlag
-	noStreaming := *noStreamingFlag
+	noAuth := *noAuthFlag
 
 	// Load environment variables from config files in priority order:
 	// 1. /opt/mcpfusion/env
 	// 2. ~/.mcpfusion
-	// 3. ~/.mcp (for backwards compatibility)
 	envFiles := []string{
 		"/opt/mcpfusion/env",
 	}
@@ -115,11 +108,11 @@ func main() {
 	// Add user-specific config files if home directory is available
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
-		envFiles = append(envFiles,
-			homeDir+string(os.PathSeparator)+".mcpfusion",
-			homeDir+string(os.PathSeparator)+".mcp",
-		)
+		envFiles = append(envFiles, homeDir+string(os.PathSeparator)+".mcpfusion")
 	}
+
+	// Track which environment file was loaded
+	var loadedEnvFile string
 
 	// Try to load each config file in order
 	for _, envFile := range envFiles {
@@ -127,6 +120,7 @@ func main() {
 			err = godotenv.Load(envFile)
 			if err == nil {
 				// Stop after loading the first successful file. Note that logger is not configured yet.
+				loadedEnvFile = envFile
 				break
 			}
 		}
@@ -153,6 +147,25 @@ func main() {
 	if err != nil {
 		fmt.Printf("Unable to create logger: %v", err)
 		os.Exit(1)
+	}
+
+	// Log startup banner
+	logger.Infof("Starting %s v%s", global.AppName, global.AppVersion)
+
+	// Log warning if no-auth mode is enabled
+	if noAuth {
+		logger.Warning("**************************************************************")
+		logger.Warning("* SECURITY WARNING: Authentication is DISABLED              *")
+		logger.Warning("* This mode is INSECURE and should ONLY be used for testing *")
+		logger.Warning("* All requests will use the 'NOAUTH' tenant context         *")
+		logger.Warning("**************************************************************")
+	}
+
+	// Log environment file loading status
+	if loadedEnvFile != "" {
+		logger.Infof("Loaded environment from: %s", loadedEnvFile)
+	} else {
+		logger.Debug("No environment file loaded (searched: /opt/mcpfusion/env, ~/.mcpfusion, ~/.mcp)")
 	}
 
 	// Now that env files are loaded, check for fusion configs
@@ -229,10 +242,21 @@ func main() {
 		// Continue anyway - server can run without configs
 	}
 
-	if configManager.ServiceCount() > 0 {
-		logger.Infof("Loaded %d services from configuration files", configManager.ServiceCount())
+	// Log what was loaded
+	serviceCount := configManager.ServiceCount()
+	commandCount := configManager.CommandCount()
+
+	if serviceCount > 0 || commandCount > 0 {
+		if serviceCount > 0 && commandCount > 0 {
+			logger.Infof("Loaded %d services and %d command groups from configuration files",
+				serviceCount, commandCount)
+		} else if serviceCount > 0 {
+			logger.Infof("Loaded %d services from configuration files", serviceCount)
+		} else {
+			logger.Infof("Loaded %d command groups from configuration files", commandCount)
+		}
 	} else {
-		logger.Warning("No services loaded from configuration files")
+		logger.Warning("No services or commands loaded from configuration files")
 	}
 
 	logger.Info("Multi-tenant authentication system initialized")
@@ -242,8 +266,9 @@ func main() {
 
 	// Add fusion provider if configurations were loaded
 	var fusionProvider *fusion.Fusion
-	if configManager.ServiceCount() > 0 {
-		logger.Infof("Creating fusion provider with %d configured services", configManager.ServiceCount())
+	if serviceCount > 0 || commandCount > 0 {
+		logger.Infof("Creating fusion provider with %d services and %d command groups",
+			serviceCount, commandCount)
 
 		// Configure fusion provider with config manager
 		fusionOpts := []fusion.Option{
@@ -268,9 +293,8 @@ func main() {
 		mcpserver.WithListen(listen),
 		mcpserver.WithDebug(debug),
 		mcpserver.WithLogger(logger),
-		mcpserver.WithName(AppName),
-		mcpserver.WithVersion(AppVersion),
-		mcpserver.WithNoStreaming(noStreaming),
+		mcpserver.WithName(global.AppName),
+		mcpserver.WithVersion(global.AppVersion),
 
 		// Pass in the tool providers
 		mcpserver.WithToolProviders(providers),
@@ -285,14 +309,18 @@ func main() {
 	mcpOpts = append(mcpOpts, mcpserver.WithAuthManager(multiTenantAuth))
 	mcpOpts = append(mcpOpts, mcpserver.WithConfigManager(configManager))
 
-	// Add multi-tenant authentication middleware (always enabled)
+	// Add multi-tenant authentication middleware
 	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, configManager,
 		mcpserver.WithAuthLogger(logger),
-		mcpserver.WithRequireAuth(true),
+		mcpserver.WithRequireAuth(!noAuth),
 		mcpserver.WithSkipPaths("/health", "/metrics", "/status", "/capabilities"),
 	)
 	mcpOpts = append(mcpOpts, mcpserver.WithAuthMiddleware(authMiddleware))
-	logger.Info("Multi-tenant authentication middleware enabled")
+	if noAuth {
+		logger.Warning("Multi-tenant authentication middleware in NO-AUTH mode (insecure)")
+	} else {
+		logger.Info("Multi-tenant authentication middleware enabled")
+	}
 	logger.Info("OAuth API endpoints will be available at /api/v1/oauth/*")
 
 	mcp, err := mcpserver.New(mcpOpts...)

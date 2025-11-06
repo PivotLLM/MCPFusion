@@ -575,13 +575,13 @@
         {
           "id": "mail_read_message",
           "name": "Read Mail Message",
-          "description": "Get a specific email message by ID",
+          "description": "Read a single email message by ID. To read multiple emails, call this tool multiple times with different IDs.",
           "method": "GET",
           "path": "/me/messages/{id}",
           "parameters": [
             {
               "name": "id",
-              "description": "Message ID to retrieve",
+              "description": "The message ID of one message to retrieve",
               "type": "string",
               "required": true,
               "location": "path"

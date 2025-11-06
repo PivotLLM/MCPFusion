@@ -43,10 +43,15 @@ const (
 type ParameterLocation string
 
 const (
-	ParameterLocationPath   ParameterLocation = "path"
-	ParameterLocationQuery  ParameterLocation = "query"
-	ParameterLocationBody   ParameterLocation = "body"
-	ParameterLocationHeader ParameterLocation = "header"
+	ParameterLocationPath        ParameterLocation = "path"
+	ParameterLocationQuery       ParameterLocation = "query"
+	ParameterLocationBody        ParameterLocation = "body"
+	ParameterLocationHeader      ParameterLocation = "header"
+	ParameterLocationArgument    ParameterLocation = "argument"    // Command-line argument
+	ParameterLocationArglist     ParameterLocation = "arglist"     // Array of arguments
+	ParameterLocationEnvironment ParameterLocation = "environment" // Environment variable
+	ParameterLocationStdin       ParameterLocation = "stdin"       // Standard input
+	ParameterLocationControl     ParameterLocation = "control"     // Execution control
 )
 
 // ResponseType represents the type of response expected
@@ -60,12 +65,12 @@ const (
 
 // Config holds the main configuration for the fusion package
 type Config struct {
-	Logger   global.Logger             `json:"-"`
-	Services map[string]*ServiceConfig `json:"services"`
-	// Legacy AuthManager field removed - use multi-tenant auth
-	HTTPClient *http.Client `json:"-"`
-	Cache      Cache        `json:"-"`
-	ConfigPath string       `json:"-"`
+	Logger     global.Logger                    `json:"-"`
+	Services   map[string]*ServiceConfig        `json:"services"`
+	Commands   map[string]*CommandGroupConfig   `json:"commands"`   // Command execution configs
+	HTTPClient *http.Client                     `json:"-"`
+	Cache      Cache                            `json:"-"`
+	ConfigPath string                           `json:"-"`
 }
 
 // ServiceConfig represents the configuration for a single service
@@ -76,6 +81,21 @@ type ServiceConfig struct {
 	Endpoints      []EndpointConfig      `json:"endpoints"`
 	Retry          *RetryConfig          `json:"retry,omitempty"`
 	CircuitBreaker *CircuitBreakerConfig `json:"circuitBreaker,omitempty"`
+}
+
+// CommandGroupConfig represents a group of related commands
+type CommandGroupConfig struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Commands    []CommandConfig `json:"commands"`
+}
+
+// CommandConfig represents configuration for a single command
+type CommandConfig struct {
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Parameters  []ParameterConfig `json:"parameters"`
 }
 
 // AuthConfig represents authentication configuration
@@ -101,6 +121,7 @@ type EndpointConfig struct {
 type ParameterConfig struct {
 	Name        string            `json:"name"`
 	Alias       string            `json:"alias,omitempty"` // MCP-compliant name alias
+	Prefix      string            `json:"prefix,omitempty"` // Prefix for argument location (e.g., "-p", "--port")
 	Description string            `json:"description"`
 	Type        ParameterType     `json:"type"`
 	Required    bool              `json:"required"`
@@ -416,11 +437,12 @@ func (c *Config) ValidateWithLogger(logger global.Logger) error {
 		logger.Debug("Starting configuration validation")
 	}
 
-	if len(c.Services) == 0 {
+	// Require at least one service OR one command group
+	if len(c.Services) == 0 && len(c.Commands) == 0 {
 		if logger != nil {
-			logger.Error("Configuration validation failed: no services configured")
+			logger.Error("Configuration validation failed: no services or commands configured")
 		}
-		return fmt.Errorf("no services configured")
+		return fmt.Errorf("no services or commands configured")
 	}
 
 	if logger != nil {

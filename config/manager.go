@@ -15,8 +15,9 @@ import (
 
 // Manager manages all service configurations loaded from multiple files
 type Manager struct {
-	configFiles []string                        // List of config files to load
-	services    map[string]*fusion.ServiceConfig // Merged services from all files
+	configFiles []string                              // List of config files to load
+	services    map[string]*fusion.ServiceConfig      // Merged services from all files
+	commands    map[string]*fusion.CommandGroupConfig // Merged commands from all files
 	logger      global.Logger
 	mu          sync.RWMutex
 }
@@ -42,6 +43,7 @@ func WithConfigFiles(files ...string) Option {
 func New(options ...Option) *Manager {
 	m := &Manager{
 		services:    make(map[string]*fusion.ServiceConfig),
+		commands:    make(map[string]*fusion.CommandGroupConfig),
 		configFiles: []string{},
 	}
 
@@ -86,13 +88,14 @@ func (m *Manager) LoadConfigs() error {
 	}
 
 	if m.logger != nil {
-		m.logger.Infof("Loaded %d services from %d config files", len(m.services), successCount)
+		m.logger.Infof("Loaded %d services and %d command groups from %d config files",
+			len(m.services), len(m.commands), successCount)
 	}
 
 	return nil
 }
 
-// loadAndMergeConfig loads a single config file and merges its services
+// loadAndMergeConfig loads a single config file and merges its services and commands
 func (m *Manager) loadAndMergeConfig(configFile string) error {
 	// Load the Config from file using fusion's existing loader
 	config, err := fusion.LoadConfigFromFile(configFile)
@@ -100,27 +103,46 @@ func (m *Manager) loadAndMergeConfig(configFile string) error {
 		return fmt.Errorf("failed to load config from %s: %w", configFile, err)
 	}
 
-	// Merge services into our map
+	// Merge services and commands into our maps
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	mergedCount := 0
+	// Merge services
+	serviceCount := 0
 	for serviceName, service := range config.Services {
 		if _, exists := m.services[serviceName]; exists {
 			if m.logger != nil {
-				m.logger.Warningf("Service '%s' from %s overwrites previous definition", 
+				m.logger.Warningf("Service '%s' from %s overwrites previous definition",
 					serviceName, configFile)
 			}
 		}
 		m.services[serviceName] = service
-		mergedCount++
+		serviceCount++
 		if m.logger != nil {
 			m.logger.Debugf("Loaded service '%s' from %s", serviceName, configFile)
 		}
 	}
 
+	// Merge commands
+	commandCount := 0
+	for commandGroupName, commandGroup := range config.Commands {
+		if _, exists := m.commands[commandGroupName]; exists {
+			if m.logger != nil {
+				m.logger.Warningf("Command group '%s' from %s overwrites previous definition",
+					commandGroupName, configFile)
+			}
+		}
+		m.commands[commandGroupName] = commandGroup
+		commandCount++
+		if m.logger != nil {
+			m.logger.Debugf("Loaded command group '%s' with %d commands from %s",
+				commandGroupName, len(commandGroup.Commands), configFile)
+		}
+	}
+
 	if m.logger != nil {
-		m.logger.Debugf("Merged %d services from %s", mergedCount, configFile)
+		m.logger.Debugf("Merged %d services and %d command groups from %s",
+			serviceCount, commandCount, configFile)
 	}
 
 	return nil
@@ -189,7 +211,7 @@ func (m *Manager) ServiceCount() int {
 	return len(m.services)
 }
 
-// GetConfig returns a full Config object with all services
+// GetConfig returns a full Config object with all services and commands
 // This is useful for Fusion which expects a Config structure
 func (m *Manager) GetConfig() *fusion.Config {
 	m.mu.RLock()
@@ -197,5 +219,63 @@ func (m *Manager) GetConfig() *fusion.Config {
 
 	return &fusion.Config{
 		Services: m.services,
+		Commands: m.commands,
 	}
+}
+
+// GetCommand returns a specific command group configuration by name
+func (m *Manager) GetCommand(name string) (*fusion.CommandGroupConfig, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	commandGroup, exists := m.commands[name]
+	if !exists {
+		return nil, fmt.Errorf("command group '%s' not found", name)
+	}
+
+	return commandGroup, nil
+}
+
+// GetAllCommands returns all loaded command group configurations
+func (m *Manager) GetAllCommands() map[string]*fusion.CommandGroupConfig {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Return a copy to prevent external modifications
+	commands := make(map[string]*fusion.CommandGroupConfig)
+	for name, commandGroup := range m.commands {
+		commands[name] = commandGroup
+	}
+
+	return commands
+}
+
+// GetCommandGroupNames returns a list of all loaded command group names
+func (m *Manager) GetCommandGroupNames() []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	names := make([]string, 0, len(m.commands))
+	for name := range m.commands {
+		names = append(names, name)
+	}
+
+	return names
+}
+
+// HasCommand checks if a command group exists
+func (m *Manager) HasCommand(name string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	_, exists := m.commands[name]
+	return exists
+}
+
+// CommandCount returns the number of loaded command groups
+func (m *Manager) CommandCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return len(m.commands)
 }

@@ -396,15 +396,16 @@ func TestExpandEnvironmentVariables_DefaultWithColon(t *testing.T) {
 func TestConfig_Validate_NoServices(t *testing.T) {
 	config := &Config{
 		Services: make(map[string]*ServiceConfig),
+		Commands: make(map[string]*CommandGroupConfig),
 	}
 
 	err := config.Validate()
 	if err == nil {
-		t.Fatal("Expected validation error for no services")
+		t.Fatal("Expected validation error for no services or commands")
 	}
 
-	if !containsError(err.Error(), "no services configured") {
-		t.Errorf("Expected 'no services configured' error, got: %v", err)
+	if !containsError(err.Error(), "no services or commands configured") {
+		t.Errorf("Expected 'no services or commands configured' error, got: %v", err)
 	}
 }
 

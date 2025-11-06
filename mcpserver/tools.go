@@ -45,9 +45,17 @@ func (s *MCPServer) AddTools() {
 				case "boolean":
 					toolOption = mcp.WithBoolean(param.Name, options...)
 				case "array":
-					toolOption = mcp.WithArray(param.Name, options...)
+					// Add string items specification for array parameters to satisfy strict JSON Schema validators
+				// Command-line arguments are typically arrays of strings
+				options = append(options, mcp.WithStringItems())
+				toolOption = mcp.WithArray(param.Name, options...)
 				case "object":
-					toolOption = mcp.WithObject(param.Name, options...)
+					// Add additionalProperties for object parameters to satisfy strict JSON Schema validators
+				// Environment variables and similar objects typically accept string key-value pairs
+				options = append(options, mcp.AdditionalProperties(map[string]interface{}{
+					"type": "string",
+				}))
+				toolOption = mcp.WithObject(param.Name, options...)
 				default:
 					// Fallback to string for unknown types
 					toolOption = mcp.WithString(param.Name, options...)
@@ -84,7 +92,7 @@ func (s *MCPServer) AddTools() {
 
 				result, err := toolDef.Handler(ctxOptions)
 				if err != nil {
-					return mcp.NewToolResultError(err.Error()), err
+					return mcp.NewToolResultError(err.Error()), nil
 				}
 				return mcp.NewToolResultText(result), nil
 			})

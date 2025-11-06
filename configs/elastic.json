@@ -1,0 +1,193 @@
+{
+  "services": {
+    "elasticsearch": {
+      "name": "Elasticsearch",
+      "baseURL": "${ELASTICSEARCH_URL}",
+      "auth": {
+        "type": "basic",
+        "config": {
+          "username": "${ELASTICSEARCH_USERNAME}",
+          "password": "${ELASTICSEARCH_PASSWORD}"
+        }
+      },
+      "endpoints": [
+        {
+          "id": "indices",
+          "name": "List Indices",
+          "description": "Get information about indices in Elasticsearch cluster",
+          "method": "GET",
+          "path": "/_cat/indices",
+          "parameters": [
+            {
+              "name": "index",
+              "description": "Optional comma-separated list of data streams, indices, and aliases to limit the response. Supports wildcards (*)",
+              "type": "string",
+              "required": false,
+              "location": "path"
+            },
+            {
+              "name": "format",
+              "description": "Response format (json, text, smile, yaml). Default to json.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "json",
+              "validation": {
+                "enum": ["json", "text", "smile", "yaml"]
+              }
+            },
+            {
+              "name": "h",
+              "description": "Optional comma-separated list of column names to display",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": ["index,docs.count,store.size", "index,status,health"]
+            },
+            {
+              "name": "s",
+              "description": "Optional comma-separated list of column names or column aliases to sort by",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": ["index", "docs.count:desc"]
+            },
+            {
+              "name": "v",
+              "description": "Verbose mode. Display column headers",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": true
+            },
+            {
+              "name": "health",
+              "description": "Optional health status filter (green, yellow, red)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "enum": ["green", "yellow", "red"]
+              }
+            },
+            {
+              "name": "pri",
+              "description": "Optional. If true, returns stats only for primary shards",
+              "type": "boolean",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "bytes",
+              "description": "Unit for byte size display (b, k, kb, m, mb, g, gb, t, tb, p, pb). Defaults to bytes (b)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "b",
+              "validation": {
+                "enum": ["b", "k", "kb", "m", "mb", "g", "gb", "t", "tb", "p", "pb"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          },
+          "retry": {
+            "enabled": true,
+            "maxAttempts": 3,
+            "strategy": "exponential",
+            "baseDelay": "1s",
+            "maxDelay": "10s",
+            "jitter": true,
+            "backoffFactor": 2.0
+          }
+        },
+        {
+          "id": "search",
+          "name": "Search",
+          "description": "Search documents in Elasticsearch indices using the query string syntax",
+          "method": "GET",
+          "path": "/{index}/_search",
+          "parameters": [
+            {
+              "name": "index",
+              "description": "Comma-separated list of data streams, indices, and aliases to search. Supports wildcards (*). Use _all or * to search all indices",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "q",
+              "description": "Query string using Lucene query syntax. Supports field searches (field:value), wildcards (*,?), boolean operators (AND, OR, NOT), ranges ([min TO max]), fuzzy search (~), proximity search (~N), boosting (^N), and grouping with parentheses. Examples: 'status:active', 'title:quick brown fox', 'age:[10 TO 20]', 'name:john~', 'title:(quick OR brown)', 'status:active AND category:electronics', '_exists_:field_name'. Default operator is OR. Use + for required terms and - for excluded terms. Field names are case-sensitive. Values are analyzed according to the field's analyzer.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "status:active",
+                "title:elasticsearch",
+                "user.name:john",
+                "age:[10 TO 30]",
+                "created:[2020-01-01 TO 2023-12-31]",
+                "price:>100",
+                "name:john~",
+                "title:\"quick brown fox\"~3",
+                "status:(active OR pending)",
+                "category:electronics AND price:<500",
+                "+required -excluded",
+                "_exists_:email",
+                "title:elasticsearch^2 OR description:search",
+                "*.name:john",
+                "response.status:[400 TO 499]"
+              ]
+            },
+            {
+              "name": "from",
+              "description": "Starting document offset for pagination (0-based index)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0,
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "size",
+              "description": "Maximum number of hits to return",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 0,
+                "maximum": 10000
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          },
+          "retry": {
+            "enabled": true,
+            "maxAttempts": 3,
+            "strategy": "exponential",
+            "baseDelay": "1s",
+            "maxDelay": "10s",
+            "jitter": true,
+            "backoffFactor": 2.0
+          }
+        }
+      ],
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "30s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": ["network_error", "timeout", "server_error"]
+      }
+    }
+  }
+}
