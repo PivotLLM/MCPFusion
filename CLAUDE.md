@@ -30,7 +30,7 @@ go run . -port 8081
 go run . -debug
 
 # Build the binary
-go build -o mcpfusion .
+go build -o mcpfusion
 ```
 
 **Note**: Both SSE and Streamable HTTP transports are always available simultaneously.

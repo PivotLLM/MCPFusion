@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package fusion
@@ -16,7 +16,7 @@ import (
 func TestValidator_AutoConvertISOToYYYYMMDD(t *testing.T) {
 	logger, err := mlogger.New(mlogger.WithDebug(true))
 	require.NoError(t, err)
-	
+
 	validator := NewValidator(logger)
 
 	// Test parameter configuration for YYYYMMDD format
@@ -83,7 +83,7 @@ func TestValidator_AutoConvertISOToYYYYMMDD(t *testing.T) {
 
 			if tt.shouldPass {
 				assert.NoError(t, err, "Validation should pass for %s", tt.name)
-				
+
 				// Check that the value was converted correctly
 				actualValue, exists := args["startDate"]
 				assert.True(t, exists, "Parameter should exist after validation")
@@ -98,7 +98,7 @@ func TestValidator_AutoConvertISOToYYYYMMDD(t *testing.T) {
 func TestValidator_tryConvertISOToYYYYMMDD(t *testing.T) {
 	logger, err := mlogger.New(mlogger.WithDebug(false))
 	require.NoError(t, err)
-	
+
 	validator := NewValidator(logger)
 
 	tests := []struct {
@@ -156,7 +156,7 @@ func TestValidator_tryConvertISOToYYYYMMDD(t *testing.T) {
 func TestValidator_NoConversionForNonDatePatterns(t *testing.T) {
 	logger, err := mlogger.New(mlogger.WithDebug(false))
 	require.NoError(t, err)
-	
+
 	validator := NewValidator(logger)
 
 	// Test parameter configuration for non-YYYYMMDD pattern
@@ -181,7 +181,7 @@ func TestValidator_NoConversionForNonDatePatterns(t *testing.T) {
 	// Validate parameters - should fail because ISO date doesn't match email pattern
 	err = validator.ValidateParameters(params, args)
 	assert.Error(t, err, "Validation should fail as ISO date doesn't match email pattern")
-	
+
 	// Verify the value was not modified
 	actualValue, exists := args["emailField"]
 	assert.True(t, exists, "Parameter should still exist")

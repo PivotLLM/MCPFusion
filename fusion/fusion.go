@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 // Package fusion provides a production-ready, configuration-driven MCP (Model Context Protocol)

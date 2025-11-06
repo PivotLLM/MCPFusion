@@ -1,5 +1,11 @@
 # MCPFusion
 
+---
+
+**This is a work in progress. Please open a GitHub issue if you encounter any problems.**
+
+---
+
 MCPFusion is a configuration-driven MCP (Model Context Protocol) server that enables AI clients to interact with multiple APIs and command-line applications. Applications range from facilitating access to a single API endpoint to allowing arbitrary command-line execution.
 
 The application loads one or more JSON configuration files, which are used to dynamically create MCP tools.
@@ -46,6 +52,8 @@ MS365_CLIENT_ID=<application client ID>
 MS365_TENANT_ID=common
  ```
 
+If parameters are provided via the environment, no command-line switches are required. MCPFusion will automatically load /opt/mcpfusion/env into the environment as long as it has permission to read the file.
+
 2. **Build and Generate API Token**:
    ```bash
    # Build the server
@@ -60,7 +68,7 @@ MS365_TENANT_ID=common
    # Start server
    ./mcpfusion
 
-   # Optionally pass a config and port to the application
+   # Optionally pass a config and port to the application if not specified in the evironment.
    ./mcpfusion -config configs/microsoft365.json -port 8888
 
    # For testing only: start without authentication (INSECURE)
@@ -71,10 +79,9 @@ MS365_TENANT_ID=common
 
 MCPFusion provides both legacy and modern MCP transports simultaneously:
 
-- **SSE Transport (legacy)**:
-  - Stream: `http://localhost:8888/sse`
-  - Messages: `http://localhost:8888/message`
 - **Streamable HTTP Transport (modern)**: `http://localhost:8888/mcp`
+
+- **SSE Transport (legacy)**: `http://localhost:8888/sse`
 
 **Authentication**: All endpoints require the API token as a Bearer token in the Authorization header:
   `Authorization: Bearer <TOKEN>`
@@ -118,8 +125,13 @@ cd tests && ./run_all_tests.sh
 
 See [Testing Guide](tests/README.md) for detailed testing documentation.
 
-## Legal
+## Copyright and license
 
-Copyright (c) 2025 Tenebris Technologies Inc.
-All rights reserved. Distribution prohibited.
+Copyright (c) 2024-2025 by Tenebris Technologies Inc. and available for use under Apache License 2.0. Please see the LICENSE file for full information.
+
+## No Warranty (zilch, none, void, nil, null, "", {}, 0x00, 0b00000000, EOF)
+
+THIS SOFTWARE IS PROVIDED “AS IS,” WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Made in Canada
 

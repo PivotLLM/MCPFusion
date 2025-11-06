@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package fusion
@@ -175,15 +175,15 @@ func TestParameterNameMapper(t *testing.T) {
 	}
 
 	mapped := mapper.MapArgsToOriginal(args)
-	
+
 	if mapped["$select"] != "field1,field2" {
 		t.Errorf("Mapped $select = %v; want field1,field2", mapped["$select"])
 	}
-	
+
 	if mapped["$filter"] != "isRead eq false" {
 		t.Errorf("Mapped $filter = %v; want isRead eq false", mapped["$filter"])
 	}
-	
+
 	if mapped["top"] != 10 {
 		t.Errorf("Mapped top = %v; want 10", mapped["top"])
 	}

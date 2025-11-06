@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package fusion
@@ -229,11 +229,11 @@ func (v *Validator) applyValidationRules(param ParameterConfig, value interface{
 func (v *Validator) tryConvertISOToYYYYMMDD(isoDate string) string {
 	// Try parsing common ISO date formats
 	formats := []string{
-		"2006-01-02T15:04:05Z",     // RFC3339 with Z
-		"2006-01-02T15:04:05.000Z", // RFC3339 with milliseconds and Z
-		"2006-01-02T15:04:05-07:00", // RFC3339 with timezone
+		"2006-01-02T15:04:05Z",          // RFC3339 with Z
+		"2006-01-02T15:04:05.000Z",      // RFC3339 with milliseconds and Z
+		"2006-01-02T15:04:05-07:00",     // RFC3339 with timezone
 		"2006-01-02T15:04:05.000-07:00", // RFC3339 with milliseconds and timezone
-		"2006-01-02",               // Date only
+		"2006-01-02",                    // Date only
 	}
 
 	for _, format := range formats {

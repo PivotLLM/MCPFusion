@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package mcpserver
@@ -26,7 +26,7 @@ type OAuthAPIHandler struct {
 }
 
 // NewOAuthAPIHandler creates a new OAuth API handler
-func NewOAuthAPIHandler(database *db.DB, authManager *fusion.MultiTenantAuthManager, 
+func NewOAuthAPIHandler(database *db.DB, authManager *fusion.MultiTenantAuthManager,
 	configManager ServiceProvider, logger global.Logger) *OAuthAPIHandler {
 	return &OAuthAPIHandler{
 		database:      database,
@@ -96,8 +96,8 @@ func (h *OAuthAPIHandler) handlePing(w http.ResponseWriter, r *http.Request) {
 
 	// Return simple success response
 	response := map[string]interface{}{
-		"success": true,
-		"message": "pong",
+		"success":   true,
+		"message":   "pong",
 		"tenant_id": tenantContext.TenantHash,
 		"timestamp": time.Now().Unix(),
 	}
@@ -170,13 +170,13 @@ func (h *OAuthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 
 	// Store tokens in database
 	if err := h.database.StoreOAuthToken(tenantContext.TenantHash, req.Service, tokenData); err != nil {
-		h.logger.Errorf("Failed to store OAuth token for tenant %s service %s: %v", 
+		h.logger.Errorf("Failed to store OAuth token for tenant %s service %s: %v",
 			tenantContext.TenantHash[:12], req.Service, err)
 		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to store tokens")
 		return
 	}
 
-	h.logger.Infof("Successfully stored OAuth tokens for tenant %s service %s", 
+	h.logger.Infof("Successfully stored OAuth tokens for tenant %s service %s",
 		tenantContext.TenantHash[:12], req.Service)
 
 	// Return success response
@@ -227,7 +227,7 @@ func (h *OAuthAPIHandler) handleServiceConfig(w http.ResponseWriter, r *http.Req
 		h.writeErrorResponse(w, http.StatusNotFound, "Invalid endpoint")
 		return
 	}
-	
+
 	serviceName := parts[0]
 	if serviceName == "" {
 		h.writeErrorResponse(w, http.StatusBadRequest, "Service name is required")
@@ -257,7 +257,7 @@ func (h *OAuthAPIHandler) handleServiceConfig(w http.ResponseWriter, r *http.Req
 		Message:     "Service configuration retrieved",
 		ServiceName: serviceName,
 		Config: map[string]interface{}{
-			"service_name": serviceName,
+			"service_name":    serviceName,
 			"oauth_available": true,
 			"endpoints": map[string]string{
 				"token_storage": "/api/v1/oauth/tokens",
@@ -292,7 +292,7 @@ func (h *OAuthAPIHandler) handleOAuthSuccess(w http.ResponseWriter, r *http.Requ
 	}
 
 	serviceName, _ := notification["service"].(string)
-	h.logger.Infof("OAuth success notification for tenant %s service %s", 
+	h.logger.Infof("OAuth success notification for tenant %s service %s",
 		tenantContext.TenantHash[:12], serviceName)
 
 	h.writeJSONResponse(w, http.StatusOK, map[string]interface{}{
@@ -325,7 +325,7 @@ func (h *OAuthAPIHandler) handleOAuthError(w http.ResponseWriter, r *http.Reques
 
 	serviceName, _ := notification["service"].(string)
 	errorMsg, _ := notification["error"].(string)
-	h.logger.Warningf("OAuth error notification for tenant %s service %s: %s", 
+	h.logger.Warningf("OAuth error notification for tenant %s service %s: %s",
 		tenantContext.TenantHash[:12], serviceName, errorMsg)
 
 	h.writeJSONResponse(w, http.StatusOK, map[string]interface{}{

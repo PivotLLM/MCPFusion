@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package mcpserver
@@ -51,12 +51,12 @@ func WithMCPLogger(logger global.Logger) MCPAuthOption {
 // This middleware validates tenant access to specific tools and logs at the MCP protocol level
 func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 	config := &MCPAuthConfiguration{}
-	
+
 	// Apply options
 	for _, option := range options {
 		option(config)
 	}
-	
+
 	if config.logger != nil {
 		config.logger.Info("Initialized MCP-level authentication middleware")
 	}
@@ -73,7 +73,7 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 			}
 
 			if config.logger != nil {
-				config.logger.Debugf("MCP Auth: Processing tool call %s for tenant %s", 
+				config.logger.Debugf("MCP Auth: Processing tool call %s for tenant %s",
 					request.Params.Name, tenantContext.TenantHash[:12]+"...")
 			}
 

@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package mcpserver
@@ -67,9 +67,9 @@ func (at *AuthenticatedTransport) Start(addr string) error {
 	at.server = &http.Server{
 		Addr:         addr,
 		Handler:      at.handler,
-		ReadTimeout:  0,                      // No timeout for reading request
-		WriteTimeout: 3600 * time.Second,     // 1 hour timeout for writing response (allows long-running commands)
-		IdleTimeout:  120 * time.Second,      // 2 minutes idle timeout
+		ReadTimeout:  0,                  // No timeout for reading request
+		WriteTimeout: 3600 * time.Second, // 1 hour timeout for writing response (allows long-running commands)
+		IdleTimeout:  120 * time.Second,  // 2 minutes idle timeout
 	}
 
 	return at.server.ListenAndServe()
@@ -227,7 +227,7 @@ func New(options ...Option) (*MCPServer, error) {
 
 	// Create an MCP server using the mcp-go library with proper middleware ordering
 	// 1. Basic server capabilities (logging, recovery)
-	// 2. Request logging for debugging 
+	// 2. Request logging for debugging
 	// 3. MCP-level authentication for tool-specific validation
 	// 4. Hooks for provider integration
 	serverOptions := []server.ServerOption{
@@ -235,7 +235,7 @@ func New(options ...Option) (*MCPServer, error) {
 		server.WithRecovery(),
 		WithRequestLogging(m.logger), // Our custom request logging middleware
 	}
-	
+
 	// Add MCP authentication middleware if configured
 	if m.authManager != nil {
 		authOptions := []MCPAuthOption{
@@ -247,10 +247,10 @@ func New(options ...Option) (*MCPServer, error) {
 		}
 		serverOptions = append(serverOptions, WithMCPAuthentication(authOptions...))
 	}
-	
+
 	// Add hooks last to ensure they see the fully processed requests
 	serverOptions = append(serverOptions, server.WithHooks(hooks))
-	
+
 	m.srv = server.NewMCPServer(m.name, m.version, serverOptions...)
 
 	// Tools are in a separate file for better organization
@@ -278,7 +278,7 @@ func (s *MCPServer) Start() error {
 		s.logger.Info("Available endpoints: /sse, /message (SSE mode), /mcp (Streamable HTTP mode)")
 
 		// Create both transports - clients can use either
-		s.sseServer = server.NewSSEServer(s.srv)           // Handles /sse and /message
+		s.sseServer = server.NewSSEServer(s.srv)             // Handles /sse and /message
 		s.httpServer = server.NewStreamableHTTPServer(s.srv) // Handles /mcp
 
 		// Apply HTTP-level authentication to both transports

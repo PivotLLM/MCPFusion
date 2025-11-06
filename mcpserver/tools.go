@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package mcpserver
@@ -46,16 +46,16 @@ func (s *MCPServer) AddTools() {
 					toolOption = mcp.WithBoolean(param.Name, options...)
 				case "array":
 					// Add string items specification for array parameters to satisfy strict JSON Schema validators
-				// Command-line arguments are typically arrays of strings
-				options = append(options, mcp.WithStringItems())
-				toolOption = mcp.WithArray(param.Name, options...)
+					// Command-line arguments are typically arrays of strings
+					options = append(options, mcp.WithStringItems())
+					toolOption = mcp.WithArray(param.Name, options...)
 				case "object":
 					// Add additionalProperties for object parameters to satisfy strict JSON Schema validators
-				// Environment variables and similar objects typically accept string key-value pairs
-				options = append(options, mcp.AdditionalProperties(map[string]interface{}{
-					"type": "string",
-				}))
-				toolOption = mcp.WithObject(param.Name, options...)
+					// Environment variables and similar objects typically accept string key-value pairs
+					options = append(options, mcp.AdditionalProperties(map[string]interface{}{
+						"type": "string",
+					}))
+					toolOption = mcp.WithObject(param.Name, options...)
 				default:
 					// Fallback to string for unknown types
 					toolOption = mcp.WithString(param.Name, options...)

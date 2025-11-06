@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package fusion
@@ -18,19 +18,23 @@ type testLogger struct {
 	t *testing.T
 }
 
-func (l *testLogger) Debug(msg string)                         { l.t.Log("DEBUG:", msg) }
-func (l *testLogger) Debugf(format string, args ...interface{})  { l.t.Logf("DEBUG: "+format, args...) }
-func (l *testLogger) Info(msg string)                          { l.t.Log("INFO:", msg) }
-func (l *testLogger) Infof(format string, args ...interface{})   { l.t.Logf("INFO: "+format, args...) }
-func (l *testLogger) Notice(msg string)                        { l.t.Log("NOTICE:", msg) }
-func (l *testLogger) Noticef(format string, args ...interface{}) { l.t.Logf("NOTICE: "+format, args...) }
-func (l *testLogger) Warning(msg string)                       { l.t.Log("WARN:", msg) }
+func (l *testLogger) Debug(msg string)                          { l.t.Log("DEBUG:", msg) }
+func (l *testLogger) Debugf(format string, args ...interface{}) { l.t.Logf("DEBUG: "+format, args...) }
+func (l *testLogger) Info(msg string)                           { l.t.Log("INFO:", msg) }
+func (l *testLogger) Infof(format string, args ...interface{})  { l.t.Logf("INFO: "+format, args...) }
+func (l *testLogger) Notice(msg string)                         { l.t.Log("NOTICE:", msg) }
+func (l *testLogger) Noticef(format string, args ...interface{}) {
+	l.t.Logf("NOTICE: "+format, args...)
+}
+func (l *testLogger) Warning(msg string)                          { l.t.Log("WARN:", msg) }
 func (l *testLogger) Warningf(format string, args ...interface{}) { l.t.Logf("WARN: "+format, args...) }
-func (l *testLogger) Error(msg string)                         { l.t.Log("ERROR:", msg) }
+func (l *testLogger) Error(msg string)                            { l.t.Log("ERROR:", msg) }
 func (l *testLogger) Errorf(format string, args ...interface{})   { l.t.Logf("ERROR: "+format, args...) }
-func (l *testLogger) Fatal(msg string)                         { l.t.Fatal("FATAL:", msg) }
-func (l *testLogger) Fatalf(format string, args ...interface{})   { l.t.Fatalf("FATAL: "+format, args...) }
-func (l *testLogger) Close()                                   {}
+func (l *testLogger) Fatal(msg string)                            { l.t.Fatal("FATAL:", msg) }
+func (l *testLogger) Fatalf(format string, args ...interface{}) {
+	l.t.Fatalf("FATAL: "+format, args...)
+}
+func (l *testLogger) Close() {}
 
 func TestKaliConfig_CommandExec(t *testing.T) {
 	// Create a test logger

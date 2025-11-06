@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 # Copyright (c) 2025 Tenebris Technologies Inc.                                *
-# All rights reserved.                                                         *
+# Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
 # Get the directory of the script

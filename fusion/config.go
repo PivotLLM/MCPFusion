@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package fusion
@@ -65,12 +65,12 @@ const (
 
 // Config holds the main configuration for the fusion package
 type Config struct {
-	Logger     global.Logger                    `json:"-"`
-	Services   map[string]*ServiceConfig        `json:"services"`
-	Commands   map[string]*CommandGroupConfig   `json:"commands"`   // Command execution configs
-	HTTPClient *http.Client                     `json:"-"`
-	Cache      Cache                            `json:"-"`
-	ConfigPath string                           `json:"-"`
+	Logger     global.Logger                  `json:"-"`
+	Services   map[string]*ServiceConfig      `json:"services"`
+	Commands   map[string]*CommandGroupConfig `json:"commands"` // Command execution configs
+	HTTPClient *http.Client                   `json:"-"`
+	Cache      Cache                          `json:"-"`
+	ConfigPath string                         `json:"-"`
 }
 
 // ServiceConfig represents the configuration for a single service
@@ -120,7 +120,7 @@ type EndpointConfig struct {
 // ParameterConfig represents configuration for a parameter
 type ParameterConfig struct {
 	Name        string            `json:"name"`
-	Alias       string            `json:"alias,omitempty"` // MCP-compliant name alias
+	Alias       string            `json:"alias,omitempty"`  // MCP-compliant name alias
 	Prefix      string            `json:"prefix,omitempty"` // Prefix for argument location (e.g., "-p", "--port")
 	Description string            `json:"description"`
 	Type        ParameterType     `json:"type"`

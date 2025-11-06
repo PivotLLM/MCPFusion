@@ -1,7 +1,7 @@
 #!/bin/sh
 #*******************************************************************************
 # Copyright (c) 2025 Tenebris Technologies Inc.                                *
-# All rights reserved.                                                         *
+# Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
 rm MCPFusion

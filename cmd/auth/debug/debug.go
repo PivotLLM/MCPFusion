@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package debug
@@ -136,7 +136,7 @@ func replacePattern(text, pattern string) string {
 	// Simple string replacement for sensitive data masking
 	// Handle both JSON and form-encoded patterns
 	result := text
-	
+
 	// For JSON patterns like "field":"value"
 	if strings.Contains(pattern, `":"`) {
 		// Extract field name from pattern like "field":"([^"]*)"
@@ -179,6 +179,6 @@ func replacePattern(text, pattern string) string {
 			result = strings.Join(lines, "\n")
 		}
 	}
-	
+
 	return result
 }

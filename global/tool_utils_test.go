@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2025 Tenebris Technologies Inc.                              *
- * All rights reserved.                                                       *
+ * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
 package global
@@ -11,11 +11,11 @@ import (
 
 func TestParseToolName(t *testing.T) {
 	tests := []struct {
-		name            string
-		toolName        string
-		wantService     string
-		wantEndpoint    string
-		wantErr         bool
+		name         string
+		toolName     string
+		wantService  string
+		wantEndpoint string
+		wantErr      bool
 	}{
 		{
 			name:         "valid microsoft365 tool",
