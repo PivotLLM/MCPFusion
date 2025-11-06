@@ -2,14 +2,6 @@
 
 This guide explains how to configure various MCP clients to connect to MCPFusion servers.
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Claude Code](#claude code)
-- [Claude Desktop](#claude desktop)
-- [Cline IDE Integration](#cline)
-
-
 ## Overview
 
 MCPFusion serves as an MCP (Model Context Protocol) server that provides AI clients with access to external APIs through standardized tools. Clients connect to MCPFusion using either the legacy SSE transport or the modern Streamable HTTP transport.
