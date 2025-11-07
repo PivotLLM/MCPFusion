@@ -89,56 +89,14 @@ func(args map[string]interface{}) (*globalMetrics.PromptResponse, error)
 
 ## Configuration
 
-MCPFusion requires multi-tenant authentication and uses environment variables for service credentials:
+MCPFusion is configured through one or more JSON files. Sensitive data, such as M365 application information required for oauth authentication, can be reference in the JSON config files as environment variables. For example:
+
 ```bash
 # Example environment variables
 # Microsoft 365 Graph API
 MS365_CLIENT_ID=your-client-id
 MS365_TENANT_ID=your-tenant-id
-
-# Multi-tenant database settings
-MCP_ENABLE_DATABASE=true
-MCP_ENABLE_BEARER_TOKENS=true
-MCP_DB_DATA_DIR=/opt/mcpfusion
 ```
-
-## Creating New Providers
-
-1. Create a new package in the project root
-2. Implement the appropriate interface(s) from `globalMetrics/`
-3. Use functional options pattern for configuration:
-```go
-type Option func(*Config)
-
-func WithAPIKey(key string) Option {
-    return func(c *Config) {
-        c.APIKey = key
-    }
-}
-```
-
-4. Register your provider in `main.go`:
-```go
-// Multi-tenant authentication is automatically enabled
-provider := yourprovider.New(
-    yourprovider.WithJSONConfig("config.json"),
-    yourprovider.WithLogger(logger),
-)
-server.AddToolProvider(provider)
-```
-
-## Example Providers
-
-- **example1/**: Demonstrates a full REST API wrapper with:
-  - GET/POST/DELETE tools
-  - Resources for data retrieval
-  - Prompts for common operations
-  - Multi-tenant authentication integration
-
-- **example2/**: Simple time service showing:
-  - Basic tool implementation
-  - Multiple handler registration
-  - Multi-tenant authentication support
 
 ## Important Patterns
 
@@ -152,7 +110,7 @@ server.AddToolProvider(provider)
 
 ## Multi-Tenant Authentication
 
-MCPFusion requires multi-tenant authentication with the following components:
+MCPFusion provides multi-tenant authentication (keyed to the user's API key) with the following components:
 
 ### Database Package (`db/`)
 - BoltDB-based persistent storage (`go.etcd.io/bbolt`)
@@ -166,16 +124,6 @@ MCPFusion requires multi-tenant authentication with the following components:
 2. **Bearer Authentication**: Include `Authorization: Bearer <token>` in HTTP requests
 3. **Tenant Isolation**: Each API token represents a separate tenant namespace
 4. **Service Independence**: Each tenant has independent OAuth tokens for each service
-
-### Required Environment Variables
-```bash
-# Multi-tenant authentication (required)
-MCP_ENABLE_DATABASE=true
-MCP_ENABLE_BEARER_TOKENS=true
-
-# Optional: Set custom database directory
-MCP_DB_DATA_DIR=/opt/mcpfusion
-```
 
 ### Token Management CLI
 ```bash
