@@ -2,43 +2,64 @@
 
 ---
 
-**This is a work in progress. It has been released as Open Source to gain feedback and to help the community. Please open a GitHub issue if you encounter any problems.**
+**This is a work in progress. It has been released as Open Source to obtain community feedback and to help those who require a trustworthy network-based MCP server. Please open a GitHub issue if you encounter any problems.**
 
-Kali users: This implements a network-based MCP server with bearer token authentication that can be installed on a Kali VM.
+**Kali users: This implements a network-based MCP server with bearer token authentication that can be installed on a Kali VM. No additional software is required on the client system, you can just configure your chat client to use the MCP server.**
 
 ---
 
-MCPFusion is a configuration-driven MCP (Model Context Protocol) server that enables AI clients to interact with multiple APIs and command-line applications. Applications range from facilitating access to a single API endpoint to allowing arbitrary command-line execution.
+MCPFusion is a configuration-driven MCP (Model Context Protocol) server that enables AI clients to interact with multiple APIs and command-line applications. Applications range from facilitating access to a single API endpoint to allowing command-line execution. This project evolved from the author's desire to maintain code for one MCP server.
 
-The application loads one or more JSON configuration files, which are used to dynamically create MCP tools.
+The application loads one or more JSON configuration files which define MCP tools.
 
 Clients connecting to the MCP server are authenticated using standard bearer tokens. When MCPFusion authenticates to external services, any tokens it obtains—such as OAuth access tokens—are securely stored and associated with the client’s API key. This design allows multiple users or service instances to operate independently; for example, two users can each access their own Microsoft 365 accounts through the same MCPFusion instance by using separate API keys.
 
-Users should carefully review their configuration to understand what access MCPFusion is granted to APIs and command-line tools, and consider the associated security implications. Allowing unrestricted command execution within a controlled security-testing environment may be appropriate, while doing so on production systems could pose unacceptable risks. Use caution and configure MCPFusion in accordance with your security requirements and policies.
+Users should carefully review their configuration to understand what access MCPFusion is granted to APIs and command-line tools, and consider the security implications. Allowing unrestricted command execution within a controlled security-testing environment may be appropriate, while doing so on production systems likely poses unacceptable risks. Use caution and configure MCPFusion in accordance with your security requirements and policies.
+
+---
 
 ## Features
 
 - **Universal API Integration**: Connect to any REST API
 - **Command Execution**: Execute system commands and scripts with full parameter control
-- **Multi-Tenant Authentication**: Complete tenant isolation with embedded database-backed token management
+- **Multi-Tenant Authentication**: Token-based tenant isolation with embedded database-backed token management
 - **Bearer Token Support**: Industry-standard `Authorization: Bearer <token>` authentication
 - **Enhanced Parameter System**: Rich parameter metadata with defaults, validation, and constraints
-- **Reliability**: Circuit breakers, retry logic, caching, and comprehensive error handling
+- **Reliability**: Circuit breakers, retry logic, caching, and error handling
 - **CLI Token Management**: Command-line token management
 
-## Security Warning
+## To Do
 
-**IMPORTANT**: MCPFusion requires authentication by default using bearer tokens. While a `--no-auth` flag is available for **testing purposes**, this mode is **insecure** and should **not** be used outside trusted environments.
+- Decide on an appropriate approach to HTTPS implementation
+- Implement access to files as MCP tools or resources in support of knoledge bases, etc. (Considering read-only vs. allowing CRUD operations)
+- (What else do we need in a comprehensive universal MCP server solution?)
 
-### No-Auth Mode (Testing Only)
+## Security
 
-The `--no-auth` flag disables authentication requirements:
-- **USE CASE**: Local development and testing
-- **SECURITY**: All requests will share a single "NOAUTH" tenant context
-- **RISK**: Anyone with network access can execute commands and access configured APIs
-- **OAUTH TOKENS**: OAuth tokens obtained in no-auth mode are stored with the "NOAUTH" tenant identifier
+### Environment
 
-**For production use, always generate and use proper API tokens** (see Quick Start below).
+MCPFusion is intended for use in controlled environments on private networks. To reduce setup friction in these scenarios, HTTP is permitted. Do not expose MCPFusion over the public internet without TLS and authentication. If you require HTTPS, place MCPFusion behind a reverse proxy (e.g., NGINX) or load balancer to terminate TLS.
+
+### HTTPS
+
+The author is contemplating built-in HTTPS support, including:
+	•	Simple configuration to reference a certificate and key
+	•	Certbot integration
+	•	Implementing the ACME protocol
+
+Suggestions and contributions are welcome.
+
+### Authentication
+
+Authentication currently uses long-lived bearer tokens, a common and proven API pattern. The author is aware of proposals to standardize MCP authentication via OAuth/OIDC and will continue to track this development. However, for typical localhost, private-network, or single-user deployments, requiring an external IdP introduces unnecessary cost and complexity without a proportional security benefit. In practice, controls that are disproportionate to the risk and costly to operate are often bypassed or misconfigured, yielding a weaker security posture than woudl be achieved by a simpler easy to deploy mechanism.
+
+MCPFusion maintains an independent tenant context within it's embedded database for each API key. If used to access one or more APIs that require the user to authenticate using OAuth, the resulting tokens are stored within the tenant context for the API key. For these use cases, it is essential that a unique API key is generated for each user of the system to achieve isolation. Otherwise, one user may be granted access to an API using oauth tokens belonging to a different user, resulting in significant security and privacy issues. Similarly, if access to multiple accounts is desired, simply generate a different MCPFusion API key for each.
+
+### No-Auth Mode
+
+The `--no-auth` flag disables authentication and is intended for testing, debugging, and pootentially temporarily working around broken MCP clients. This mode is **insecure** and should be used with **extreme caution.***
+
+**CAUTION:** In addition to providing all available MCP tools and resources to any client able to connect to the TCP port, all unauthicated requests share the same "NOAUTH" tenant context. Please review the information in the preceeding section on authentication. If MCPFusion is used to access a service that requires a user to authenticate using OAuth (for example Microsoft365), the separation that would normally exist by virtue of different FusionMCP API tokens will not be present. ** This could have severe security and privacy implications. ** 
 
 ## Quick Start
 
@@ -49,12 +70,14 @@ MCP_FUSION_CONFIG=/opt/mcpfusion/microsoft365.json
 MCP_FUSION_LISTEN=127.0.0.1:8888
 MCP_FUSION_DB_DIR=/opt/mcpfusion/db
 
-# Example for Microsoft 365 Graph API
+# Example for Microsoft 365 Graph API registration
 MS365_CLIENT_ID=<application client ID>
 MS365_TENANT_ID=common
  ```
 
 If parameters are provided via the environment, no command-line switches are required. MCPFusion will automatically load /opt/mcpfusion/env into the environment as long as it has permission to read the file.
+
+Linux users, please see the example mcpfusion.service file. In many Linux distros, this can be copied to /etc/systemd/system. Note the the user and group on lines 8 and 9 respectively need to be updated or created, and if you wish to use a location other than /opt/mcpfusion you will need to adjust paths throughout the file. Please remember to run `sudo systemctl daemon-reload` after creating or modifying a .service file.
 
 2. **Build and Generate API Token**:
    ```bash
@@ -85,11 +108,16 @@ MCPFusion provides both legacy and modern MCP transports simultaneously:
 
 - **SSE Transport (legacy)**: `http://localhost:8888/sse`
 
-**Authentication**: All endpoints require the API token as a Bearer token in the Authorization header:
+**Authentication**: Unless disabled using --no-auth, both endpoints require a Bearer token in the Authorization header:
   `Authorization: Bearer <TOKEN>`
 
-See [Client Configuration Guide](docs/clients.md) and [Token Management Guide](docs/TOKEN_MANAGEMENT.md) for detailed
-setup instructions.
+For clients unable to set custom HTTP headers, or those with unnecessarily restrictive support for network-based MCP servers, users may wish to consider bridging between MCP stdio transport and network-based MCP servers. In this case, https://github.com/PivotLLM/MCPRelay may be helpful.
+
+## Development
+
+PRs are welcome as long as the submitter states that submissions are consistent with Apache License 2.0.
+
+The author acknoledges the use of Claude Code to assist with assigned dvelopment tasks.
 
 ## Documentation
 
