@@ -4,7 +4,7 @@
 
 **This is a work in progress. It has been released as Open Source to obtain community feedback and to help those who require a trustworthy network-based MCP server. Please open a GitHub issue if you encounter any problems.**
 
-**Kali users: This implements a network-based MCP server with bearer token authentication that can be installed on a Kali VM. No additional software is required on the client system, you can just configure your chat client to use the MCP server.**
+**Kali Linux™ users: This project implements a standards-based network MCP server with bearer token authentication that can be installed on a Kali host or VM to facilitate the use of command line utilities by MCP clients.**
 
 ---
 
@@ -117,7 +117,7 @@ For clients unable to set custom HTTP headers, or those with unnecessarily restr
 
 PRs are welcome as long as the submitter states that submissions are consistent with Apache License 2.0.
 
-The author acknoledges the use of Claude Code to assist with assigned dvelopment tasks.
+The author acknoledges the use of Claude® Code to assist with assigned dvelopment tasks.
 
 ## Documentation
 
@@ -134,6 +134,10 @@ The author acknoledges the use of Claude Code to assist with assigned dvelopment
 ## Copyright and license
 
 Copyright (c) 2025 by Tenebris Technologies Inc. and available for use under Apache License 2.0. Please see the LICENSE file for full information.
+
+## Trademarks
+
+“Kali Linux” is a trademark of OffSec Services Limited. “Linux” is a registered trademark of Linus Torvalds. "Claude" is a registered trademark of Anthropic PBC. Any references are for identification only and do not imply sponsorship, endorsement, or affiliation.
 
 ## No Warranty (zilch, none, void, nil, null, "", {}, 0x00, 0b00000000, EOF)
 
