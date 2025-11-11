@@ -16,8 +16,6 @@ Clients connecting to the MCP server are authenticated using standard bearer tok
 
 Users should carefully review their configuration to understand what access MCPFusion is granted to APIs and command-line tools, and consider the security implications. Allowing unrestricted command execution within a controlled security-testing environment may be appropriate, while doing so on production systems likely poses unacceptable risks. Use caution and configure MCPFusion in accordance with your security requirements and policies.
 
----
-
 ## Features
 
 - **Universal API Integration**: Connect to any REST API
