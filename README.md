@@ -2,7 +2,9 @@
 
 ---
 
-**This is a work in progress. Please open a GitHub issue if you encounter any problems.**
+**This is a work in progress. It has been released as Open Source to gain feedback and to help the community. Please open a GitHub issue if you encounter any problems.**
+
+Kali users: This implements a network-based MCP server with bearer token authentication that can be installed on a Kali VM.
 
 ---
 
@@ -100,30 +102,6 @@ setup instructions.
 -  **[Microsoft 365 Setup](docs/Microsoft365.md)** - Microsoft 365 setup
 -  **[Google APIs Setup](docs/Google_Workspace.md)** - Google Workspace setup
 -  **[HTTP Session Management](docs/HTTP_SESSION_MANAGEMENT.md)** - Connection pooling, timeouts, and reliability features
-
-## Testing
-
-MCPFusion includes a test suite:
-
-```bash
-# Run all tests
-cd tests && ./run_all_tests.sh
-
-# Run specific endpoint tests
-./test_calendars_list.sh
-./test_mail_folders.sh
-./test_individual_items.sh
-```
-
-**Test Coverage:**
-- ✅ All 19 Microsoft 365 endpoints (including search capabilities)
-- ✅ Parameter validation and constraints
-- ✅ Authentication flows
-- ✅ Error handling scenarios
-- ✅ Multiple data formats and edge cases
-- ✅ Advanced search and filtering scenarios
-
-See [Testing Guide](tests/README.md) for detailed testing documentation.
 
 ## Copyright and license
 
