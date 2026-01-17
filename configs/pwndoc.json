@@ -1,0 +1,1497 @@
+{
+  "services": {
+    "pwndoc": {
+      "name": "PwnDoc",
+      "baseURL": "${PWNDOC_URL}",
+      "auth": {
+        "type": "session_jwt",
+        "config": {
+          "loginURL": "/api/users/token",
+          "loginMethod": "POST",
+          "loginContentType": "application/json",
+          "loginBody": {
+            "username": "${PWNDOC_USERNAME}",
+            "password": "${PWNDOC_PASSWORD}"
+          },
+          "tokenPath": "datas.token",
+          "tokenType": "JWT",
+          "tokenLocation": "cookie",
+          "cookieName": "token",
+          "cookieFormat": "JWT {token}",
+          "expiresIn": 3600,
+          "refreshURL": "/api/users/refreshtoken",
+          "refreshMethod": "POST",
+          "refreshTokenLocation": "cookie",
+          "refreshTokenCookieName": "refreshToken"
+        }
+      },
+      "endpoints": [
+        {
+          "id": "list_audits",
+          "name": "List Audits",
+          "description": "List all audits/pentests",
+          "method": "GET",
+          "path": "/api/audits",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_audit",
+          "name": "Get Audit",
+          "description": "Get detailed information about a specific audit including all findings, scope, sections, and metadata",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID (MongoDB ObjectId)",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_audit",
+          "name": "Create Audit",
+          "description": "Create a new audit/pentest",
+          "method": "POST",
+          "path": "/api/audits",
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Audit name",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "language",
+              "description": "Language code (e.g., 'en')",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "auditType",
+              "description": "Type of audit",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_audit",
+          "name": "Delete Audit",
+          "description": "Delete an audit permanently",
+          "method": "DELETE",
+          "path": "/api/audits/{audit_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_audit_general",
+          "name": "Get Audit General",
+          "description": "Get audit general information (dates, client, company, scope)",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}/general",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_audit_general",
+          "name": "Update Audit General",
+          "description": "Update general information of an audit",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/general",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "name",
+              "description": "Audit name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "client",
+              "description": "Client ID",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "company",
+              "description": "Company ID",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "date_start",
+              "description": "Start date (ISO format)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "date_end",
+              "description": "End date (ISO format)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "scope",
+              "description": "Scope items (array of strings)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_audit_network",
+          "name": "Get Audit Network",
+          "description": "Get audit network information",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}/network",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_audit_network",
+          "name": "Update Audit Network",
+          "description": "Update audit network information",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/network",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "network_data",
+              "description": "Network configuration data",
+              "type": "object",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "toggle_audit_approval",
+          "name": "Toggle Audit Approval",
+          "description": "Toggle audit approval status",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/toggleApproval",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_review_status",
+          "name": "Update Review Status",
+          "description": "Update audit ready-for-review status",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/updateReadyForReview",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "state",
+              "description": "Ready for review state",
+              "type": "boolean",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_audit_sections",
+          "name": "Get Audit Sections",
+          "description": "Get audit sections content",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}/sections",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_audit_sections",
+          "name": "Update Audit Sections",
+          "description": "Update audit sections content",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/sections",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "sections",
+              "description": "Sections data to update",
+              "type": "object",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "generate_audit_report",
+          "name": "Generate Audit Report",
+          "description": "Generate and download the audit report (DOCX)",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}/generate",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "binary" }
+        },
+        {
+          "id": "get_audit_findings",
+          "name": "Get Audit Findings",
+          "description": "Get all findings/vulnerabilities from a specific audit",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}/findings",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_finding",
+          "name": "Get Finding",
+          "description": "Get details of a specific finding in an audit",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}/findings/{finding_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "finding_id",
+              "description": "The finding ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_finding",
+          "name": "Create Finding",
+          "description": "Create a new finding in an audit",
+          "method": "POST",
+          "path": "/api/audits/{audit_id}/findings",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "title",
+              "description": "Finding title",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "description",
+              "description": "Detailed description",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "observation",
+              "description": "Observation/evidence",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "remediation",
+              "description": "Remediation steps",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "cvssv3",
+              "description": "CVSS v3 score/vector",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "priority",
+              "description": "Priority (1-4)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "category",
+              "description": "Category",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "vulnType",
+              "description": "Vulnerability type",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "poc",
+              "description": "Proof of concept",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "scope",
+              "description": "Affected scope",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "references",
+              "description": "References (array of strings)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_finding",
+          "name": "Update Finding",
+          "description": "Update an existing finding",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/findings/{finding_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "finding_id",
+              "description": "The finding ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "title",
+              "description": "Finding title",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "description",
+              "description": "Detailed description",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "observation",
+              "description": "Observation/evidence",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "remediation",
+              "description": "Remediation steps",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "cvssv3",
+              "description": "CVSS v3 score/vector",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "priority",
+              "description": "Priority (1-4)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "category",
+              "description": "Category",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "vulnType",
+              "description": "Vulnerability type",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "poc",
+              "description": "Proof of concept",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "scope",
+              "description": "Affected scope",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "references",
+              "description": "References (array of strings)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_finding",
+          "name": "Delete Finding",
+          "description": "Delete a finding from an audit",
+          "method": "DELETE",
+          "path": "/api/audits/{audit_id}/findings/{finding_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "finding_id",
+              "description": "The finding ID to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "sort_findings",
+          "name": "Sort Findings",
+          "description": "Reorder findings within an audit",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/sortFindings",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "findings",
+              "description": "Ordered array of finding IDs",
+              "type": "array",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "move_finding",
+          "name": "Move Finding",
+          "description": "Move a finding from one audit to another",
+          "method": "POST",
+          "path": "/api/audits/{audit_id}/findings/{finding_id}/move/{destination_audit_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "Source audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "finding_id",
+              "description": "Finding ID to move",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "destination_audit_id",
+              "description": "Destination audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_clients",
+          "name": "List Clients",
+          "description": "List all clients",
+          "method": "GET",
+          "path": "/api/clients",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_client",
+          "name": "Create Client",
+          "description": "Create a new client",
+          "method": "POST",
+          "path": "/api/clients",
+          "parameters": [
+            {
+              "name": "firstname",
+              "description": "First name",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "lastname",
+              "description": "Last name",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "email",
+              "description": "Client email",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "phone",
+              "description": "Phone number",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "cell",
+              "description": "Cell phone",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "title",
+              "description": "Job title",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "company",
+              "description": "Company ID",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_client",
+          "name": "Update Client",
+          "description": "Update an existing client",
+          "method": "PUT",
+          "path": "/api/clients/{client_id}",
+          "parameters": [
+            {
+              "name": "client_id",
+              "description": "Client ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "firstname",
+              "description": "First name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "lastname",
+              "description": "Last name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "email",
+              "description": "Client email",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "phone",
+              "description": "Phone number",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "cell",
+              "description": "Cell phone",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "title",
+              "description": "Job title",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "company",
+              "description": "Company ID",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_client",
+          "name": "Delete Client",
+          "description": "Delete a client",
+          "method": "DELETE",
+          "path": "/api/clients/{client_id}",
+          "parameters": [
+            {
+              "name": "client_id",
+              "description": "Client ID to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_companies",
+          "name": "List Companies",
+          "description": "List all companies",
+          "method": "GET",
+          "path": "/api/companies",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_company",
+          "name": "Create Company",
+          "description": "Create a new company",
+          "method": "POST",
+          "path": "/api/companies",
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Company name",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "shortName",
+              "description": "Short name/abbreviation",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "logo",
+              "description": "Logo (base64)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_company",
+          "name": "Update Company",
+          "description": "Update an existing company",
+          "method": "PUT",
+          "path": "/api/companies/{company_id}",
+          "parameters": [
+            {
+              "name": "company_id",
+              "description": "Company ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "name",
+              "description": "Company name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "shortName",
+              "description": "Short name/abbreviation",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "logo",
+              "description": "Logo (base64)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_company",
+          "name": "Delete Company",
+          "description": "Delete a company",
+          "method": "DELETE",
+          "path": "/api/companies/{company_id}",
+          "parameters": [
+            {
+              "name": "company_id",
+              "description": "Company ID to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_vulnerabilities",
+          "name": "List Vulnerabilities",
+          "description": "List all vulnerability templates in the library",
+          "method": "GET",
+          "path": "/api/vulnerabilities",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_vulnerabilities_by_locale",
+          "name": "Get Vulnerabilities by Locale",
+          "description": "Get vulnerability templates for a specific language",
+          "method": "GET",
+          "path": "/api/vulnerabilities/{locale}",
+          "parameters": [
+            {
+              "name": "locale",
+              "description": "Language code (e.g., 'en', 'fr')",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "default": "en"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_vulnerability",
+          "name": "Create Vulnerability",
+          "description": "Create a new vulnerability template",
+          "method": "POST",
+          "path": "/api/vulnerabilities",
+          "parameters": [
+            {
+              "name": "details",
+              "description": "Vulnerability details by locale",
+              "type": "object",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "cvssv3",
+              "description": "CVSS v3 score",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "priority",
+              "description": "Priority (1-4)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "remediationComplexity",
+              "description": "Complexity (1-3)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "category",
+              "description": "Category",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_vulnerability",
+          "name": "Update Vulnerability",
+          "description": "Update an existing vulnerability template",
+          "method": "PUT",
+          "path": "/api/vulnerabilities/{vuln_id}",
+          "parameters": [
+            {
+              "name": "vuln_id",
+              "description": "Vulnerability template ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "details",
+              "description": "Vulnerability details by locale",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "cvssv3",
+              "description": "CVSS v3 score",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "priority",
+              "description": "Priority (1-4)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "remediationComplexity",
+              "description": "Complexity (1-3)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "category",
+              "description": "Category",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_vulnerability",
+          "name": "Delete Vulnerability",
+          "description": "Delete a vulnerability template",
+          "method": "DELETE",
+          "path": "/api/vulnerabilities/{vuln_id}",
+          "parameters": [
+            {
+              "name": "vuln_id",
+              "description": "Vulnerability template ID to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "export_vulnerabilities",
+          "name": "Export Vulnerabilities",
+          "description": "Export all vulnerability templates",
+          "method": "GET",
+          "path": "/api/vulnerabilities/export",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_users",
+          "name": "List Users",
+          "description": "List all users (admin only)",
+          "method": "GET",
+          "path": "/api/users",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_current_user",
+          "name": "Get Current User",
+          "description": "Get current authenticated user's info",
+          "method": "GET",
+          "path": "/api/users/me",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_user",
+          "name": "Get User",
+          "description": "Get user information by username",
+          "method": "GET",
+          "path": "/api/users/{username}",
+          "parameters": [
+            {
+              "name": "username",
+              "description": "Username",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_user",
+          "name": "Create User",
+          "description": "Create a new user (admin only)",
+          "method": "POST",
+          "path": "/api/users",
+          "parameters": [
+            {
+              "name": "username",
+              "description": "Username",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "password",
+              "description": "Password",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "firstname",
+              "description": "First name",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "lastname",
+              "description": "Last name",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "email",
+              "description": "Email address",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "role",
+              "description": "User role",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_user",
+          "name": "Update User",
+          "description": "Update a user (admin only)",
+          "method": "PUT",
+          "path": "/api/users/{user_id}",
+          "parameters": [
+            {
+              "name": "user_id",
+              "description": "User ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "username",
+              "description": "Username",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "firstname",
+              "description": "First name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "lastname",
+              "description": "Last name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "email",
+              "description": "Email address",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "role",
+              "description": "User role",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_current_user",
+          "name": "Update Current User",
+          "description": "Update current user's profile",
+          "method": "PUT",
+          "path": "/api/users/me",
+          "parameters": [
+            {
+              "name": "firstname",
+              "description": "First name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "lastname",
+              "description": "Last name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "email",
+              "description": "Email address",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "password",
+              "description": "New password",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_reviewers",
+          "name": "List Reviewers",
+          "description": "List all users with reviewer role",
+          "method": "GET",
+          "path": "/api/users/reviewers",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_templates",
+          "name": "List Templates",
+          "description": "List all report templates",
+          "method": "GET",
+          "path": "/api/templates",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_template",
+          "name": "Delete Template",
+          "description": "Delete a report template",
+          "method": "DELETE",
+          "path": "/api/templates/{template_id}",
+          "parameters": [
+            {
+              "name": "template_id",
+              "description": "Template ID to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_settings",
+          "name": "Get Settings",
+          "description": "Get system settings",
+          "method": "GET",
+          "path": "/api/settings",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_public_settings",
+          "name": "Get Public Settings",
+          "description": "Get public settings (no authentication required)",
+          "method": "GET",
+          "path": "/api/settings/public",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_settings",
+          "name": "Update Settings",
+          "description": "Update system settings (admin only)",
+          "method": "PUT",
+          "path": "/api/settings",
+          "parameters": [
+            {
+              "name": "settings",
+              "description": "Settings to update",
+              "type": "object",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_languages",
+          "name": "List Languages",
+          "description": "List all configured languages",
+          "method": "GET",
+          "path": "/api/data/languages",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_language",
+          "name": "Create Language",
+          "description": "Create a new language",
+          "method": "POST",
+          "path": "/api/data/languages",
+          "parameters": [
+            {
+              "name": "language",
+              "description": "Language code (e.g., 'en')",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "name",
+              "description": "Language name",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_language",
+          "name": "Update Language",
+          "description": "Update a language",
+          "method": "PUT",
+          "path": "/api/data/languages/{language_id}",
+          "parameters": [
+            {
+              "name": "language_id",
+              "description": "Language ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "language",
+              "description": "Language code",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "name",
+              "description": "Language name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_language",
+          "name": "Delete Language",
+          "description": "Delete a language",
+          "method": "DELETE",
+          "path": "/api/data/languages/{language_id}",
+          "parameters": [
+            {
+              "name": "language_id",
+              "description": "Language ID to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_audit_types",
+          "name": "List Audit Types",
+          "description": "List all audit types",
+          "method": "GET",
+          "path": "/api/data/audit-types",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_audit_type",
+          "name": "Create Audit Type",
+          "description": "Create a new audit type",
+          "method": "POST",
+          "path": "/api/data/audit-types",
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Audit type name",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "templates",
+              "description": "Template IDs (array)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_audit_type",
+          "name": "Update Audit Type",
+          "description": "Update an audit type",
+          "method": "PUT",
+          "path": "/api/data/audit-types/{audit_type_id}",
+          "parameters": [
+            {
+              "name": "audit_type_id",
+              "description": "Audit type ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "name",
+              "description": "Audit type name",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "templates",
+              "description": "Template IDs (array)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_audit_type",
+          "name": "Delete Audit Type",
+          "description": "Delete an audit type",
+          "method": "DELETE",
+          "path": "/api/data/audit-types/{audit_type_id}",
+          "parameters": [
+            {
+              "name": "audit_type_id",
+              "description": "Audit type ID to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_vulnerability_types",
+          "name": "List Vulnerability Types",
+          "description": "List all vulnerability types",
+          "method": "GET",
+          "path": "/api/data/vulnerability-types",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_vulnerability_categories",
+          "name": "List Vulnerability Categories",
+          "description": "List all vulnerability categories",
+          "method": "GET",
+          "path": "/api/data/vulnerability-categories",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_sections",
+          "name": "List Sections",
+          "description": "List all section definitions",
+          "method": "GET",
+          "path": "/api/data/sections",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "list_custom_fields",
+          "name": "List Custom Fields",
+          "description": "List all custom field definitions",
+          "method": "GET",
+          "path": "/api/data/custom-fields",
+          "parameters": [],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_statistics",
+          "name": "Get Statistics",
+          "description": "Get comprehensive statistics about audits, findings, clients, and more",
+          "method": "GET",
+          "path": "/api/audits/stats",
+          "parameters": [],
+          "response": { "type": "json" }
+        }
+      ],
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "30s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": ["network_error", "timeout", "server_error"]
+      }
+    }
+  }
+}
