@@ -269,6 +269,10 @@ func (mtf *MultiTenantFusion) registerDefaultAuthStrategies() {
 	basicAuthStrategy := NewBasicAuthStrategy(mtf.logger)
 	mtf.authManager.RegisterStrategy(basicAuthStrategy)
 
+	// Register session JWT strategy
+	sessionJWTStrategy := NewSessionJWTStrategy(mtf.httpClient, mtf.logger)
+	mtf.authManager.RegisterStrategy(sessionJWTStrategy)
+
 	if mtf.logger != nil {
 		strategies := mtf.authManager.GetRegisteredStrategies()
 		mtf.logger.Infof("Registered authentication strategies: %v", strategies)

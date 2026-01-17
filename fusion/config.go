@@ -25,6 +25,7 @@ const (
 	AuthTypeBearer       AuthType = "bearer"
 	AuthTypeAPIKey       AuthType = "api_key"
 	AuthTypeBasic        AuthType = "basic"
+	AuthTypeSessionJWT   AuthType = "session_jwt"
 	AuthTypeNone         AuthType = "none"
 )
 
@@ -607,6 +608,36 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 		}
 		if logger != nil {
 			logger.Debugf("Service %s: basic auth configuration validated", serviceName)
+		}
+	case AuthTypeSessionJWT:
+		if _, ok := a.Config["loginURL"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: session_jwt auth requires loginURL", serviceName)
+			}
+			return fmt.Errorf("session_jwt auth requires loginURL")
+		}
+		if _, ok := a.Config["tokenPath"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: session_jwt auth requires tokenPath", serviceName)
+			}
+			return fmt.Errorf("session_jwt auth requires tokenPath")
+		}
+		if _, ok := a.Config["tokenLocation"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: session_jwt auth requires tokenLocation", serviceName)
+			}
+			return fmt.Errorf("session_jwt auth requires tokenLocation")
+		}
+		// Validate tokenLocation value
+		tokenLocation, _ := a.Config["tokenLocation"].(string)
+		if tokenLocation != "header" && tokenLocation != "cookie" && tokenLocation != "query" {
+			if logger != nil {
+				logger.Errorf("Service %s: session_jwt tokenLocation must be 'header', 'cookie', or 'query'", serviceName)
+			}
+			return fmt.Errorf("session_jwt tokenLocation must be 'header', 'cookie', or 'query'")
+		}
+		if logger != nil {
+			logger.Debugf("Service %s: session_jwt auth configuration validated", serviceName)
 		}
 	case AuthTypeNone:
 		if logger != nil {
