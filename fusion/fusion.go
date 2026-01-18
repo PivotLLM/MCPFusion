@@ -1175,7 +1175,7 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 			}
 		}
 
-	case ParameterTypeNumber:
+	case ParameterTypeNumber, ParameterTypeInteger:
 		// Accept both int and float with better error handling
 		var numValue float64
 		var converted bool

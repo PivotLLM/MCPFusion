@@ -35,6 +35,7 @@ type ParameterType string
 const (
 	ParameterTypeString  ParameterType = "string"
 	ParameterTypeNumber  ParameterType = "number"
+	ParameterTypeInteger ParameterType = "integer" // JSON Schema integer type (alias for number)
 	ParameterTypeBoolean ParameterType = "boolean"
 	ParameterTypeArray   ParameterType = "array"
 	ParameterTypeObject  ParameterType = "object"
@@ -766,6 +767,7 @@ func (p *ParameterConfig) ValidateWithLogger(serviceName, endpointID string, log
 	validTypes := map[ParameterType]bool{
 		ParameterTypeString:  true,
 		ParameterTypeNumber:  true,
+		ParameterTypeInteger: true,
 		ParameterTypeBoolean: true,
 		ParameterTypeArray:   true,
 		ParameterTypeObject:  true,

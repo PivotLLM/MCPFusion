@@ -409,7 +409,7 @@
             {
               "name": "priority",
               "description": "Priority (1-4)",
-              "type": "number",
+              "type": "integer",
               "required": false,
               "location": "body"
             },
@@ -510,7 +510,7 @@
             {
               "name": "priority",
               "description": "Priority (1-4)",
-              "type": "number",
+              "type": "integer",
               "required": false,
               "location": "body"
             },
@@ -928,14 +928,14 @@
             {
               "name": "priority",
               "description": "Priority (1-4)",
-              "type": "number",
+              "type": "integer",
               "required": false,
               "location": "body"
             },
             {
               "name": "remediationComplexity",
               "description": "Complexity (1-3)",
-              "type": "number",
+              "type": "integer",
               "required": false,
               "location": "body"
             },
@@ -980,14 +980,14 @@
             {
               "name": "priority",
               "description": "Priority (1-4)",
-              "type": "number",
+              "type": "integer",
               "required": false,
               "location": "body"
             },
             {
               "name": "remediationComplexity",
               "description": "Complexity (1-3)",
-              "type": "number",
+              "type": "integer",
               "required": false,
               "location": "body"
             },
