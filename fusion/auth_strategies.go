@@ -767,3 +767,478 @@ func (s *OAuth2DeviceFlowStrategy) storeTokenFromPolling(_ context.Context, toke
 
 	return nil
 }
+
+// ============================================================================
+// Session JWT Strategy
+// ============================================================================
+
+// SessionJWTStrategy implements session-based JWT authentication
+// This strategy supports login-based authentication where:
+// 1. Credentials are POSTed to a login endpoint
+// 2. A JWT token is extracted from the JSON response
+// 3. The token is applied to requests as a header, cookie, or query parameter
+// 4. Optional token refresh via a separate endpoint
+type SessionJWTStrategy struct {
+	httpClient *http.Client
+	logger     global.Logger
+}
+
+// NewSessionJWTStrategy creates a new session JWT strategy
+func NewSessionJWTStrategy(httpClient *http.Client, logger global.Logger) *SessionJWTStrategy {
+	return &SessionJWTStrategy{
+		httpClient: httpClient,
+		logger:     logger,
+	}
+}
+
+func (s *SessionJWTStrategy) GetAuthType() AuthType {
+	return AuthTypeSessionJWT
+}
+
+func (s *SessionJWTStrategy) SupportsRefresh() bool {
+	return true // We support refresh if refreshURL is configured
+}
+
+func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
+	if s.logger != nil {
+		s.logger.Infof("Starting session JWT authentication")
+	}
+
+	// Extract configuration
+	loginURL, _ := config["loginURL"].(string)
+	if loginURL == "" {
+		return nil, fmt.Errorf("loginURL is required for session_jwt auth")
+	}
+
+	baseURL, _ := config["baseURL"].(string)
+	if baseURL != "" {
+		// Combine baseURL with loginURL if loginURL is relative
+		if !strings.HasPrefix(loginURL, "http://") && !strings.HasPrefix(loginURL, "https://") {
+			loginURL = strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(loginURL, "/")
+		}
+	}
+
+	loginMethod := "POST"
+	if m, ok := config["loginMethod"].(string); ok && m != "" {
+		loginMethod = strings.ToUpper(m)
+	}
+
+	contentType := "application/json"
+	if ct, ok := config["loginContentType"].(string); ok && ct != "" {
+		contentType = ct
+	}
+
+	tokenPath, _ := config["tokenPath"].(string)
+	if tokenPath == "" {
+		return nil, fmt.Errorf("tokenPath is required for session_jwt auth")
+	}
+
+	// Build request body
+	var bodyReader io.Reader
+	if loginBody, ok := config["loginBody"].(map[string]interface{}); ok {
+		bodyBytes, err := json.Marshal(loginBody)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal login body: %w", err)
+		}
+		bodyReader = strings.NewReader(string(bodyBytes))
+		if s.logger != nil {
+			s.logger.Debugf("Login request body prepared (JSON)")
+		}
+	} else if formBody, ok := config["loginFormBody"].(map[string]interface{}); ok {
+		formData := url.Values{}
+		for k, v := range formBody {
+			formData.Set(k, fmt.Sprintf("%v", v))
+		}
+		bodyReader = strings.NewReader(formData.Encode())
+		contentType = "application/x-www-form-urlencoded"
+		if s.logger != nil {
+			s.logger.Debugf("Login request body prepared (form-urlencoded)")
+		}
+	}
+
+	if s.logger != nil {
+		s.logger.Debugf("Session JWT login: %s %s", loginMethod, loginURL)
+	}
+
+	// Create request
+	req, err := http.NewRequestWithContext(ctx, loginMethod, loginURL, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create login request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Accept", "application/json")
+
+	// Execute request
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send login request: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
+
+	if s.logger != nil {
+		s.logger.Debugf("Login response status: %d", resp.StatusCode)
+	}
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read login response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if s.logger != nil {
+			s.logger.Errorf("Login request failed: status=%d, body=%s", resp.StatusCode, string(body))
+		}
+		return nil, fmt.Errorf("login request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse response
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		return nil, fmt.Errorf("failed to parse login response: %w", err)
+	}
+
+	// Extract token using path
+	token, err := s.extractValueByPath(responseData, tokenPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract token from response: %w", err)
+	}
+
+	tokenStr, ok := token.(string)
+	if !ok {
+		return nil, fmt.Errorf("token at path '%s' is not a string", tokenPath)
+	}
+
+	if s.logger != nil {
+		s.logger.Infof("Successfully extracted token from login response")
+	}
+
+	// Build TokenInfo
+	tokenInfo := &TokenInfo{
+		AccessToken: tokenStr,
+		TokenType:   "Bearer",
+		Metadata:    make(map[string]string),
+	}
+
+	// Override token type if specified
+	if tt, ok := config["tokenType"].(string); ok && tt != "" {
+		tokenInfo.TokenType = tt
+	}
+
+	// Store token location info in metadata for ApplyAuth
+	if tokenLocation, ok := config["tokenLocation"].(string); ok {
+		tokenInfo.Metadata["tokenLocation"] = tokenLocation
+	}
+	if headerName, ok := config["headerName"].(string); ok {
+		tokenInfo.Metadata["headerName"] = headerName
+	}
+	if headerFormat, ok := config["headerFormat"].(string); ok {
+		tokenInfo.Metadata["headerFormat"] = headerFormat
+	}
+	if cookieName, ok := config["cookieName"].(string); ok {
+		tokenInfo.Metadata["cookieName"] = cookieName
+	}
+	if cookieFormat, ok := config["cookieFormat"].(string); ok {
+		tokenInfo.Metadata["cookieFormat"] = cookieFormat
+	}
+	if queryParam, ok := config["queryParam"].(string); ok {
+		tokenInfo.Metadata["queryParam"] = queryParam
+	}
+
+	// Handle expiration
+	if expiresInPath, ok := config["expiresInPath"].(string); ok && expiresInPath != "" {
+		if expiresInVal, err := s.extractValueByPath(responseData, expiresInPath); err == nil {
+			if expiresIn, ok := expiresInVal.(float64); ok {
+				expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
+				tokenInfo.ExpiresAt = &expiresAt
+			}
+		}
+	} else if expiresIn, ok := config["expiresIn"].(float64); ok && expiresIn > 0 {
+		expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
+		tokenInfo.ExpiresAt = &expiresAt
+	}
+
+	// Extract refresh token if configured
+	if refreshTokenPath, ok := config["refreshTokenPath"].(string); ok && refreshTokenPath != "" {
+		if refreshToken, err := s.extractValueByPath(responseData, refreshTokenPath); err == nil {
+			if rt, ok := refreshToken.(string); ok {
+				tokenInfo.RefreshToken = rt
+				if s.logger != nil {
+					s.logger.Debugf("Refresh token extracted from response body")
+				}
+			}
+		}
+	}
+
+	// Check for refresh token in cookies
+	if refreshTokenLocation, ok := config["refreshTokenLocation"].(string); ok && refreshTokenLocation == "cookie" {
+		cookieName := "refreshToken"
+		if rtn, ok := config["refreshTokenCookieName"].(string); ok && rtn != "" {
+			cookieName = rtn
+		}
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == cookieName {
+				tokenInfo.RefreshToken = cookie.Value
+				if s.logger != nil {
+					s.logger.Debugf("Refresh token extracted from cookie: %s", cookieName)
+				}
+				break
+			}
+		}
+	}
+
+	if s.logger != nil {
+		expiryInfo := "no expiry"
+		if tokenInfo.ExpiresAt != nil {
+			expiryInfo = fmt.Sprintf("expires at %s", tokenInfo.ExpiresAt.Format(time.RFC3339))
+		}
+		s.logger.Infof("Session JWT authentication successful (%s, has_refresh=%v)",
+			expiryInfo, tokenInfo.HasRefreshToken())
+	}
+
+	return tokenInfo, nil
+}
+
+func (s *SessionJWTStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+	refreshURL, ok := config["refreshURL"].(string)
+	if !ok || refreshURL == "" {
+		return nil, fmt.Errorf("refreshURL not configured for session_jwt auth")
+	}
+
+	baseURL, _ := config["baseURL"].(string)
+	if baseURL != "" {
+		if !strings.HasPrefix(refreshURL, "http://") && !strings.HasPrefix(refreshURL, "https://") {
+			refreshURL = strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(refreshURL, "/")
+		}
+	}
+
+	refreshMethod := "POST"
+	if m, ok := config["refreshMethod"].(string); ok && m != "" {
+		refreshMethod = strings.ToUpper(m)
+	}
+
+	if s.logger != nil {
+		s.logger.Debugf("Refreshing session JWT token: %s %s", refreshMethod, refreshURL)
+	}
+
+	// Create request
+	req, err := http.NewRequestWithContext(ctx, refreshMethod, refreshURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+
+	// Add refresh token as cookie if that's where it came from
+	if refreshTokenLocation, ok := config["refreshTokenLocation"].(string); ok && refreshTokenLocation == "cookie" {
+		cookieName := "refreshToken"
+		if rtn, ok := config["refreshTokenCookieName"].(string); ok && rtn != "" {
+			cookieName = rtn
+		}
+		req.AddCookie(&http.Cookie{
+			Name:  cookieName,
+			Value: tokenInfo.RefreshToken,
+		})
+		if s.logger != nil {
+			s.logger.Debugf("Added refresh token cookie: %s", cookieName)
+		}
+	}
+
+	// Execute request
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send refresh request: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
+
+	if s.logger != nil {
+		s.logger.Debugf("Refresh response status: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read refresh response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if s.logger != nil {
+			s.logger.Errorf("Refresh request failed: status=%d, body=%s", resp.StatusCode, string(body))
+		}
+		return nil, fmt.Errorf("refresh request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse response
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		return nil, fmt.Errorf("failed to parse refresh response: %w", err)
+	}
+
+	// Extract new token
+	tokenPath, _ := config["tokenPath"].(string)
+	token, err := s.extractValueByPath(responseData, tokenPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract token from refresh response: %w", err)
+	}
+
+	tokenStr, ok := token.(string)
+	if !ok {
+		return nil, fmt.Errorf("token at path '%s' is not a string", tokenPath)
+	}
+
+	// Build new TokenInfo, preserving metadata from original
+	newTokenInfo := &TokenInfo{
+		AccessToken:  tokenStr,
+		TokenType:    tokenInfo.TokenType,
+		RefreshToken: tokenInfo.RefreshToken, // Keep old refresh token
+		Metadata:     tokenInfo.Metadata,
+	}
+
+	// Check for new refresh token in response
+	if refreshTokenPath, ok := config["refreshTokenPath"].(string); ok && refreshTokenPath != "" {
+		if refreshToken, err := s.extractValueByPath(responseData, refreshTokenPath); err == nil {
+			if rt, ok := refreshToken.(string); ok && rt != "" {
+				newTokenInfo.RefreshToken = rt
+			}
+		}
+	}
+
+	// Check for new refresh token in cookies
+	if refreshTokenLocation, ok := config["refreshTokenLocation"].(string); ok && refreshTokenLocation == "cookie" {
+		cookieName := "refreshToken"
+		if rtn, ok := config["refreshTokenCookieName"].(string); ok && rtn != "" {
+			cookieName = rtn
+		}
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == cookieName {
+				newTokenInfo.RefreshToken = cookie.Value
+				break
+			}
+		}
+	}
+
+	// Handle expiration
+	if expiresInPath, ok := config["expiresInPath"].(string); ok && expiresInPath != "" {
+		if expiresInVal, err := s.extractValueByPath(responseData, expiresInPath); err == nil {
+			if expiresIn, ok := expiresInVal.(float64); ok {
+				expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
+				newTokenInfo.ExpiresAt = &expiresAt
+			}
+		}
+	} else if expiresIn, ok := config["expiresIn"].(float64); ok && expiresIn > 0 {
+		expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
+		newTokenInfo.ExpiresAt = &expiresAt
+	}
+
+	if s.logger != nil {
+		expiryInfo := "no expiry"
+		if newTokenInfo.ExpiresAt != nil {
+			expiryInfo = fmt.Sprintf("expires at %s", newTokenInfo.ExpiresAt.Format(time.RFC3339))
+		}
+		s.logger.Infof("Session JWT token refreshed successfully (%s)", expiryInfo)
+	}
+
+	return newTokenInfo, nil
+}
+
+func (s *SessionJWTStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
+	if tokenInfo == nil {
+		return fmt.Errorf("token info is nil")
+	}
+
+	tokenLocation := "header" // default
+	if loc, ok := tokenInfo.Metadata["tokenLocation"]; ok && loc != "" {
+		tokenLocation = loc
+	}
+
+	switch tokenLocation {
+	case "header":
+		headerName := "Authorization"
+		if hn, ok := tokenInfo.Metadata["headerName"]; ok && hn != "" {
+			headerName = hn
+		}
+
+		headerFormat := "{tokenType} {token}"
+		if hf, ok := tokenInfo.Metadata["headerFormat"]; ok && hf != "" {
+			headerFormat = hf
+		}
+
+		// Apply format
+		headerValue := headerFormat
+		headerValue = strings.ReplaceAll(headerValue, "{tokenType}", tokenInfo.TokenType)
+		headerValue = strings.ReplaceAll(headerValue, "{token}", tokenInfo.AccessToken)
+
+		req.Header.Set(headerName, headerValue)
+		if s.logger != nil {
+			s.logger.Debugf("Applied session JWT token as header: %s", headerName)
+		}
+
+	case "cookie":
+		cookieName := "token"
+		if cn, ok := tokenInfo.Metadata["cookieName"]; ok && cn != "" {
+			cookieName = cn
+		}
+
+		cookieFormat := "{token}"
+		if cf, ok := tokenInfo.Metadata["cookieFormat"]; ok && cf != "" {
+			cookieFormat = cf
+		}
+
+		// Apply format
+		cookieValue := cookieFormat
+		cookieValue = strings.ReplaceAll(cookieValue, "{tokenType}", tokenInfo.TokenType)
+		cookieValue = strings.ReplaceAll(cookieValue, "{token}", tokenInfo.AccessToken)
+
+		req.AddCookie(&http.Cookie{
+			Name:  cookieName,
+			Value: cookieValue,
+		})
+		if s.logger != nil {
+			s.logger.Debugf("Applied session JWT token as cookie: %s", cookieName)
+		}
+
+	case "query":
+		queryParam := "token"
+		if qp, ok := tokenInfo.Metadata["queryParam"]; ok && qp != "" {
+			queryParam = qp
+		}
+
+		q := req.URL.Query()
+		q.Set(queryParam, tokenInfo.AccessToken)
+		req.URL.RawQuery = q.Encode()
+		if s.logger != nil {
+			s.logger.Debugf("Applied session JWT token as query parameter: %s", queryParam)
+		}
+
+	default:
+		return fmt.Errorf("unsupported token location: %s", tokenLocation)
+	}
+
+	return nil
+}
+
+// extractValueByPath extracts a value from a nested map using dot notation
+// e.g., "datas.token" extracts responseData["datas"]["token"]
+func (s *SessionJWTStrategy) extractValueByPath(data map[string]interface{}, path string) (interface{}, error) {
+	parts := strings.Split(path, ".")
+	var current interface{} = data
+
+	for _, part := range parts {
+		switch v := current.(type) {
+		case map[string]interface{}:
+			val, ok := v[part]
+			if !ok {
+				return nil, fmt.Errorf("key '%s' not found in path '%s'", part, path)
+			}
+			current = val
+		default:
+			return nil, fmt.Errorf("cannot navigate into non-object at '%s' in path '%s'", part, path)
+		}
+	}
+
+	return current, nil
+}

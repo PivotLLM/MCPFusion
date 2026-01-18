@@ -514,6 +514,8 @@ func (m *Mapper) getMCPType(paramType ParameterType) string {
 	switch paramType {
 	case "number":
 		return "number"
+	case "integer":
+		return "integer"
 	case "boolean":
 		return "boolean"
 	case "array":

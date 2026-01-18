@@ -319,6 +319,7 @@ func (v *Validator) validateParameterConfig(param ParameterConfig) error {
 	validTypes := map[string]bool{
 		"string":  true,
 		"number":  true,
+		"integer": true,
 		"boolean": true,
 		"array":   true,
 		"object":  true,

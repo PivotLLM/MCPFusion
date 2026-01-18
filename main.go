@@ -230,6 +230,10 @@ func main() {
 	basicStrategy := fusion.NewBasicAuthStrategy(logger)
 	multiTenantAuth.RegisterStrategy(basicStrategy)
 
+	sessionJWTStrategy := fusion.NewSessionJWTStrategy(
+		&http.Client{Timeout: 30 * time.Second}, logger)
+	multiTenantAuth.RegisterStrategy(sessionJWTStrategy)
+
 	// Initialize config manager with all configuration files
 	configManager := config.New(
 		config.WithLogger(logger),
