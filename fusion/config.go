@@ -637,6 +637,24 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 			}
 			return fmt.Errorf("session_jwt tokenLocation must be 'header', 'cookie', or 'query'")
 		}
+		// Validate conditional requirements based on tokenLocation
+		switch tokenLocation {
+		case "cookie":
+			if _, ok := a.Config["cookieName"]; !ok {
+				if logger != nil {
+					logger.Errorf("Service %s: session_jwt with tokenLocation=cookie requires cookieName", serviceName)
+				}
+				return fmt.Errorf("session_jwt with tokenLocation=cookie requires cookieName")
+			}
+		case "query":
+			if _, ok := a.Config["queryParam"]; !ok {
+				if logger != nil {
+					logger.Errorf("Service %s: session_jwt with tokenLocation=query requires queryParam", serviceName)
+				}
+				return fmt.Errorf("session_jwt with tokenLocation=query requires queryParam")
+			}
+		// "header" doesn't require additional fields - defaults to Authorization header
+		}
 		if logger != nil {
 			logger.Debugf("Service %s: session_jwt auth configuration validated", serviceName)
 		}

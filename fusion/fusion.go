@@ -1215,6 +1215,15 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 			return NewValidationError(param.Name, value, "type", message)
 		}
 
+		// For integer type, reject decimal values
+		if param.Type == ParameterTypeInteger && numValue != float64(int64(numValue)) {
+			message := fmt.Sprintf("parameter must be an integer, not a decimal (received: %v)", numValue)
+			if f.logger != nil {
+				f.logger.Errorf("Parameter %s validation failed: %s", param.Name, message)
+			}
+			return NewValidationError(param.Name, value, "type", message)
+		}
+
 	case ParameterTypeBoolean:
 		if _, ok := value.(bool); !ok {
 			// Try to convert string to boolean for recovery

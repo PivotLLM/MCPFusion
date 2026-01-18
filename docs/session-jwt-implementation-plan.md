@@ -69,7 +69,6 @@ type SessionJWTStrategy struct {
 // - refreshTokenPath: Path to refresh token in login response
 // - refreshTokenLocation: Where refresh token is: body, cookie
 // - refreshTokenCookieName: Cookie name for refresh token
-// - verifySsl: Whether to verify SSL (default: true)
 ```
 
 **Key methods:**
@@ -129,8 +128,7 @@ multiTenantAuth.RegisterStrategy(sessionJWTStrategy)
           "refreshURL": "/api/users/refreshtoken",
           "refreshMethod": "POST",
           "refreshTokenLocation": "cookie",
-          "refreshTokenCookieName": "refreshToken",
-          "verifySsl": false
+          "refreshTokenCookieName": "refreshToken"
         }
       },
       "endpoints": [...]
@@ -165,6 +163,5 @@ multiTenantAuth.RegisterStrategy(sessionJWTStrategy)
 | Risk | Mitigation |
 |------|------------|
 | Cookie handling complexity | Use standard `http.Cookie` struct |
-| SSL verification bypass | Make it configurable, default to true |
 | Token path extraction errors | Provide clear error messages |
 | Refresh token in cookies | Parse Set-Cookie headers from response |
