@@ -292,12 +292,22 @@ func (dc *DatabaseCache) convertTokenInfoToOAuthTokenData(tokenInfo *TokenInfo) 
 		return nil
 	}
 
+	// Copy metadata if present
+	var metadata map[string]string
+	if len(tokenInfo.Metadata) > 0 {
+		metadata = make(map[string]string, len(tokenInfo.Metadata))
+		for k, v := range tokenInfo.Metadata {
+			metadata[k] = v
+		}
+	}
+
 	return &db.OAuthTokenData{
 		AccessToken:  tokenInfo.AccessToken,
 		RefreshToken: tokenInfo.RefreshToken,
 		TokenType:    tokenInfo.TokenType,
 		ExpiresAt:    tokenInfo.ExpiresAt,
 		Scope:        tokenInfo.Scope,
+		Metadata:     metadata,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -309,13 +319,21 @@ func (dc *DatabaseCache) convertOAuthTokenDataToTokenInfo(tokenData *db.OAuthTok
 		return nil
 	}
 
+	// Copy metadata if present, otherwise initialize empty map
+	metadata := make(map[string]string)
+	if len(tokenData.Metadata) > 0 {
+		for k, v := range tokenData.Metadata {
+			metadata[k] = v
+		}
+	}
+
 	return &TokenInfo{
 		AccessToken:  tokenData.AccessToken,
 		RefreshToken: tokenData.RefreshToken,
 		TokenType:    tokenData.TokenType,
 		ExpiresAt:    tokenData.ExpiresAt,
 		Scope:        tokenData.Scope,
-		Metadata:     make(map[string]string), // Initialize empty metadata
+		Metadata:     metadata,
 	}
 }
 

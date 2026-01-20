@@ -163,11 +163,25 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 		// Extract tenant context from token
 		tenantContext, err := am.authManager.ExtractTenantFromToken(token)
 		if err != nil {
-			if am.logger != nil {
-				am.logger.Errorf("Failed to extract tenant context from token: %v", err)
+			if am.requireAuth {
+				if am.logger != nil {
+					am.logger.Errorf("Failed to extract tenant context from token: %v", err)
+				}
+				am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+				return
 			}
-			am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
-			return
+			// In no-auth mode, fall back to NOAUTH tenant context
+			if am.logger != nil {
+				am.logger.Warningf("Invalid token provided, falling back to NOAUTH tenant context for %s", r.URL.Path)
+			}
+			tenantContext, err = am.authManager.ExtractTenantFromToken("")
+			if err != nil {
+				if am.logger != nil {
+					am.logger.Errorf("Failed to create NOAUTH tenant context: %v", err)
+				}
+				am.writeErrorResponse(w, http.StatusInternalServerError, "Internal error")
+				return
+			}
 		}
 
 		// Add request ID to tenant context
@@ -204,7 +218,7 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 		if err := am.authManager.ValidateTenantAccess(tenantContext, serviceName); err != nil {
 			if am.logger != nil {
 				am.logger.Errorf("Tenant access validation failed for %s service %s: %v",
-					tenantContext.TenantHash[:12]+"...", serviceName, err)
+					tenantContext.ShortHash(), serviceName, err)
 			}
 			am.writeErrorResponse(w, http.StatusForbidden, "Access denied to service")
 			return
@@ -212,7 +226,7 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 
 		if am.logger != nil {
 			am.logger.Debugf("Successfully authenticated tenant %s for service %s (request %s)",
-				tenantContext.TenantHash[:12]+"...", serviceName, tenantContext.RequestID)
+				tenantContext.ShortHash(), serviceName, tenantContext.RequestID)
 		}
 
 		// Add tenant context and service name to request context
@@ -497,11 +511,25 @@ func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
 		// Extract tenant context from token
 		tenantContext, err := am.authManager.ExtractTenantFromToken(token)
 		if err != nil {
-			if am.logger != nil {
-				am.logger.Errorf("Simple Auth: Failed to extract tenant context from token: %v", err)
+			if am.requireAuth {
+				if am.logger != nil {
+					am.logger.Errorf("Simple Auth: Failed to extract tenant context from token: %v", err)
+				}
+				am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+				return
 			}
-			am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
-			return
+			// In no-auth mode, fall back to NOAUTH tenant context
+			if am.logger != nil {
+				am.logger.Warningf("Simple Auth: Invalid token provided, falling back to NOAUTH tenant context for %s", r.URL.Path)
+			}
+			tenantContext, err = am.authManager.ExtractTenantFromToken("")
+			if err != nil {
+				if am.logger != nil {
+					am.logger.Errorf("Simple Auth: Failed to create NOAUTH tenant context: %v", err)
+				}
+				am.writeErrorResponse(w, http.StatusInternalServerError, "Internal error")
+				return
+			}
 		}
 
 		// Add request ID to tenant context

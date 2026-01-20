@@ -153,7 +153,7 @@ func (h *OAuthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 			}
 		}
 		if !serviceFound {
-			h.logger.Errorf("Unknown service '%s' from tenant %s", req.Service, tenantContext.TenantHash[:12])
+			h.logger.Errorf("Unknown service '%s' from tenant %s", req.Service, tenantContext.ShortHash())
 			h.writeErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("Unknown service: %s", req.Service))
 			return
 		}
@@ -171,19 +171,19 @@ func (h *OAuthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 	// Store tokens in database
 	if err := h.database.StoreOAuthToken(tenantContext.TenantHash, req.Service, tokenData); err != nil {
 		h.logger.Errorf("Failed to store OAuth token for tenant %s service %s: %v",
-			tenantContext.TenantHash[:12], req.Service, err)
+			tenantContext.ShortHash(), req.Service, err)
 		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to store tokens")
 		return
 	}
 
 	h.logger.Infof("Successfully stored OAuth tokens for tenant %s service %s",
-		tenantContext.TenantHash[:12], req.Service)
+		tenantContext.ShortHash(), req.Service)
 
 	// Return success response
 	response := TokenResponse{
 		Success: true,
 		Message: "Tokens stored successfully",
-		TokenID: fmt.Sprintf("%s_%s", tenantContext.TenantHash[:12], req.Service),
+		TokenID: fmt.Sprintf("%s_%s", tenantContext.ShortHash(), req.Service),
 	}
 
 	h.writeJSONResponse(w, http.StatusCreated, response)
@@ -206,7 +206,7 @@ func (h *OAuthAPIHandler) handleAuthVerify(w http.ResponseWriter, r *http.Reques
 	response := AuthVerifyResponse{
 		Success:   true,
 		Message:   "Authentication valid",
-		TenantID:  tenantContext.TenantHash[:12] + "...",
+		TenantID:  tenantContext.ShortHash(),
 		ValidTill: "Token-based authentication (no expiration)",
 	}
 
@@ -293,7 +293,7 @@ func (h *OAuthAPIHandler) handleOAuthSuccess(w http.ResponseWriter, r *http.Requ
 
 	serviceName, _ := notification["service"].(string)
 	h.logger.Infof("OAuth success notification for tenant %s service %s",
-		tenantContext.TenantHash[:12], serviceName)
+		tenantContext.ShortHash(), serviceName)
 
 	h.writeJSONResponse(w, http.StatusOK, map[string]interface{}{
 		"success": true,
@@ -326,7 +326,7 @@ func (h *OAuthAPIHandler) handleOAuthError(w http.ResponseWriter, r *http.Reques
 	serviceName, _ := notification["service"].(string)
 	errorMsg, _ := notification["error"].(string)
 	h.logger.Warningf("OAuth error notification for tenant %s service %s: %s",
-		tenantContext.TenantHash[:12], serviceName, errorMsg)
+		tenantContext.ShortHash(), serviceName, errorMsg)
 
 	h.writeJSONResponse(w, http.StatusOK, map[string]interface{}{
 		"success": true,

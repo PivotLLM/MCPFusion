@@ -54,6 +54,18 @@ type PollingContext struct {
 	AuthConfig  map[string]interface{}
 }
 
+// ShortHash returns a truncated version of the tenant hash for logging
+// Safely handles hashes shorter than 12 characters (e.g., "NOAUTH")
+func (pc *PollingContext) ShortHash() string {
+	if pc == nil || pc.TenantHash == "" {
+		return "unknown"
+	}
+	if len(pc.TenantHash) <= 12 {
+		return pc.TenantHash
+	}
+	return pc.TenantHash[:12] + "..."
+}
+
 func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
 	if s.logger != nil {
 		s.logger.Infof("Starting OAuth2 device flow authentication")
@@ -70,7 +82,7 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 			}
 			if s.logger != nil {
 				s.logger.Debugf("Extracted tenant context for background polling: tenant=%s, service=%s",
-					pollingCtx.TenantHash[:12]+"...", pollingCtx.ServiceName)
+					pollingCtx.ShortHash(), pollingCtx.ServiceName)
 			}
 		}
 	}
@@ -753,7 +765,7 @@ func (s *OAuth2DeviceFlowStrategy) storeTokenFromPolling(_ context.Context, toke
 			expiryInfo = "no_expiry"
 		}
 		s.logger.Infof("Storing token from background polling for tenant %s service %s: type=%s, %s, has_refresh=%v",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName,
+			tenantContext.ShortHash(), tenantContext.ServiceName,
 			tokenInfo.TokenType, expiryInfo, tokenInfo.HasRefreshToken())
 	}
 
@@ -762,7 +774,7 @@ func (s *OAuth2DeviceFlowStrategy) storeTokenFromPolling(_ context.Context, toke
 
 	if s.logger != nil {
 		s.logger.Infof("Successfully stored token from background polling for tenant %s service %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	return nil

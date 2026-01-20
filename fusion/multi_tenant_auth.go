@@ -33,13 +33,25 @@ type TenantContext struct {
 	CreatedAt   time.Time         `json:"created_at"`
 }
 
+// ShortHash returns a truncated version of the tenant hash for logging
+// Safely handles hashes shorter than 12 characters (e.g., "NOAUTH")
+func (tc *TenantContext) ShortHash() string {
+	if tc == nil || tc.TenantHash == "" {
+		return "unknown"
+	}
+	if len(tc.TenantHash) <= 12 {
+		return tc.TenantHash
+	}
+	return tc.TenantHash[:12] + "..."
+}
+
 // String returns a string representation of the tenant context
 func (tc *TenantContext) String() string {
 	if tc == nil {
 		return "TenantContext(nil)"
 	}
 	return fmt.Sprintf("TenantContext(tenant=%s, service=%s, request=%s)",
-		tc.TenantHash[:12]+"...", tc.ServiceName, tc.RequestID)
+		tc.ShortHash(), tc.ServiceName, tc.RequestID)
 }
 
 // MultiTenantAuthManager manages authentication for multiple tenants
@@ -88,14 +100,14 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 
 	if mtam.logger != nil {
 		mtam.logger.Debugf("Getting token for tenant %s service %s (auth type: %s)",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, authConfig.Type)
+			tenantContext.ShortHash(), tenantContext.ServiceName, authConfig.Type)
 	}
 
 	// For "none" auth type, return nil token (no authentication needed)
 	if authConfig.Type == AuthTypeNone {
 		if mtam.logger != nil {
 			mtam.logger.Debugf("No authentication required for tenant %s service %s",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 		return nil, nil
 	}
@@ -107,7 +119,7 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 	if !exists {
 		if mtam.logger != nil {
 			mtam.logger.Errorf("Unsupported authentication type for tenant %s service %s: %s",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, authConfig.Type)
+				tenantContext.ShortHash(), tenantContext.ServiceName, authConfig.Type)
 		}
 		return nil, NewAuthenticationError(authConfig.Type, tenantContext.ServiceName,
 			"unsupported authentication type", nil)
@@ -116,13 +128,13 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 	// Check if we have a cached token
 	if mtam.logger != nil {
 		mtam.logger.Debugf("Checking cached token for tenant %s service: %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	if tokenInfo := mtam.getCachedToken(tenantContext); tokenInfo != nil {
 		if mtam.logger != nil {
 			mtam.logger.Debugf("Found cached token for tenant %s service %s",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 
 		// Check if token is expired (with 5-minute buffer)
@@ -133,33 +145,33 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 					expiryInfo = fmt.Sprintf("expires at %s", tokenInfo.ExpiresAt.Format(time.RFC3339))
 				}
 				mtam.logger.Debugf("Using valid cached token for tenant %s service %s (%s)",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, expiryInfo)
+					tenantContext.ShortHash(), tenantContext.ServiceName, expiryInfo)
 			}
 			return tokenInfo, nil
 		}
 
 		if mtam.logger != nil {
 			mtam.logger.Debugf("Cached token for tenant %s service %s is expired, attempting refresh",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 
 		// Try to refresh if supported and we have a refresh token
 		if strategy.SupportsRefresh() && tokenInfo.HasRefreshToken() {
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Attempting to refresh token for tenant %s service: %s",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+					tenantContext.ShortHash(), tenantContext.ServiceName)
 			}
 			if refreshedToken, err := strategy.RefreshToken(ctx, tokenInfo, authConfig.Config); err == nil {
 				mtam.CacheToken(tenantContext, refreshedToken)
 				if mtam.logger != nil {
 					mtam.logger.Infof("Successfully refreshed token for tenant %s service: %s",
-						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+						tenantContext.ShortHash(), tenantContext.ServiceName)
 				}
 				return refreshedToken, nil
 			} else {
 				if mtam.logger != nil {
 					mtam.logger.Warningf("Failed to refresh token for tenant %s service %s: %v",
-						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+						tenantContext.ShortHash(), tenantContext.ServiceName, err)
 				}
 			}
 		} else {
@@ -168,21 +180,21 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 					mtam.logger.Debugf("Token refresh not supported for auth type %s", authConfig.Type)
 				} else {
 					mtam.logger.Debugf("No refresh token available for tenant %s service %s",
-						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+						tenantContext.ShortHash(), tenantContext.ServiceName)
 				}
 			}
 		}
 	} else {
 		if mtam.logger != nil {
 			mtam.logger.Debugf("No cached token found for tenant %s service: %s",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 	}
 
 	// Perform new authentication
 	if mtam.logger != nil {
 		mtam.logger.Infof("Performing new authentication for tenant %s service %s using %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, authConfig.Type)
+			tenantContext.ShortHash(), tenantContext.ServiceName, authConfig.Type)
 	}
 
 	tokenInfo, err := strategy.Authenticate(ctx, authConfig.Config)
@@ -191,14 +203,14 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 		if _, ok := AsDeviceCodeError(err); ok {
 			if mtam.logger != nil {
 				mtam.logger.Infof("Device code authentication required for tenant %s service %s",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+					tenantContext.ShortHash(), tenantContext.ServiceName)
 			}
 			return nil, err // Return DeviceCodeError directly
 		}
 
 		if mtam.logger != nil {
 			mtam.logger.Errorf("Authentication failed for tenant %s service %s: %v",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+				tenantContext.ShortHash(), tenantContext.ServiceName, err)
 		}
 		return nil, NewAuthenticationError(authConfig.Type, tenantContext.ServiceName,
 			"authentication failed", err)
@@ -213,7 +225,7 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 			expiryInfo = fmt.Sprintf("expires at %s", tokenInfo.ExpiresAt.Format(time.RFC3339))
 		}
 		mtam.logger.Infof("Successfully authenticated tenant %s service %s (%s)",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, expiryInfo)
+			tenantContext.ShortHash(), tenantContext.ServiceName, expiryInfo)
 	}
 
 	return tokenInfo, nil
@@ -229,14 +241,14 @@ func (mtam *MultiTenantAuthManager) ApplyAuthentication(ctx context.Context, req
 
 	if mtam.logger != nil {
 		mtam.logger.Debugf("Applying authentication for tenant %s service %s to %s %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, req.Method, req.URL.String())
+			tenantContext.ShortHash(), tenantContext.ServiceName, req.Method, req.URL.String())
 	}
 
 	tokenInfo, err := mtam.GetToken(ctx, tenantContext, authConfig)
 	if err != nil {
 		if mtam.logger != nil {
 			mtam.logger.Errorf("Failed to get token for tenant %s service %s: %v",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+				tenantContext.ShortHash(), tenantContext.ServiceName, err)
 		}
 		return err
 	}
@@ -245,7 +257,7 @@ func (mtam *MultiTenantAuthManager) ApplyAuthentication(ctx context.Context, req
 	if authConfig.Type == AuthTypeNone {
 		if mtam.logger != nil {
 			mtam.logger.Debugf("Skipping authentication for tenant %s service %s (auth type: none)",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 		return nil
 	}
@@ -257,7 +269,7 @@ func (mtam *MultiTenantAuthManager) ApplyAuthentication(ctx context.Context, req
 	if !exists {
 		if mtam.logger != nil {
 			mtam.logger.Errorf("Strategy not found for auth type %s on tenant %s service %s",
-				authConfig.Type, tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				authConfig.Type, tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 		return NewAuthenticationError(authConfig.Type, tenantContext.ServiceName,
 			"strategy not found", nil)
@@ -265,20 +277,20 @@ func (mtam *MultiTenantAuthManager) ApplyAuthentication(ctx context.Context, req
 
 	if mtam.logger != nil {
 		mtam.logger.Debugf("Applying %s authentication to request for tenant %s service %s",
-			authConfig.Type, tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			authConfig.Type, tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	if err := strategy.ApplyAuth(req, tokenInfo); err != nil {
 		if mtam.logger != nil {
 			mtam.logger.Errorf("Failed to apply authentication for tenant %s service %s: %v",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+				tenantContext.ShortHash(), tenantContext.ServiceName, err)
 		}
 		return err
 	}
 
 	if mtam.logger != nil {
 		mtam.logger.Debugf("Successfully applied authentication for tenant %s service %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	return nil
@@ -295,7 +307,7 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 		if err := mtam.db.DeleteOAuthToken(tenantContext.TenantHash, tenantContext.ServiceName); err != nil {
 			if mtam.logger != nil {
 				mtam.logger.Warningf("Failed to delete token from database for tenant %s service %s: %v",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+					tenantContext.ShortHash(), tenantContext.ServiceName, err)
 			}
 		}
 	}
@@ -305,13 +317,13 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 		cacheKey := mtam.buildCacheKey(tenantContext)
 		if err := mtam.cache.Delete(cacheKey); err != nil && mtam.logger != nil {
 			mtam.logger.Warningf("Failed to delete token from cache for tenant %s service %s: %v",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+				tenantContext.ShortHash(), tenantContext.ServiceName, err)
 		}
 	}
 
 	if mtam.logger != nil {
 		mtam.logger.Infof("Invalidated token for tenant %s service: %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 }
 
@@ -322,25 +334,25 @@ func (mtam *MultiTenantAuthManager) getCachedToken(tenantContext *TenantContext)
 		cacheKey := mtam.buildCacheKey(tenantContext)
 		if mtam.logger != nil {
 			mtam.logger.Debugf("Checking cache for tenant %s service: %s",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 		if data, err := mtam.cache.Get(cacheKey); err == nil {
 			if tokenInfo, ok := data.(*TokenInfo); ok {
 				if mtam.logger != nil {
 					mtam.logger.Debugf("Found token in cache for tenant %s service: %s",
-						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+						tenantContext.ShortHash(), tenantContext.ServiceName)
 				}
 				return tokenInfo
 			} else {
 				if mtam.logger != nil {
 					mtam.logger.Warningf("Invalid token data in cache for tenant %s service %s",
-						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+						tenantContext.ShortHash(), tenantContext.ServiceName)
 				}
 			}
 		} else {
 			if mtam.logger != nil {
 				mtam.logger.Debugf("No token found in cache for tenant %s service %s: %v",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+					tenantContext.ShortHash(), tenantContext.ServiceName, err)
 			}
 		}
 	}
@@ -349,13 +361,13 @@ func (mtam *MultiTenantAuthManager) getCachedToken(tenantContext *TenantContext)
 	if mtam.db != nil {
 		if mtam.logger != nil {
 			mtam.logger.Debugf("Checking database for tenant %s service: %s",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 		if tokenData, err := mtam.db.GetOAuthToken(tenantContext.TenantHash, tenantContext.ServiceName); err == nil {
 			tokenInfo := mtam.convertOAuthTokenDataToTokenInfo(tokenData)
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Found token in database for tenant %s service: %s",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+					tenantContext.ShortHash(), tenantContext.ServiceName)
 			}
 			// Cache it for future use
 			if mtam.cache != nil {
@@ -372,14 +384,14 @@ func (mtam *MultiTenantAuthManager) getCachedToken(tenantContext *TenantContext)
 		} else {
 			if mtam.logger != nil {
 				mtam.logger.Debugf("No token found in database for tenant %s service %s: %v",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+					tenantContext.ShortHash(), tenantContext.ServiceName, err)
 			}
 		}
 	}
 
 	if mtam.logger != nil {
 		mtam.logger.Debugf("No cached token found for tenant %s service: %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	return nil
@@ -397,7 +409,7 @@ func (mtam *MultiTenantAuthManager) CacheToken(tenantContext *TenantContext, tok
 			expiryInfo = fmt.Sprintf("expires at %s", tokenInfo.ExpiresAt.Format(time.RFC3339))
 		}
 		mtam.logger.Debugf("Caching token for tenant %s service %s (%s)",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, expiryInfo)
+			tenantContext.ShortHash(), tenantContext.ServiceName, expiryInfo)
 	}
 
 	// Store in database
@@ -406,12 +418,12 @@ func (mtam *MultiTenantAuthManager) CacheToken(tenantContext *TenantContext, tok
 		if err := mtam.db.StoreOAuthToken(tenantContext.TenantHash, tenantContext.ServiceName, tokenData); err != nil {
 			if mtam.logger != nil {
 				mtam.logger.Warningf("Failed to store token in database for tenant %s service %s: %v",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+					tenantContext.ShortHash(), tenantContext.ServiceName, err)
 			}
 		} else {
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Successfully stored token in database for tenant %s service %s",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+					tenantContext.ShortHash(), tenantContext.ServiceName)
 			}
 		}
 	}
@@ -424,25 +436,25 @@ func (mtam *MultiTenantAuthManager) CacheToken(tenantContext *TenantContext, tok
 			ttl = time.Until(*tokenInfo.ExpiresAt)
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Setting cache TTL for tenant %s service %s: %v",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, ttl)
+					tenantContext.ShortHash(), tenantContext.ServiceName, ttl)
 			}
 		} else {
 			ttl = 24 * time.Hour // Default TTL if no expiration
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Using default cache TTL for tenant %s service %s: %v",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, ttl)
+					tenantContext.ShortHash(), tenantContext.ServiceName, ttl)
 			}
 		}
 
 		if err := mtam.cache.Set(cacheKey, tokenInfo, ttl); err != nil {
 			if mtam.logger != nil {
 				mtam.logger.Warningf("Failed to cache token for tenant %s service %s: %v",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+					tenantContext.ShortHash(), tenantContext.ServiceName, err)
 			}
 		} else {
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Successfully cached token for tenant %s service %s",
-					tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+					tenantContext.ShortHash(), tenantContext.ServiceName)
 			}
 		}
 	}
@@ -470,12 +482,22 @@ func (mtam *MultiTenantAuthManager) convertTokenInfoToOAuthTokenData(tokenInfo *
 		return nil
 	}
 
+	// Copy metadata if present
+	var metadata map[string]string
+	if len(tokenInfo.Metadata) > 0 {
+		metadata = make(map[string]string, len(tokenInfo.Metadata))
+		for k, v := range tokenInfo.Metadata {
+			metadata[k] = v
+		}
+	}
+
 	return &db.OAuthTokenData{
 		AccessToken:  tokenInfo.AccessToken,
 		RefreshToken: tokenInfo.RefreshToken,
 		TokenType:    tokenInfo.TokenType,
 		ExpiresAt:    tokenInfo.ExpiresAt,
 		Scope:        tokenInfo.Scope,
+		Metadata:     metadata,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -487,13 +509,21 @@ func (mtam *MultiTenantAuthManager) convertOAuthTokenDataToTokenInfo(tokenData *
 		return nil
 	}
 
+	// Copy metadata if present, otherwise initialize empty map
+	metadata := make(map[string]string)
+	if len(tokenData.Metadata) > 0 {
+		for k, v := range tokenData.Metadata {
+			metadata[k] = v
+		}
+	}
+
 	return &TokenInfo{
 		AccessToken:  tokenData.AccessToken,
 		RefreshToken: tokenData.RefreshToken,
 		TokenType:    tokenData.TokenType,
 		ExpiresAt:    tokenData.ExpiresAt,
 		Scope:        tokenData.Scope,
-		Metadata:     make(map[string]string), // Initialize empty metadata
+		Metadata:     metadata,
 	}
 }
 
@@ -599,7 +629,7 @@ func (mtam *MultiTenantAuthManager) ValidateTenantAccess(tenantContext *TenantCo
 	// In a real implementation, this would check against tenant permissions
 	if mtam.logger != nil {
 		mtam.logger.Debugf("Validated tenant %s access to service %s",
-			tenantContext.TenantHash[:12]+"...", serviceName)
+			tenantContext.ShortHash(), serviceName)
 	}
 
 	return nil

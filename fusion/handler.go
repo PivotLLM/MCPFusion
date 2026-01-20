@@ -109,14 +109,28 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 				if h.fusion.logger != nil {
 					h.fusion.logger.Debugf("Found tenant context for tenant %s service %s [%s]",
-						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID)
+						tenantContext.ShortHash(), tenantContext.ServiceName, correlationID)
 				}
 
 				// Apply authentication using multi-tenant auth manager
-				if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, req, tenantContext, h.service.Auth); err != nil {
+				// Inject baseURL into auth config for strategies that need it (e.g., session_jwt)
+				authConfig := h.service.Auth
+				if authConfig.Config == nil {
+					authConfig.Config = make(map[string]interface{})
+				} else {
+					// Make a copy of the config map to avoid modifying the original
+					configCopy := make(map[string]interface{})
+					for k, v := range authConfig.Config {
+						configCopy[k] = v
+					}
+					authConfig.Config = configCopy
+				}
+				authConfig.Config["baseURL"] = h.service.BaseURL
+
+				if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, req, tenantContext, authConfig); err != nil {
 					if h.fusion.logger != nil {
 						h.fusion.logger.Errorf("Authentication failed for tenant %s service %s [%s]: %v",
-							tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID, err)
+							tenantContext.ShortHash(), tenantContext.ServiceName, correlationID, err)
 					}
 
 					// Check if it's a DeviceCodeError - pass it up for client handling
@@ -129,7 +143,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 				if h.fusion.logger != nil {
 					h.fusion.logger.Debugf("Successfully applied authentication for tenant %s service %s [%s]",
-						tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, correlationID)
+						tenantContext.ShortHash(), tenantContext.ServiceName, correlationID)
 				}
 			} else {
 				if h.fusion.logger != nil {

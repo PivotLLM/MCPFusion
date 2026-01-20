@@ -20,13 +20,14 @@ type APITokenMetadata struct {
 
 // OAuthTokenData represents stored OAuth token information
 type OAuthTokenData struct {
-	AccessToken  string     `json:"access_token"`
-	RefreshToken string     `json:"refresh_token,omitempty"`
-	TokenType    string     `json:"token_type"`
-	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
-	Scope        []string   `json:"scope,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	AccessToken  string            `json:"access_token"`
+	RefreshToken string            `json:"refresh_token,omitempty"`
+	TokenType    string            `json:"token_type"`
+	ExpiresAt    *time.Time        `json:"expires_at,omitempty"`
+	Scope        []string          `json:"scope,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"` // Strategy-specific metadata (e.g., tokenLocation)
+	CreatedAt    time.Time         `json:"created_at"`
+	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
 // IsExpired checks if the OAuth token is expired

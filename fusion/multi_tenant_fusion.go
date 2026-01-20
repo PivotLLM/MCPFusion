@@ -43,7 +43,7 @@ func (mtf *MultiTenantFusion) GetFusionForTenant(tenantContext *TenantContext) (
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Getting fusion instance for tenant %s service %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	// Create a cache key for this tenant-service combination
@@ -57,7 +57,7 @@ func (mtf *MultiTenantFusion) GetFusionForTenant(tenantContext *TenantContext) (
 	if exists {
 		if mtf.logger != nil {
 			mtf.logger.Debugf("Using cached fusion instance for tenant %s service %s",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
 		return fusion, nil
 	}
@@ -67,7 +67,7 @@ func (mtf *MultiTenantFusion) GetFusionForTenant(tenantContext *TenantContext) (
 	if err != nil {
 		if mtf.logger != nil {
 			mtf.logger.Errorf("Failed to create fusion instance for tenant %s service %s: %v",
-				tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName, err)
+				tenantContext.ShortHash(), tenantContext.ServiceName, err)
 		}
 		return nil, fmt.Errorf("failed to create fusion for tenant: %w", err)
 	}
@@ -79,7 +79,7 @@ func (mtf *MultiTenantFusion) GetFusionForTenant(tenantContext *TenantContext) (
 
 	if mtf.logger != nil {
 		mtf.logger.Infof("Created and cached new fusion instance for tenant %s service %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	return fusion, nil
@@ -91,7 +91,7 @@ func (mtf *MultiTenantFusion) CallTool(_ context.Context, tenantContext *TenantC
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Calling tool %s for tenant %s service %s",
-			toolName, tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			toolName, tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	fusion, err := mtf.GetFusionForTenant(tenantContext)
@@ -115,7 +115,7 @@ func (mtf *MultiTenantFusion) GetResource(_ context.Context, tenantContext *Tena
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Getting resource %s for tenant %s service %s",
-			resourceURI, tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			resourceURI, tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	fusion, err := mtf.GetFusionForTenant(tenantContext)
@@ -151,7 +151,7 @@ func (mtf *MultiTenantFusion) GetPrompt(_ context.Context, tenantContext *Tenant
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Getting prompt %s for tenant %s service %s",
-			promptName, tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			promptName, tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	fusion, err := mtf.GetFusionForTenant(tenantContext)
@@ -186,7 +186,7 @@ func (mtf *MultiTenantFusion) InvalidateTenantCache(tenantContext *TenantContext
 
 	if mtf.logger != nil {
 		mtf.logger.Infof("Invalidated cache for tenant %s service %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 }
 
@@ -245,7 +245,7 @@ func (mtf *MultiTenantFusion) createTenantFusion(tenantContext *TenantContext) (
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Created fusion instance for tenant %s service %s",
-			tenantContext.TenantHash[:12]+"...", tenantContext.ServiceName)
+			tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
 	return fusion, nil

@@ -74,7 +74,7 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 
 			if config.logger != nil {
 				config.logger.Debugf("MCP Auth: Processing tool call %s for tenant %s",
-					request.Params.Name, tenantContext.TenantHash[:12]+"...")
+					request.Params.Name, tenantContext.ShortHash())
 			}
 
 			// Extract service name from tool name
@@ -124,7 +124,7 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 				if err := config.authManager.ValidateTenantAccess(tenantContext, serviceName); err != nil {
 					if config.logger != nil {
 						config.logger.Errorf("MCP Auth: Tenant access validation failed for %s service %s: %v",
-							tenantContext.TenantHash[:12]+"...", serviceName, err)
+							tenantContext.ShortHash(), serviceName, err)
 					}
 					return nil, fmt.Errorf("access denied to service: %s", serviceName)
 				}
@@ -132,7 +132,7 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 
 			if config.logger != nil {
 				config.logger.Debugf("MCP Auth: Successfully validated tenant %s access to service %s for tool %s",
-					tenantContext.TenantHash[:12]+"...", serviceName, request.Params.Name)
+					tenantContext.ShortHash(), serviceName, request.Params.Name)
 			}
 
 			// Add service name to context for downstream handlers
