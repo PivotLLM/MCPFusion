@@ -29,6 +29,9 @@ const (
 	AuthTypeNone         AuthType = "none"
 )
 
+// DefaultTokenInvalidationStatusCodes defines HTTP status codes that trigger token invalidation by default
+var DefaultTokenInvalidationStatusCodes = []int{http.StatusUnauthorized} // 401
+
 // ParameterType represents the type of a parameter
 type ParameterType string
 
@@ -100,10 +103,17 @@ type CommandConfig struct {
 	Parameters  []ParameterConfig `json:"parameters"`
 }
 
+// TokenInvalidationConfig represents configuration for automatic token invalidation
+type TokenInvalidationConfig struct {
+	StatusCodes         []int `json:"statusCodes,omitempty"`
+	RetryOnInvalidation bool  `json:"retryOnInvalidation"`
+}
+
 // AuthConfig represents authentication configuration
 type AuthConfig struct {
-	Type   AuthType               `json:"type"`
-	Config map[string]interface{} `json:"config"`
+	Type              AuthType                 `json:"type"`
+	Config            map[string]interface{}   `json:"config"`
+	TokenInvalidation *TokenInvalidationConfig `json:"tokenInvalidation,omitempty"`
 }
 
 // EndpointConfig represents configuration for a single API endpoint
@@ -680,6 +690,24 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 // Validate validates an auth configuration
 func (a *AuthConfig) Validate() error {
 	return a.ValidateWithLogger("", nil)
+}
+
+// GetEffectiveTokenInvalidationConfig returns the effective token invalidation configuration
+// Returns configured values with defaults for missing fields, or defaults if not configured
+func (a *AuthConfig) GetEffectiveTokenInvalidationConfig() *TokenInvalidationConfig {
+	if a.TokenInvalidation != nil {
+		// Use configured values, with defaults for missing fields
+		config := *a.TokenInvalidation
+		if len(config.StatusCodes) == 0 {
+			config.StatusCodes = DefaultTokenInvalidationStatusCodes
+		}
+		return &config
+	}
+	// Return default config
+	return &TokenInvalidationConfig{
+		StatusCodes:         DefaultTokenInvalidationStatusCodes,
+		RetryOnInvalidation: true,
+	}
 }
 
 // ValidateWithLogger validates an endpoint configuration with logging support
