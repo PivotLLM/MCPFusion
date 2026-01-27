@@ -137,10 +137,7 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 		},
 	}
 
-	fusion, err := New(config)
-	if err != nil {
-		t.Fatalf("Failed to create fusion: %v", err)
-	}
+	fusion := New(WithConfig(config))
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -148,14 +145,14 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 
 	// Create a context with tenant information
 	tenantContext := &TenantContext{
-		TenantHash:  []byte("test_tenant_hash"),
+		TenantHash:  "test_tenant_hash",
 		ServiceName: "test_service",
 		RequestID:   "test_request",
 	}
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	_, err = handler.Handle(ctx, map[string]interface{}{})
+	_, err := handler.Handle(ctx, map[string]interface{}{})
 
 	// We expect success after retry (or specific error if multiTenantAuth is not set up)
 	// In this test without full multiTenantAuth setup, we'll get an auth error
@@ -204,10 +201,7 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 		},
 	}
 
-	fusion, err := New(config)
-	if err != nil {
-		t.Fatalf("Failed to create fusion: %v", err)
-	}
+	fusion := New(WithConfig(config))
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -215,14 +209,14 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 
 	// Create a context with tenant information
 	tenantContext := &TenantContext{
-		TenantHash:  []byte("test_tenant_hash"),
+		TenantHash:  "test_tenant_hash",
 		ServiceName: "test_service",
 		RequestID:   "test_request",
 	}
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	_, err = handler.Handle(ctx, map[string]interface{}{})
+	_, err := handler.Handle(ctx, map[string]interface{}{})
 
 	// Should fail without retry
 	if err == nil {
@@ -299,17 +293,14 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 				},
 			}
 
-			fusion, err := New(config)
-			if err != nil {
-				t.Fatalf("Failed to create fusion: %v", err)
-			}
+			fusion := New(WithConfig(config))
 
 			service := config.Services["test_service"]
 			endpoint := &service.Endpoints[0]
 			handler := NewHTTPHandler(fusion, service, endpoint)
 
 			tenantContext := &TenantContext{
-				TenantHash:  []byte("test_tenant_hash"),
+				TenantHash:  "test_tenant_hash",
 				ServiceName: "test_service",
 				RequestID:   "test_request",
 			}
@@ -357,10 +348,7 @@ func TestHTTPHandler_PrepareAuthConfig(t *testing.T) {
 		},
 	}
 
-	fusion, err := New(config)
-	if err != nil {
-		t.Fatalf("Failed to create fusion: %v", err)
-	}
+	fusion := New(WithConfig(config))
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -472,10 +460,7 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 		},
 	}
 
-	fusion, err := New(config)
-	if err != nil {
-		t.Fatalf("Failed to create fusion: %v", err)
-	}
+	fusion := New(WithConfig(config))
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -485,7 +470,7 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 	handler.fusion.multiTenantAuth = nil
 
 	tenantContext := &TenantContext{
-		TenantHash:  []byte("test_tenant_hash"),
+		TenantHash:  "test_tenant_hash",
 		ServiceName: "test_service",
 		RequestID:   "test_request",
 	}
@@ -535,10 +520,7 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 		},
 	}
 
-	fusion, err := New(config)
-	if err != nil {
-		t.Fatalf("Failed to create fusion: %v", err)
-	}
+	fusion := New(WithConfig(config))
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -549,7 +531,7 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 	cancel() // Cancel immediately
 
 	tenantContext := &TenantContext{
-		TenantHash:  []byte("test_tenant_hash"),
+		TenantHash:  "test_tenant_hash",
 		ServiceName: "test_service",
 		RequestID:   "test_request",
 	}
