@@ -108,6 +108,33 @@ MS365_TENANT_ID=your-tenant-id
 6. **Bearer Token Authentication**: Standard Authorization: Bearer <token> headers required
 7. **Provider Creation**: Simply use `New()` - multi-tenant auth is automatic
 
+## Code Quality Requirements
+
+**CRITICAL**: All code MUST compile and pass tests before being committed. This is non-negotiable.
+
+### Pre-Commit Checklist
+
+Before committing any code changes:
+
+1. **Compilation Check**: Run `go build ./...` to ensure all packages compile
+2. **Test Execution**: Run `go test ./...` to ensure all tests pass
+3. **Type Safety**: Verify all function calls match their signatures
+4. **Variable Declarations**: Ensure all variables are properly declared before use
+
+### Common Issues to Avoid
+
+- **Function Signature Mismatches**: Always check the actual return values of functions (e.g., `New()` returns `*Fusion`, not `(*Fusion, error)`)
+- **Type Mismatches**: Verify field types match struct definitions (e.g., `TenantHash` is `string`, not `[]byte`)
+- **Undefined Variables**: Use `:=` for new variable declarations, `=` for assignments to existing variables
+- **Nil Checks**: Add nil checks for optional dependencies like `multiTenantAuth` before calling methods
+
+### Testing Standards
+
+- All new features must include comprehensive unit tests
+- Tests must cover success cases, error cases, and edge cases
+- Mock external dependencies appropriately
+- Use table-driven tests for multiple scenarios
+
 ## Multi-Tenant Authentication
 
 MCPFusion provides multi-tenant authentication (keyed to the user's API key) with the following components:

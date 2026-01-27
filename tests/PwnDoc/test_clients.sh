@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #*******************************************************************************
-# Copyright (c) 2025 Tenebris Technologies Inc.                                *
+# Copyright (c) 2025-2026 Tenebris Technologies Inc.                           *
 # Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
