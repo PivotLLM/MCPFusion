@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Copyright (c) 2025-2026 Tenebris Technologies Inc.                         *
  * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
@@ -231,10 +231,10 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 
 func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 	tests := []struct {
-		name           string
-		statusCode     int
+		name             string
+		statusCode       int
 		shouldInvalidate bool
-		configuredCodes []int
+		configuredCodes  []int
 	}{
 		{
 			name:             "401 should invalidate",
@@ -619,10 +619,10 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 
 func TestTokenInvalidationConfig_RetryDelay(t *testing.T) {
 	tests := []struct {
-		name             string
-		jsonData         string
-		wantRetryDelay   time.Duration
-		wantError        bool
+		name           string
+		jsonData       string
+		wantRetryDelay time.Duration
+		wantError      bool
 	}{
 		{
 			name: "custom retry delay",

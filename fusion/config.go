@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Copyright (c) 2025-2026 Tenebris Technologies Inc.                         *
  * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
@@ -706,7 +706,7 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 				}
 				return fmt.Errorf("session_jwt with tokenLocation=query requires queryParam")
 			}
-		// "header" doesn't require additional fields - defaults to Authorization header
+			// "header" doesn't require additional fields - defaults to Authorization header
 		}
 		if logger != nil {
 			logger.Debugf("Service %s: session_jwt auth configuration validated", serviceName)
