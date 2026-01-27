@@ -482,7 +482,7 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// This should not panic even with nil multiTenantAuth
-	_, err = handler.Handle(ctx, map[string]interface{}{})
+	_, err := handler.Handle(ctx, map[string]interface{}{})
 
 	// We expect an error due to no auth being configured
 	if err == nil {
