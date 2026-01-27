@@ -56,20 +56,23 @@ func (tc *TenantContext) String() string {
 
 // MultiTenantAuthManager manages authentication for multiple tenants
 type MultiTenantAuthManager struct {
-	db         *db.DB
-	strategies map[AuthType]AuthStrategy
-	cache      Cache
-	logger     global.Logger
-	mu         sync.RWMutex
+	db                  *db.DB
+	strategies          map[AuthType]AuthStrategy
+	cache               Cache
+	logger              global.Logger
+	mu                  sync.RWMutex
+	invalidationLocks   map[string]*sync.Mutex // Per-tenant token invalidation locks
+	invalidationLocksMu sync.Mutex             // Protects the invalidationLocks map
 }
 
 // NewMultiTenantAuthManager creates a new multi-tenant authentication manager
 func NewMultiTenantAuthManager(database *db.DB, cache Cache, logger global.Logger) *MultiTenantAuthManager {
 	return &MultiTenantAuthManager{
-		db:         database,
-		strategies: make(map[AuthType]AuthStrategy),
-		cache:      cache,
-		logger:     logger,
+		db:                database,
+		strategies:        make(map[AuthType]AuthStrategy),
+		cache:             cache,
+		logger:            logger,
+		invalidationLocks: make(map[string]*sync.Mutex),
 	}
 }
 
@@ -302,6 +305,21 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 		return
 	}
 
+	// Get or create a per-tenant lock to prevent concurrent invalidation attempts
+	lockKey := fmt.Sprintf("%s:%s", tenantContext.TenantHash, tenantContext.ServiceName)
+
+	mtam.invalidationLocksMu.Lock()
+	lock, exists := mtam.invalidationLocks[lockKey]
+	if !exists {
+		lock = &sync.Mutex{}
+		mtam.invalidationLocks[lockKey] = lock
+	}
+	mtam.invalidationLocksMu.Unlock()
+
+	// Lock for this specific tenant+service combination
+	lock.Lock()
+	defer lock.Unlock()
+
 	// Delete from database
 	if mtam.db != nil {
 		if err := mtam.db.DeleteOAuthToken(tenantContext.TenantHash, tenantContext.ServiceName); err != nil {
@@ -321,6 +339,7 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 		}
 	}
 
+	// Log at INFO level for security audit trail
 	if mtam.logger != nil {
 		mtam.logger.Infof("Invalidated token for tenant %s service: %s",
 			tenantContext.ShortHash(), tenantContext.ServiceName)

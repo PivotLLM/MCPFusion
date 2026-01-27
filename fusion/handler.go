@@ -263,6 +263,11 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 						return "", fmt.Errorf("request cancelled before retry: %w", ctx.Err())
 					}
 
+					// Apply retry delay to avoid overwhelming the auth server
+					if tokenInvalidationConfig.RetryDelay > 0 {
+						time.Sleep(tokenInvalidationConfig.RetryDelay)
+					}
+
 					if h.fusion.logger != nil {
 						h.fusion.logger.Infof("Retrying request with fresh authentication [%s]", correlationID)
 					}
@@ -277,7 +282,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 						if h.fusion.logger != nil {
 							h.fusion.logger.Errorf("Failed to rebuild request for retry [%s]: %v", correlationID, err)
 						}
-						return "", err
+						return "", fmt.Errorf("retry failed: failed to rebuild request: %w", err)
 					}
 
 					// Re-apply authentication

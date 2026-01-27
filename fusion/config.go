@@ -104,9 +104,52 @@ type CommandConfig struct {
 }
 
 // TokenInvalidationConfig represents configuration for automatic token invalidation
+// When specific HTTP status codes are encountered, the cached/stored token can be automatically
+// invalidated and optionally a retry attempted with fresh authentication.
 type TokenInvalidationConfig struct {
-	StatusCodes         []int `json:"statusCodes,omitempty"`
-	RetryOnInvalidation bool  `json:"retryOnInvalidation"`
+	// StatusCodes lists HTTP status codes that should trigger token invalidation.
+	// If empty, defaults to [401] (Unauthorized).
+	// Common values: 401 (Unauthorized), 403 (Forbidden)
+	StatusCodes []int `json:"statusCodes,omitempty"`
+
+	// RetryOnInvalidation determines whether to automatically retry the request with
+	// fresh authentication after invalidating the token.
+	// Set to false for APIs that implement rate limiting after authentication failures,
+	// or when you want to handle auth failures explicitly without automatic retries.
+	// Default: true
+	RetryOnInvalidation bool `json:"retryOnInvalidation"`
+
+	// RetryDelay specifies the delay before retrying with fresh authentication.
+	// Helps prevent overwhelming the authentication server.
+	// If not specified or empty, defaults to 100ms.
+	// Example values: "100ms", "500ms", "1s"
+	RetryDelay    time.Duration `json:"-"`
+	RetryDelayStr string        `json:"retryDelay,omitempty"`
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for TokenInvalidationConfig
+func (t *TokenInvalidationConfig) UnmarshalJSON(data []byte) error {
+	type Alias TokenInvalidationConfig
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Parse RetryDelay string to duration
+	if t.RetryDelayStr != "" {
+		duration, err := time.ParseDuration(t.RetryDelayStr)
+		if err != nil {
+			return fmt.Errorf("invalid retryDelay duration '%s': %w", t.RetryDelayStr, err)
+		}
+		t.RetryDelay = duration
+	}
+
+	return nil
 }
 
 // AuthConfig represents authentication configuration
@@ -701,12 +744,16 @@ func (a *AuthConfig) GetEffectiveTokenInvalidationConfig() *TokenInvalidationCon
 		if len(config.StatusCodes) == 0 {
 			config.StatusCodes = DefaultTokenInvalidationStatusCodes
 		}
+		if config.RetryDelay == 0 {
+			config.RetryDelay = 100 * time.Millisecond // Default 100ms delay
+		}
 		return &config
 	}
 	// Return default config
 	return &TokenInvalidationConfig{
 		StatusCodes:         DefaultTokenInvalidationStatusCodes,
 		RetryOnInvalidation: true,
+		RetryDelay:          100 * time.Millisecond,
 	}
 }
 

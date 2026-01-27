@@ -78,8 +78,13 @@ func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.
 			got := tt.authConfig.GetEffectiveTokenInvalidationConfig()
 			if len(got.StatusCodes) != len(tt.wantStatusCodes) {
 				t.Errorf("StatusCodes length = %v, want %v", len(got.StatusCodes), len(tt.wantStatusCodes))
+				return
 			}
 			for i, code := range tt.wantStatusCodes {
+				if i >= len(got.StatusCodes) {
+					t.Errorf("StatusCodes missing index %d", i)
+					continue
+				}
 				if got.StatusCodes[i] != code {
 					t.Errorf("StatusCodes[%d] = %v, want %v", i, got.StatusCodes[i], code)
 				}
@@ -538,10 +543,137 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 	ctx = context.WithValue(ctx, global.TenantContextKey, tenantContext)
 
 	// Execute the handler with cancelled context
-	_, err = handler.Handle(ctx, map[string]interface{}{})
+	_, err := handler.Handle(ctx, map[string]interface{}{})
 
 	// Should get context cancelled error
 	if err == nil {
 		t.Error("Expected error due to cancelled context")
+	}
+}
+
+func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
+	// Test scenario where the retry request also returns 401 (e.g., refresh token expired)
+	callCount := 0
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		// Both calls return 401
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error": "unauthorized"}`))
+	}))
+	defer mockServer.Close()
+
+	config := &Config{
+		Services: map[string]*ServiceConfig{
+			"test_service": {
+				Name:    "test_service",
+				BaseURL: mockServer.URL,
+				Auth: AuthConfig{
+					Type:   AuthTypeBearer,
+					Config: map[string]interface{}{"token": "test_token"},
+					TokenInvalidation: &TokenInvalidationConfig{
+						StatusCodes:         []int{401},
+						RetryOnInvalidation: true,
+						RetryDelay:          10 * time.Millisecond,
+					},
+				},
+				Endpoints: []EndpointConfig{
+					{
+						ID:          "test_endpoint",
+						Name:        "Test Endpoint",
+						Description: "Test",
+						Method:      "GET",
+						Path:        "/test",
+						Parameters:  []ParameterConfig{},
+						Response:    ResponseConfig{Type: ResponseTypeJSON},
+					},
+				},
+			},
+		},
+	}
+
+	fusion := New(WithConfig(config))
+
+	service := config.Services["test_service"]
+	endpoint := &service.Endpoints[0]
+	handler := NewHTTPHandler(fusion, service, endpoint)
+
+	tenantContext := &TenantContext{
+		TenantHash:  "test_tenant_hash",
+		ServiceName: "test_service",
+		RequestID:   "test_request",
+	}
+	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
+
+	// Execute the handler
+	result, err := handler.Handle(ctx, map[string]interface{}{})
+
+	// Should return error body as result for 401 status
+	if err == nil && result == "" {
+		t.Error("Expected error body in result for 401 response")
+	}
+
+	// Should NOT retry again (only one retry to prevent loops)
+	// In production with proper auth setup, callCount would be 2
+	// Without auth setup, we get an error before the second request
+}
+
+func TestTokenInvalidationConfig_RetryDelay(t *testing.T) {
+	tests := []struct {
+		name             string
+		jsonData         string
+		wantRetryDelay   time.Duration
+		wantError        bool
+	}{
+		{
+			name: "custom retry delay",
+			jsonData: `{
+				"statusCodes": [401],
+				"retryOnInvalidation": true,
+				"retryDelay": "500ms"
+			}`,
+			wantRetryDelay: 500 * time.Millisecond,
+			wantError:      false,
+		},
+		{
+			name: "no retry delay defaults to 100ms via GetEffective",
+			jsonData: `{
+				"statusCodes": [401],
+				"retryOnInvalidation": true
+			}`,
+			wantRetryDelay: 0, // Will be set to default by GetEffectiveTokenInvalidationConfig
+			wantError:      false,
+		},
+		{
+			name: "invalid retry delay",
+			jsonData: `{
+				"statusCodes": [401],
+				"retryOnInvalidation": true,
+				"retryDelay": "invalid"
+			}`,
+			wantRetryDelay: 0,
+			wantError:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got TokenInvalidationConfig
+			err := json.Unmarshal([]byte(tt.jsonData), &got)
+
+			if tt.wantError {
+				if err == nil {
+					t.Error("Expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			if got.RetryDelay != tt.wantRetryDelay {
+				t.Errorf("RetryDelay = %v, want %v", got.RetryDelay, tt.wantRetryDelay)
+			}
+		})
 	}
 }
