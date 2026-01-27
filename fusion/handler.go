@@ -46,6 +46,23 @@ func NewHTTPHandler(fusion *Fusion, service *ServiceConfig, endpoint *EndpointCo
 	}
 }
 
+// prepareAuthConfig creates a copy of the auth config with baseURL injected
+func (h *HTTPHandler) prepareAuthConfig() AuthConfig {
+	authConfig := h.service.Auth
+	if authConfig.Config == nil {
+		authConfig.Config = make(map[string]interface{})
+	} else {
+		// Make a copy of the config map to avoid modifying the original
+		configCopy := make(map[string]interface{})
+		for k, v := range authConfig.Config {
+			configCopy[k] = v
+		}
+		authConfig.Config = configCopy
+	}
+	authConfig.Config["baseURL"] = h.service.BaseURL
+	return authConfig
+}
+
 // Handle processes an HTTP request based on the endpoint configuration
 func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
 	// Generate correlation ID for request tracking
@@ -114,18 +131,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 				// Apply authentication using multi-tenant auth manager
 				// Inject baseURL into auth config for strategies that need it (e.g., session_jwt)
-				authConfig := h.service.Auth
-				if authConfig.Config == nil {
-					authConfig.Config = make(map[string]interface{})
-				} else {
-					// Make a copy of the config map to avoid modifying the original
-					configCopy := make(map[string]interface{})
-					for k, v := range authConfig.Config {
-						configCopy[k] = v
-					}
-					authConfig.Config = configCopy
-				}
-				authConfig.Config["baseURL"] = h.service.BaseURL
+				authConfig := h.prepareAuthConfig()
 
 				if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, req, tenantContext, authConfig); err != nil {
 					if h.fusion.logger != nil {
@@ -240,8 +246,10 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		// Get tenant context for invalidation
 		if tenantContextValue := ctx.Value(global.TenantContextKey); tenantContextValue != nil {
 			if tenantContext, ok := tenantContextValue.(*TenantContext); ok {
-				// Invalidate the cached token
-				h.fusion.multiTenantAuth.InvalidateToken(tenantContext)
+				// Invalidate the cached token (with nil check)
+				if h.fusion.multiTenantAuth != nil {
+					h.fusion.multiTenantAuth.InvalidateToken(tenantContext)
+				}
 
 				if h.fusion.logger != nil {
 					h.fusion.logger.Debugf("Token invalidated due to %d response for tenant %s service %s [%s]",
@@ -261,6 +269,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 					// Close the original response body before retry
 					_ = resp.Body.Close()
+					responseToClose = nil // Prevent double-close in defer
 
 					// Rebuild the request
 					retryReq, err := h.buildRequest(ctx, args)
@@ -275,17 +284,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 					tenantContext.ServiceName = h.service.Name
 					tenantContext.RequestID = correlationID
 
-					authConfig := h.service.Auth
-					if authConfig.Config == nil {
-						authConfig.Config = make(map[string]interface{})
-					} else {
-						configCopy := make(map[string]interface{})
-						for k, v := range authConfig.Config {
-							configCopy[k] = v
-						}
-						authConfig.Config = configCopy
-					}
-					authConfig.Config["baseURL"] = h.service.BaseURL
+					authConfig := h.prepareAuthConfig()
 
 					if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, retryReq, tenantContext, authConfig); err != nil {
 						if h.fusion.logger != nil {
