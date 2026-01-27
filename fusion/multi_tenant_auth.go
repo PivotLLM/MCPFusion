@@ -56,23 +56,22 @@ func (tc *TenantContext) String() string {
 
 // MultiTenantAuthManager manages authentication for multiple tenants
 type MultiTenantAuthManager struct {
-	db                  *db.DB
-	strategies          map[AuthType]AuthStrategy
-	cache               Cache
-	logger              global.Logger
-	mu                  sync.RWMutex
-	invalidationLocks   map[string]*sync.Mutex // Per-tenant token invalidation locks
-	invalidationLocksMu sync.Mutex             // Protects the invalidationLocks map
+	db                *db.DB
+	strategies        map[AuthType]AuthStrategy
+	cache             Cache
+	logger            global.Logger
+	mu                sync.RWMutex
+	invalidationLocks sync.Map // Per-tenant token invalidation locks (key: string, value: *sync.Mutex)
 }
 
 // NewMultiTenantAuthManager creates a new multi-tenant authentication manager
 func NewMultiTenantAuthManager(database *db.DB, cache Cache, logger global.Logger) *MultiTenantAuthManager {
 	return &MultiTenantAuthManager{
-		db:                database,
-		strategies:        make(map[AuthType]AuthStrategy),
-		cache:             cache,
-		logger:            logger,
-		invalidationLocks: make(map[string]*sync.Mutex),
+		db:         database,
+		strategies: make(map[AuthType]AuthStrategy),
+		cache:      cache,
+		logger:     logger,
+		// invalidationLocks is a sync.Map and doesn't need initialization
 	}
 }
 
@@ -308,17 +307,18 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 	// Get or create a per-tenant lock to prevent concurrent invalidation attempts
 	lockKey := fmt.Sprintf("%s:%s", tenantContext.TenantHash, tenantContext.ServiceName)
 
-	mtam.invalidationLocksMu.Lock()
-	lock, exists := mtam.invalidationLocks[lockKey]
-	if !exists {
-		lock = &sync.Mutex{}
-		mtam.invalidationLocks[lockKey] = lock
-	}
-	mtam.invalidationLocksMu.Unlock()
+	// Use LoadOrStore for atomic get-or-create
+	lockValue, _ := mtam.invalidationLocks.LoadOrStore(lockKey, &sync.Mutex{})
+	lock := lockValue.(*sync.Mutex)
 
 	// Lock for this specific tenant+service combination
 	lock.Lock()
-	defer lock.Unlock()
+	defer func() {
+		lock.Unlock()
+		// Clean up the lock from the map after use to prevent unbounded growth
+		// This is safe because if another goroutine needs it, LoadOrStore will create a new one
+		mtam.invalidationLocks.Delete(lockKey)
+	}()
 
 	// Delete from database
 	if mtam.db != nil {

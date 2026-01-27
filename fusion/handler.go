@@ -265,7 +265,12 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 					// Apply retry delay to avoid overwhelming the auth server
 					if tokenInvalidationConfig.RetryDelay > 0 {
-						time.Sleep(tokenInvalidationConfig.RetryDelay)
+						select {
+						case <-time.After(tokenInvalidationConfig.RetryDelay):
+							// Continue with retry after delay
+						case <-ctx.Done():
+							return "", fmt.Errorf("request cancelled during retry delay: %w", ctx.Err())
+						}
 					}
 
 					if h.fusion.logger != nil {
