@@ -23,6 +23,10 @@
           "refreshMethod": "POST",
           "refreshTokenLocation": "cookie",
           "refreshTokenCookieName": "refreshToken"
+        },
+        "tokenInvalidation": {
+          "statusCodes": [401],
+          "retryOnInvalidation": true
         }
       },
       "endpoints": [

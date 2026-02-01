@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Copyright (c) 2025-2026 Tenebris Technologies Inc.                         *
  * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
@@ -56,11 +56,12 @@ func (tc *TenantContext) String() string {
 
 // MultiTenantAuthManager manages authentication for multiple tenants
 type MultiTenantAuthManager struct {
-	db         *db.DB
-	strategies map[AuthType]AuthStrategy
-	cache      Cache
-	logger     global.Logger
-	mu         sync.RWMutex
+	db                *db.DB
+	strategies        map[AuthType]AuthStrategy
+	cache             Cache
+	logger            global.Logger
+	mu                sync.RWMutex
+	invalidationLocks sync.Map // Per-tenant token invalidation locks (key: string, value: *sync.Mutex)
 }
 
 // NewMultiTenantAuthManager creates a new multi-tenant authentication manager
@@ -70,6 +71,7 @@ func NewMultiTenantAuthManager(database *db.DB, cache Cache, logger global.Logge
 		strategies: make(map[AuthType]AuthStrategy),
 		cache:      cache,
 		logger:     logger,
+		// invalidationLocks is a sync.Map and doesn't need initialization
 	}
 }
 
@@ -302,6 +304,22 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 		return
 	}
 
+	// Get or create a per-tenant lock to prevent concurrent invalidation attempts
+	lockKey := fmt.Sprintf("%s:%s", tenantContext.TenantHash, tenantContext.ServiceName)
+
+	// Use LoadOrStore for atomic get-or-create
+	lockValue, _ := mtam.invalidationLocks.LoadOrStore(lockKey, &sync.Mutex{})
+	lock := lockValue.(*sync.Mutex)
+
+	// Lock for this specific tenant+service combination
+	lock.Lock()
+	defer func() {
+		lock.Unlock()
+		// Clean up the lock from the map after use to prevent unbounded growth
+		// This is safe because if another goroutine needs it, LoadOrStore will create a new one
+		mtam.invalidationLocks.Delete(lockKey)
+	}()
+
 	// Delete from database
 	if mtam.db != nil {
 		if err := mtam.db.DeleteOAuthToken(tenantContext.TenantHash, tenantContext.ServiceName); err != nil {
@@ -321,6 +339,7 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 		}
 	}
 
+	// Log at INFO level for security audit trail
 	if mtam.logger != nil {
 		mtam.logger.Infof("Invalidated token for tenant %s service: %s",
 			tenantContext.ShortHash(), tenantContext.ServiceName)

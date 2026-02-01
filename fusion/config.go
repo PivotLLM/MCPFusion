@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Copyright (c) 2025-2026 Tenebris Technologies Inc.                         *
  * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
@@ -28,6 +28,9 @@ const (
 	AuthTypeSessionJWT   AuthType = "session_jwt"
 	AuthTypeNone         AuthType = "none"
 )
+
+// DefaultTokenInvalidationStatusCodes defines HTTP status codes that trigger token invalidation by default
+var DefaultTokenInvalidationStatusCodes = []int{http.StatusUnauthorized} // 401
 
 // ParameterType represents the type of a parameter
 type ParameterType string
@@ -100,10 +103,60 @@ type CommandConfig struct {
 	Parameters  []ParameterConfig `json:"parameters"`
 }
 
+// TokenInvalidationConfig represents configuration for automatic token invalidation
+// When specific HTTP status codes are encountered, the cached/stored token can be automatically
+// invalidated and optionally a retry attempted with fresh authentication.
+type TokenInvalidationConfig struct {
+	// StatusCodes lists HTTP status codes that should trigger token invalidation.
+	// If empty, defaults to [401] (Unauthorized).
+	// Common values: 401 (Unauthorized), 403 (Forbidden)
+	StatusCodes []int `json:"statusCodes,omitempty"`
+
+	// RetryOnInvalidation determines whether to automatically retry the request with
+	// fresh authentication after invalidating the token.
+	// Set to false for APIs that implement rate limiting after authentication failures,
+	// or when you want to handle auth failures explicitly without automatic retries.
+	// Default: true
+	RetryOnInvalidation bool `json:"retryOnInvalidation"`
+
+	// RetryDelay specifies the delay before retrying with fresh authentication.
+	// Helps prevent overwhelming the authentication server.
+	// If not specified or empty, defaults to 100ms.
+	// Example values: "100ms", "500ms", "1s"
+	RetryDelay    time.Duration `json:"-"`
+	RetryDelayStr string        `json:"retryDelay,omitempty"`
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for TokenInvalidationConfig
+func (t *TokenInvalidationConfig) UnmarshalJSON(data []byte) error {
+	type Alias TokenInvalidationConfig
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Parse RetryDelay string to duration
+	if t.RetryDelayStr != "" {
+		duration, err := time.ParseDuration(t.RetryDelayStr)
+		if err != nil {
+			return fmt.Errorf("invalid retryDelay duration '%s': %w", t.RetryDelayStr, err)
+		}
+		t.RetryDelay = duration
+	}
+
+	return nil
+}
+
 // AuthConfig represents authentication configuration
 type AuthConfig struct {
-	Type   AuthType               `json:"type"`
-	Config map[string]interface{} `json:"config"`
+	Type              AuthType                 `json:"type"`
+	Config            map[string]interface{}   `json:"config"`
+	TokenInvalidation *TokenInvalidationConfig `json:"tokenInvalidation,omitempty"`
 }
 
 // EndpointConfig represents configuration for a single API endpoint
@@ -653,7 +706,7 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 				}
 				return fmt.Errorf("session_jwt with tokenLocation=query requires queryParam")
 			}
-		// "header" doesn't require additional fields - defaults to Authorization header
+			// "header" doesn't require additional fields - defaults to Authorization header
 		}
 		if logger != nil {
 			logger.Debugf("Service %s: session_jwt auth configuration validated", serviceName)
@@ -680,6 +733,28 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 // Validate validates an auth configuration
 func (a *AuthConfig) Validate() error {
 	return a.ValidateWithLogger("", nil)
+}
+
+// GetEffectiveTokenInvalidationConfig returns the effective token invalidation configuration
+// Returns configured values with defaults for missing fields, or defaults if not configured
+func (a *AuthConfig) GetEffectiveTokenInvalidationConfig() *TokenInvalidationConfig {
+	if a.TokenInvalidation != nil {
+		// Use configured values, with defaults for missing fields
+		config := *a.TokenInvalidation
+		if len(config.StatusCodes) == 0 {
+			config.StatusCodes = DefaultTokenInvalidationStatusCodes
+		}
+		if config.RetryDelay == 0 {
+			config.RetryDelay = 100 * time.Millisecond // Default 100ms delay
+		}
+		return &config
+	}
+	// Return default config
+	return &TokenInvalidationConfig{
+		StatusCodes:         DefaultTokenInvalidationStatusCodes,
+		RetryOnInvalidation: true,
+		RetryDelay:          100 * time.Millisecond,
+	}
 }
 
 // ValidateWithLogger validates an endpoint configuration with logging support

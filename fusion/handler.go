@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) 2025 Tenebris Technologies Inc.                              *
+ * Copyright (c) 2025-2026 Tenebris Technologies Inc.                         *
  * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
@@ -44,6 +44,23 @@ func NewHTTPHandler(fusion *Fusion, service *ServiceConfig, endpoint *EndpointCo
 		fusion:          fusion,
 		parameterMapper: parameterMapper,
 	}
+}
+
+// prepareAuthConfig creates a copy of the auth config with baseURL injected
+func (h *HTTPHandler) prepareAuthConfig() AuthConfig {
+	authConfig := h.service.Auth
+	if authConfig.Config == nil {
+		authConfig.Config = make(map[string]interface{})
+	} else {
+		// Make a copy of the config map to avoid modifying the original
+		configCopy := make(map[string]interface{})
+		for k, v := range authConfig.Config {
+			configCopy[k] = v
+		}
+		authConfig.Config = configCopy
+	}
+	authConfig.Config["baseURL"] = h.service.BaseURL
+	return authConfig
 }
 
 // Handle processes an HTTP request based on the endpoint configuration
@@ -114,18 +131,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 				// Apply authentication using multi-tenant auth manager
 				// Inject baseURL into auth config for strategies that need it (e.g., session_jwt)
-				authConfig := h.service.Auth
-				if authConfig.Config == nil {
-					authConfig.Config = make(map[string]interface{})
-				} else {
-					// Make a copy of the config map to avoid modifying the original
-					configCopy := make(map[string]interface{})
-					for k, v := range authConfig.Config {
-						configCopy[k] = v
-					}
-					authConfig.Config = configCopy
-				}
-				authConfig.Config["baseURL"] = h.service.BaseURL
+				authConfig := h.prepareAuthConfig()
 
 				if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, req, tenantContext, authConfig); err != nil {
 					if h.fusion.logger != nil {
@@ -217,9 +223,112 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 		return "", err
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
+	// Use a closure variable to track the response body to close
+	// This ensures proper cleanup whether we retry or not
+	responseToClose := resp
+	defer func() {
+		if responseToClose != nil && responseToClose.Body != nil {
+			_ = responseToClose.Body.Close()
+		}
+	}()
+
+	// Check for token invalidation status codes (only retry once to prevent infinite loops)
+	tokenInvalidationConfig := h.service.Auth.GetEffectiveTokenInvalidationConfig()
+	shouldInvalidate := false
+	for _, code := range tokenInvalidationConfig.StatusCodes {
+		if resp.StatusCode == code {
+			shouldInvalidate = true
+			break
+		}
+	}
+
+	if shouldInvalidate {
+		// Get tenant context for invalidation
+		if tenantContextValue := ctx.Value(global.TenantContextKey); tenantContextValue != nil {
+			if tenantContext, ok := tenantContextValue.(*TenantContext); ok {
+				// Invalidate the cached token (with nil check)
+				if h.fusion.multiTenantAuth != nil {
+					h.fusion.multiTenantAuth.InvalidateToken(tenantContext)
+				}
+
+				if h.fusion.logger != nil {
+					h.fusion.logger.Debugf("Token invalidated due to %d response for tenant %s service %s [%s]",
+						resp.StatusCode, tenantContext.ShortHash(), h.service.Name, correlationID)
+				}
+
+				// Retry with fresh authentication if configured
+				if tokenInvalidationConfig.RetryOnInvalidation {
+					// Check context cancellation before retry
+					if ctx.Err() != nil {
+						return "", fmt.Errorf("request cancelled before retry: %w", ctx.Err())
+					}
+
+					// Apply retry delay to avoid overwhelming the auth server
+					if tokenInvalidationConfig.RetryDelay > 0 {
+						select {
+						case <-time.After(tokenInvalidationConfig.RetryDelay):
+							// Continue with retry after delay
+						case <-ctx.Done():
+							return "", fmt.Errorf("request cancelled during retry delay: %w", ctx.Err())
+						}
+					}
+
+					if h.fusion.logger != nil {
+						h.fusion.logger.Infof("Retrying request with fresh authentication [%s]", correlationID)
+					}
+
+					// Close the original response body before retry
+					_ = resp.Body.Close()
+					responseToClose = nil // Prevent double-close in defer
+
+					// Rebuild the request
+					retryReq, err := h.buildRequest(ctx, args)
+					if err != nil {
+						if h.fusion.logger != nil {
+							h.fusion.logger.Errorf("Failed to rebuild request for retry [%s]: %v", correlationID, err)
+						}
+						return "", fmt.Errorf("retry failed: failed to rebuild request: %w", err)
+					}
+
+					// Re-apply authentication
+					tenantContext.ServiceName = h.service.Name
+					tenantContext.RequestID = correlationID
+
+					authConfig := h.prepareAuthConfig()
+
+					if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, retryReq, tenantContext, authConfig); err != nil {
+						if h.fusion.logger != nil {
+							h.fusion.logger.Errorf("Re-authentication failed for retry [%s]: %v", correlationID, err)
+						}
+						if deviceCodeErr, ok := AsDeviceCodeError(err); ok {
+							return "", deviceCodeErr
+						}
+						return "", fmt.Errorf("re-authentication failed: %w", err)
+					}
+
+					// Execute the retry request (only one retry to prevent infinite loops)
+					var retryMetrics *RequestMetrics
+					resp, retryMetrics, err = h.executeRequest(ctx, retryReq, correlationID)
+					if err != nil {
+						if h.fusion.logger != nil {
+							h.fusion.logger.Errorf("Retry request failed [%s]: %v", correlationID, err)
+						}
+						return "", err
+					}
+					// Update the response to close to the new response
+					responseToClose = resp
+
+					if h.fusion.logger != nil {
+						h.fusion.logger.Infof("Retry request completed with status %d [%s]", resp.StatusCode, correlationID)
+						if retryMetrics != nil {
+							h.fusion.logger.Debugf("Retry metrics: StatusCode=%d, Latency=%v",
+								retryMetrics.StatusCode, retryMetrics.Latency)
+						}
+					}
+				}
+			}
+		}
+	}
 
 	// Handle response
 	result, err := h.handleResponse(resp, correlationID)
