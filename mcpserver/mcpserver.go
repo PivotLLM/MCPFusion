@@ -278,8 +278,15 @@ func (s *MCPServer) Start() error {
 		s.logger.Info("Available endpoints: /sse, /message (SSE mode), /mcp (Streamable HTTP mode)")
 
 		// Create both transports - clients can use either
-		s.sseServer = server.NewSSEServer(s.srv)             // Handles /sse and /message
-		s.httpServer = server.NewStreamableHTTPServer(s.srv) // Handles /mcp
+		s.sseServer = server.NewSSEServer(s.srv) // Handles /sse and /message
+		// Configure Streamable HTTP transport for /mcp
+		// Disable GET streaming since MCPFusion doesn't send server-initiated notifications.
+		// This returns 405 Method Not Allowed for GET /mcp (per MCP spec), which is cleaner
+		// than opening an SSE stream that never sends data (causing client timeouts).
+		// POST /mcp works normally for request/response operations.
+		s.httpServer = server.NewStreamableHTTPServer(s.srv,
+			server.WithDisableStreaming(true),
+		) // Handles /mcp
 
 		// Apply HTTP-level authentication to both transports
 		var authenticatedSSE, authenticatedHTTP MCPServerTransport
