@@ -567,11 +567,31 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 	// Generate tool name by combining service and endpoint names
 	toolName := fmt.Sprintf("%s_%s", serviceName, endpoint.ID)
 
+	// Compute default hints based on HTTP method
+	hints := global.ComputeDefaultHints(endpoint.Method)
+
+	// Override with any explicitly configured hints
+	if endpoint.Hints != nil {
+		if endpoint.Hints.ReadOnly != nil {
+			hints.ReadOnly = endpoint.Hints.ReadOnly
+		}
+		if endpoint.Hints.Destructive != nil {
+			hints.Destructive = endpoint.Hints.Destructive
+		}
+		if endpoint.Hints.Idempotent != nil {
+			hints.Idempotent = endpoint.Hints.Idempotent
+		}
+		if endpoint.Hints.OpenWorld != nil {
+			hints.OpenWorld = endpoint.Hints.OpenWorld
+		}
+	}
+
 	return global.ToolDefinition{
 		Name:        toolName,
 		Description: fmt.Sprintf("%s: %s", service.Name, endpoint.Description),
 		Parameters:  parameters,
 		Handler:     handler,
+		Hints:       &hints,
 	}
 }
 

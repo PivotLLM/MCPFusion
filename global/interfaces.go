@@ -80,6 +80,7 @@ type ToolDefinition struct {
 	Description string
 	Parameters  []Parameter
 	Handler     ToolHandler
+	Hints       *ToolHints
 }
 
 // ToolHandler defines the function signature for our tool handler

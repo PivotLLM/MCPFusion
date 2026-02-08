@@ -170,6 +170,24 @@ type EndpointConfig struct {
 	Response    ResponseConfig    `json:"response"`
 	Retry       *RetryConfig      `json:"retry,omitempty"`
 	Connection  *ConnectionConfig `json:"connection,omitempty"`
+	Hints       *HintsConfig      `json:"hints,omitempty"`
+}
+
+// HintsConfig represents MCP tool hint configuration for an endpoint.
+// All fields are optional pointers to allow explicit override of computed defaults.
+// When a field is nil, the default value computed from the HTTP method is used.
+type HintsConfig struct {
+	// ReadOnly indicates the tool does not modify any state
+	ReadOnly *bool `json:"readOnly,omitempty"`
+
+	// Destructive indicates the tool may perform destructive operations
+	Destructive *bool `json:"destructive,omitempty"`
+
+	// Idempotent indicates calling the tool multiple times produces the same result
+	Idempotent *bool `json:"idempotent,omitempty"`
+
+	// OpenWorld indicates the tool interacts with external systems
+	OpenWorld *bool `json:"openWorld,omitempty"`
 }
 
 // ParameterConfig represents configuration for a parameter
