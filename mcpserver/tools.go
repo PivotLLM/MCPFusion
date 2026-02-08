@@ -64,6 +64,22 @@ func (s *MCPServer) AddTools() {
 				toolOptions = append(toolOptions, toolOption)
 			}
 
+			// Add hint annotations if hints are set
+			if toolDef.Hints != nil {
+				if toolDef.Hints.ReadOnly != nil {
+					toolOptions = append(toolOptions, mcp.WithReadOnlyHintAnnotation(*toolDef.Hints.ReadOnly))
+				}
+				if toolDef.Hints.Destructive != nil {
+					toolOptions = append(toolOptions, mcp.WithDestructiveHintAnnotation(*toolDef.Hints.Destructive))
+				}
+				if toolDef.Hints.Idempotent != nil {
+					toolOptions = append(toolOptions, mcp.WithIdempotentHintAnnotation(*toolDef.Hints.Idempotent))
+				}
+				if toolDef.Hints.OpenWorld != nil {
+					toolOptions = append(toolOptions, mcp.WithOpenWorldHintAnnotation(*toolDef.Hints.OpenWorld))
+				}
+			}
+
 			// Create the tool with all options
 			tool := mcp.NewTool(toolDef.Name, toolOptions...)
 
