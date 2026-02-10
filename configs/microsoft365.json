@@ -8,9 +8,13 @@
         "config": {
           "clientId": "${MS365_CLIENT_ID}",
           "tenantId": "${MS365_TENANT_ID}",
-          "scope": "openid profile User.Read Calendars.Read Calendars.Read.Shared Contacts.Read Contacts.Read.Shared Files.Read Files.Read.All Mail.Read Mail.Read.Shared Sites.Read.All offline_access",
+          "scope": "openid profile User.Read Calendars.Read Calendars.Read.Shared Contacts.Read Contacts.Read.Shared Files.Read Files.Read.All Mail.Read Mail.ReadWrite Mail.Read.Shared Sites.Read.All offline_access",
           "authorizationURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/devicecode",
           "tokenURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token"
+        },
+        "tokenInvalidation": {
+          "statusCodes": [401, 403],
+          "retryOnInvalidation": true
         }
       },
       "retry": {
@@ -860,6 +864,301 @@
                 "minimum": 1,
                 "maximum": 1000
               }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "mail_draft_create",
+          "name": "Create Draft Email",
+          "description": "Create a new draft email message. The draft is saved but NOT sent. Use mail_draft_update to modify it later or delete it with mail_draft_delete.",
+          "method": "POST",
+          "path": "/me/messages",
+          "parameters": [
+            {
+              "name": "subject",
+              "description": "Email subject line",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Email body as an object with contentType and content. Example: {\"contentType\": \"HTML\", \"content\": \"<p>Hello</p>\"} or {\"contentType\": \"Text\", \"content\": \"Hello\"}",
+              "type": "object",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "toRecipients",
+              "description": "Array of To recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "ccRecipients",
+              "description": "Array of CC recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "bccRecipients",
+              "description": "Array of BCC recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "importance",
+              "description": "Message importance level",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "enum": ["low", "normal", "high"],
+              "default": "normal"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "mail_draft_reply",
+          "name": "Create Draft Reply",
+          "description": "Create a draft reply to an existing message. The draft is saved but NOT sent. Returns the new draft message which can be further modified with mail_draft_update.",
+          "method": "POST",
+          "path": "/me/messages/{id}/createReply",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "The message ID of the message to reply to",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "comment",
+              "description": "Optional comment to include in the reply body",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "mail_draft_reply_all",
+          "name": "Create Draft Reply All",
+          "description": "Create a draft reply-all to an existing message. The draft is saved but NOT sent. Returns the new draft message which can be further modified with mail_draft_update.",
+          "method": "POST",
+          "path": "/me/messages/{id}/createReplyAll",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "The message ID of the message to reply all to",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "comment",
+              "description": "Optional comment to include in the reply body",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "mail_draft_forward",
+          "name": "Create Draft Forward",
+          "description": "Create a draft forward of an existing message. The draft is saved but NOT sent. Returns the new draft message which can be further modified with mail_draft_update.",
+          "method": "POST",
+          "path": "/me/messages/{id}/createForward",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "The message ID of the message to forward",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "comment",
+              "description": "Optional comment to include in the forwarded message body",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "toRecipients",
+              "description": "Array of recipients to forward to. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "mail_draft_update",
+          "name": "Update Draft Email",
+          "description": "Update an existing draft email message. Only provide the fields you want to change. The draft is saved but NOT sent.",
+          "method": "PATCH",
+          "path": "/me/messages/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "The message ID of the draft to update",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "subject",
+              "description": "Updated email subject line",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Updated email body as an object with contentType and content. Example: {\"contentType\": \"HTML\", \"content\": \"<p>Updated</p>\"} or {\"contentType\": \"Text\", \"content\": \"Updated\"}",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "toRecipients",
+              "description": "Updated array of To recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "ccRecipients",
+              "description": "Updated array of CC recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "bccRecipients",
+              "description": "Updated array of BCC recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "importance",
+              "description": "Updated message importance level",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "enum": ["low", "normal", "high"]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "mail_draft_delete",
+          "name": "Delete Draft Email",
+          "description": "Permanently delete a draft email message. This action cannot be undone.",
+          "method": "DELETE",
+          "path": "/me/messages/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "The message ID of the draft to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "mail_draft_list",
+          "name": "List Draft Emails",
+          "description": "List email messages in the Drafts folder",
+          "method": "GET",
+          "path": "/me/mailFolders('Drafts')/messages",
+          "parameters": [
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of drafts to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "subject,toRecipients,ccRecipients,bodyPreview,lastModifiedDateTime,isDraft"
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "OData filter expression. Use time tokens: #DAYS-N (N days ago), #DAYS+N (N days in future), #HOURS-N (N hours ago), #HOURS+N (N hours in future), #MINS-N (N minutes ago), #MINS+N (N minutes in future). Examples: 'lastModifiedDateTime ge #DAYS-7', 'contains(subject,\"Report\")'",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "lastModifiedDateTime ge #DAYS-7",
+                "lastModifiedDateTime ge #DAYS-1",
+                "contains(subject,'Report')",
+                "hasAttachments eq true"
+              ]
+            },
+            {
+              "name": "$skip",
+              "alias": "skip",
+              "description": "Number of items to skip (for pagination offset)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 0
+            },
+            {
+              "name": "$orderby",
+              "alias": "orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "lastModifiedDateTime desc",
+              "enum": [
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "subject asc",
+                "subject desc"
+              ]
             }
           ],
           "response": {
