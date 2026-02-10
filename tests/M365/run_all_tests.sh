@@ -189,6 +189,35 @@ run_test "All File Capabilities Test" \
     "$TESTS_DIR/test_all_file_capabilities.sh" \
     "$TESTS_DIR/all_file_capabilities_test_${TIMESTAMP}.log"
 
+# Mail Draft Management Tests
+run_test "Mail Draft Create API Test" \
+    "$TESTS_DIR/test_mail_draft_create.sh" \
+    "$TESTS_DIR/mail_draft_create_test_${TIMESTAMP}.log"
+
+run_test "Mail Draft Reply API Test" \
+    "$TESTS_DIR/test_mail_draft_reply.sh" \
+    "$TESTS_DIR/mail_draft_reply_test_${TIMESTAMP}.log"
+
+run_test "Mail Draft Reply All API Test" \
+    "$TESTS_DIR/test_mail_draft_reply_all.sh" \
+    "$TESTS_DIR/mail_draft_reply_all_test_${TIMESTAMP}.log"
+
+run_test "Mail Draft Forward API Test" \
+    "$TESTS_DIR/test_mail_draft_forward.sh" \
+    "$TESTS_DIR/mail_draft_forward_test_${TIMESTAMP}.log"
+
+run_test "Mail Draft Update API Test" \
+    "$TESTS_DIR/test_mail_draft_update.sh" \
+    "$TESTS_DIR/mail_draft_update_test_${TIMESTAMP}.log"
+
+run_test "Mail Draft Delete API Test" \
+    "$TESTS_DIR/test_mail_draft_delete.sh" \
+    "$TESTS_DIR/mail_draft_delete_test_${TIMESTAMP}.log"
+
+run_test "Mail Draft List API Test" \
+    "$TESTS_DIR/test_mail_draft_list.sh" \
+    "$TESTS_DIR/mail_draft_list_test_${TIMESTAMP}.log"
+
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"
 echo "Total Tests: $tests_run"
