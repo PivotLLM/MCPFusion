@@ -8,7 +8,7 @@
         "config": {
           "clientId": "${MS365_CLIENT_ID}",
           "tenantId": "${MS365_TENANT_ID}",
-          "scope": "openid profile User.Read Calendars.Read Calendars.Read.Shared Contacts.Read Contacts.Read.Shared Files.Read Files.Read.All Mail.Read Mail.ReadWrite Mail.Read.Shared Sites.Read.All offline_access",
+          "scope": "openid profile User.Read Calendars.ReadWrite Calendars.Read.Shared Contacts.Read Contacts.Read.Shared Files.Read Files.Read.All Mail.Read Mail.ReadWrite Mail.Read.Shared Sites.Read.All offline_access",
           "authorizationURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/devicecode",
           "tokenURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token"
         },
@@ -721,6 +721,256 @@
           }
         },
         {
+          "id": "contacts_search",
+          "name": "Search Contacts",
+          "description": "Search contacts by name, email, or phone number",
+          "method": "GET",
+          "path": "/me/contacts",
+          "parameters": [
+            {
+              "name": "$search",
+              "alias": "search",
+              "description": "Full-text search across contact fields. Searches displayName, emailAddresses, and other text fields. Examples: 'John', 'john@company.com', 'Marketing'",
+              "type": "string",
+              "quoted": true,
+              "required": false,
+              "location": "query",
+              "examples": [
+                "John Smith",
+                "john@company.com",
+                "Marketing",
+                "555-1234"
+              ]
+            },
+            {
+              "name": "$filter",
+              "alias": "filter",
+              "description": "OData filter expression. Examples: startswith(displayName,'John'), startswith(givenName,'J')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "startswith(displayName,'John')",
+                "startswith(givenName,'J')",
+                "startswith(surname,'Smith')"
+              ]
+            },
+            {
+              "name": "$select",
+              "alias": "select",
+              "description": "Fields to include in response",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "displayName,emailAddresses,businessPhones,mobilePhone,jobTitle,companyName"
+            },
+            {
+              "name": "$top",
+              "alias": "top",
+              "description": "Number of contacts to retrieve (max 1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": false
+          }
+        },
+        {
+          "id": "calendar_event_create",
+          "name": "Create Calendar Event",
+          "description": "Create a new calendar event with subject, start/end times, attendees, location, and availability status",
+          "method": "POST",
+          "path": "/me/events",
+          "parameters": [
+            {
+              "name": "subject",
+              "description": "Event subject/title",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "start",
+              "description": "Start time object. Example: {\"dateTime\": \"2025-06-15T10:00:00\", \"timeZone\": \"America/New_York\"}",
+              "type": "object",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "end",
+              "description": "End time object. Example: {\"dateTime\": \"2025-06-15T11:00:00\", \"timeZone\": \"America/New_York\"}",
+              "type": "object",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Event body/description. Example: {\"contentType\": \"HTML\", \"content\": \"<p>Meeting agenda</p>\"}",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "location",
+              "description": "Event location. Example: {\"displayName\": \"Conference Room 1\"}",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "attendees",
+              "description": "Array of attendees. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User\"}, \"type\": \"required\"}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "showAs",
+              "description": "Free/busy status during the event",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "busy",
+              "enum": ["free", "tentative", "busy", "oof", "workingElsewhere", "unknown"]
+            },
+            {
+              "name": "isAllDay",
+              "description": "Whether this is an all-day event",
+              "type": "boolean",
+              "required": false,
+              "location": "body",
+              "default": false
+            },
+            {
+              "name": "isOnlineMeeting",
+              "description": "Whether to create an online meeting (Teams)",
+              "type": "boolean",
+              "required": false,
+              "location": "body",
+              "default": false
+            },
+            {
+              "name": "onlineMeetingProvider",
+              "description": "Online meeting provider",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "enum": ["teamsForBusiness", "skypeForBusiness", "skypeForConsumer"]
+            },
+            {
+              "name": "importance",
+              "description": "Event importance level",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "enum": ["low", "normal", "high"],
+              "default": "normal"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "calendar_event_update",
+          "name": "Update Calendar Event",
+          "description": "Update an existing calendar event. Only provide the fields you want to change.",
+          "method": "PATCH",
+          "path": "/me/events/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "Event ID to update",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "subject",
+              "description": "Updated event subject/title",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "start",
+              "description": "Updated start time object. Example: {\"dateTime\": \"2025-06-15T10:00:00\", \"timeZone\": \"America/New_York\"}",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "end",
+              "description": "Updated end time object. Example: {\"dateTime\": \"2025-06-15T11:00:00\", \"timeZone\": \"America/New_York\"}",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Updated event body/description. Example: {\"contentType\": \"HTML\", \"content\": \"<p>Updated agenda</p>\"}",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "location",
+              "description": "Updated event location. Example: {\"displayName\": \"Conference Room 2\"}",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "attendees",
+              "description": "Updated array of attendees. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User\"}, \"type\": \"required\"}]",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "showAs",
+              "description": "Updated free/busy status during the event",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "enum": ["free", "tentative", "busy", "oof", "workingElsewhere", "unknown"]
+            },
+            {
+              "name": "isAllDay",
+              "description": "Whether this is an all-day event",
+              "type": "boolean",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "isOnlineMeeting",
+              "description": "Whether to enable online meeting (Teams)",
+              "type": "boolean",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "importance",
+              "description": "Updated event importance level",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "enum": ["low", "normal", "high"]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
           "id": "calendar_search",
           "name": "Search Calendar Events",
           "description": "Search calendar events with flexible filtering by subject, attendees, location, and date range",
@@ -1181,6 +1431,51 @@
           "response": {
             "type": "json",
             "paginated": false
+          }
+        },
+        {
+          "id": "mail_folder_create",
+          "name": "Create Mail Folder",
+          "description": "Create a new mail folder for organizing messages",
+          "method": "POST",
+          "path": "/me/mailFolders",
+          "parameters": [
+            {
+              "name": "displayName",
+              "description": "Name of the mail folder to create",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "mail_message_move",
+          "name": "Move Mail Message",
+          "description": "Move a message to a different mail folder. Use mail_folders_list to get folder IDs.",
+          "method": "POST",
+          "path": "/me/messages/{id}/move",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "The message ID of the message to move",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "destinationId",
+              "description": "The ID of the destination mail folder",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
           }
         },
         {

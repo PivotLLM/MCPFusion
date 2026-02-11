@@ -55,8 +55,7 @@ From the Google Cloud Console with your project selected:
    - `https://www.googleapis.com/auth/userinfo.email`
    - `https://www.googleapis.com/auth/userinfo.profile`
    - `https://www.googleapis.com/auth/calendar`
-   - `https://www.googleapis.com/auth/gmail.readonly`
-   - `https://www.googleapis.com/auth/gmail.compose`
+   - `https://www.googleapis.com/auth/gmail.modify`
    - `https://www.googleapis.com/auth/drive`
    - `https://www.googleapis.com/auth/contacts.readonly`
 4. Click **Update**, then **Save**
@@ -174,13 +173,14 @@ Once authenticated, the following MCP tools become available:
 | Category | Tools |
 |----------|-------|
 | **Profile** | `google_profile_get` |
-| **Calendar** | `google_calendar_events_list`, `google_calendar_event_create`, `google_calendar_event_get`, `google_calendar_event_update`, `google_calendar_event_delete` |
-| **Gmail (read)** | `google_gmail_messages_list`, `google_gmail_message_get`, `google_gmail_search_messages` |
-| **Gmail (drafts)** | `google_gmail_draft_create`, `google_gmail_draft_get`, `google_gmail_draft_update`, `google_gmail_draft_delete`, `google_gmail_draft_list` |
+| **Calendar** | `google_calendar_events_list`, `google_calendar_event_create`, `google_calendar_event_get`, `google_calendar_event_update`, `google_calendar_search`, `google_calendar_list` |
+| **Gmail (read)** | `google_gmail_messages_list`, `google_gmail_message_get`, `google_gmail_message_read`, `google_gmail_search_messages` |
+| **Gmail (drafts)** | `google_gmail_draft_create`, `google_gmail_draft_get`, `google_gmail_draft_update`, `google_gmail_draft_delete`, `google_gmail_draft_list`, `google_gmail_draft_reply`, `google_gmail_draft_reply_all`, `google_gmail_draft_forward` |
+| **Gmail (organize)** | `google_gmail_labels_list`, `google_gmail_label_create`, `google_gmail_message_move` |
 | **Drive** | `google_drive_files_list`, `google_drive_file_get`, `google_drive_file_download`, `google_drive_file_create`, `google_drive_file_delete`, `google_drive_file_share` |
 | **Contacts** | `google_contacts_list`, `google_contacts_get`, `google_contacts_search` |
 
-> **Note**: Gmail tools support reading and drafting emails only. Sending is not supported by design.
+> **Note**: Gmail tools support reading, drafting, and organizing emails. Sending is not supported by design.
 
 ## Troubleshooting
 

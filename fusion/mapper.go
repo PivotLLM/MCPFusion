@@ -213,6 +213,34 @@ func (m *Mapper) ApplyHeaders(req *http.Request, params []ParameterConfig, args 
 	return nil
 }
 
+// setNestedValue sets a value in a nested map using dot-notation keys.
+// e.g., setNestedValue(body, "start.dateTime", "2025-01-15T10:00:00Z")
+// produces: {"start": {"dateTime": "2025-01-15T10:00:00Z"}}
+func setNestedValue(body map[string]interface{}, key string, value interface{}) {
+	parts := strings.Split(key, ".")
+	if len(parts) == 1 {
+		body[key] = value
+		return
+	}
+	current := body
+	for _, part := range parts[:len(parts)-1] {
+		if existing, ok := current[part]; ok {
+			if m, ok := existing.(map[string]interface{}); ok {
+				current = m
+			} else {
+				m := make(map[string]interface{})
+				current[part] = m
+				current = m
+			}
+		} else {
+			m := make(map[string]interface{})
+			current[part] = m
+			current = m
+		}
+	}
+	current[parts[len(parts)-1]] = value
+}
+
 // BuildRequestBody builds the request body from parameters
 func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]interface{}) (map[string]interface{}, error) {
 	body := make(map[string]interface{})
@@ -264,9 +292,9 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 			if paramName == "" {
 				paramName = param.Name
 			}
-			body[paramName] = transformedValue
+			setNestedValue(body, paramName, transformedValue)
 		} else {
-			body[param.Name] = value
+			setNestedValue(body, param.Name, value)
 		}
 	}
 
@@ -318,6 +346,8 @@ func (m *Mapper) transformParameter(param ParameterConfig, value interface{}) (i
 		return strings.ToLower(valueStr), nil
 	case "trim":
 		return strings.TrimSpace(valueStr), nil
+	case ".":
+		return value, nil
 	default:
 		// If we can't handle the transformation, return the original value
 		if m.logger != nil {
