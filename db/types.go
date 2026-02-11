@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+// AuthCodeData represents a single-use auth code for fusion-auth
+type AuthCodeData struct {
+	TenantHash string    `json:"tenant_hash"`
+	Service    string    `json:"service"`
+	CreatedAt  time.Time `json:"created_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
 // APITokenMetadata represents metadata for an API token
 type APITokenMetadata struct {
 	Hash        string    `json:"hash"`        // SHA-256 hash of the original token

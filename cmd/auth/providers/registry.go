@@ -55,13 +55,15 @@ type OAuthProvider interface {
 
 // ServiceConfig holds configuration for a specific OAuth service
 type ServiceConfig struct {
-	ServiceName  string            `json:"service_name"`
-	ClientID     string            `json:"client_id"`
-	ClientSecret string            `json:"client_secret,omitempty"` // For services that require it
-	TenantID     string            `json:"tenant_id,omitempty"`     // For Microsoft 365
-	Scopes       string            `json:"scopes,omitempty"`
-	RedirectURI  string            `json:"redirect_uri,omitempty"`
-	Metadata     map[string]string `json:"metadata,omitempty"`
+	ServiceName      string            `json:"service_name"`
+	ClientID         string            `json:"client_id"`
+	ClientSecret     string            `json:"client_secret,omitempty"` // For services that require it
+	TenantID         string            `json:"tenant_id,omitempty"`     // For Microsoft 365
+	Scopes           string            `json:"scopes,omitempty"`
+	RedirectURI      string            `json:"redirect_uri,omitempty"`
+	TokenURL         string            `json:"token_url,omitempty"`         // Override provider's default token endpoint
+	AuthorizationURL string            `json:"authorization_url,omitempty"` // Override provider's default auth endpoint
+	Metadata         map[string]string `json:"metadata,omitempty"`
 }
 
 // TokenInfo represents OAuth token information

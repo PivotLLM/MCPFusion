@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/itchyny/gojq"
 )
 
 // Mapper handles parameter mapping and transformation
@@ -326,119 +327,26 @@ func (m *Mapper) transformParameter(param ParameterConfig, value interface{}) (i
 	}
 }
 
-// TransformResponse applies JQ-like transformations to the response
+// TransformResponse applies jq transformations to the response using gojq.
 func (m *Mapper) TransformResponse(data interface{}, transform string) (interface{}, error) {
-	// For now, we'll implement basic transformations
-	// In the future, this could use a proper JQ library
-
 	if transform == "" {
 		return data, nil
 	}
 
-	// Handle simple field selection like ".value" or "$.value"
-	if strings.HasPrefix(transform, ".") || strings.HasPrefix(transform, "$.") {
-		// Remove the leading "." or "$."
-		fieldPath := transform
-		if strings.HasPrefix(fieldPath, "$.") {
-			fieldPath = fieldPath[2:]
-		} else if strings.HasPrefix(fieldPath, ".") {
-			fieldPath = fieldPath[1:]
-		}
-
-		parts := strings.Split(fieldPath, ".")
-		current := data
-
-		for _, part := range parts {
-			// Handle array access like ".value[0]"
-			if strings.Contains(part, "[") && strings.Contains(part, "]") {
-				// This is simplified - a real implementation would parse properly
-				fieldName := part[:strings.Index(part, "[")]
-
-				if obj, ok := current.(map[string]interface{}); ok {
-					if field, exists := obj[fieldName]; exists {
-						current = field
-					} else {
-						return nil, fmt.Errorf("field %s not found in response", fieldName)
-					}
-				} else {
-					return nil, fmt.Errorf("cannot access field %s on non-object", fieldName)
-				}
-			} else {
-				// Regular field access
-				if obj, ok := current.(map[string]interface{}); ok {
-					if field, exists := obj[part]; exists {
-						current = field
-					} else {
-						return nil, fmt.Errorf("field %s not found in response", part)
-					}
-				} else {
-					return nil, fmt.Errorf("cannot access field %s on non-object", part)
-				}
-			}
-		}
-
-		return current, nil
+	query, err := gojq.Parse(transform)
+	if err != nil {
+		return nil, fmt.Errorf("invalid transform expression: %w", err)
 	}
 
-	// Handle the complex transformation from the Microsoft example
-	// ".value | map({subject: .subject, start: .start.dateTime, end: .end.dateTime})"
-	if strings.Contains(transform, "| map(") {
-		// Extract the field to map over
-		fieldPart := strings.TrimSpace(strings.Split(transform, "|")[0])
-
-		// Get the array to map over
-		var arrayData []interface{}
-		if fieldPart == ".value" {
-			if obj, ok := data.(map[string]interface{}); ok {
-				if arr, ok := obj["value"].([]interface{}); ok {
-					arrayData = arr
-				} else {
-					return nil, fmt.Errorf("expected array at .value")
-				}
-			}
-		}
-
-		// For the Microsoft calendar example specifically
-		if strings.Contains(transform, "subject: .subject") {
-			result := make([]map[string]interface{}, 0, len(arrayData))
-
-			for _, item := range arrayData {
-				if obj, ok := item.(map[string]interface{}); ok {
-					mapped := make(map[string]interface{})
-
-					// Extract subject
-					if subject, ok := obj["subject"].(string); ok {
-						mapped["subject"] = subject
-					}
-
-					// Extract start time
-					if start, ok := obj["start"].(map[string]interface{}); ok {
-						if dateTime, ok := start["dateTime"].(string); ok {
-							mapped["start"] = dateTime
-						}
-					}
-
-					// Extract end time
-					if end, ok := obj["end"].(map[string]interface{}); ok {
-						if dateTime, ok := end["dateTime"].(string); ok {
-							mapped["end"] = dateTime
-						}
-					}
-
-					result = append(result, mapped)
-				}
-			}
-
-			return result, nil
-		}
+	iter := query.Run(data)
+	v, ok := iter.Next()
+	if !ok {
+		return nil, fmt.Errorf("transform produced no output")
 	}
-
-	// If we can't handle the transformation, return the original data
-	if m.logger != nil {
-		m.logger.Warningf("Complex transformation not fully implemented: %s", transform)
+	if err, isErr := v.(error); isErr {
+		return nil, fmt.Errorf("transform execution failed: %w", err)
 	}
-
-	return data, nil
+	return v, nil
 }
 
 // ConvertToMCPParameters converts endpoint parameters to MCP tool parameters

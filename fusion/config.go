@@ -21,12 +21,13 @@ import (
 type AuthType string
 
 const (
-	AuthTypeOAuth2Device AuthType = "oauth2_device"
-	AuthTypeBearer       AuthType = "bearer"
-	AuthTypeAPIKey       AuthType = "api_key"
-	AuthTypeBasic        AuthType = "basic"
-	AuthTypeSessionJWT   AuthType = "session_jwt"
-	AuthTypeNone         AuthType = "none"
+	AuthTypeOAuth2Device   AuthType = "oauth2_device"
+	AuthTypeOAuth2External AuthType = "oauth2_external"
+	AuthTypeBearer         AuthType = "bearer"
+	AuthTypeAPIKey         AuthType = "api_key"
+	AuthTypeBasic          AuthType = "basic"
+	AuthTypeSessionJWT     AuthType = "session_jwt"
+	AuthTypeNone           AuthType = "none"
 )
 
 // DefaultTokenInvalidationStatusCodes defines HTTP status codes that trigger token invalidation by default
@@ -80,6 +81,7 @@ type Config struct {
 
 // ServiceConfig represents the configuration for a single service
 type ServiceConfig struct {
+	ServiceKey     string                `json:"-"`
 	Name           string                `json:"name"`
 	BaseURL        string                `json:"baseURL"`
 	Auth           AuthConfig            `json:"auth"`
@@ -166,6 +168,7 @@ type EndpointConfig struct {
 	Description string            `json:"description"`
 	Method      string            `json:"method"`
 	Path        string            `json:"path"`
+	BaseURL     string            `json:"baseURL,omitempty"` // Overrides service BaseURL when set
 	Parameters  []ParameterConfig `json:"parameters"`
 	Response    ResponseConfig    `json:"response"`
 	Retry       *RetryConfig      `json:"retry,omitempty"`
@@ -489,6 +492,12 @@ func LoadConfigFromJSONWithLogger(data []byte, configPath string, logger global.
 			"configuration validation failed", err)
 	}
 
+	// Always set ServiceKey from the config map key
+	for serviceName, service := range config.Services {
+		service.ServiceKey = serviceName
+		config.Services[serviceName] = service
+	}
+
 	if logger != nil {
 		logger.Infof("Successfully loaded configuration with %d services", len(config.Services))
 		for serviceName, service := range config.Services {
@@ -632,6 +641,22 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 		}
 		if logger != nil {
 			logger.Debugf("Service %s: OAuth2 device flow configuration validated", serviceName)
+		}
+	case AuthTypeOAuth2External:
+		if _, ok := a.Config["clientId"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: oauth2_external auth requires clientId", serviceName)
+			}
+			return fmt.Errorf("oauth2_external auth requires clientId")
+		}
+		if _, ok := a.Config["tokenURL"]; !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: oauth2_external auth requires tokenURL", serviceName)
+			}
+			return fmt.Errorf("oauth2_external auth requires tokenURL")
+		}
+		if logger != nil {
+			logger.Debugf("Service %s: OAuth2 external flow configuration validated", serviceName)
 		}
 	case AuthTypeBearer:
 		if _, hasToken := a.Config["token"]; !hasToken {

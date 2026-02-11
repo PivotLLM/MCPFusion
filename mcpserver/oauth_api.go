@@ -234,36 +234,49 @@ func (h *OAuthAPIHandler) handleServiceConfig(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Validate service exists
-	if h.configManager != nil {
-		availableServices := h.configManager.GetAvailableServices()
-		serviceFound := false
-		for _, service := range availableServices {
-			if service == serviceName {
-				serviceFound = true
-				break
-			}
+	// Retrieve the service configuration
+	if h.configManager == nil {
+		h.writeErrorResponse(w, http.StatusInternalServerError, "Config manager not available")
+		return
+	}
+
+	service, err := h.configManager.GetService(serviceName)
+	if err != nil {
+		h.writeErrorResponse(w, http.StatusNotFound, fmt.Sprintf("Service '%s' not found", serviceName))
+		return
+	}
+
+	// Build the OAuth config response from the service's auth configuration.
+	// The JSON keys match the providers.ServiceConfig struct tags in cmd/auth
+	// so fusion-auth can unmarshal this directly.
+	oauthConfig := map[string]interface{}{
+		"service_name": serviceName,
+	}
+
+	// Include OAuth-specific config fields that fusion-auth needs
+	if service.Auth.Config != nil {
+		if clientID, ok := service.Auth.Config["clientId"].(string); ok && clientID != "" {
+			oauthConfig["client_id"] = clientID
 		}
-		if !serviceFound {
-			h.writeErrorResponse(w, http.StatusNotFound, fmt.Sprintf("Service '%s' not found", serviceName))
-			return
+		if clientSecret, ok := service.Auth.Config["clientSecret"].(string); ok && clientSecret != "" {
+			oauthConfig["client_secret"] = clientSecret
+		}
+		if scope, ok := service.Auth.Config["scope"].(string); ok && scope != "" {
+			oauthConfig["scopes"] = scope
+		}
+		if tokenURL, ok := service.Auth.Config["tokenURL"].(string); ok && tokenURL != "" {
+			oauthConfig["token_url"] = tokenURL
+		}
+		if authURL, ok := service.Auth.Config["authorizationURL"].(string); ok && authURL != "" {
+			oauthConfig["authorization_url"] = authURL
 		}
 	}
 
-	// For now, return a basic success response indicating the service exists
-	// In a full implementation, this would return actual OAuth configuration
 	response := ServiceConfigResponse{
 		Success:     true,
 		Message:     "Service configuration retrieved",
 		ServiceName: serviceName,
-		Config: map[string]interface{}{
-			"service_name":    serviceName,
-			"oauth_available": true,
-			"endpoints": map[string]string{
-				"token_storage": "/api/v1/oauth/tokens",
-				"auth_verify":   "/api/v1/auth/verify",
-			},
-		},
+		Config:      oauthConfig,
 	}
 
 	h.writeJSONResponse(w, http.StatusOK, response)

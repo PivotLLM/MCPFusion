@@ -6,6 +6,8 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -42,6 +44,11 @@ func main() {
 	tokenListFlag := flag.Bool("token-list", false, "List all API tokens")
 	tokenDeleteFlag := flag.String("token-del", "", "Delete API token by prefix or hash")
 
+	// Auth code generation
+	authCodeFlag := flag.String("auth-code", "", "Generate auth code for a service (e.g., google)")
+	authURLFlag := flag.String("auth-url", "", "External URL of this server (required with -auth-code)")
+	authTokenFlag := flag.String("auth-token", "", "API token prefix/hash to identify tenant (for multi-token setups)")
+
 	// Set custom usage message
 	flag.Usage = func() {
 		fmt.Printf("MCPFusion - Multi-Tenant Model Context Protocol Server\n\n")
@@ -68,6 +75,13 @@ func main() {
 		fmt.Printf("        List all API tokens\n")
 		fmt.Printf("  -token-del string\n")
 		fmt.Printf("        Delete API token by prefix or hash\n\n")
+		fmt.Printf("Auth Code Commands:\n")
+		fmt.Printf("  -auth-code string\n")
+		fmt.Printf("        Generate auth code for a service (e.g., google)\n")
+		fmt.Printf("  -auth-url string\n")
+		fmt.Printf("        External URL of this server (required with -auth-code)\n")
+		fmt.Printf("  -auth-token string\n")
+		fmt.Printf("        API token prefix/hash to identify tenant (for multi-token setups)\n\n")
 		fmt.Printf("Environment Variables:\n")
 		fmt.Printf("  MCP_FUSION_DB_DIR   Custom database directory (default: /opt/mcpfusion or ~/.mcpfusion)\n\n")
 		fmt.Printf("Examples:\n")
@@ -77,6 +91,8 @@ func main() {
 		fmt.Printf("  %s -token-add \"Production token\"\n", os.Args[0])
 		fmt.Printf("  %s -token-list\n", os.Args[0])
 		fmt.Printf("  %s -token-del abc12345\n\n", os.Args[0])
+		fmt.Printf("  # Generate auth code for fusion-auth\n")
+		fmt.Printf("  %s -auth-code google -auth-url http://10.0.0.1:8888\n\n", os.Args[0])
 	}
 
 	// Parse command line flags
@@ -209,6 +225,14 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Handle auth code generation if specified
+	if *authCodeFlag != "" {
+		if err := handleAuthCode(database, *authCodeFlag, *authURLFlag, *authTokenFlag, logger); err != nil {
+			logger.Fatalf("Auth code generation failed: %v", err)
+		}
+		os.Exit(0)
+	}
+
 	// Initialize database-backed cache
 	dbCache := fusion.NewDatabaseCache(database.(*db.DB), logger)
 
@@ -233,6 +257,10 @@ func main() {
 	sessionJWTStrategy := fusion.NewSessionJWTStrategy(
 		&http.Client{Timeout: 30 * time.Second}, logger)
 	multiTenantAuth.RegisterStrategy(sessionJWTStrategy)
+
+	oauth2ExternalStrategy := fusion.NewOAuth2ExternalStrategy(
+		&http.Client{Timeout: 30 * time.Second}, logger)
+	multiTenantAuth.RegisterStrategy(oauth2ExternalStrategy)
 
 	// Initialize config manager with all configuration files
 	configManager := config.New(
@@ -278,6 +306,15 @@ func main() {
 		fusionOpts := []fusion.Option{
 			fusion.WithLogger(logger),
 			fusion.WithConfigManager(configManager),
+		}
+
+		// Set external URL for auth setup tools
+		if externalURL := os.Getenv("MCP_FUSION_EXTERNAL_URL"); externalURL != "" {
+			fusionOpts = append(fusionOpts, fusion.WithExternalURL(externalURL))
+			logger.Infof("External URL for auth setup: %s", externalURL)
+		} else {
+			fusionOpts = append(fusionOpts, fusion.WithExternalURL("http://"+listen))
+			logger.Warningf("MCP_FUSION_EXTERNAL_URL not set, using http://%s (may not be reachable externally)", listen)
 		}
 
 		// Add multi-tenant support if available
@@ -514,6 +551,71 @@ func handleTokenDelete(database db.Database, identifier string, _ global.Logger)
 	}
 
 	fmt.Printf("Token deleted successfully.\n")
+	return nil
+}
+
+// handleAuthCode generates an auth code for use with fusion-auth
+func handleAuthCode(database db.Database, service, authURL, authToken string, logger global.Logger) error {
+	if authURL == "" {
+		return fmt.Errorf("-auth-url is required with -auth-code")
+	}
+
+	// Resolve the tenant hash from API tokens
+	tokens, err := database.ListAPITokens()
+	if err != nil {
+		return fmt.Errorf("failed to list API tokens: %w", err)
+	}
+
+	if len(tokens) == 0 {
+		return fmt.Errorf("no API tokens found. Create one with: %s -token-add \"Description\"", os.Args[0])
+	}
+
+	var tenantHash string
+	if len(tokens) == 1 {
+		tenantHash = tokens[0].Hash
+	} else {
+		// Multiple tokens — require -auth-token to disambiguate
+		if authToken == "" {
+			return fmt.Errorf("multiple API tokens found. Use -auth-token to specify which token's tenant to use")
+		}
+		resolvedHash, err := database.ResolveAPIToken(authToken)
+		if err != nil {
+			return fmt.Errorf("failed to resolve API token '%s': %w", authToken, err)
+		}
+		tenantHash = resolvedHash
+	}
+
+	// Create the auth code with 15-minute TTL
+	code, err := database.CreateAuthCode(tenantHash, service, 15*time.Minute)
+	if err != nil {
+		return fmt.Errorf("failed to create auth code: %w", err)
+	}
+
+	// Build the blob
+	blob := fusion.AuthCodeBlob{
+		URL:     authURL,
+		Code:    code,
+		Service: service,
+	}
+
+	blobJSON, err := json.Marshal(blob)
+	if err != nil {
+		return fmt.Errorf("failed to marshal auth code blob: %w", err)
+	}
+
+	encoded := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(blobJSON)
+
+	fmt.Printf("\nAuth code generated successfully\n")
+	fmt.Printf("\n")
+	fmt.Printf("Service:  %s\n", service)
+	fmt.Printf("Server:   %s\n", authURL)
+	fmt.Printf("Expires:  15 minutes\n")
+	fmt.Printf("\n")
+	fmt.Printf("Run fusion-auth with:\n")
+	fmt.Printf("  ./fusion-auth %s\n", encoded)
+	fmt.Printf("\n")
+
+	logger.Infof("Generated auth code for service %s (tenant %s)", service, tenantHash[:12])
 	return nil
 }
 

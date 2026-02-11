@@ -634,6 +634,46 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 	return tenantContext, nil
 }
 
+// ExtractTenantFromAuthCode validates an auth code and returns a TenantContext
+// with the tenant hash stored at code creation time
+func (mtam *MultiTenantAuthManager) ExtractTenantFromAuthCode(code string) (*TenantContext, error) {
+	if mtam.db == nil {
+		return nil, fmt.Errorf("database not available")
+	}
+
+	tenantHash, service, err := mtam.db.ValidateAuthCode(code)
+	if err != nil {
+		if mtam.logger != nil {
+			mtam.logger.Debugf("Auth code validation failed: %v", err)
+		}
+		return nil, fmt.Errorf("invalid auth code")
+	}
+
+	tenantContext := &TenantContext{
+		TenantHash:  tenantHash,
+		ServiceName: service,
+		Description: "Auth code authentication",
+		Metadata:    make(map[string]string),
+		CreatedAt:   time.Now(),
+	}
+
+	if mtam.logger != nil {
+		mtam.logger.Infof("Validated auth code for tenant %s service %s",
+			tenantContext.ShortHash(), service)
+	}
+
+	return tenantContext, nil
+}
+
+// CreateAuthCode creates a time-limited auth code for the given tenant and service.
+// Delegates to the underlying database.
+func (mtam *MultiTenantAuthManager) CreateAuthCode(tenantHash, service string, ttl time.Duration) (string, error) {
+	if mtam.db == nil {
+		return "", fmt.Errorf("database not available")
+	}
+	return mtam.db.CreateAuthCode(tenantHash, service, ttl)
+}
+
 // ValidateTenantAccess validates that a tenant has access to a specific service
 func (mtam *MultiTenantAuthManager) ValidateTenantAccess(tenantContext *TenantContext, serviceName string) error {
 	if tenantContext == nil {

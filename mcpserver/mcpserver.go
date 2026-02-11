@@ -314,9 +314,14 @@ func (s *MCPServer) Start() error {
 		// Check if OAuth API functionality should be enabled
 		if s.database != nil && s.authManager != nil && s.configManager != nil {
 			s.logger.Info("Enabling OAuth API endpoints with extended transport")
+			// Build auth middleware for OAuth API routes (/ping, /api/*)
+			var oauthAuthMiddleware func(http.Handler) http.Handler
+			if s.authMiddleware != nil {
+				oauthAuthMiddleware = s.authMiddleware.SimpleMiddleware
+			}
 			// Wrap both transports with ExtendedTransport to add OAuth API endpoints
 			s.transport = NewExtendedTransport(authenticatedSSE, authenticatedHTTP, s.database, s.authManager,
-				s.configManager, nil, s.logger)
+				s.configManager, oauthAuthMiddleware, s.logger)
 			if s.transport == nil {
 				s.logger.Error("Failed to create extended transport, falling back to SSE transport only")
 				s.transport = authenticatedSSE

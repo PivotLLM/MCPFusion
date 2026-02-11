@@ -1,15 +1,19 @@
 {
   "services": {
     "google": {
-      "name": "Google APIs",
+      "name": "Google Workspace",
       "baseURL": "https://www.googleapis.com",
       "auth": {
-        "type": "oauth2_device",
+        "type": "oauth2_external",
         "config": {
           "clientId": "${GOOGLE_CLIENT_ID}",
-          "scope": "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive",
-          "authorizationURL": "https://oauth2.googleapis.com/device/code",
+          "clientSecret": "${GOOGLE_CLIENT_SECRET}",
+          "scope": "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/contacts.readonly",
           "tokenURL": "https://oauth2.googleapis.com/token"
+        },
+        "tokenInvalidation": {
+          "statusCodes": [401],
+          "retryOnInvalidation": true
         }
       },
       "retry": {
@@ -368,8 +372,8 @@
         },
         {
           "id": "gmail_message_get",
-          "name": "Get Gmail Message",
-          "description": "Get a specific Gmail message by ID with full content",
+          "name": "Get Gmail Message Summary",
+          "description": "Get a specific Gmail message by ID with headers (Subject, From, To, Date), labels, and snippet. Use gmail_message_read for full content.",
           "method": "GET",
           "path": "/gmail/v1/users/me/messages/{messageId}",
           "parameters": [
@@ -382,22 +386,10 @@
             },
             {
               "name": "format",
-              "description": "Format of the message returned",
               "type": "string",
-              "required": false,
               "location": "query",
-              "default": "full",
-              "validation": {
-                "enum": ["minimal", "full", "raw", "metadata"]
-              }
-            },
-            {
-              "name": "metadataHeaders",
-              "description": "Headers to include when format is metadata",
-              "type": "string",
-              "required": false,
-              "location": "query",
-              "default": "Subject,From,To,Date"
+              "static": true,
+              "default": "full"
             }
           ],
           "response": {
@@ -406,15 +398,49 @@
               "enabled": true,
               "ttl": "15m"
             },
-            "transform": "{id: .id, threadId: .threadId, snippet: .snippet, internalDate: .internalDate, payload: {headers: [.payload.headers[] | select(.name | test(\"Subject|From|To|Date\"; \"i\"))], body: .payload.body.data, parts: .payload.parts}}"
+            "transform": "{id: .id, threadId: .threadId, labelIds: .labelIds, snippet: .snippet, internalDate: .internalDate, sizeEstimate: .sizeEstimate, headers: [.payload.headers[] | select(.name | test(\"^(Subject|From|To|Date|Cc)$\"; \"i\"))]}"
           }
         },
         {
-          "id": "gmail_message_send",
-          "name": "Send Gmail Message",
-          "description": "Send a new email message through Gmail",
+          "id": "gmail_message_read",
+          "name": "Read Gmail Message",
+          "description": "Read a single email message by ID with full content including body and attachments",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/messages/{messageId}",
+          "parameters": [
+            {
+              "name": "messageId",
+              "description": "The ID of the message to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "format",
+              "description": "Format of the message returned (default: full)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "full",
+              "validation": {
+                "enum": ["minimal", "full", "raw", "metadata"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "15m"
+            }
+          }
+        },
+        {
+          "id": "gmail_draft_create",
+          "name": "Create Gmail Draft",
+          "description": "Create a new draft email message. The draft is saved but NOT sent.",
           "method": "POST",
-          "path": "/gmail/v1/users/me/messages/send",
+          "path": "/gmail/v1/users/me/drafts",
           "parameters": [
             {
               "name": "to",
@@ -454,6 +480,153 @@
           ],
           "response": {
             "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_get",
+          "name": "Get Gmail Draft",
+          "description": "Get a specific draft email message by ID",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/drafts/{draftId}",
+          "parameters": [
+            {
+              "name": "draftId",
+              "description": "The ID of the draft to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "format",
+              "description": "Format of the returned message",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "full",
+              "validation": {
+                "enum": ["minimal", "full", "raw", "metadata"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_update",
+          "name": "Update Gmail Draft",
+          "description": "Update an existing draft email message. Only provide the fields you want to change. The draft is saved but NOT sent.",
+          "method": "PUT",
+          "path": "/gmail/v1/users/me/drafts/{draftId}",
+          "parameters": [
+            {
+              "name": "draftId",
+              "description": "The ID of the draft to update",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "to",
+              "description": "Updated recipient email address",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "subject",
+              "description": "Updated email subject line",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Updated email body content (plain text)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "cc",
+              "description": "Updated CC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "bcc",
+              "description": "Updated BCC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_delete",
+          "name": "Delete Gmail Draft",
+          "description": "Permanently delete a draft email message. This action cannot be undone.",
+          "method": "DELETE",
+          "path": "/gmail/v1/users/me/drafts/{draftId}",
+          "parameters": [
+            {
+              "name": "draftId",
+              "description": "The ID of the draft to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_list",
+          "name": "List Gmail Drafts",
+          "description": "List draft email messages in Gmail",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/drafts",
+          "parameters": [
+            {
+              "name": "maxResults",
+              "description": "Maximum number of drafts to return (1-500)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 500
+              }
+            },
+            {
+              "name": "q",
+              "description": "Gmail search query to filter drafts (e.g., 'subject:report', 'to:user@example.com')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "pageToken",
+              "description": "Page token for pagination",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "drafts",
+              "pageSize": 100
+            }
           }
         },
         {
@@ -745,6 +918,130 @@
               "required": false,
               "location": "query",
               "default": true
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "contacts_list",
+          "name": "List Contacts",
+          "description": "List contacts from the user's Google Contacts",
+          "method": "GET",
+          "baseURL": "https://people.googleapis.com",
+          "path": "/v1/people/me/connections",
+          "parameters": [
+            {
+              "name": "personFields",
+              "description": "Fields to return (comma-separated). Examples: names,emailAddresses,phoneNumbers,organizations,addresses,biographies",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "default": "names,emailAddresses,phoneNumbers,organizations"
+            },
+            {
+              "name": "pageSize",
+              "description": "Maximum number of contacts to return (1-1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "pageToken",
+              "description": "Page token for pagination",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "sortOrder",
+              "description": "Sort order for contacts",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "enum": ["LAST_MODIFIED_ASCENDING", "LAST_MODIFIED_DESCENDING", "FIRST_NAME_ASCENDING", "LAST_NAME_ASCENDING"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "connections",
+              "pageSize": 100
+            }
+          }
+        },
+        {
+          "id": "contacts_get",
+          "name": "Get Contact",
+          "description": "Get a specific contact by resource name",
+          "method": "GET",
+          "baseURL": "https://people.googleapis.com",
+          "path": "/v1/{resourceName}",
+          "parameters": [
+            {
+              "name": "resourceName",
+              "description": "Contact resource name (e.g., 'people/c123456789')",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "personFields",
+              "description": "Fields to return (comma-separated). Examples: names,emailAddresses,phoneNumbers,organizations,addresses,biographies",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "default": "names,emailAddresses,phoneNumbers,organizations"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "contacts_search",
+          "name": "Search Contacts",
+          "description": "Search contacts by name, email, or phone number",
+          "method": "GET",
+          "baseURL": "https://people.googleapis.com",
+          "path": "/v1/people:searchContacts",
+          "parameters": [
+            {
+              "name": "query",
+              "description": "Search query string (searches across name, email, phone)",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "readMask",
+              "description": "Fields to return (comma-separated). Examples: names,emailAddresses,phoneNumbers,organizations",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "default": "names,emailAddresses,phoneNumbers"
+            },
+            {
+              "name": "pageSize",
+              "description": "Maximum number of results to return (1-30)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 30
+              }
             }
           ],
           "response": {

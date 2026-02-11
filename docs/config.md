@@ -80,6 +80,32 @@ Best for desktop applications and command-line tools:
 - `CLIENT_ID`: Your application's client ID
 - `TENANT_ID`: The tenant ID (for Microsoft APIs)
 
+### OAuth2 External
+
+For services where OAuth2 tokens are provided by an external helper (e.g., `fusion-auth`). Use this when the provider doesn't support device flow or restricts its scopes. The strategy uses stored tokens and supports automatic token refresh, but does not initiate any interactive authentication flow — if no token is found, it returns an error directing the user to run `fusion-auth`.
+
+```json
+{
+  "type": "oauth2_external",
+  "config": {
+    "clientId": "${CLIENT_ID}",
+    "clientSecret": "${CLIENT_SECRET}",
+    "scope": "scope1 scope2",
+    "tokenURL": "https://provider.example.com/token"
+  }
+}
+```
+
+**Environment Variables Required:**
+- `CLIENT_ID`: Your application's client ID
+- `CLIENT_SECRET`: Your application's client secret
+
+**Config Fields:**
+- `clientId` (required): OAuth2 client ID
+- `clientSecret` (optional but recommended): OAuth2 client secret, included in token refresh requests
+- `tokenURL` (required): Token endpoint URL for refreshing tokens
+- `scope` (optional): Space-separated OAuth2 scopes, included in refresh requests if set
+
 ### Bearer Token
 
 For APIs that use static bearer tokens:
@@ -142,6 +168,7 @@ For APIs that use username/password:
   "description": "Description shown to LLM",
   "method": "GET",
   "path": "/api/resource",
+  "baseURL": "https://alternative-api.example.com",
   "parameters": [ /* Parameter definitions */ ],
   "response": { /* Response configuration */ },
   "retry": { /* Optional endpoint-specific retry */ }
@@ -157,6 +184,7 @@ For APIs that use username/password:
 | `description` | string | Yes | Description shown to LLM |
 | `method` | string | Yes | HTTP method (GET, POST, PUT, DELETE, PATCH) |
 | `path` | string | Yes | API path (may include {placeholders}) |
+| `baseURL` | string | No | Overrides the service-level `baseURL` for this endpoint. Useful when a service spans multiple API hosts (e.g., Google APIs use `www.googleapis.com` for most services but `people.googleapis.com` for contacts). |
 | `parameters` | array | No | Array of parameter definitions |
 | `response` | object | No | Response handling configuration |
 | `retry` | object | No | Endpoint-specific retry override |

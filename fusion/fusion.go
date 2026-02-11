@@ -88,6 +88,9 @@ type Fusion struct {
 	connectionCleanupTicker *time.Ticker  // Periodic connection cleanup
 	shutdownChan            chan struct{} // Channel for graceful shutdown
 	shutdownOnce            sync.Once     // Ensures cleanup happens only once
+
+	// External URL for auth code blob generation (used by auth setup tools)
+	externalURL string
 }
 
 // Option defines a functional option type for configuring Fusion instances.
@@ -245,6 +248,15 @@ func WithCorrelationIDGenerator(generator *CorrelationIDGenerator) Option {
 func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 	return func(f *Fusion) {
 		f.multiTenantAuth = multiTenantAuth
+	}
+}
+
+// WithExternalURL sets the externally-accessible URL of this server.
+// Used by auth setup tools to generate auth code blobs for fusion-auth.
+// Typically set from the MCP_FUSION_EXTERNAL_URL environment variable.
+func WithExternalURL(url string) Option {
+	return func(f *Fusion) {
+		f.externalURL = url
 	}
 }
 
@@ -473,6 +485,17 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 		for _, endpoint := range service.Endpoints {
 			tool := f.createToolDefinition(serviceName, service, &endpoint)
 			tools = append(tools, tool)
+		}
+	}
+
+	// Register auth setup tools for services using oauth2_external
+	for serviceName, service := range f.config.Services {
+		if service.Auth.Type == AuthTypeOAuth2External {
+			tool := f.createAuthSetupToolDefinition(serviceName, service)
+			tools = append(tools, tool)
+			if f.logger != nil {
+				f.logger.Infof("Registered auth setup tool: %s", tool.Name)
+			}
 		}
 	}
 

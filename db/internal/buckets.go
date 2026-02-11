@@ -14,6 +14,7 @@ const (
 	BucketTenants    = "tenants"
 	BucketTokenIndex = "token_index"
 	BucketSystem     = "system"
+	BucketAuthCodes  = "auth_codes"
 
 	// Sub-buckets under tenants/{tenant_hash}/
 	BucketOAuthTokens        = "oauth_tokens"

@@ -121,7 +121,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		if tenantContextValue != nil {
 			if tenantContext, ok := tenantContextValue.(*TenantContext); ok {
 				// Ensure service name and request ID are set
-				tenantContext.ServiceName = h.service.Name
+				tenantContext.ServiceName = h.service.ServiceKey
 				tenantContext.RequestID = correlationID
 
 				if h.fusion.logger != nil {
@@ -291,7 +291,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 					}
 
 					// Re-apply authentication
-					tenantContext.ServiceName = h.service.Name
+					tenantContext.ServiceName = h.service.ServiceKey
 					tenantContext.RequestID = correlationID
 
 					authConfig := h.prepareAuthConfig()
@@ -351,8 +351,12 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interface{}) (*http.Request, error) {
 	mapper := NewMapper(h.fusion.logger)
 
-	// Build URL with path parameters
-	requestUrl, err := mapper.BuildURL(h.service.BaseURL, h.endpoint.Path, h.endpoint.Parameters, args)
+	// Build URL with path parameters, using endpoint-level baseURL override if set
+	baseURL := h.service.BaseURL
+	if h.endpoint.BaseURL != "" {
+		baseURL = h.endpoint.BaseURL
+	}
+	requestUrl, err := mapper.BuildURL(baseURL, h.endpoint.Path, h.endpoint.Parameters, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build URL: %w", err)
 	}
