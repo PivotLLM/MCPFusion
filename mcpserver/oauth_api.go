@@ -41,6 +41,7 @@ type TokenRequest struct {
 	Service      string `json:"service"`
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in,omitempty"`
 }
 
 // TokenResponse represents the response from storing OAuth tokens
@@ -166,6 +167,12 @@ func (h *OAuthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 		TokenType:    "Bearer",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
+	}
+
+	// Compute ExpiresAt from ExpiresIn if provided
+	if req.ExpiresIn > 0 {
+		expiresAt := time.Now().Add(time.Duration(req.ExpiresIn) * time.Second)
+		tokenData.ExpiresAt = &expiresAt
 	}
 
 	// Store tokens in database

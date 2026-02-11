@@ -243,17 +243,37 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	if shouldInvalidate {
-		// Get tenant context for invalidation
+		// Get tenant context for token refresh/invalidation
 		if tenantContextValue := ctx.Value(global.TenantContextKey); tenantContextValue != nil {
 			if tenantContext, ok := tenantContextValue.(*TenantContext); ok {
-				// Invalidate the cached token (with nil check)
 				if h.fusion.multiTenantAuth != nil {
-					h.fusion.multiTenantAuth.InvalidateToken(tenantContext)
-				}
+					// Attempt to refresh the token before falling back to invalidation
+					authConfig := h.prepareAuthConfig()
 
-				if h.fusion.logger != nil {
-					h.fusion.logger.Debugf("Token invalidated due to %d response for tenant %s service %s [%s]",
-						resp.StatusCode, tenantContext.ShortHash(), h.service.Name, correlationID)
+					if h.fusion.logger != nil {
+						h.fusion.logger.Infof("Attempting token refresh due to %d response for tenant %s service %s [%s]",
+							resp.StatusCode, tenantContext.ShortHash(), h.service.Name, correlationID)
+					}
+
+					_, refreshErr := h.fusion.multiTenantAuth.RefreshIfPossible(ctx, tenantContext, authConfig)
+					if refreshErr != nil {
+						// Refresh failed - fall back to invalidation
+						if h.fusion.logger != nil {
+							h.fusion.logger.Warningf("Token refresh failed for tenant %s service %s [%s]: %v, falling back to invalidation",
+								tenantContext.ShortHash(), h.service.Name, correlationID, refreshErr)
+						}
+						h.fusion.multiTenantAuth.InvalidateToken(tenantContext)
+
+						if h.fusion.logger != nil {
+							h.fusion.logger.Debugf("Token invalidated due to %d response for tenant %s service %s [%s]",
+								resp.StatusCode, tenantContext.ShortHash(), h.service.Name, correlationID)
+						}
+					} else {
+						if h.fusion.logger != nil {
+							h.fusion.logger.Infof("Token refresh succeeded for tenant %s service %s [%s]",
+								tenantContext.ShortHash(), h.service.Name, correlationID)
+						}
+					}
 				}
 
 				// Retry with fresh authentication if configured
@@ -290,13 +310,13 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 						return "", fmt.Errorf("retry failed: failed to rebuild request: %w", err)
 					}
 
-					// Re-apply authentication
+					// Re-apply authentication (will use refreshed token from cache, or re-authenticate if invalidated)
 					tenantContext.ServiceName = h.service.ServiceKey
 					tenantContext.RequestID = correlationID
 
-					authConfig := h.prepareAuthConfig()
+					retryAuthConfig := h.prepareAuthConfig()
 
-					if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, retryReq, tenantContext, authConfig); err != nil {
+					if err := h.fusion.multiTenantAuth.ApplyAuthentication(ctx, retryReq, tenantContext, retryAuthConfig); err != nil {
 						if h.fusion.logger != nil {
 							h.fusion.logger.Errorf("Re-authentication failed for retry [%s]: %v", correlationID, err)
 						}

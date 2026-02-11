@@ -440,7 +440,7 @@ func (e *OAuthFlowExecutor) ExecuteAuthCodeFlow(ctx context.Context) error {
 		}
 
 		// Store tokens in MCPFusion
-		_, err = e.MCPClient.StoreTokens(ctx, e.Config.Service, tokenInfo.AccessToken, tokenInfo.RefreshToken)
+		_, err = e.MCPClient.StoreTokens(ctx, e.Config.Service, tokenInfo.AccessToken, tokenInfo.RefreshToken, tokenInfo.ExpiresIn)
 		if err != nil {
 			return fmt.Errorf("failed to store tokens in MCPFusion: %w", err)
 		}

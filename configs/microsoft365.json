@@ -413,7 +413,7 @@
           "name": "Read Inbox Messages",
           "description": "Get inbox messages with basic information",
           "method": "GET",
-          "path": "/me/messages",
+          "path": "/me/mailFolders/Inbox/messages",
           "parameters": [
             {
               "name": "$top",
@@ -422,7 +422,7 @@
               "type": "number",
               "required": false,
               "location": "query",
-              "default": 10,
+              "default": 50,
               "validation": {
                 "minimum": 1,
                 "maximum": 1000
@@ -435,7 +435,7 @@
               "type": "string",
               "required": false,
               "location": "query",
-              "default": "subject,from,receivedDateTime,isRead"
+              "default": "subject,from,receivedDateTime,isRead,hasAttachments"
             },
             {
               "name": "$filter",
@@ -456,6 +456,23 @@
                 "isRead eq false and receivedDateTime ge #DAYS-1",
                 "isRead eq false and receivedDateTime ge #MINS-15",
                 "hasAttachments eq true and receivedDateTime ge #DAYS-7"
+              ]
+            },
+            {
+              "name": "$orderby",
+              "alias": "orderby",
+              "description": "Sort order for results",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "receivedDateTime desc",
+              "enum": [
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "receivedDateTime desc",
+                "receivedDateTime asc", 
+                "subject asc",
+                "subject desc"
               ]
             },
             {
@@ -538,7 +555,7 @@
               "type": "number",
               "required": false,
               "location": "query",
-              "default": 10,
+              "default": 50,
               "validation": {
                 "minimum": 1,
                 "maximum": 1000
@@ -551,7 +568,7 @@
               "type": "string",
               "required": false,
               "location": "query",
-              "default": "subject,from,receivedDateTime,bodyPreview,isRead"
+              "default": "subject,from,receivedDateTime,bodyPreview,isRead,hasAttachments"
             },
             {
               "name": "$filter",
@@ -1107,7 +1124,7 @@
               "type": "number",
               "required": false,
               "location": "query",
-              "default": 25,
+              "default": 50,
               "validation": {
                 "minimum": 1,
                 "maximum": 1000
@@ -1120,7 +1137,7 @@
               "type": "string",
               "required": false,
               "location": "query",
-              "default": "subject,toRecipients,ccRecipients,bodyPreview,lastModifiedDateTime,isDraft"
+              "default": "subject,toRecipients,ccRecipients,bodyPreview,lastModifiedDateTime,isDraft,hasAttachments"
             },
             {
               "name": "$filter",
