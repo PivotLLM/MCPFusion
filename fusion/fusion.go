@@ -348,8 +348,8 @@ func New(options ...Option) *Fusion {
 		opt(fusion)
 	}
 
-	// Parse FUSION_ALLOW_DESTRUCTIVE environment variable
-	if envVal := os.Getenv("FUSION_ALLOW_DESTRUCTIVE"); envVal != "" {
+	// Parse MCP_FUSION_ALLOW_DESTRUCTIVE environment variable
+	if envVal := os.Getenv("MCP_FUSION_ALLOW_DESTRUCTIVE"); envVal != "" {
 		switch strings.ToLower(envVal) {
 		case "true", "yes", "1":
 			fusion.allowDestructive = true
@@ -622,12 +622,12 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 		}
 	}
 
-	// Gate destructive tools when FUSION_ALLOW_DESTRUCTIVE is not enabled
+	// Gate destructive tools when MCP_FUSION_ALLOW_DESTRUCTIVE is not enabled
 	if hints.Destructive != nil && *hints.Destructive && !f.allowDestructive {
 		originalHandler := handler
 		handler = func(args map[string]interface{}) (string, error) {
 			_ = originalHandler // preserve reference
-			return "", fmt.Errorf("this tool performs a destructive operation and is currently disabled. Set the FUSION_ALLOW_DESTRUCTIVE environment variable to 'true' to enable destructive tools")
+			return "", fmt.Errorf("this tool performs a destructive operation and is currently disabled. Set the MCP_FUSION_ALLOW_DESTRUCTIVE environment variable to 'true' to enable destructive tools")
 		}
 	}
 

@@ -161,19 +161,29 @@ type AuthConfig struct {
 	TokenInvalidation *TokenInvalidationConfig `json:"tokenInvalidation,omitempty"`
 }
 
+// RequestBodyConfig represents configuration for encoding request body parameters
+// before sending. When set, body parameters without a transform.targetName are
+// collected, passed through the named encoder, and the encoded result is placed
+// at wrapperPath in the JSON body. Parameters with targetName bypass encoding.
+type RequestBodyConfig struct {
+	Encoding    string `json:"encoding"`
+	WrapperPath string `json:"wrapperPath"`
+}
+
 // EndpointConfig represents configuration for a single API endpoint
 type EndpointConfig struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Method      string            `json:"method"`
-	Path        string            `json:"path"`
-	BaseURL     string            `json:"baseURL,omitempty"` // Overrides service BaseURL when set
-	Parameters  []ParameterConfig `json:"parameters"`
-	Response    ResponseConfig    `json:"response"`
-	Retry       *RetryConfig      `json:"retry,omitempty"`
-	Connection  *ConnectionConfig `json:"connection,omitempty"`
-	Hints       *HintsConfig      `json:"hints,omitempty"`
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Method      string             `json:"method"`
+	Path        string             `json:"path"`
+	BaseURL     string             `json:"baseURL,omitempty"` // Overrides service BaseURL when set
+	Parameters  []ParameterConfig  `json:"parameters"`
+	RequestBody *RequestBodyConfig `json:"requestBody,omitempty"`
+	Response    ResponseConfig     `json:"response"`
+	Retry       *RetryConfig       `json:"retry,omitempty"`
+	Connection  *ConnectionConfig  `json:"connection,omitempty"`
+	Hints       *HintsConfig       `json:"hints,omitempty"`
 }
 
 // HintsConfig represents MCP tool hint configuration for an endpoint.
@@ -861,6 +871,32 @@ func (e *EndpointConfig) ValidateWithLogger(serviceName string, logger global.Lo
 				logger.Errorf("Service %s: endpoint %s parameter %d validation failed: %v", serviceName, e.ID, i, err)
 			}
 			return fmt.Errorf("parameter %d: %w", i, err)
+		}
+	}
+
+	// Validate requestBody encoding configuration if present
+	if e.RequestBody != nil {
+		if e.RequestBody.Encoding == "" {
+			if logger != nil {
+				logger.Errorf("Service %s: endpoint %s requestBody.encoding is required", serviceName, e.ID)
+			}
+			return fmt.Errorf("requestBody.encoding is required")
+		}
+		if e.RequestBody.WrapperPath == "" {
+			if logger != nil {
+				logger.Errorf("Service %s: endpoint %s requestBody.wrapperPath is required", serviceName, e.ID)
+			}
+			return fmt.Errorf("requestBody.wrapperPath is required")
+		}
+		if _, ok := GetBodyEncoder(e.RequestBody.Encoding); !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: endpoint %s unknown requestBody encoding: %s", serviceName, e.ID, e.RequestBody.Encoding)
+			}
+			return fmt.Errorf("unknown requestBody encoding: %s", e.RequestBody.Encoding)
+		}
+		if logger != nil {
+			logger.Debugf("Service %s: endpoint %s requestBody encoding validated: %s → %s",
+				serviceName, e.ID, e.RequestBody.Encoding, e.RequestBody.WrapperPath)
 		}
 	}
 

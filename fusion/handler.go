@@ -384,7 +384,7 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 	// Build request body
 	var body io.Reader
 	if h.endpoint.Method == "POST" || h.endpoint.Method == "PUT" || h.endpoint.Method == "PATCH" {
-		bodyData, err := mapper.BuildRequestBody(h.endpoint.Parameters, args)
+		bodyData, err := mapper.BuildRequestBody(h.endpoint.Parameters, args, h.endpoint.RequestBody)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build request body: %w", err)
 		}

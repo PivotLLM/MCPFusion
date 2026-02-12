@@ -590,6 +590,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }
@@ -674,6 +678,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }
@@ -788,6 +796,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }
@@ -846,6 +858,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }
@@ -897,6 +913,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }

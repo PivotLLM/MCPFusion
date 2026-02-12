@@ -186,6 +186,7 @@ For APIs that use username/password:
 | `path` | string | Yes | API path (may include {placeholders}) |
 | `baseURL` | string | No | Overrides the service-level `baseURL` for this endpoint. Useful when a service spans multiple API hosts (e.g., Google APIs use `www.googleapis.com` for most services but `people.googleapis.com` for contacts). |
 | `parameters` | array | No | Array of parameter definitions |
+| `requestBody` | object | No | Request body encoding configuration (see [Request Body Encoding](#request-body-encoding)) |
 | `response` | object | No | Response handling configuration |
 | `retry` | object | No | Endpoint-specific retry override |
 
@@ -507,6 +508,90 @@ Protect against cascading failures:
 }
 ```
 
+### Request Body Encoding
+
+Some APIs require request body parameters to be encoded in a specific format rather than sent as flat JSON fields. The `requestBody` configuration enables automatic encoding of body parameters before sending.
+
+#### How It Works
+
+When `requestBody` is set on an endpoint:
+
+1. Body parameters **with** a `transform.targetName` bypass encoding and are placed directly in the JSON body (e.g., `messageId` → `message.threadId`)
+2. Body parameters **without** a `targetName` are collected, passed through the named encoder, and the encoded result is placed at `wrapperPath`
+
+This partitioning allows mixing encoded content with structured JSON fields in the same request body.
+
+#### Configuration
+
+```json
+{
+  "requestBody": {
+    "encoding": "rfc2822_base64url",
+    "wrapperPath": "message.raw"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `encoding` | string | Yes | Name of the registered encoder |
+| `wrapperPath` | string | Yes | Dot-notation path where the encoded value is placed in the JSON body |
+
+#### Available Encodings
+
+| Name | Description | Use Case |
+|------|-------------|----------|
+| `rfc2822_base64url` | Assembles an RFC 2822 MIME message from `to`, `cc`, `bcc`, `subject`, `body` parameters and base64url-encodes it (no padding) | Gmail API drafts and messages |
+
+#### Example: Gmail Draft Create
+
+```json
+{
+  "id": "gmail_draft_create",
+  "method": "POST",
+  "path": "/gmail/v1/users/me/drafts",
+  "parameters": [
+    {"name": "to", "type": "string", "required": true, "location": "body"},
+    {"name": "subject", "type": "string", "required": true, "location": "body"},
+    {"name": "body", "type": "string", "required": true, "location": "body"}
+  ],
+  "requestBody": {
+    "encoding": "rfc2822_base64url",
+    "wrapperPath": "message.raw"
+  }
+}
+```
+
+This produces the request body `{"message": {"raw": "<base64url-encoded-RFC2822>"}}` as required by the Gmail API.
+
+#### Example: Gmail Draft Reply (Mixed Parameters)
+
+```json
+{
+  "id": "gmail_draft_reply",
+  "method": "POST",
+  "path": "/gmail/v1/users/me/drafts",
+  "parameters": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "required": true,
+      "location": "body",
+      "transform": {"targetName": "message.threadId", "expression": "."}
+    },
+    {"name": "to", "type": "string", "required": true, "location": "body"},
+    {"name": "subject", "type": "string", "required": true, "location": "body"},
+    {"name": "body", "type": "string", "required": true, "location": "body"}
+  ],
+  "requestBody": {
+    "encoding": "rfc2822_base64url",
+    "wrapperPath": "message.raw"
+  }
+}
+```
+
+This produces `{"message": {"threadId": "abc123", "raw": "<base64url-encoded-RFC2822>"}}` — the `messageId` bypasses encoding (it has a `targetName`), while `to`, `subject`, and `body` are encoded into the RFC 2822 message.
+
 ## Destructive Tool Safety Gate
 
 MCPFusion includes a safety mechanism for destructive tools (those that delete data or perform irreversible operations). By default, destructive tools are **registered and visible** to the LLM but **return an error when called**, allowing the LLM to inform the user about the capability and how to enable it.
@@ -520,10 +605,10 @@ MCPFusion includes a safety mechanism for destructive tools (those that delete d
 
 ### Enabling Destructive Tools
 
-Set the `FUSION_ALLOW_DESTRUCTIVE` environment variable:
+Set the `MCP_FUSION_ALLOW_DESTRUCTIVE` environment variable:
 
 ```bash
-FUSION_ALLOW_DESTRUCTIVE=true ./mcpfusion
+MCP_FUSION_ALLOW_DESTRUCTIVE=true ./mcpfusion
 ```
 
 Accepted values (case-insensitive): `true`, `yes`, `1`. Any other value or absence of the variable means disabled (the default).
