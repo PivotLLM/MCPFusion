@@ -1007,7 +1007,7 @@
             }
           ],
           "response": {
-            "type": "json"
+            "type": "text"
           }
         },
         {
@@ -1397,7 +1397,7 @@
             }
           ],
           "response": {
-            "type": "json"
+            "type": "text"
           }
         },
         {
