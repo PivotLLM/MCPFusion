@@ -507,6 +507,59 @@ Protect against cascading failures:
 }
 ```
 
+## Destructive Tool Safety Gate
+
+MCPFusion includes a safety mechanism for destructive tools (those that delete data or perform irreversible operations). By default, destructive tools are **registered and visible** to the LLM but **return an error when called**, allowing the LLM to inform the user about the capability and how to enable it.
+
+### How It Works
+
+- All tools are always registered, including destructive ones
+- When a destructive tool is called and the gate is not enabled, it returns an informative error
+- The LLM can see the tool, explain what it does, and tell the user how to enable it
+- This is safer than hiding tools entirely, which would prevent the LLM from knowing the capability exists
+
+### Enabling Destructive Tools
+
+Set the `FUSION_ALLOW_DESTRUCTIVE` environment variable:
+
+```bash
+FUSION_ALLOW_DESTRUCTIVE=true ./mcpfusion
+```
+
+Accepted values (case-insensitive): `true`, `yes`, `1`. Any other value or absence of the variable means disabled (the default).
+
+### How Tools Are Classified as Destructive
+
+1. **Automatic (from HTTP method)**: Any endpoint using the `DELETE` method is automatically classified as destructive via `hints.destructive = true`
+2. **Explicit (from config)**: You can explicitly mark any endpoint as destructive using the `hints` field in endpoint configuration, regardless of HTTP method
+
+**Example: Explicitly marking a non-DELETE tool as destructive:**
+
+```json
+{
+  "id": "purge_cache",
+  "name": "Purge Cache",
+  "description": "Purge all cached data. This cannot be undone.",
+  "method": "POST",
+  "path": "/admin/cache/purge",
+  "hints": {
+    "destructive": true
+  },
+  "parameters": [],
+  "response": { "type": "json" }
+}
+```
+
+### Currently Affected Tools
+
+| Config | Tool | Endpoint |
+|--------|------|----------|
+| Google | `google_gmail_draft_delete` | `DELETE /gmail/v1/users/me/drafts/{draftId}` |
+| Google | `google_drive_file_delete` | `DELETE /drive/v3/files/{fileId}` |
+| Google | `google_calendar_event_delete` | `DELETE /calendar/v3/calendars/primary/events/{eventId}` |
+| M365 | `microsoft365_mail_draft_delete` | `DELETE /me/messages/{id}` |
+| M365 | `microsoft365_calendar_event_delete` | `DELETE /me/events/{id}` |
+
 ## HTTP Session Management
 
 MCPFusion includes advanced HTTP session management to handle connection timeouts and improve reliability with external APIs. This is particularly useful for APIs that may have intermittent connectivity issues or strict connection limits.

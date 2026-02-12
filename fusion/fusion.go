@@ -91,6 +91,10 @@ type Fusion struct {
 
 	// External URL for auth code blob generation (used by auth setup tools)
 	externalURL string
+
+	// allowDestructive controls whether destructive tools (DELETE, etc.) can execute.
+	// When false, destructive tools are still registered but return an error when called.
+	allowDestructive bool
 }
 
 // Option defines a functional option type for configuring Fusion instances.
@@ -344,9 +348,18 @@ func New(options ...Option) *Fusion {
 		opt(fusion)
 	}
 
+	// Parse FUSION_ALLOW_DESTRUCTIVE environment variable
+	if envVal := os.Getenv("FUSION_ALLOW_DESTRUCTIVE"); envVal != "" {
+		switch strings.ToLower(envVal) {
+		case "true", "yes", "1":
+			fusion.allowDestructive = true
+		}
+	}
+
 	if fusion.logger != nil {
 		fusion.logger.Debug("Initializing Fusion instance")
 		fusion.logger.Debugf("HTTP client timeout: %v", fusion.httpClient.Timeout)
+		fusion.logger.Infof("Destructive tools enabled: %v", fusion.allowDestructive)
 	}
 
 	// Automatically create multi-tenant auth manager if not provided
@@ -606,6 +619,15 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 		}
 		if endpoint.Hints.OpenWorld != nil {
 			hints.OpenWorld = endpoint.Hints.OpenWorld
+		}
+	}
+
+	// Gate destructive tools when FUSION_ALLOW_DESTRUCTIVE is not enabled
+	if hints.Destructive != nil && *hints.Destructive && !f.allowDestructive {
+		originalHandler := handler
+		handler = func(args map[string]interface{}) (string, error) {
+			_ = originalHandler // preserve reference
+			return "", fmt.Errorf("this tool performs a destructive operation and is currently disabled. Set the FUSION_ALLOW_DESTRUCTIVE environment variable to 'true' to enable destructive tools")
 		}
 	}
 

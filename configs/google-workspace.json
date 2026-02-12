@@ -281,6 +281,25 @@
           }
         },
         {
+          "id": "calendar_event_delete",
+          "name": "Delete Calendar Event",
+          "description": "Permanently delete a calendar event. This action cannot be undone.",
+          "method": "DELETE",
+          "path": "/calendar/v3/calendars/primary/events/{eventId}",
+          "parameters": [
+            {
+              "name": "eventId",
+              "description": "The ID of the event to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "text"
+          }
+        },
+        {
           "id": "calendar_search",
           "name": "Search Calendar Events",
           "description": "Search calendar events by keyword within a date range. The query parameter matches against event summary, description, location, attendees, and other fields.",
