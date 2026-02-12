@@ -45,6 +45,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
@@ -95,6 +96,9 @@ type Fusion struct {
 	// allowDestructive controls whether destructive tools (DELETE, etc.) can execute.
 	// When false, destructive tools are still registered but return an error when called.
 	allowDestructive bool
+
+	// database provides direct access to the database for native tools (e.g., knowledge store)
+	database db.Database
 }
 
 // Option defines a functional option type for configuring Fusion instances.
@@ -261,6 +265,13 @@ func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 func WithExternalURL(url string) Option {
 	return func(f *Fusion) {
 		f.externalURL = url
+	}
+}
+
+// WithDatabase sets the database for native tool operations such as the knowledge store.
+func WithDatabase(database db.Database) Option {
+	return func(f *Fusion) {
+		f.database = database
 	}
 }
 
@@ -520,6 +531,10 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 			tools = append(tools, tool)
 		}
 	}
+
+	// Register knowledge management tools (native, not config-driven)
+	knowledgeTools := f.registerKnowledgeTools()
+	tools = append(tools, knowledgeTools...)
 
 	if f.logger != nil {
 		f.logger.Infof("Registered %d dynamic tools from configuration", len(tools))

@@ -26,6 +26,7 @@ const NoAuthTenantHash = "NOAUTH"
 // TenantContext represents tenant-specific context information
 type TenantContext struct {
 	TenantHash  string            `json:"tenant_hash"`
+	UserID      string            `json:"user_id,omitempty"`
 	ServiceName string            `json:"service_name"`
 	Description string            `json:"description,omitempty"`
 	Metadata    map[string]string `json:"metadata,omitempty"`
@@ -49,6 +50,10 @@ func (tc *TenantContext) ShortHash() string {
 func (tc *TenantContext) String() string {
 	if tc == nil {
 		return "TenantContext(nil)"
+	}
+	if tc.UserID != "" {
+		return fmt.Sprintf("TenantContext(tenant=%s, user=%s, service=%s, request=%s)",
+			tc.ShortHash(), tc.UserID, tc.ServiceName, tc.RequestID)
 	}
 	return fmt.Sprintf("TenantContext(tenant=%s, service=%s, request=%s)",
 		tc.ShortHash(), tc.ServiceName, tc.RequestID)
@@ -682,8 +687,18 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 			}
 		}
 
+		// Look up user ID from the key hash
+		var userID string
+		if resolvedUserID, err := mtam.db.GetUserByAPIKey(hash); err == nil {
+			userID = resolvedUserID
+			if mtam.logger != nil {
+				mtam.logger.Debugf("Resolved user ID %s for API key %s", userID, hash[:12])
+			}
+		}
+
 		tenantContext := &TenantContext{
 			TenantHash:  hash,
+			UserID:      userID,
 			ServiceName: "default", // Service name will be resolved from request context
 			Metadata:    make(map[string]string),
 			CreatedAt:   time.Now(),

@@ -24,6 +24,10 @@ var (
 	ErrInvalidBucket    = errors.New("invalid bucket structure")
 	ErrCorruptedData    = errors.New("corrupted data")
 	ErrPermissionDenied = errors.New("permission denied")
+	ErrUserNotFound     = errors.New("user not found")
+	ErrUserExists       = errors.New("user already exists")
+	ErrKeyAlreadyLinked = errors.New("API key already linked to a user")
+	ErrKnowledgeNotFound = errors.New("knowledge entry not found")
 )
 
 // DatabaseError represents a database-specific error with context
@@ -120,7 +124,9 @@ func IsNotFound(err error) bool {
 
 	return errors.Is(err, ErrTenantNotFound) ||
 		errors.Is(err, ErrTokenNotFound) ||
-		errors.Is(err, ErrServiceNotFound)
+		errors.Is(err, ErrServiceNotFound) ||
+		errors.Is(err, ErrUserNotFound) ||
+		errors.Is(err, ErrKnowledgeNotFound)
 }
 
 // IsDatabaseError checks if an error is a DatabaseError
