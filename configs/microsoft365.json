@@ -873,6 +873,17 @@
               "location": "body",
               "enum": ["low", "normal", "high"],
               "default": "normal"
+            },
+            {
+              "name": "reminderMinutesBeforeStart",
+              "description": "Minutes before event start to trigger reminder (e.g., 0, 15, 30, 60)",
+              "type": "number",
+              "required": false,
+              "location": "body",
+              "default": 15,
+              "validation": {
+                "minimum": 0
+              }
             }
           ],
           "response": {
@@ -964,6 +975,16 @@
               "required": false,
               "location": "body",
               "enum": ["low", "normal", "high"]
+            },
+            {
+              "name": "reminderMinutesBeforeStart",
+              "description": "Minutes before event start to trigger reminder (e.g., 0, 15, 30, 60)",
+              "type": "number",
+              "required": false,
+              "location": "body",
+              "validation": {
+                "minimum": 0
+              }
             }
           ],
           "response": {
