@@ -25,11 +25,12 @@ Users should carefully review their configuration to understand what access MCPF
 - **Enhanced Parameter System**: Rich parameter metadata with defaults, validation, and constraints
 - **Reliability**: Circuit breakers, retry logic, caching, and error handling
 - **CLI Token Management**: Command-line token management
+- **User Management**: Stable user identity with UUID-based accounts, API key linking, and automatic migration of existing tokens
+- **Knowledge Store**: Per-user persistent knowledge storage with domain/key organization, exposed as native MCP tools
 
 ## To Do
 
 - Decide on an appropriate approach to HTTPS implementation
-- Implement access to files as MCP tools or resources in support of knoledge bases, etc. (Considering read-only vs. allowing CRUD operations)
 - (What else do we need in a comprehensive universal MCP server solution?)
 
 ## Security
@@ -135,6 +136,7 @@ The author acknoledges the use of Claude® Code to assist with assigned dvelopme
 -  **[Command Execution Guide](docs/commands.md)** - Execute system commands and scripts with parameter control
 -  **[Client Integration](docs/clients.md)** - Connect Cline, Claude Desktop, and custom MCP clients
 -  **[Token Management Guide](docs/TOKEN_MANAGEMENT.md)** - Multi-tenant authentication and CLI usage
+-  **[User & Knowledge Management](docs/user_management.md)** - User accounts, API key linking, and persistent knowledge store
 -  **[Microsoft 365 Setup](docs/Microsoft365.md)** - Microsoft 365 setup
 -  **[Google APIs Setup](docs/Google_Workspace.md)** - Google Workspace setup
 -  **[HTTP Session Management](docs/HTTP_SESSION_MANAGEMENT.md)** - Connection pooling, timeouts, and reliability features
