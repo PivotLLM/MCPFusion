@@ -47,7 +47,9 @@ func (p *Provider) GetRequiredScopes() []string {
 		"https://www.googleapis.com/auth/userinfo.profile",
 		"https://www.googleapis.com/auth/calendar",
 		"https://www.googleapis.com/auth/gmail.readonly",
+		"https://www.googleapis.com/auth/gmail.compose",
 		"https://www.googleapis.com/auth/drive",
+		"https://www.googleapis.com/auth/contacts.readonly",
 	}
 }
 
@@ -224,8 +226,11 @@ func (p *Provider) GetExtendedScopes() map[string][]string {
 		},
 		"gmail": {
 			"https://www.googleapis.com/auth/gmail.readonly",
-			"https://www.googleapis.com/auth/gmail.send",
+			"https://www.googleapis.com/auth/gmail.compose",
 			"https://www.googleapis.com/auth/gmail.modify",
+		},
+		"contacts": {
+			"https://www.googleapis.com/auth/contacts.readonly",
 		},
 		"drive": {
 			"https://www.googleapis.com/auth/drive",

@@ -44,6 +44,11 @@ type Database interface {
 	DeleteCredentials(tenantHash, serviceName string) error
 	ListCredentials(tenantHash string) (map[string]*ServiceCredentials, error)
 
+	// Auth Code Management
+	CreateAuthCode(tenantHash, service string, ttl time.Duration) (string, error)
+	ValidateAuthCode(code string) (string, string, error)
+	CleanupExpiredAuthCodes() error
+
 	// Tenant Management
 	GetTenantInfo(hash string) (*TenantInfo, error)
 	ListTenants() ([]TenantInfo, error)
@@ -192,6 +197,7 @@ func (d *DB) initializeSchema() error {
 			internal.BucketTenants,
 			internal.BucketTokenIndex,
 			internal.BucketSystem,
+			internal.BucketAuthCodes,
 		}
 
 		for _, bucketName := range rootBuckets {

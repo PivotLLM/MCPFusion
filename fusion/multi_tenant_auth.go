@@ -346,6 +346,97 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 	}
 }
 
+// RefreshIfPossible attempts to refresh an existing token without falling back to
+// full re-authentication. It returns the refreshed token on success or an error
+// describing why the refresh could not be performed. The caller decides whether
+// to invalidate the token on failure.
+func (mtam *MultiTenantAuthManager) RefreshIfPossible(ctx context.Context, tenantContext *TenantContext,
+	authConfig AuthConfig) (*TokenInfo, error) {
+
+	if tenantContext == nil {
+		return nil, NewAuthenticationError("", "", "tenant context is required", nil)
+	}
+
+	if mtam.logger != nil {
+		mtam.logger.Debugf("Attempting token refresh for tenant %s service %s (auth type: %s)",
+			tenantContext.ShortHash(), tenantContext.ServiceName, authConfig.Type)
+	}
+
+	// Retrieve the current token from cache or DB without deleting it
+	tokenInfo := mtam.getCachedToken(tenantContext)
+	if tokenInfo == nil {
+		if mtam.logger != nil {
+			mtam.logger.Debugf("No token found to refresh for tenant %s service %s",
+				tenantContext.ShortHash(), tenantContext.ServiceName)
+		}
+		return nil, NewAuthenticationError(authConfig.Type, tenantContext.ServiceName,
+			"no token found to refresh", nil)
+	}
+
+	// Look up the strategy for this auth type
+	mtam.mu.RLock()
+	strategy, exists := mtam.strategies[authConfig.Type]
+	mtam.mu.RUnlock()
+
+	if !exists {
+		if mtam.logger != nil {
+			mtam.logger.Errorf("Unsupported authentication type for refresh: %s (tenant %s service %s)",
+				authConfig.Type, tenantContext.ShortHash(), tenantContext.ServiceName)
+		}
+		return nil, NewAuthenticationError(authConfig.Type, tenantContext.ServiceName,
+			"unsupported authentication type", nil)
+	}
+
+	// Verify that the strategy supports refresh
+	if !strategy.SupportsRefresh() {
+		if mtam.logger != nil {
+			mtam.logger.Debugf("Strategy %s does not support token refresh for tenant %s service %s",
+				authConfig.Type, tenantContext.ShortHash(), tenantContext.ServiceName)
+		}
+		return nil, NewAuthenticationError(authConfig.Type, tenantContext.ServiceName,
+			"token refresh not supported by authentication strategy", nil)
+	}
+
+	// Verify that the token has a refresh token
+	if !tokenInfo.HasRefreshToken() {
+		if mtam.logger != nil {
+			mtam.logger.Debugf("No refresh token available for tenant %s service %s",
+				tenantContext.ShortHash(), tenantContext.ServiceName)
+		}
+		return nil, NewAuthenticationError(authConfig.Type, tenantContext.ServiceName,
+			"no refresh token available", nil)
+	}
+
+	// Attempt the refresh
+	if mtam.logger != nil {
+		mtam.logger.Debugf("Refreshing token for tenant %s service %s using strategy %s",
+			tenantContext.ShortHash(), tenantContext.ServiceName, authConfig.Type)
+	}
+
+	refreshedToken, err := strategy.RefreshToken(ctx, tokenInfo, authConfig.Config)
+	if err != nil {
+		if mtam.logger != nil {
+			mtam.logger.Warningf("Token refresh failed for tenant %s service %s: %v",
+				tenantContext.ShortHash(), tenantContext.ServiceName, err)
+		}
+		return nil, err
+	}
+
+	// Cache the refreshed token
+	mtam.CacheToken(tenantContext, refreshedToken)
+
+	if mtam.logger != nil {
+		expiryInfo := "no expiry"
+		if refreshedToken.ExpiresAt != nil {
+			expiryInfo = fmt.Sprintf("expires at %s", refreshedToken.ExpiresAt.Format(time.RFC3339))
+		}
+		mtam.logger.Infof("Successfully refreshed token for tenant %s service %s (%s)",
+			tenantContext.ShortHash(), tenantContext.ServiceName, expiryInfo)
+	}
+
+	return refreshedToken, nil
+}
+
 // getCachedToken retrieves a token from cache or database
 func (mtam *MultiTenantAuthManager) getCachedToken(tenantContext *TenantContext) *TokenInfo {
 	// Check cache first
@@ -632,6 +723,46 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 	}
 
 	return tenantContext, nil
+}
+
+// ExtractTenantFromAuthCode validates an auth code and returns a TenantContext
+// with the tenant hash stored at code creation time
+func (mtam *MultiTenantAuthManager) ExtractTenantFromAuthCode(code string) (*TenantContext, error) {
+	if mtam.db == nil {
+		return nil, fmt.Errorf("database not available")
+	}
+
+	tenantHash, service, err := mtam.db.ValidateAuthCode(code)
+	if err != nil {
+		if mtam.logger != nil {
+			mtam.logger.Debugf("Auth code validation failed: %v", err)
+		}
+		return nil, fmt.Errorf("invalid auth code")
+	}
+
+	tenantContext := &TenantContext{
+		TenantHash:  tenantHash,
+		ServiceName: service,
+		Description: "Auth code authentication",
+		Metadata:    make(map[string]string),
+		CreatedAt:   time.Now(),
+	}
+
+	if mtam.logger != nil {
+		mtam.logger.Infof("Validated auth code for tenant %s service %s",
+			tenantContext.ShortHash(), service)
+	}
+
+	return tenantContext, nil
+}
+
+// CreateAuthCode creates a time-limited auth code for the given tenant and service.
+// Delegates to the underlying database.
+func (mtam *MultiTenantAuthManager) CreateAuthCode(tenantHash, service string, ttl time.Duration) (string, error) {
+	if mtam.db == nil {
+		return "", fmt.Errorf("database not available")
+	}
+	return mtam.db.CreateAuthCode(tenantHash, service, ttl)
 }
 
 // ValidateTenantAccess validates that a tenant has access to a specific service

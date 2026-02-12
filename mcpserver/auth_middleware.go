@@ -22,6 +22,7 @@ import (
 // ServiceProvider interface for getting available services
 type ServiceProvider interface {
 	GetAvailableServices() []string
+	GetService(name string) (*fusion.ServiceConfig, error)
 }
 
 // AuthMiddleware provides bearer token authentication and tenant context extraction
@@ -511,24 +512,31 @@ func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
 		// Extract tenant context from token
 		tenantContext, err := am.authManager.ExtractTenantFromToken(token)
 		if err != nil {
-			if am.requireAuth {
-				if am.logger != nil {
-					am.logger.Errorf("Simple Auth: Failed to extract tenant context from token: %v", err)
-				}
-				am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
-				return
-			}
-			// In no-auth mode, fall back to NOAUTH tenant context
-			if am.logger != nil {
-				am.logger.Warningf("Simple Auth: Invalid token provided, falling back to NOAUTH tenant context for %s", r.URL.Path)
-			}
-			tenantContext, err = am.authManager.ExtractTenantFromToken("")
+			// Try auth code fallback before rejecting
+			tenantContext, err = am.authManager.ExtractTenantFromAuthCode(token)
 			if err != nil {
-				if am.logger != nil {
-					am.logger.Errorf("Simple Auth: Failed to create NOAUTH tenant context: %v", err)
+				if am.requireAuth {
+					if am.logger != nil {
+						am.logger.Errorf("Simple Auth: Failed to extract tenant context from token or auth code: %v", err)
+					}
+					am.writeErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+					return
 				}
-				am.writeErrorResponse(w, http.StatusInternalServerError, "Internal error")
-				return
+				// In no-auth mode, fall back to NOAUTH tenant context
+				if am.logger != nil {
+					am.logger.Warningf("Simple Auth: Invalid token provided, falling back to NOAUTH tenant context for %s", r.URL.Path)
+				}
+				tenantContext, err = am.authManager.ExtractTenantFromToken("")
+				if err != nil {
+					if am.logger != nil {
+						am.logger.Errorf("Simple Auth: Failed to create NOAUTH tenant context: %v", err)
+					}
+					am.writeErrorResponse(w, http.StatusInternalServerError, "Internal error")
+					return
+				}
+			} else if am.logger != nil {
+				am.logger.Infof("Simple Auth: Authenticated via auth code for tenant %s",
+					tenantContext.ShortHash())
 			}
 		}
 

@@ -46,16 +46,16 @@ You'll find these on the app's Overview page.
 
    **Essential Permissions:**
    - `User.Read` - Sign in and read user profile
-   - `Calendars.Read` - Read user calendars
+   - `Calendars.ReadWrite` - Read, create, and modify calendar events
    - `Mail.Read` - Read user mail
-   - `Contacts.Read` - Read user contacts
-
-   **Optional Permissions (add if needed):**
-   - `Calendars.ReadWrite` - Create and modify calendar events
-   - `Mail.Send` - Send mail as the user
-   - `Contacts.ReadWrite` - Create and modify contacts
+   - `Mail.ReadWrite` - Create drafts, move messages, and manage mail folders
+   - `Contacts.Read` - Read and search user contacts
    - `Files.Read` - Read OneDrive files
    - `Sites.Read.All` - Read SharePoint sites
+
+   **Optional Permissions (add if needed):**
+   - `Mail.Send` - Send mail as the user
+   - `Contacts.ReadWrite` - Create and modify contacts
 
 6. Click **"Add permissions"**
 
@@ -166,7 +166,7 @@ After successful authentication:
 
 ## Step 5: Available Microsoft 365 Tools
 
-Once configured, these 23 MCP tools are available using the supplied microsoft365.json configuration file.
+Once configured, these MCP tools are available using the supplied microsoft365.json configuration file.
 
 ### 5.1 Profile Management
 **Tool**: `microsoft365_profile_get`
@@ -231,6 +231,37 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 - `id` (required): Event ID to retrieve
 - `select` (optional): Fields to include
 
+**Create Calendar Event**
+**Tool**: `microsoft365_calendar_event_create`
+**Description**: Create a new calendar event with subject, start/end times, attendees, location, and availability status
+**Parameters**:
+- `subject` (required): Event subject/title
+- `start` (required): Start time object (e.g., `{"dateTime": "2025-06-15T10:00:00", "timeZone": "America/New_York"}`)
+- `end` (required): End time object (e.g., `{"dateTime": "2025-06-15T11:00:00", "timeZone": "America/New_York"}`)
+- `body` (optional): Event body/description (e.g., `{"contentType": "HTML", "content": "<p>Agenda</p>"}`)
+- `location` (optional): Event location (e.g., `{"displayName": "Conference Room 1"}`)
+- `attendees` (optional): Array of attendees (e.g., `[{"emailAddress": {"address": "user@example.com"}, "type": "required"}]`)
+- `showAs` (optional): Free/busy status (free, tentative, busy, oof, workingElsewhere, unknown; default: busy)
+- `isAllDay` (optional): Whether this is an all-day event (default: false)
+- `isOnlineMeeting` (optional): Whether to create a Teams meeting (default: false)
+- `importance` (optional): Event importance (low, normal, high; default: normal)
+
+**Update Calendar Event**
+**Tool**: `microsoft365_calendar_event_update`
+**Description**: Update an existing calendar event. Only provide the fields you want to change.
+**Parameters**:
+- `id` (required): Event ID to update
+- `subject` (optional): Updated event subject/title
+- `start` (optional): Updated start time object
+- `end` (optional): Updated end time object
+- `body` (optional): Updated event body/description
+- `location` (optional): Updated event location
+- `attendees` (optional): Updated array of attendees
+- `showAs` (optional): Updated free/busy status
+- `isAllDay` (optional): Whether this is an all-day event
+- `isOnlineMeeting` (optional): Whether to enable online meeting (Teams)
+- `importance` (optional): Updated event importance
+
 ### 5.3 Mail Management
 
 **List Mail Folders**
@@ -268,6 +299,80 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 - `id` (required): Message ID to retrieve
 - `select` (optional): Fields to include
 
+**Create Mail Folder**
+**Tool**: `microsoft365_mail_folder_create`
+**Description**: Create a new mail folder for organizing messages
+**Parameters**:
+- `displayName` (required): Name of the mail folder to create
+
+**Move Mail Message**
+**Tool**: `microsoft365_mail_message_move`
+**Description**: Move a message to a different mail folder. Use `microsoft365_mail_folders_list` to get folder IDs.
+**Parameters**:
+- `id` (required): The message ID of the message to move
+- `destinationId` (required): The ID of the destination mail folder
+
+**Create Draft Email**
+**Tool**: `microsoft365_mail_draft_create`
+**Description**: Create a new draft email message. The draft is saved but NOT sent.
+**Parameters**:
+- `subject` (required): Email subject line
+- `body` (required): Email body (e.g., `{"contentType": "HTML", "content": "<p>Hello</p>"}`)
+- `toRecipients` (optional): Array of To recipients
+- `ccRecipients` (optional): Array of CC recipients
+- `bccRecipients` (optional): Array of BCC recipients
+- `importance` (optional): Message importance (low, normal, high; default: normal)
+
+**Create Draft Reply**
+**Tool**: `microsoft365_mail_draft_reply`
+**Description**: Create a draft reply to an existing message. The draft is saved but NOT sent.
+**Parameters**:
+- `id` (required): The message ID of the message to reply to
+- `comment` (optional): Comment to include in the reply body
+
+**Create Draft Reply All**
+**Tool**: `microsoft365_mail_draft_reply_all`
+**Description**: Create a draft reply-all to an existing message. The draft is saved but NOT sent.
+**Parameters**:
+- `id` (required): The message ID of the message to reply all to
+- `comment` (optional): Comment to include in the reply body
+
+**Create Draft Forward**
+**Tool**: `microsoft365_mail_draft_forward`
+**Description**: Create a draft forward of an existing message. The draft is saved but NOT sent.
+**Parameters**:
+- `id` (required): The message ID of the message to forward
+- `comment` (optional): Comment to include in the forwarded message body
+- `toRecipients` (optional): Array of recipients to forward to
+
+**Update Draft Email**
+**Tool**: `microsoft365_mail_draft_update`
+**Description**: Update an existing draft email message. Only provide the fields you want to change.
+**Parameters**:
+- `id` (required): The message ID of the draft to update
+- `subject` (optional): Updated email subject line
+- `body` (optional): Updated email body
+- `toRecipients` (optional): Updated array of To recipients
+- `ccRecipients` (optional): Updated array of CC recipients
+- `bccRecipients` (optional): Updated array of BCC recipients
+- `importance` (optional): Updated message importance
+
+**Delete Draft Email**
+**Tool**: `microsoft365_mail_draft_delete`
+**Description**: Permanently delete a draft email message. This action cannot be undone.
+**Parameters**:
+- `id` (required): The message ID of the draft to delete
+
+**List Draft Emails**
+**Tool**: `microsoft365_mail_draft_list`
+**Description**: List email messages in the Drafts folder
+**Parameters**:
+- `top` (optional): Number of drafts to retrieve (default: 50, max: 1000)
+- `select` (optional): Fields to include (default: subject,toRecipients,ccRecipients,bodyPreview,lastModifiedDateTime,isDraft,hasAttachments)
+- `filter` (optional): OData filter expression with time token support
+- `skip` (optional): Number of items to skip for pagination (default: 0)
+- `orderby` (optional): Sort order (default: lastModifiedDateTime desc)
+
 ### 5.4 Contacts Management
 
 **List Contacts**
@@ -285,6 +390,15 @@ Once configured, these 23 MCP tools are available using the supplied microsoft36
 **Parameters**:
 - `id` (required): Contact ID to retrieve
 - `select` (optional): Fields to include
+
+**Search Contacts**
+**Tool**: `microsoft365_contacts_search`
+**Description**: Search contacts by name, email, or phone number
+**Parameters**:
+- `search` (optional): Full-text search across contact fields (e.g., 'John', 'john@company.com', 'Marketing')
+- `filter` (optional): OData filter expression (e.g., `startswith(displayName,'John')`)
+- `select` (optional): Fields to include (default: displayName,emailAddresses,businessPhones,mobilePhone,jobTitle,companyName)
+- `top` (optional): Number of contacts to retrieve (default: 25, max: 1000)
 
 ### 5.5 Search Capabilities
 

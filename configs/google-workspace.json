@@ -1,15 +1,19 @@
 {
   "services": {
     "google": {
-      "name": "Google APIs",
+      "name": "Google Workspace",
       "baseURL": "https://www.googleapis.com",
       "auth": {
-        "type": "oauth2_device",
+        "type": "oauth2_external",
         "config": {
           "clientId": "${GOOGLE_CLIENT_ID}",
-          "scope": "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive",
-          "authorizationURL": "https://oauth2.googleapis.com/device/code",
+          "clientSecret": "${GOOGLE_CLIENT_SECRET}",
+          "scope": "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/contacts.readonly",
           "tokenURL": "https://oauth2.googleapis.com/token"
+        },
+        "tokenInvalidation": {
+          "statusCodes": [401],
+          "retryOnInvalidation": true
         }
       },
       "retry": {
@@ -157,38 +161,18 @@
               "location": "body"
             },
             {
-              "name": "startDateTime",
-              "description": "Start time in RFC3339 format (e.g., 2025-01-15T10:00:00Z)",
-              "type": "string",
+              "name": "start",
+              "description": "Event start time object, e.g. {\"dateTime\": \"2025-01-15T10:00:00Z\", \"timeZone\": \"UTC\"}",
+              "type": "object",
               "required": true,
-              "location": "body",
-              "transform": {
-                "targetName": "start.dateTime",
-                "expression": "."
-              }
+              "location": "body"
             },
             {
-              "name": "endDateTime",
-              "description": "End time in RFC3339 format (e.g., 2025-01-15T11:00:00Z)",
-              "type": "string",
+              "name": "end",
+              "description": "Event end time object, e.g. {\"dateTime\": \"2025-01-15T11:00:00Z\", \"timeZone\": \"UTC\"}",
+              "type": "object",
               "required": true,
-              "location": "body",
-              "transform": {
-                "targetName": "end.dateTime",
-                "expression": "."
-              }
-            },
-            {
-              "name": "timeZone",
-              "description": "Time zone (default: UTC)",
-              "type": "string",
-              "required": false,
-              "location": "body",
-              "default": "UTC",
-              "transform": {
-                "targetName": "start.timeZone",
-                "expression": "."
-              }
+              "location": "body"
             }
           ],
           "response": {
@@ -231,8 +215,8 @@
         {
           "id": "calendar_event_update",
           "name": "Update Calendar Event",
-          "description": "Update an existing calendar event",
-          "method": "PUT",
+          "description": "Update an existing calendar event. Only provide the fields you want to change.",
+          "method": "PATCH",
           "path": "/calendar/v3/calendars/primary/events/{eventId}",
           "parameters": [
             {
@@ -264,26 +248,18 @@
               "location": "body"
             },
             {
-              "name": "startDateTime",
-              "description": "Start time in RFC3339 format",
-              "type": "string",
+              "name": "start",
+              "description": "Event start time object, e.g. {\"dateTime\": \"2025-01-15T10:00:00Z\", \"timeZone\": \"UTC\"}",
+              "type": "object",
               "required": false,
-              "location": "body",
-              "transform": {
-                "targetName": "start.dateTime",
-                "expression": "."
-              }
+              "location": "body"
             },
             {
-              "name": "endDateTime",
-              "description": "End time in RFC3339 format",
-              "type": "string",
+              "name": "end",
+              "description": "Event end time object, e.g. {\"dateTime\": \"2025-01-15T11:00:00Z\", \"timeZone\": \"UTC\"}",
+              "type": "object",
               "required": false,
-              "location": "body",
-              "transform": {
-                "targetName": "end.dateTime",
-                "expression": "."
-              }
+              "location": "body"
             }
           ],
           "response": {
@@ -291,22 +267,129 @@
           }
         },
         {
-          "id": "calendar_event_delete",
-          "name": "Delete Calendar Event",
-          "description": "Delete a calendar event",
-          "method": "DELETE",
-          "path": "/calendar/v3/calendars/primary/events/{eventId}",
+          "id": "calendar_search",
+          "name": "Search Calendar Events",
+          "description": "Search calendar events by keyword within a date range. The query parameter matches against event summary, description, location, attendees, and other fields.",
+          "method": "GET",
+          "path": "/calendar/v3/calendars/primary/events",
           "parameters": [
             {
-              "name": "eventId",
-              "description": "The ID of the event to delete",
+              "name": "q",
+              "description": "Free text search terms to find events matching summary, description, location, or attendees",
               "type": "string",
               "required": true,
-              "location": "path"
+              "location": "query"
+            },
+            {
+              "name": "startDate",
+              "description": "Start date in YYYYMMDD format to bound the search",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "timeMin",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
+              }
+            },
+            {
+              "name": "endDate",
+              "description": "End date in YYYYMMDD format to bound the search",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              },
+              "transform": {
+                "targetName": "timeMax",
+                "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')"
+              }
+            },
+            {
+              "name": "maxResults",
+              "description": "Maximum number of events to return (1-2500)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 2500
+              }
+            },
+            {
+              "name": "singleEvents",
+              "description": "Whether to expand recurring events",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": true
+            },
+            {
+              "name": "orderBy",
+              "description": "Order of events returned",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "startTime",
+              "validation": {
+                "enum": ["startTime", "updated"]
+              }
             }
           ],
           "response": {
-            "type": "text"
+            "type": "json",
+            "transform": ".items | map({id: .id, summary: .summary, start: .start.dateTime // .start.date, end: .end.dateTime // .end.date, location: .location, description: .description, attendees: .attendees})"
+          }
+        },
+        {
+          "id": "calendar_list",
+          "name": "List Calendars",
+          "description": "List all calendars the user has access to (primary, secondary, shared)",
+          "method": "GET",
+          "path": "/calendar/v3/users/me/calendarList",
+          "parameters": [
+            {
+              "name": "maxResults",
+              "description": "Maximum number of calendars to return (1-250)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 100,
+              "validation": {
+                "minimum": 1,
+                "maximum": 250
+              }
+            },
+            {
+              "name": "showHidden",
+              "description": "Whether to show hidden calendars",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": false
+            },
+            {
+              "name": "showDeleted",
+              "description": "Whether to include deleted calendars",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": false
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "items",
+              "pageSize": 250
+            },
+            "transform": ".items | map({id: .id, summary: .summary, description: .description, primary: .primary, accessRole: .accessRole, backgroundColor: .backgroundColor})"
           }
         },
         {
@@ -368,8 +451,8 @@
         },
         {
           "id": "gmail_message_get",
-          "name": "Get Gmail Message",
-          "description": "Get a specific Gmail message by ID with full content",
+          "name": "Get Gmail Message Summary",
+          "description": "Get a specific Gmail message by ID with headers (Subject, From, To, Date), labels, and snippet. Use gmail_message_read for full content.",
           "method": "GET",
           "path": "/gmail/v1/users/me/messages/{messageId}",
           "parameters": [
@@ -382,22 +465,10 @@
             },
             {
               "name": "format",
-              "description": "Format of the message returned",
               "type": "string",
-              "required": false,
               "location": "query",
-              "default": "full",
-              "validation": {
-                "enum": ["minimal", "full", "raw", "metadata"]
-              }
-            },
-            {
-              "name": "metadataHeaders",
-              "description": "Headers to include when format is metadata",
-              "type": "string",
-              "required": false,
-              "location": "query",
-              "default": "Subject,From,To,Date"
+              "static": true,
+              "default": "full"
             }
           ],
           "response": {
@@ -406,15 +477,49 @@
               "enabled": true,
               "ttl": "15m"
             },
-            "transform": "{id: .id, threadId: .threadId, snippet: .snippet, internalDate: .internalDate, payload: {headers: [.payload.headers[] | select(.name | test(\"Subject|From|To|Date\"; \"i\"))], body: .payload.body.data, parts: .payload.parts}}"
+            "transform": "{id: .id, threadId: .threadId, labelIds: .labelIds, snippet: .snippet, internalDate: .internalDate, sizeEstimate: .sizeEstimate, headers: [.payload.headers[] | select(.name | test(\"^(Subject|From|To|Date|Cc)$\"; \"i\"))]}"
           }
         },
         {
-          "id": "gmail_message_send",
-          "name": "Send Gmail Message",
-          "description": "Send a new email message through Gmail",
+          "id": "gmail_message_read",
+          "name": "Read Gmail Message",
+          "description": "Read a single email message by ID with full content including body and attachments",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/messages/{messageId}",
+          "parameters": [
+            {
+              "name": "messageId",
+              "description": "The ID of the message to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "format",
+              "description": "Format of the message returned (default: full)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "full",
+              "validation": {
+                "enum": ["minimal", "full", "raw", "metadata"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "15m"
+            }
+          }
+        },
+        {
+          "id": "gmail_draft_create",
+          "name": "Create Gmail Draft",
+          "description": "Create a new draft email message. The draft is saved but NOT sent.",
           "method": "POST",
-          "path": "/gmail/v1/users/me/messages/send",
+          "path": "/gmail/v1/users/me/drafts",
           "parameters": [
             {
               "name": "to",
@@ -457,6 +562,329 @@
           }
         },
         {
+          "id": "gmail_draft_get",
+          "name": "Get Gmail Draft",
+          "description": "Get a specific draft email message by ID",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/drafts/{draftId}",
+          "parameters": [
+            {
+              "name": "draftId",
+              "description": "The ID of the draft to retrieve",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "format",
+              "description": "Format of the returned message",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "full",
+              "validation": {
+                "enum": ["minimal", "full", "raw", "metadata"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_update",
+          "name": "Update Gmail Draft",
+          "description": "Update an existing draft email message. Only provide the fields you want to change. The draft is saved but NOT sent.",
+          "method": "PUT",
+          "path": "/gmail/v1/users/me/drafts/{draftId}",
+          "parameters": [
+            {
+              "name": "draftId",
+              "description": "The ID of the draft to update",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "to",
+              "description": "Updated recipient email address",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "subject",
+              "description": "Updated email subject line",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Updated email body content (plain text)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "cc",
+              "description": "Updated CC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "bcc",
+              "description": "Updated BCC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_delete",
+          "name": "Delete Gmail Draft",
+          "description": "Permanently delete a draft email message. This action cannot be undone.",
+          "method": "DELETE",
+          "path": "/gmail/v1/users/me/drafts/{draftId}",
+          "parameters": [
+            {
+              "name": "draftId",
+              "description": "The ID of the draft to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_list",
+          "name": "List Gmail Drafts",
+          "description": "List draft email messages in Gmail",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/drafts",
+          "parameters": [
+            {
+              "name": "maxResults",
+              "description": "Maximum number of drafts to return (1-500)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 500
+              }
+            },
+            {
+              "name": "q",
+              "description": "Gmail search query to filter drafts (e.g., 'subject:report', 'to:user@example.com')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "pageToken",
+              "description": "Page token for pagination",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "drafts",
+              "pageSize": 100
+            }
+          }
+        },
+        {
+          "id": "gmail_draft_reply",
+          "name": "Create Gmail Draft Reply",
+          "description": "Create a draft reply to an existing message, preserving threading and quoted content. The draft is saved but NOT sent.",
+          "method": "POST",
+          "path": "/gmail/v1/users/me/drafts",
+          "parameters": [
+            {
+              "name": "messageId",
+              "description": "The ID of the message to reply to. Used to set the threadId and In-Reply-To/References headers.",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "transform": {
+                "targetName": "message.threadId",
+                "expression": "."
+              }
+            },
+            {
+              "name": "to",
+              "description": "Recipient email address (typically the original sender)",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "subject",
+              "description": "Reply subject line (typically 'Re: <original subject>')",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Reply body content (plain text)",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "cc",
+              "description": "CC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_reply_all",
+          "name": "Create Gmail Draft Reply All",
+          "description": "Create a draft reply-all to an existing message, preserving threading and quoted content. Include all original recipients in the to and cc fields. The draft is saved but NOT sent.",
+          "method": "POST",
+          "path": "/gmail/v1/users/me/drafts",
+          "parameters": [
+            {
+              "name": "messageId",
+              "description": "The ID of the message to reply to. Used to set the threadId and In-Reply-To/References headers.",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "transform": {
+                "targetName": "message.threadId",
+                "expression": "."
+              }
+            },
+            {
+              "name": "to",
+              "description": "To recipients (comma-separated, include original sender and To recipients)",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "subject",
+              "description": "Reply subject line (typically 'Re: <original subject>')",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Reply body content (plain text)",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "cc",
+              "description": "CC recipients (comma-separated, include original CC recipients)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "bcc",
+              "description": "BCC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_draft_forward",
+          "name": "Create Gmail Draft Forward",
+          "description": "Create a draft forward of an existing message to specified recipients. The draft is saved but NOT sent.",
+          "method": "POST",
+          "path": "/gmail/v1/users/me/drafts",
+          "parameters": [
+            {
+              "name": "messageId",
+              "description": "The ID of the message to forward. Used to set the threadId.",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "transform": {
+                "targetName": "message.threadId",
+                "expression": "."
+              }
+            },
+            {
+              "name": "to",
+              "description": "Recipient email address to forward to",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "subject",
+              "description": "Forward subject line (typically 'Fwd: <original subject>')",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "body",
+              "description": "Forward body content including any additional commentary and the forwarded message content (plain text)",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "cc",
+              "description": "CC recipients (comma-separated)",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_labels_list",
+          "name": "List Gmail Labels",
+          "description": "List all labels available in the Gmail account, including system labels (INBOX, SENT, TRASH, etc.) and user-created labels. Use this to discover label IDs for filtering and organization.",
+          "method": "GET",
+          "path": "/gmail/v1/users/me/labels",
+          "parameters": [],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "10m"
+            },
+            "transform": ".labels | map({id: .id, name: .name, type: .type, messagesTotal: .messagesTotal, messagesUnread: .messagesUnread})"
+          }
+        },
+        {
           "id": "gmail_search_messages",
           "name": "Search Gmail Messages",
           "description": "Search Gmail messages with advanced query syntax",
@@ -495,6 +923,58 @@
               "dataPath": "messages",
               "pageSize": 100
             }
+          }
+        },
+        {
+          "id": "gmail_label_create",
+          "name": "Create Gmail Label",
+          "description": "Create a new label in Gmail for organizing messages",
+          "method": "POST",
+          "path": "/gmail/v1/users/me/labels",
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Name of the label to create",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "gmail_message_move",
+          "name": "Move Gmail Message",
+          "description": "Move a Gmail message by adding and/or removing labels. Use label IDs (e.g., 'INBOX', 'TRASH', 'SPAM', or custom label IDs from gmail_label_create).",
+          "method": "POST",
+          "path": "/gmail/v1/users/me/messages/{messageId}/modify",
+          "parameters": [
+            {
+              "name": "messageId",
+              "description": "The ID of the message to move",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "addLabelIds",
+              "description": "Array of label IDs to add to the message (e.g., [\"Label_123\", \"STARRED\"])",
+              "type": "array",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "removeLabelIds",
+              "description": "Array of label IDs to remove from the message (e.g., [\"INBOX\", \"UNREAD\"])",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
           }
         },
         {
@@ -745,6 +1225,130 @@
               "required": false,
               "location": "query",
               "default": true
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "contacts_list",
+          "name": "List Contacts",
+          "description": "List contacts from the user's Google Contacts",
+          "method": "GET",
+          "baseURL": "https://people.googleapis.com",
+          "path": "/v1/people/me/connections",
+          "parameters": [
+            {
+              "name": "personFields",
+              "description": "Fields to return (comma-separated). Examples: names,emailAddresses,phoneNumbers,organizations,addresses,biographies",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "default": "names,emailAddresses,phoneNumbers,organizations"
+            },
+            {
+              "name": "pageSize",
+              "description": "Maximum number of contacts to return (1-1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 25,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "pageToken",
+              "description": "Page token for pagination",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "sortOrder",
+              "description": "Sort order for contacts",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "enum": ["LAST_MODIFIED_ASCENDING", "LAST_MODIFIED_DESCENDING", "FIRST_NAME_ASCENDING", "LAST_NAME_ASCENDING"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "paginated": true,
+            "paginationConfig": {
+              "nextPageTokenPath": "nextPageToken",
+              "dataPath": "connections",
+              "pageSize": 100
+            }
+          }
+        },
+        {
+          "id": "contacts_get",
+          "name": "Get Contact",
+          "description": "Get a specific contact by resource name",
+          "method": "GET",
+          "baseURL": "https://people.googleapis.com",
+          "path": "/v1/{resourceName}",
+          "parameters": [
+            {
+              "name": "resourceName",
+              "description": "Contact resource name (e.g., 'people/c123456789')",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "personFields",
+              "description": "Fields to return (comma-separated). Examples: names,emailAddresses,phoneNumbers,organizations,addresses,biographies",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "default": "names,emailAddresses,phoneNumbers,organizations"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "contacts_search",
+          "name": "Search Contacts",
+          "description": "Search contacts by name, email, or phone number",
+          "method": "GET",
+          "baseURL": "https://people.googleapis.com",
+          "path": "/v1/people:searchContacts",
+          "parameters": [
+            {
+              "name": "query",
+              "description": "Search query string (searches across name, email, phone)",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "readMask",
+              "description": "Fields to return (comma-separated). Examples: names,emailAddresses,phoneNumbers,organizations",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "default": "names,emailAddresses,phoneNumbers"
+            },
+            {
+              "name": "pageSize",
+              "description": "Maximum number of results to return (1-30)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 30
+              }
             }
           ],
           "response": {

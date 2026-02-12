@@ -33,6 +33,13 @@ import (
 	"github.com/PivotLLM/MCPFusion/cmd/auth/providers/google"
 )
 
+// authCodeBlob represents the JSON payload inside a base64url-encoded auth code blob
+type authCodeBlob struct {
+	URL     string `json:"u"`
+	Code    string `json:"c"`
+	Service string `json:"s"`
+}
+
 const (
 	defaultTimeout = 10 * time.Minute
 	version        = "1.0.0"
@@ -78,7 +85,7 @@ func main() {
 	}
 
 	// Create configuration
-	cfg, err := createConfiguration(&flags, registry)
+	cfg, err := createConfiguration(&flags)
 	if err != nil {
 		log.Fatalf("Failed to create configuration: %v", err)
 	}
@@ -102,9 +109,13 @@ func parseFlags(flags *cliFlags) {
 	flag.BoolVar(&flags.list, "list", false, "List available OAuth providers")
 
 	flag.Usage = func() {
-		_, _ = fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n\n", os.Args[0])
-		_, _ = fmt.Fprintf(os.Stderr, "fusion-auth is a generic authentication helper for MCPFusion.\n")
-		_, _ = fmt.Fprintf(os.Stderr, "Example:\n")
+		_, _ = fmt.Fprintf(os.Stderr, "Usage: %s <auth-code-blob>\n", os.Args[0])
+		_, _ = fmt.Fprintf(os.Stderr, "   or: %s -service <name> -fusion <url> -token <token>\n\n", os.Args[0])
+		_, _ = fmt.Fprintf(os.Stderr, "fusion-auth is a generic authentication helper for MCPFusion.\n\n")
+		_, _ = fmt.Fprintf(os.Stderr, "Auth Code Mode (recommended):\n")
+		_, _ = fmt.Fprintf(os.Stderr, "  Generate an auth code on the server: mcpfusion -auth-code google -auth-url http://host:port\n")
+		_, _ = fmt.Fprintf(os.Stderr, "  Then run: %s <auth-code-blob>\n\n", os.Args[0])
+		_, _ = fmt.Fprintf(os.Stderr, "Manual Mode:\n")
 		_, _ = fmt.Fprintf(os.Stderr, "  %s -service google -fusion http://10.0.0.1:8080 -token abc123\n", os.Args[0])
 		_, _ = fmt.Fprintf(os.Stderr, "  %s -list\n\n", os.Args[0])
 		_, _ = fmt.Fprintf(os.Stderr, "Options:\n")
@@ -112,6 +123,42 @@ func parseFlags(flags *cliFlags) {
 	}
 
 	flag.Parse()
+
+	// Check for positional blob argument
+	if flag.NArg() > 0 {
+		blob := flag.Arg(0)
+		decoded, err := decodeAuthBlob(blob)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Error: invalid auth code blob: %v\n", err)
+			os.Exit(1)
+		}
+		flags.service = decoded.Service
+		flags.fusionURL = decoded.URL
+		flags.token = decoded.Code
+	}
+}
+
+// decodeAuthBlob decodes a base64url-encoded JSON auth code blob
+func decodeAuthBlob(blob string) (*authCodeBlob, error) {
+	// Try base64url without padding first, then with padding
+	jsonBytes, err := base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(blob)
+	if err != nil {
+		jsonBytes, err = base64.URLEncoding.DecodeString(blob)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode base64: %w", err)
+		}
+	}
+
+	var decoded authCodeBlob
+	if err := json.Unmarshal(jsonBytes, &decoded); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	if decoded.URL == "" || decoded.Code == "" || decoded.Service == "" {
+		return nil, fmt.Errorf("blob missing required fields (u, c, s)")
+	}
+
+	return &decoded, nil
 }
 
 func registerProviders(registry *providers.ProviderRegistry) error {
@@ -166,7 +213,7 @@ func validateFlags(flags *cliFlags, registry *providers.ProviderRegistry) error 
 	return nil
 }
 
-func createConfiguration(flags *cliFlags, registry *providers.ProviderRegistry) (*config.Config, error) {
+func createConfiguration(flags *cliFlags) (*config.Config, error) {
 	cfg := &config.Config{
 		Service:   flags.service,
 		FusionURL: flags.fusionURL,
@@ -175,30 +222,10 @@ func createConfiguration(flags *cliFlags, registry *providers.ProviderRegistry) 
 		Timeout:   defaultTimeout,
 	}
 
-	// Load default service configurations (hardcoded)
+	// Load default service configurations as fallback.
+	// Actual OAuth config (client ID, secret, scopes) is fetched from the
+	// MCPFusion server at runtime and merged in executeOAuthFlow.
 	cfg.LoadServiceDefaults()
-
-	// Configuration comes from hardcoded defaults only
-
-	// Get provider and validate configuration
-	provider, err := registry.GetProvider(flags.service)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create service config for validation using merged configuration
-	mergedConfig := cfg.MergeServiceConfig(flags.service)
-	serviceConfig := &providers.ServiceConfig{
-		ServiceName:  flags.service,
-		ClientID:     mergedConfig.ClientID,
-		ClientSecret: mergedConfig.ClientSecret,
-		TenantID:     mergedConfig.TenantID,
-		Scopes:       strings.Join(provider.GetRequiredScopes(), " "), // Use provider's fixed scopes
-	}
-
-	if err := provider.ValidateConfiguration(serviceConfig); err != nil {
-		return nil, fmt.Errorf("configuration validation failed: %w", err)
-	}
 
 	return cfg, nil
 }
@@ -224,6 +251,49 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 
 	if flags.verbose {
 		log.Printf("Successfully connected to MCPFusion server (tenant: %s)", pingResp.TenantID)
+	}
+
+	// Fetch OAuth config from server to override local defaults
+	serverConfig, err := mcpClient.GetServiceConfig(ctx, cfg.Service)
+	if err != nil {
+		if flags.verbose {
+			log.Printf("Warning: could not fetch service config from server: %v (using local defaults)", err)
+		}
+	} else if serverConfig != nil && serverConfig.Config != nil {
+		// Override local config with server-provided values
+		localConfig := cfg.GetServiceConfig(cfg.Service)
+		if localConfig == nil {
+			localConfig = &config.ServiceConfig{}
+			cfg.SetServiceConfig(cfg.Service, localConfig)
+		}
+		if serverConfig.Config.ClientID != "" {
+			localConfig.ClientID = serverConfig.Config.ClientID
+		}
+		if serverConfig.Config.ClientSecret != "" {
+			localConfig.ClientSecret = serverConfig.Config.ClientSecret
+		}
+		if serverConfig.Config.Scopes != "" {
+			localConfig.Scope = serverConfig.Config.Scopes
+		}
+		if flags.verbose {
+			log.Printf("Applied OAuth configuration from server for service: %s", cfg.Service)
+		}
+	}
+
+	// Validate the merged configuration (server config + local defaults)
+	mergedConfig := cfg.MergeServiceConfig(cfg.Service)
+	serviceConfig := &providers.ServiceConfig{
+		ServiceName:  cfg.Service,
+		ClientID:     mergedConfig.ClientID,
+		ClientSecret: mergedConfig.ClientSecret,
+		TenantID:     mergedConfig.TenantID,
+		Scopes:       strings.Join(provider.GetRequiredScopes(), " "),
+	}
+	if err := provider.ValidateConfiguration(serviceConfig); err != nil {
+		return fmt.Errorf("configuration validation failed: %w\n\nThe server may not have OAuth credentials configured.\nCheck GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables on the server.", err)
+	}
+
+	if flags.verbose {
 		log.Printf("Starting OAuth flow for service: %s", provider.GetDisplayName())
 	}
 
@@ -370,7 +440,7 @@ func (e *OAuthFlowExecutor) ExecuteAuthCodeFlow(ctx context.Context) error {
 		}
 
 		// Store tokens in MCPFusion
-		_, err = e.MCPClient.StoreTokens(ctx, e.Config.Service, tokenInfo.AccessToken, tokenInfo.RefreshToken)
+		_, err = e.MCPClient.StoreTokens(ctx, e.Config.Service, tokenInfo.AccessToken, tokenInfo.RefreshToken, tokenInfo.ExpiresIn)
 		if err != nil {
 			return fmt.Errorf("failed to store tokens in MCPFusion: %w", err)
 		}
@@ -487,7 +557,7 @@ func (e *OAuthFlowExecutor) createCallbackHandler(expectedState, _ string, _ *pr
 				errorMsg += fmt.Sprintf(" - %s", errorDesc)
 			}
 			e.writeErrorResponse(w, errorMsg)
-			resultChan <- authResult{Error: fmt.Errorf(errorMsg)}
+			resultChan <- authResult{Error: fmt.Errorf("%s", errorMsg)}
 			return
 		}
 
@@ -495,7 +565,7 @@ func (e *OAuthFlowExecutor) createCallbackHandler(expectedState, _ string, _ *pr
 		if state != expectedState {
 			errorMsg := "invalid state parameter - possible CSRF attack"
 			e.writeErrorResponse(w, errorMsg)
-			resultChan <- authResult{Error: fmt.Errorf(errorMsg)}
+			resultChan <- authResult{Error: fmt.Errorf("%s", errorMsg)}
 			return
 		}
 
@@ -503,7 +573,7 @@ func (e *OAuthFlowExecutor) createCallbackHandler(expectedState, _ string, _ *pr
 		if code == "" {
 			errorMsg := "no authorization code received"
 			e.writeErrorResponse(w, errorMsg)
-			resultChan <- authResult{Error: fmt.Errorf(errorMsg)}
+			resultChan <- authResult{Error: fmt.Errorf("%s", errorMsg)}
 			return
 		}
 

@@ -111,6 +111,16 @@ MCPFusion provides both legacy and modern MCP transports simultaneously:
 
 For clients unable to set custom HTTP headers, or those with unnecessarily restrictive support for network-based MCP servers, users may wish to consider bridging between MCP stdio transport and network-based MCP servers. In this case, https://github.com/PivotLLM/MCPRelay may be helpful.
 
+## Included Configurations
+
+MCPFusion ships with JSON configurations for two services in the `configs/` directory. These can be used as-is or customized to suit your needs.
+
+**Microsoft 365** (`configs/microsoft365.json`) — Provides calendar management (read, create, update, search across calendars), email (inbox, folders, search, drafts with reply/reply-all/forward, folder creation, message moves), contacts (list, read, search), and OneDrive file access (browse, search, read, download). Uses OAuth2 device code flow for authentication.
+
+**Google Workspace** (`configs/google-workspace.json`) — Provides calendar management (list, create, update, search events, list calendars), Gmail (read, search, drafts with reply/reply-all/forward, label management, message organization), Google Drive (browse, read, download, create, delete, share files), and Contacts (list, read, search). Uses browser-based OAuth2 authorization code flow via the `fusion-auth` helper.
+
+Both configurations are designed to support reading and drafting email but not sending, as a safety measure. Users who want to send email can add the appropriate scopes and endpoints.
+
 ## Development
 
 PRs are welcome as long as the submitter states that submissions are consistent with Apache License 2.0.

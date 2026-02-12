@@ -41,6 +41,7 @@ type TokenRequest struct {
 	Service      string `json:"service"`
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in,omitempty"`
 }
 
 // TokenResponse represents the response from storing OAuth tokens
@@ -111,11 +112,12 @@ func (c *Client) Ping(ctx context.Context) (*PingResponse, error) {
 }
 
 // StoreTokens sends OAuth tokens to MCPFusion for storage
-func (c *Client) StoreTokens(ctx context.Context, service, accessToken, refreshToken string) (*TokenResponse, error) {
+func (c *Client) StoreTokens(ctx context.Context, service, accessToken, refreshToken string, expiresIn int) (*TokenResponse, error) {
 	req := &TokenRequest{
 		Service:      service,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		ExpiresIn:    expiresIn,
 	}
 
 	endpoint := fmt.Sprintf("%s/api/v1/oauth/tokens", c.baseURL)
