@@ -380,3 +380,93 @@ func TestRefreshIfPossible_Success(t *testing.T) {
 		t.Errorf("cached AccessToken = %s, want new_access_token", cachedToken.AccessToken)
 	}
 }
+
+// TestInvalidateToken_ConcurrentSameKey verifies that calling InvalidateToken
+// concurrently for the same tenant+service combination does not race or panic.
+// With nil database and nil cache, no I/O occurs but the per-key mutex logic
+// in invalidationLocks (sync.Map with *sync.Mutex values) is fully exercised.
+func TestInvalidateToken_ConcurrentSameKey(t *testing.T) {
+	manager := NewMultiTenantAuthManager(nil, nil, nil)
+
+	const goroutines = 50
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			tc := &TenantContext{
+				TenantHash:  "shared_tenant_hash",
+				ServiceName: "shared_service",
+				CreatedAt:   time.Now(),
+			}
+			manager.InvalidateToken(tc)
+		}()
+	}
+
+	wg.Wait()
+}
+
+// TestInvalidateToken_ConcurrentDifferentKeys verifies that calling InvalidateToken
+// concurrently for different tenant+service combinations does not race or panic.
+// Each goroutine targets a unique key, exercising concurrent LoadOrStore calls
+// on the invalidationLocks sync.Map.
+func TestInvalidateToken_ConcurrentDifferentKeys(t *testing.T) {
+	manager := NewMultiTenantAuthManager(nil, nil, nil)
+
+	const goroutines = 50
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			tc := &TenantContext{
+				TenantHash:  fmt.Sprintf("tenant_%d", idx),
+				ServiceName: fmt.Sprintf("service_%d", idx),
+				CreatedAt:   time.Now(),
+			}
+			manager.InvalidateToken(tc)
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+// TestInvalidateToken_ConcurrentMixed verifies concurrent InvalidateToken calls
+// with a mix of shared and unique tenant+service keys. This exercises both the
+// LoadOrStore contention path (same key) and the concurrent creation path
+// (different keys) simultaneously.
+func TestInvalidateToken_ConcurrentMixed(t *testing.T) {
+	manager := NewMultiTenantAuthManager(nil, nil, nil)
+
+	const goroutinesPerKey = 20
+	const uniqueKeys = 10
+	total := goroutinesPerKey * uniqueKeys
+	var wg sync.WaitGroup
+	wg.Add(total)
+
+	for k := 0; k < uniqueKeys; k++ {
+		for g := 0; g < goroutinesPerKey; g++ {
+			go func(keyIdx int) {
+				defer wg.Done()
+				tc := &TenantContext{
+					TenantHash:  fmt.Sprintf("tenant_%d", keyIdx),
+					ServiceName: fmt.Sprintf("service_%d", keyIdx),
+					CreatedAt:   time.Now(),
+				}
+				manager.InvalidateToken(tc)
+			}(k)
+		}
+	}
+
+	wg.Wait()
+}
+
+// TestInvalidateToken_NilTenantContext verifies that InvalidateToken returns
+// immediately without panicking when given a nil TenantContext.
+func TestInvalidateToken_NilTenantContext(t *testing.T) {
+	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	// Must not panic
+	manager.InvalidateToken(nil)
+}

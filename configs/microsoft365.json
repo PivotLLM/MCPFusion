@@ -873,6 +873,17 @@
               "location": "body",
               "enum": ["low", "normal", "high"],
               "default": "normal"
+            },
+            {
+              "name": "reminderMinutesBeforeStart",
+              "description": "Minutes before event start to trigger reminder (e.g., 0, 15, 30, 60)",
+              "type": "number",
+              "required": false,
+              "location": "body",
+              "default": 15,
+              "validation": {
+                "minimum": 0
+              }
             }
           ],
           "response": {
@@ -964,10 +975,39 @@
               "required": false,
               "location": "body",
               "enum": ["low", "normal", "high"]
+            },
+            {
+              "name": "reminderMinutesBeforeStart",
+              "description": "Minutes before event start to trigger reminder (e.g., 0, 15, 30, 60)",
+              "type": "number",
+              "required": false,
+              "location": "body",
+              "validation": {
+                "minimum": 0
+              }
             }
           ],
           "response": {
             "type": "json"
+          }
+        },
+        {
+          "id": "calendar_event_delete",
+          "name": "Delete Calendar Event",
+          "description": "Permanently delete a calendar event. This action cannot be undone.",
+          "method": "DELETE",
+          "path": "/me/events/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "description": "The event ID of the event to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "text"
           }
         },
         {
@@ -1357,7 +1397,7 @@
             }
           ],
           "response": {
-            "type": "json"
+            "type": "text"
           }
         },
         {

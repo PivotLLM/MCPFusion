@@ -101,7 +101,7 @@ func TestTimeTokenIntegration_MapperProcessing(t *testing.T) {
 
 			case "body":
 				// Test body parameter processing
-				body, err := mapper.BuildRequestBody(tt.parameters, tt.args)
+				body, err := mapper.BuildRequestBody(tt.parameters, tt.args, nil)
 				if err != nil {
 					t.Fatalf("BuildRequestBody failed: %v", err)
 				}
@@ -306,7 +306,7 @@ func TestTimeTokenIntegration_ComplexScenario(t *testing.T) {
 	}
 
 	// Test body
-	body, err := mapper.BuildRequestBody(params, args)
+	body, err := mapper.BuildRequestBody(params, args, nil)
 	if err != nil {
 		t.Fatalf("BuildRequestBody failed: %v", err)
 	}

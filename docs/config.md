@@ -186,6 +186,7 @@ For APIs that use username/password:
 | `path` | string | Yes | API path (may include {placeholders}) |
 | `baseURL` | string | No | Overrides the service-level `baseURL` for this endpoint. Useful when a service spans multiple API hosts (e.g., Google APIs use `www.googleapis.com` for most services but `people.googleapis.com` for contacts). |
 | `parameters` | array | No | Array of parameter definitions |
+| `requestBody` | object | No | Request body encoding configuration (see [Request Body Encoding](#request-body-encoding)) |
 | `response` | object | No | Response handling configuration |
 | `retry` | object | No | Endpoint-specific retry override |
 
@@ -506,6 +507,143 @@ Protect against cascading failures:
   }
 }
 ```
+
+### Request Body Encoding
+
+Some APIs require request body parameters to be encoded in a specific format rather than sent as flat JSON fields. The `requestBody` configuration enables automatic encoding of body parameters before sending.
+
+#### How It Works
+
+When `requestBody` is set on an endpoint:
+
+1. Body parameters **with** a `transform.targetName` bypass encoding and are placed directly in the JSON body (e.g., `messageId` → `message.threadId`)
+2. Body parameters **without** a `targetName` are collected, passed through the named encoder, and the encoded result is placed at `wrapperPath`
+
+This partitioning allows mixing encoded content with structured JSON fields in the same request body.
+
+#### Configuration
+
+```json
+{
+  "requestBody": {
+    "encoding": "rfc2822_base64url",
+    "wrapperPath": "message.raw"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `encoding` | string | Yes | Name of the registered encoder |
+| `wrapperPath` | string | Yes | Dot-notation path where the encoded value is placed in the JSON body |
+
+#### Available Encodings
+
+| Name | Description | Use Case |
+|------|-------------|----------|
+| `rfc2822_base64url` | Assembles an RFC 2822 MIME message from `to`, `cc`, `bcc`, `subject`, `body` parameters and base64url-encodes it (no padding) | Gmail API drafts and messages |
+
+#### Example: Gmail Draft Create
+
+```json
+{
+  "id": "gmail_draft_create",
+  "method": "POST",
+  "path": "/gmail/v1/users/me/drafts",
+  "parameters": [
+    {"name": "to", "type": "string", "required": true, "location": "body"},
+    {"name": "subject", "type": "string", "required": true, "location": "body"},
+    {"name": "body", "type": "string", "required": true, "location": "body"}
+  ],
+  "requestBody": {
+    "encoding": "rfc2822_base64url",
+    "wrapperPath": "message.raw"
+  }
+}
+```
+
+This produces the request body `{"message": {"raw": "<base64url-encoded-RFC2822>"}}` as required by the Gmail API.
+
+#### Example: Gmail Draft Reply (Mixed Parameters)
+
+```json
+{
+  "id": "gmail_draft_reply",
+  "method": "POST",
+  "path": "/gmail/v1/users/me/drafts",
+  "parameters": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "required": true,
+      "location": "body",
+      "transform": {"targetName": "message.threadId", "expression": "."}
+    },
+    {"name": "to", "type": "string", "required": true, "location": "body"},
+    {"name": "subject", "type": "string", "required": true, "location": "body"},
+    {"name": "body", "type": "string", "required": true, "location": "body"}
+  ],
+  "requestBody": {
+    "encoding": "rfc2822_base64url",
+    "wrapperPath": "message.raw"
+  }
+}
+```
+
+This produces `{"message": {"threadId": "abc123", "raw": "<base64url-encoded-RFC2822>"}}` — the `messageId` bypasses encoding (it has a `targetName`), while `to`, `subject`, and `body` are encoded into the RFC 2822 message.
+
+## Destructive Tool Safety Gate
+
+MCPFusion includes a safety mechanism for destructive tools (those that delete data or perform irreversible operations). By default, destructive tools are **registered and visible** to the LLM but **return an error when called**, allowing the LLM to inform the user about the capability and how to enable it.
+
+### How It Works
+
+- All tools are always registered, including destructive ones
+- When a destructive tool is called and the gate is not enabled, it returns an informative error
+- The LLM can see the tool, explain what it does, and tell the user how to enable it
+- This is safer than hiding tools entirely, which would prevent the LLM from knowing the capability exists
+
+### Enabling Destructive Tools
+
+Set the `MCP_FUSION_ALLOW_DESTRUCTIVE` environment variable:
+
+```bash
+MCP_FUSION_ALLOW_DESTRUCTIVE=true ./mcpfusion
+```
+
+Accepted values (case-insensitive): `true`, `yes`, `1`. Any other value or absence of the variable means disabled (the default).
+
+### How Tools Are Classified as Destructive
+
+1. **Automatic (from HTTP method)**: Any endpoint using the `DELETE` method is automatically classified as destructive via `hints.destructive = true`
+2. **Explicit (from config)**: You can explicitly mark any endpoint as destructive using the `hints` field in endpoint configuration, regardless of HTTP method
+
+**Example: Explicitly marking a non-DELETE tool as destructive:**
+
+```json
+{
+  "id": "purge_cache",
+  "name": "Purge Cache",
+  "description": "Purge all cached data. This cannot be undone.",
+  "method": "POST",
+  "path": "/admin/cache/purge",
+  "hints": {
+    "destructive": true
+  },
+  "parameters": [],
+  "response": { "type": "json" }
+}
+```
+
+### Currently Affected Tools
+
+| Config | Tool | Endpoint |
+|--------|------|----------|
+| Google | `google_gmail_draft_delete` | `DELETE /gmail/v1/users/me/drafts/{draftId}` |
+| Google | `google_drive_file_delete` | `DELETE /drive/v3/files/{fileId}` |
+| Google | `google_calendar_event_delete` | `DELETE /calendar/v3/calendars/primary/events/{eventId}` |
+| M365 | `microsoft365_mail_draft_delete` | `DELETE /me/messages/{id}` |
+| M365 | `microsoft365_calendar_event_delete` | `DELETE /me/events/{id}` |
 
 ## HTTP Session Management
 

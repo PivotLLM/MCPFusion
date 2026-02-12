@@ -173,6 +173,13 @@
               "type": "object",
               "required": true,
               "location": "body"
+            },
+            {
+              "name": "reminders",
+              "description": "Reminders configuration object. Example: {\"useDefault\": false, \"overrides\": [{\"method\": \"popup\", \"minutes\": 30}]}. Set useDefault to true to use calendar defaults, or false with overrides array for custom reminders. Methods: \"popup\" or \"email\".",
+              "type": "object",
+              "required": false,
+              "location": "body"
             }
           ],
           "response": {
@@ -260,10 +267,36 @@
               "type": "object",
               "required": false,
               "location": "body"
+            },
+            {
+              "name": "reminders",
+              "description": "Reminders configuration object. Example: {\"useDefault\": false, \"overrides\": [{\"method\": \"popup\", \"minutes\": 30}]}. Set useDefault to true to use calendar defaults, or false with overrides array for custom reminders. Methods: \"popup\" or \"email\".",
+              "type": "object",
+              "required": false,
+              "location": "body"
             }
           ],
           "response": {
             "type": "json"
+          }
+        },
+        {
+          "id": "calendar_event_delete",
+          "name": "Delete Calendar Event",
+          "description": "Permanently delete a calendar event. This action cannot be undone.",
+          "method": "DELETE",
+          "path": "/calendar/v3/calendars/primary/events/{eventId}",
+          "parameters": [
+            {
+              "name": "eventId",
+              "description": "The ID of the event to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "text"
           }
         },
         {
@@ -557,6 +590,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }
@@ -641,6 +678,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }
@@ -661,7 +702,7 @@
             }
           ],
           "response": {
-            "type": "json"
+            "type": "text"
           }
         },
         {
@@ -755,6 +796,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }
@@ -813,6 +858,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }
@@ -864,6 +913,10 @@
               "location": "body"
             }
           ],
+          "requestBody": {
+            "encoding": "rfc2822_base64url",
+            "wrapperPath": "message.raw"
+          },
           "response": {
             "type": "json"
           }

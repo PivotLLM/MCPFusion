@@ -6,6 +6,8 @@
 package fusion
 
 import (
+	"encoding/base64"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -130,7 +132,7 @@ func TestMapper_BuildRequestBody_DotNotation(t *testing.T) {
 		"subject":       "Team Meeting",
 	}
 
-	body, err := mapper.BuildRequestBody(params, args)
+	body, err := mapper.BuildRequestBody(params, args, nil)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 
@@ -164,10 +166,123 @@ func TestMapper_BuildRequestBody_IdentityPassthrough(t *testing.T) {
 		"description": "A simple test value",
 	}
 
-	body, err := mapper.BuildRequestBody(params, args)
+	body, err := mapper.BuildRequestBody(params, args, nil)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 
 	// Identity expression "." should pass the value through unchanged
 	assert.Equal(t, "A simple test value", body["description"])
+}
+
+func TestMapper_BuildRequestBody_WithEncoding(t *testing.T) {
+	mapper := NewMapper(nil)
+
+	params := []ParameterConfig{
+		{Name: "to", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
+		{Name: "subject", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
+		{Name: "body", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
+	}
+	args := map[string]interface{}{
+		"to":      "alice@example.com",
+		"subject": "Test",
+		"body":    "Hello",
+	}
+	rbConfig := &RequestBodyConfig{
+		Encoding:    "rfc2822_base64url",
+		WrapperPath: "message.raw",
+	}
+
+	result, err := mapper.BuildRequestBody(params, args, rbConfig)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Flat params should be gone
+	assert.Nil(t, result["to"])
+	assert.Nil(t, result["subject"])
+	assert.Nil(t, result["body"])
+
+	// Encoded value should be at message.raw
+	msgObj, ok := result["message"].(map[string]interface{})
+	require.True(t, ok, "message should be a nested map")
+	rawStr, ok := msgObj["raw"].(string)
+	require.True(t, ok, "raw should be a string")
+
+	decoded, err := base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(rawStr)
+	require.NoError(t, err)
+	assert.Contains(t, string(decoded), "To: alice@example.com")
+	assert.Contains(t, string(decoded), "Subject: Test")
+	assert.True(t, strings.HasSuffix(string(decoded), "\r\n\r\nHello"))
+}
+
+func TestMapper_BuildRequestBody_WithEncoding_MixedParams(t *testing.T) {
+	mapper := NewMapper(nil)
+
+	params := []ParameterConfig{
+		{
+			Name:     "messageId",
+			Type:     ParameterTypeString,
+			Required: true,
+			Location: ParameterLocationBody,
+			Transform: &TransformConfig{
+				TargetName: "message.threadId",
+				Expression: ".",
+			},
+		},
+		{Name: "to", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
+		{Name: "subject", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
+		{Name: "body", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
+	}
+	args := map[string]interface{}{
+		"messageId": "thread123",
+		"to":        "bob@example.com",
+		"subject":   "Reply",
+		"body":      "Thanks!",
+	}
+	rbConfig := &RequestBodyConfig{
+		Encoding:    "rfc2822_base64url",
+		WrapperPath: "message.raw",
+	}
+
+	result, err := mapper.BuildRequestBody(params, args, rbConfig)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// messageId with targetName should bypass encoding → message.threadId
+	msgObj, ok := result["message"].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "thread123", msgObj["threadId"])
+
+	// Flat params should be encoded → message.raw
+	rawStr, ok := msgObj["raw"].(string)
+	require.True(t, ok, "raw should be a string")
+	decoded, err := base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(rawStr)
+	require.NoError(t, err)
+	assert.Contains(t, string(decoded), "To: bob@example.com")
+	assert.Contains(t, string(decoded), "Subject: Reply")
+
+	// Flat params should not appear at top level
+	assert.Nil(t, result["to"])
+	assert.Nil(t, result["subject"])
+	assert.Nil(t, result["body"])
+}
+
+func TestMapper_BuildRequestBody_NoEncoding_FlatParams(t *testing.T) {
+	mapper := NewMapper(nil)
+
+	params := []ParameterConfig{
+		{Name: "to", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
+		{Name: "subject", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
+	}
+	args := map[string]interface{}{
+		"to":      "alice@example.com",
+		"subject": "Test",
+	}
+
+	// nil requestBody = backwards compatible behavior
+	result, err := mapper.BuildRequestBody(params, args, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, "alice@example.com", result["to"])
+	assert.Equal(t, "Test", result["subject"])
 }

@@ -313,12 +313,7 @@ func (mtam *MultiTenantAuthManager) InvalidateToken(tenantContext *TenantContext
 
 	// Lock for this specific tenant+service combination
 	lock.Lock()
-	defer func() {
-		lock.Unlock()
-		// Clean up the lock from the map after use to prevent unbounded growth
-		// This is safe because if another goroutine needs it, LoadOrStore will create a new one
-		mtam.invalidationLocks.Delete(lockKey)
-	}()
+	defer lock.Unlock()
 
 	// Delete from database
 	if mtam.db != nil {

@@ -241,9 +241,17 @@ func setNestedValue(body map[string]interface{}, key string, value interface{}) 
 	current[parts[len(parts)-1]] = value
 }
 
-// BuildRequestBody builds the request body from parameters
-func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]interface{}) (map[string]interface{}, error) {
+// BuildRequestBody builds the request body from parameters.
+// When requestBody is non-nil, body parameters without a transform.targetName
+// are collected, passed through the named encoder, and placed at wrapperPath.
+// Parameters with targetName bypass encoding and go directly into the body.
+func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]interface{},
+	requestBody *RequestBodyConfig) (map[string]interface{}, error) {
+
 	body := make(map[string]interface{})
+
+	// Track flat params (no targetName) separately when encoding is configured
+	var flatParamNames []string
 
 	for _, param := range params {
 		if param.Location != "body" {
@@ -280,6 +288,9 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 			value = `"` + valueStr + `"`
 		}
 
+		// Determine if this param has a target name (bypasses encoding)
+		hasTargetName := param.Transform != nil && param.Transform.TargetName != ""
+
 		// Apply transformation if specified
 		if param.Transform != nil {
 			transformedValue, err := m.transformParameter(param, value)
@@ -296,6 +307,37 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 		} else {
 			setNestedValue(body, param.Name, value)
 		}
+
+		// Track flat params (no targetName) for potential encoding
+		if requestBody != nil && !hasTargetName {
+			flatParamNames = append(flatParamNames, param.Name)
+		}
+	}
+
+	// Apply body encoding if configured
+	if requestBody != nil && len(flatParamNames) > 0 {
+		encoder, ok := GetBodyEncoder(requestBody.Encoding)
+		if !ok {
+			return nil, fmt.Errorf("unknown body encoding: %s", requestBody.Encoding)
+		}
+
+		// Extract flat params from body into a separate map for encoding
+		flatParams := make(map[string]interface{}, len(flatParamNames))
+		for _, name := range flatParamNames {
+			flatParams[name] = body[name]
+			delete(body, name)
+		}
+
+		encoded, err := encoder.Encode(flatParams)
+		if err != nil {
+			return nil, fmt.Errorf("body encoding failed: %w", err)
+		}
+
+		setNestedValue(body, requestBody.WrapperPath, encoded)
+
+		if m.logger != nil {
+			m.logger.Debugf("Encoded %d parameters with %s → %s", len(flatParamNames), requestBody.Encoding, requestBody.WrapperPath)
+		}
 	}
 
 	if len(body) == 0 {
@@ -303,7 +345,7 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 	}
 
 	if m.logger != nil {
-		m.logger.Debugf("Built request body with %d parameters", len(body))
+		m.logger.Debugf("Built request body with %d top-level keys", len(body))
 	}
 
 	return body, nil
