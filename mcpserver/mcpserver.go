@@ -113,6 +113,7 @@ type MCPServer struct {
 	database          *db.DB
 	authManager       *fusion.MultiTenantAuthManager
 	configManager     ServiceProvider
+	authorizer        global.Authorizer
 }
 
 func WithListen(listen string) Option {
@@ -187,6 +188,12 @@ func WithConfigManager(configManager ServiceProvider) Option {
 	}
 }
 
+func WithAuthorizer(authorizer global.Authorizer) Option {
+	return func(m *MCPServer) {
+		m.authorizer = authorizer
+	}
+}
+
 // New creates a new MCPServer instance with the provided options.
 func New(options ...Option) (*MCPServer, error) {
 
@@ -244,6 +251,9 @@ func New(options ...Option) (*MCPServer, error) {
 		}
 		if m.configManager != nil {
 			authOptions = append(authOptions, WithMCPServiceProvider(m.configManager))
+		}
+		if m.authorizer != nil {
+			authOptions = append(authOptions, WithMCPAuthorizer(m.authorizer))
 		}
 		serverOptions = append(serverOptions, WithMCPAuthentication(authOptions...))
 	}

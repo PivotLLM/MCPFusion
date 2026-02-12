@@ -20,6 +20,7 @@ import (
 type MCPAuthConfiguration struct {
 	authManager     *fusion.MultiTenantAuthManager
 	serviceProvider ServiceProvider
+	authorizer      global.Authorizer
 	logger          global.Logger
 }
 
@@ -47,6 +48,13 @@ func WithMCPLogger(logger global.Logger) MCPAuthOption {
 	}
 }
 
+// WithMCPAuthorizer sets the authorizer for MCP tool-level authorization
+func WithMCPAuthorizer(authorizer global.Authorizer) MCPAuthOption {
+	return func(config *MCPAuthConfiguration) {
+		config.authorizer = authorizer
+	}
+}
+
 // WithMCPAuthentication creates a server option that adds MCP-level authentication middleware
 // This middleware validates tenant access to specific tools and logs at the MCP protocol level
 func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
@@ -55,6 +63,11 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 	// Apply options
 	for _, option := range options {
 		option(config)
+	}
+
+	// Default to AllowAllAuthorizer if none is configured
+	if config.authorizer == nil {
+		config.authorizer = &global.AllowAllAuthorizer{}
 	}
 
 	if config.logger != nil {
@@ -128,6 +141,20 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 					}
 					return nil, fmt.Errorf("access denied to service: %s", serviceName)
 				}
+			}
+
+			// Run tool-level authorization
+			toolRequest := global.ToolRequest{
+				TenantHash:  tenantContext.TenantHash,
+				ServiceName: serviceName,
+				ToolName:    request.Params.Name,
+			}
+			if err := config.authorizer.Authorize(ctx, toolRequest); err != nil {
+				if config.logger != nil {
+					config.logger.Errorf("MCP Auth: Authorization denied for tenant %s tool %s: %v",
+						tenantContext.ShortHash(), request.Params.Name, err)
+				}
+				return nil, fmt.Errorf("authorization denied: %v", err)
 			}
 
 			if config.logger != nil {

@@ -5,7 +5,10 @@
 
 package global
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // Parameter represents a parameter for a tool, resource, or prompt with rich metadata
 type Parameter struct {
@@ -199,3 +202,29 @@ const (
 	// ToolNameKey is the key used to store the MCP tool name in request contexts
 	ToolNameKey ContextKey = "tool_name"
 )
+
+//
+// Authorization
+//
+
+// ToolRequest represents the context of a tool invocation for authorization decisions.
+type ToolRequest struct {
+	TenantHash  string
+	ServiceName string
+	ToolName    string
+}
+
+// Authorizer defines an interface for authorizing tool requests.
+// Implementations can enforce access control policies per-tenant, per-service, or per-tool.
+// Return nil to allow the request, or an error to deny it.
+type Authorizer interface {
+	Authorize(ctx context.Context, req ToolRequest) error
+}
+
+// AllowAllAuthorizer is a default Authorizer that permits all requests.
+type AllowAllAuthorizer struct{}
+
+// Authorize always returns nil, allowing all requests.
+func (a *AllowAllAuthorizer) Authorize(_ context.Context, _ ToolRequest) error {
+	return nil
+}
