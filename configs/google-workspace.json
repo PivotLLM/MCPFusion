@@ -173,6 +173,13 @@
               "type": "object",
               "required": true,
               "location": "body"
+            },
+            {
+              "name": "reminders",
+              "description": "Reminders configuration object. Example: {\"useDefault\": false, \"overrides\": [{\"method\": \"popup\", \"minutes\": 30}]}. Set useDefault to true to use calendar defaults, or false with overrides array for custom reminders. Methods: \"popup\" or \"email\".",
+              "type": "object",
+              "required": false,
+              "location": "body"
             }
           ],
           "response": {
@@ -257,6 +264,13 @@
             {
               "name": "end",
               "description": "Event end time object, e.g. {\"dateTime\": \"2025-01-15T11:00:00Z\", \"timeZone\": \"UTC\"}",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "reminders",
+              "description": "Reminders configuration object. Example: {\"useDefault\": false, \"overrides\": [{\"method\": \"popup\", \"minutes\": 30}]}. Set useDefault to true to use calendar defaults, or false with overrides array for custom reminders. Methods: \"popup\" or \"email\".",
               "type": "object",
               "required": false,
               "location": "body"
