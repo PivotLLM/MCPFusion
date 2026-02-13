@@ -96,7 +96,7 @@ func (s *mockStrategy) SupportsRefresh() bool {
 	return s.supportsRefresh
 }
 
-func (s *mockStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
+func (s *mockStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}

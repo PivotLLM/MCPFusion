@@ -287,7 +287,7 @@ func (mtam *MultiTenantAuthManager) ApplyAuthentication(ctx context.Context, req
 			authConfig.Type, tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
-	if err := strategy.ApplyAuth(req, tokenInfo); err != nil {
+	if err := strategy.ApplyAuth(req, tokenInfo, authConfig.Config); err != nil {
 		if mtam.logger != nil {
 			mtam.logger.Errorf("Failed to apply authentication for tenant %s service %s: %v",
 				tenantContext.ShortHash(), tenantContext.ServiceName, err)

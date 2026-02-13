@@ -185,7 +185,7 @@ func TestSessionJWTStrategy_ApplyAuth_Header(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com/api", nil)
-			err := strategy.ApplyAuth(req, tt.tokenInfo)
+			err := strategy.ApplyAuth(req, tt.tokenInfo, nil)
 			if err != nil {
 				t.Errorf("ApplyAuth() error = %v", err)
 				return
@@ -263,7 +263,7 @@ func TestSessionJWTStrategy_ApplyAuth_Cookie(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com/api", nil)
-			err := strategy.ApplyAuth(req, tt.tokenInfo)
+			err := strategy.ApplyAuth(req, tt.tokenInfo, nil)
 			if err != nil {
 				t.Errorf("ApplyAuth() error = %v", err)
 				return
@@ -319,7 +319,7 @@ func TestSessionJWTStrategy_ApplyAuth_Query(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com/api", nil)
-			err := strategy.ApplyAuth(req, tt.tokenInfo)
+			err := strategy.ApplyAuth(req, tt.tokenInfo, nil)
 			if err != nil {
 				t.Errorf("ApplyAuth() error = %v", err)
 				return
@@ -359,7 +359,7 @@ func TestSessionJWTStrategy_ApplyAuth_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com/api", nil)
-			err := strategy.ApplyAuth(req, tt.tokenInfo)
+			err := strategy.ApplyAuth(req, tt.tokenInfo, nil)
 			if err == nil {
 				t.Error("ApplyAuth() expected error, got nil")
 				return

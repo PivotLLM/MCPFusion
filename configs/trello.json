@@ -1,0 +1,881 @@
+{
+  "services": {
+    "trello": {
+      "name": "Trello",
+      "baseURL": "https://api.trello.com/1",
+      "auth": {
+        "type": "user_credentials",
+        "config": {
+          "instructions": "To use Trello with MCPFusion, you need a Trello API Key and Token.\n\n1. Visit https://trello.com/power-ups/admin/ to get your API Key\n2. Click 'Generate a Token' link on that page to get your Token\n3. Enter both values when prompted below",
+          "fields": [
+            { "name": "key", "label": "API Key", "description": "Your Trello API Key from https://trello.com/power-ups/admin/", "location": "query", "paramName": "key" },
+            { "name": "token", "label": "API Token", "description": "Your Trello API Token", "location": "query", "paramName": "token" }
+          ]
+        }
+      },
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "30s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": ["network_error", "timeout", "server_error", "rate_limited"]
+      },
+      "endpoints": [
+        {
+          "id": "get_member",
+          "name": "Get Member",
+          "description": "Get information about a member (user). Use 'me' as the memberId to get the authenticated user's profile. This is a good way to test connectivity and authentication.",
+          "method": "GET",
+          "path": "/members/{memberId}",
+          "parameters": [
+            {
+              "name": "memberId",
+              "description": "Member ID or 'me' for the authenticated user",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of fields to include (e.g., 'fullName,username,email,url,avatarUrl')",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "fullName,username,email,url,avatarUrl,bio"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_member_boards",
+          "name": "Get Member Boards",
+          "description": "Get all boards that a member belongs to",
+          "method": "GET",
+          "path": "/members/{memberId}/boards",
+          "parameters": [
+            {
+              "name": "memberId",
+              "description": "Member ID or 'me' for the authenticated user",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "filter",
+              "description": "Filter boards by status",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "all",
+              "enum": ["all", "closed", "members", "open", "organization", "public", "starred"]
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of board fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,desc,url,closed,dateLastActivity,shortUrl"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_board",
+          "name": "Get Board",
+          "description": "Get detailed information about a specific Trello board",
+          "method": "GET",
+          "path": "/boards/{boardId}",
+          "parameters": [
+            {
+              "name": "boardId",
+              "description": "The ID of the board",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of board fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,desc,url,closed,dateLastActivity,shortUrl,prefs,labelNames"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_board",
+          "name": "Create Board",
+          "description": "Create a new Trello board",
+          "method": "POST",
+          "path": "/boards",
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Name of the new board",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "desc",
+              "description": "Description of the board",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "idOrganization",
+              "description": "The ID of the workspace the board should belong to",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "defaultLists",
+              "description": "Whether to create default lists (To Do, Doing, Done)",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": true
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_board",
+          "name": "Update Board",
+          "description": "Update an existing Trello board",
+          "method": "PUT",
+          "path": "/boards/{boardId}",
+          "parameters": [
+            {
+              "name": "boardId",
+              "description": "The ID of the board to update",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "name",
+              "description": "New name for the board",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "desc",
+              "description": "New description for the board",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "closed",
+              "description": "Whether to close (archive) the board",
+              "type": "boolean",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_board_lists",
+          "name": "Get Board Lists",
+          "description": "Get all lists on a board",
+          "method": "GET",
+          "path": "/boards/{boardId}/lists",
+          "parameters": [
+            {
+              "name": "boardId",
+              "description": "The ID of the board",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "filter",
+              "description": "Filter lists by status",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "open",
+              "enum": ["all", "closed", "none", "open"]
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of list fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,closed,pos,idBoard"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_board_cards",
+          "name": "Get Board Cards",
+          "description": "Get all cards on a board",
+          "method": "GET",
+          "path": "/boards/{boardId}/cards",
+          "parameters": [
+            {
+              "name": "boardId",
+              "description": "The ID of the board",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of card fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,desc,idList,idMembers,labels,due,dueComplete,url,shortUrl,closed,dateLastActivity"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_board_members",
+          "name": "Get Board Members",
+          "description": "Get all members of a board",
+          "method": "GET",
+          "path": "/boards/{boardId}/members",
+          "parameters": [
+            {
+              "name": "boardId",
+              "description": "The ID of the board",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_board_labels",
+          "name": "Get Board Labels",
+          "description": "Get all labels defined on a board",
+          "method": "GET",
+          "path": "/boards/{boardId}/labels",
+          "parameters": [
+            {
+              "name": "boardId",
+              "description": "The ID of the board",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of label fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,color,idBoard"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_list",
+          "name": "Get List",
+          "description": "Get information about a specific list",
+          "method": "GET",
+          "path": "/lists/{listId}",
+          "parameters": [
+            {
+              "name": "listId",
+              "description": "The ID of the list",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of list fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,closed,pos,idBoard"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_list",
+          "name": "Create List",
+          "description": "Create a new list on a board",
+          "method": "POST",
+          "path": "/lists",
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Name of the new list",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "idBoard",
+              "description": "The ID of the board to add the list to",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "pos",
+              "description": "Position of the list (top, bottom, or a positive number)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "bottom"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_list",
+          "name": "Update List",
+          "description": "Update an existing list",
+          "method": "PUT",
+          "path": "/lists/{listId}",
+          "parameters": [
+            {
+              "name": "listId",
+              "description": "The ID of the list to update",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "name",
+              "description": "New name for the list",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "closed",
+              "description": "Whether to archive the list",
+              "type": "boolean",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "pos",
+              "description": "New position (top, bottom, or a positive number)",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_list_cards",
+          "name": "Get List Cards",
+          "description": "Get all cards in a specific list",
+          "method": "GET",
+          "path": "/lists/{listId}/cards",
+          "parameters": [
+            {
+              "name": "listId",
+              "description": "The ID of the list",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of card fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,desc,idList,idMembers,labels,due,dueComplete,url,shortUrl,closed,dateLastActivity"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_card",
+          "name": "Get Card",
+          "description": "Get detailed information about a specific card",
+          "method": "GET",
+          "path": "/cards/{cardId}",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of card fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,desc,idList,idBoard,idMembers,labels,due,dueComplete,url,shortUrl,closed,dateLastActivity,pos"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_card",
+          "name": "Create Card",
+          "description": "Create a new card in a list",
+          "method": "POST",
+          "path": "/cards",
+          "parameters": [
+            {
+              "name": "idList",
+              "description": "The ID of the list to create the card in",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "name",
+              "description": "Name/title of the card",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "desc",
+              "description": "Description of the card (supports Markdown)",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "pos",
+              "description": "Position of the card (top, bottom, or a positive number)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "bottom"
+            },
+            {
+              "name": "due",
+              "description": "Due date for the card (ISO 8601 format, e.g., '2025-12-31T12:00:00Z')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "idMembers",
+              "description": "Comma-separated list of member IDs to assign to the card",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "idLabels",
+              "description": "Comma-separated list of label IDs to add to the card",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_card",
+          "name": "Update Card",
+          "description": "Update an existing card",
+          "method": "PUT",
+          "path": "/cards/{cardId}",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card to update",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "name",
+              "description": "New name for the card",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "desc",
+              "description": "New description for the card (supports Markdown)",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "closed",
+              "description": "Whether to archive the card",
+              "type": "boolean",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "idList",
+              "description": "Move card to a different list by providing the list ID",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "idBoard",
+              "description": "Move card to a different board by providing the board ID",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "pos",
+              "description": "New position (top, bottom, or a positive number)",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "due",
+              "description": "Due date (ISO 8601 format) or null to remove",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "dueComplete",
+              "description": "Whether the due date is complete",
+              "type": "boolean",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "idMembers",
+              "description": "Comma-separated list of member IDs to assign",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "idLabels",
+              "description": "Comma-separated list of label IDs",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_card",
+          "name": "Delete Card",
+          "description": "Permanently delete a card. This cannot be undone.",
+          "method": "DELETE",
+          "path": "/cards/{cardId}",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_card_actions",
+          "name": "Get Card Actions",
+          "description": "Get the activity/action history for a card (comments, moves, updates, etc.)",
+          "method": "GET",
+          "path": "/cards/{cardId}/actions",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "filter",
+              "description": "Comma-separated list of action types to filter (e.g., 'commentCard,updateCard')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "add_card_comment",
+          "name": "Add Card Comment",
+          "description": "Add a comment to a card",
+          "method": "POST",
+          "path": "/cards/{cardId}/actions/comments",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card to comment on",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "text",
+              "description": "The comment text",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_card_checklists",
+          "name": "Get Card Checklists",
+          "description": "Get all checklists on a card",
+          "method": "GET",
+          "path": "/cards/{cardId}/checklists",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_checklist",
+          "name": "Create Checklist",
+          "description": "Create a new checklist on a card",
+          "method": "POST",
+          "path": "/checklists",
+          "parameters": [
+            {
+              "name": "idCard",
+              "description": "The ID of the card to add the checklist to",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "name",
+              "description": "Name of the checklist",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_checklist_item",
+          "name": "Create Checklist Item",
+          "description": "Add an item to a checklist",
+          "method": "POST",
+          "path": "/checklists/{checklistId}/checkItems",
+          "parameters": [
+            {
+              "name": "checklistId",
+              "description": "The ID of the checklist",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "name",
+              "description": "Name of the checklist item",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "checked",
+              "description": "Whether the item is checked",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": false
+            },
+            {
+              "name": "pos",
+              "description": "Position of the item (top, bottom, or a positive number)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "bottom"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "create_label",
+          "name": "Create Label",
+          "description": "Create a new label on a board",
+          "method": "POST",
+          "path": "/labels",
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Name of the label",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "color",
+              "description": "Color of the label",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "enum": ["yellow", "purple", "blue", "red", "green", "orange", "black", "sky", "pink", "lime", "null"]
+            },
+            {
+              "name": "idBoard",
+              "description": "The ID of the board to create the label on",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "search",
+          "name": "Search Trello",
+          "description": "Search for boards, cards, members, and organizations across Trello",
+          "method": "GET",
+          "path": "/search",
+          "parameters": [
+            {
+              "name": "query",
+              "description": "Search query string. Supports operators like @member, #label, board:name, list:name, is:open, is:archived, has:attachments, due:day",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "modelTypes",
+              "description": "Comma-separated list of model types to search (default: all)",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "cards,boards",
+              "examples": ["cards", "boards", "organizations", "members", "cards,boards"]
+            },
+            {
+              "name": "cards_limit",
+              "description": "Maximum number of cards to return (1-1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "boards_limit",
+              "description": "Maximum number of boards to return (1-1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 10,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            {
+              "name": "partial",
+              "description": "Whether to allow partial matching",
+              "type": "boolean",
+              "required": false,
+              "location": "query",
+              "default": true
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_member_organizations",
+          "name": "Get Member Organizations",
+          "description": "Get all organizations (workspaces) that a member belongs to",
+          "method": "GET",
+          "path": "/members/{memberId}/organizations",
+          "parameters": [
+            {
+              "name": "memberId",
+              "description": "Member ID or 'me' for the authenticated user",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "fields",
+              "description": "Comma-separated list of organization fields to include",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "name,displayName,desc,url,website"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_board_actions",
+          "name": "Get Board Actions",
+          "description": "Get the activity/action history for a board",
+          "method": "GET",
+          "path": "/boards/{boardId}/actions",
+          "parameters": [
+            {
+              "name": "boardId",
+              "description": "The ID of the board",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "filter",
+              "description": "Comma-separated list of action types to filter (e.g., 'commentCard,createCard,updateCard')",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "limit",
+              "description": "Number of actions to return (1-1000)",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 50,
+              "validation": {
+                "minimum": 1,
+                "maximum": 1000
+              }
+            }
+          ],
+          "response": { "type": "json" }
+        }
+      ]
+    }
+  }
+}

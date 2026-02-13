@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -191,7 +192,7 @@ func listProviders(registry *providers.ProviderRegistry) {
 	}
 }
 
-func validateFlags(flags *cliFlags, registry *providers.ProviderRegistry) error {
+func validateFlags(flags *cliFlags, _ *providers.ProviderRegistry) error {
 	if flags.service == "" {
 		return fmt.Errorf("service is required (use -list to see available services)")
 	}
@@ -204,12 +205,8 @@ func validateFlags(flags *cliFlags, registry *providers.ProviderRegistry) error 
 		return fmt.Errorf("MCPFusion API token is required")
 	}
 
-	// Validate service exists
-	_, err := registry.GetProvider(flags.service)
-	if err != nil {
-		return fmt.Errorf("unsupported service '%s': %w", flags.service, err)
-	}
-
+	// Service validation is deferred to the server - it may be a user_credentials
+	// service that doesn't have a local provider registered.
 	return nil
 }
 
@@ -231,11 +228,6 @@ func createConfiguration(flags *cliFlags) (*config.Config, error) {
 }
 
 func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, registry *providers.ProviderRegistry) error {
-	provider, err := registry.GetProvider(cfg.Service)
-	if err != nil {
-		return err
-	}
-
 	// Create MCP client
 	mcpClient := mcp.NewClient(cfg.FusionURL, cfg.APIToken)
 
@@ -253,14 +245,22 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 		log.Printf("Successfully connected to MCPFusion server (tenant: %s)", pingResp.TenantID)
 	}
 
-	// Fetch OAuth config from server to override local defaults
+	// Fetch service config from server
 	serverConfig, err := mcpClient.GetServiceConfig(ctx, cfg.Service)
 	if err != nil {
 		if flags.verbose {
 			log.Printf("Warning: could not fetch service config from server: %v (using local defaults)", err)
 		}
 	} else if serverConfig != nil && serverConfig.Config != nil {
-		// Override local config with server-provided values
+		// Check if the server has a user_credentials auth config for this service
+		if authType, ok := serverConfig.Config.AuthType(); ok && authType == "user_credentials" {
+			if flags.verbose {
+				log.Printf("Service '%s' uses user_credentials authentication", cfg.Service)
+			}
+			return executeUserCredentialsFlow(ctx, cfg, mcpClient, serverConfig.Config, flags.verbose)
+		}
+
+		// Override local config with server-provided OAuth values
 		localConfig := cfg.GetServiceConfig(cfg.Service)
 		if localConfig == nil {
 			localConfig = &config.ServiceConfig{}
@@ -278,6 +278,12 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 		if flags.verbose {
 			log.Printf("Applied OAuth configuration from server for service: %s", cfg.Service)
 		}
+	}
+
+	// Fall back to standard OAuth provider flow
+	provider, err := registry.GetProvider(cfg.Service)
+	if err != nil {
+		return fmt.Errorf("unsupported service '%s' and no user_credentials config found on server: %w", cfg.Service, err)
 	}
 
 	// Validate the merged configuration (server config + local defaults)
@@ -307,7 +313,6 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 	}
 
 	// Execute the OAuth flow based on what the provider supports
-	// Prefer device flow if available, otherwise use auth code flow
 	if provider.SupportsDeviceFlow() {
 		return executor.ExecuteDeviceFlow(ctx)
 	} else if provider.SupportsAuthorizationCode() {
@@ -315,6 +320,55 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 	} else {
 		return fmt.Errorf("provider '%s' does not support any OAuth flow", cfg.Service)
 	}
+}
+
+// executeUserCredentialsFlow handles the user_credentials authentication flow
+// by prompting the user for each field defined in the auth config
+func executeUserCredentialsFlow(ctx context.Context, cfg *config.Config, mcpClient *mcp.Client, configData *mcp.ServiceConfigData, verbose bool) error {
+	// Display instructions if provided
+	if configData.Instructions != "" {
+		fmt.Printf("\n%s\n\n", configData.Instructions)
+	}
+
+	// Collect credential values from the user
+	metadata := make(map[string]string)
+	reader := bufio.NewReader(os.Stdin)
+
+	for _, field := range configData.Fields {
+		label := field.Label
+		if label == "" {
+			label = field.Name
+		}
+
+		if field.Description != "" {
+			fmt.Printf("%s: %s\n", label, field.Description)
+		}
+		fmt.Printf("Enter %s: ", label)
+
+		value, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input for '%s': %w", field.Name, err)
+		}
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return fmt.Errorf("value for '%s' cannot be empty", field.Name)
+		}
+
+		metadata[field.Name] = value
+	}
+
+	if verbose {
+		log.Printf("Collected %d credential fields, storing in MCPFusion...", len(metadata))
+	}
+
+	// Store credentials via the API
+	_, err := mcpClient.StoreTokens(ctx, cfg.Service, "user_credentials:"+cfg.Service, "", 0, metadata)
+	if err != nil {
+		return fmt.Errorf("failed to store credentials in MCPFusion: %w", err)
+	}
+
+	fmt.Printf("\nCredentials stored successfully for service '%s'\n", cfg.Service)
+	return nil
 }
 
 // OAuthFlowExecutor handles the execution of OAuth flows
@@ -440,7 +494,7 @@ func (e *OAuthFlowExecutor) ExecuteAuthCodeFlow(ctx context.Context) error {
 		}
 
 		// Store tokens in MCPFusion
-		_, err = e.MCPClient.StoreTokens(ctx, e.Config.Service, tokenInfo.AccessToken, tokenInfo.RefreshToken, tokenInfo.ExpiresIn)
+		_, err = e.MCPClient.StoreTokens(ctx, e.Config.Service, tokenInfo.AccessToken, tokenInfo.RefreshToken, tokenInfo.ExpiresIn, nil)
 		if err != nil {
 			return fmt.Errorf("failed to store tokens in MCPFusion: %w", err)
 		}

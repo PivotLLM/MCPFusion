@@ -38,10 +38,11 @@ func NewOAuthAPIHandler(database *db.DB, authManager *fusion.MultiTenantAuthMana
 
 // TokenRequest represents a request to store OAuth tokens
 type TokenRequest struct {
-	Service      string `json:"service"`
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in,omitempty"`
+	Service      string            `json:"service"`
+	AccessToken  string            `json:"access_token"`
+	RefreshToken string            `json:"refresh_token"`
+	ExpiresIn    int               `json:"expires_in,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
 }
 
 // TokenResponse represents the response from storing OAuth tokens
@@ -138,8 +139,8 @@ func (h *OAuthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 		h.writeErrorResponse(w, http.StatusBadRequest, "Service name is required")
 		return
 	}
-	if req.AccessToken == "" {
-		h.writeErrorResponse(w, http.StatusBadRequest, "Access token is required")
+	if req.AccessToken == "" && len(req.Metadata) == 0 {
+		h.writeErrorResponse(w, http.StatusBadRequest, "Access token or metadata is required")
 		return
 	}
 
@@ -165,6 +166,7 @@ func (h *OAuthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 		AccessToken:  req.AccessToken,
 		RefreshToken: req.RefreshToken,
 		TokenType:    "Bearer",
+		Metadata:     req.Metadata,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -277,6 +279,28 @@ func (h *OAuthAPIHandler) handleServiceConfig(w http.ResponseWriter, r *http.Req
 		if authURL, ok := service.Auth.Config["authorizationURL"].(string); ok && authURL != "" {
 			oauthConfig["authorization_url"] = authURL
 		}
+	}
+
+	// Add auth type and user_credentials config details if available
+	if h.configManager != nil {
+		if authConfig, err := h.configManager.GetServiceAuthConfig(serviceName); err == nil {
+			oauthConfig["auth_type"] = string(authConfig.Type)
+			if authConfig.Config != nil {
+				if instructions, ok := authConfig.Config["instructions"].(string); ok {
+					oauthConfig["instructions"] = instructions
+				}
+				if fields, ok := authConfig.Config["fields"]; ok {
+					oauthConfig["fields"] = fields
+				}
+			}
+		}
+	}
+
+	// Add standard endpoint info
+	oauthConfig["oauth_available"] = true
+	oauthConfig["endpoints"] = map[string]string{
+		"token_storage": "/api/v1/oauth/tokens",
+		"auth_verify":   "/api/v1/auth/verify",
 	}
 
 	response := ServiceConfigResponse{

@@ -23,6 +23,7 @@ import (
 type ServiceProvider interface {
 	GetAvailableServices() []string
 	GetService(name string) (*fusion.ServiceConfig, error)
+	GetServiceAuthConfig(name string) (*fusion.AuthConfig, error)
 }
 
 // AuthMiddleware provides bearer token authentication and tenant context extraction
