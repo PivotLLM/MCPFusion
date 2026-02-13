@@ -384,6 +384,54 @@ run_test "3.5.3.1 Rename back for cleanup" \
     "Knowledge entry renamed"
 
 #===============================================================================
+# SECTION 3.6: knowledge_search
+#===============================================================================
+
+print_section "SECTION 3.6: knowledge_search"
+
+# At this point test-domain has test-key-1 (Updated content) and test-key-2 (Completely replaced content)
+
+print_subsection "3.6.1 Search by content"
+
+run_test "3.6.1.1 Search matching content" \
+    "knowledge_search" \
+    '{"query":"Updated content"}' \
+    "test-key-1"
+
+run_test "3.6.1.2 Search is case-insensitive" \
+    "knowledge_search" \
+    '{"query":"completely replaced"}' \
+    "test-key-2"
+
+print_subsection "3.6.2 Search by key"
+
+run_test "3.6.2.1 Search matching key name" \
+    "knowledge_search" \
+    '{"query":"test-key-1"}' \
+    "test-key-1"
+
+print_subsection "3.6.3 Search by domain"
+
+run_test "3.6.3.1 Search matching domain name" \
+    "knowledge_search" \
+    '{"query":"test-domain"}' \
+    "test-domain"
+
+print_subsection "3.6.4 Search with no results"
+
+run_test "3.6.4.1 Search for non-existent term" \
+    "knowledge_search" \
+    '{"query":"zzz-no-match-zzz"}' \
+    "No knowledge entries matching"
+
+print_subsection "3.6.5 Search validation"
+
+run_test_expect_fail "3.6.5.1 Search with empty query" \
+    "knowledge_search" \
+    '{"query":""}' \
+    ""
+
+#===============================================================================
 # SECTION 4: Error Handling and Edge Cases
 #===============================================================================
 

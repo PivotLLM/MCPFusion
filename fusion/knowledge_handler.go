@@ -72,6 +72,7 @@ func (f *Fusion) registerKnowledgeTools() []global.ToolDefinition {
 		f.knowledgeGetTool(),
 		f.knowledgeDeleteTool(),
 		f.knowledgeRenameTool(),
+		f.knowledgeSearchTool(),
 	}
 
 	if f.logger != nil {
@@ -242,6 +243,44 @@ func (f *Fusion) knowledgeDeleteTool() global.ToolDefinition {
 				}
 
 				return fmt.Sprintf("Knowledge entry deleted: domain=%s, key=%s", domain, key), nil
+			},
+		}).Call,
+	}
+}
+
+// knowledgeSearchTool returns the tool definition for knowledge_search.
+func (f *Fusion) knowledgeSearchTool() global.ToolDefinition {
+	return global.ToolDefinition{
+		Name: "knowledge_search",
+		Description: "Search knowledge entries by keyword. Performs a case-insensitive search across " +
+			"domain names, keys, and content. Use this when you don't know the exact domain or key for an entry.",
+		Parameters: []global.Parameter{
+			{
+				Name:        "query",
+				Description: "Search term to match against domain, key, and content",
+				Required:    true,
+				Type:        "string",
+			},
+		},
+		Handler: (&knowledgeToolHandler{
+			fusion: f,
+			handler: func(_ context.Context, userID string, args map[string]interface{}) (string, error) {
+				query, _ := args["query"].(string)
+
+				entries, err := f.database.SearchKnowledge(userID, query)
+				if err != nil {
+					return "", fmt.Errorf("failed to search knowledge: %w", err)
+				}
+
+				if len(entries) == 0 {
+					return fmt.Sprintf("No knowledge entries matching '%s'", query), nil
+				}
+
+				result, err := json.MarshalIndent(entries, "", "  ")
+				if err != nil {
+					return "", fmt.Errorf("failed to serialize knowledge entries: %w", err)
+				}
+				return string(result), nil
 			},
 		}).Call,
 	}

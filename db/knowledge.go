@@ -449,3 +449,90 @@ func (d *DB) RenameKnowledge(userID, domain, oldKey, newKey string) error {
 	d.logger.Infof("Renamed knowledge entry for user %s domain %s: %s -> %s", userID, domain, oldKey, newKey)
 	return nil
 }
+
+// SearchKnowledge searches knowledge entries for a user by performing a case-insensitive
+// substring match of the query against each entry's Domain, Key, and Content fields.
+func (d *DB) SearchKnowledge(userID, query string) ([]KnowledgeEntry, error) {
+	if err := d.checkClosed(); err != nil {
+		return nil, err
+	}
+
+	// Validate inputs
+	if strings.TrimSpace(userID) == "" {
+		return nil, NewValidationError("user_id", userID, "user ID cannot be empty")
+	}
+
+	if strings.TrimSpace(query) == "" {
+		return nil, NewValidationError("query", query, "query cannot be empty")
+	}
+
+	lowerQuery := strings.ToLower(query)
+	var entries []KnowledgeEntry
+
+	err := d.db.View(func(tx *bbolt.Tx) error {
+		// Navigate to the user bucket
+		usersBucket := tx.Bucket([]byte(internal.BucketUsers))
+		if usersBucket == nil {
+			return NewDatabaseError("search_knowledge", fmt.Errorf("users bucket not found"))
+		}
+
+		userBucket := usersBucket.Bucket([]byte(userID))
+		if userBucket == nil {
+			return NewDatabaseError("search_knowledge", ErrUserNotFound)
+		}
+
+		// Navigate to knowledge bucket
+		knowledgeBucket := userBucket.Bucket([]byte(internal.BucketUserKnowledge))
+		if knowledgeBucket == nil {
+			// User exists but has no knowledge entries
+			return nil
+		}
+
+		// Iterate all domains
+		c := knowledgeBucket.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			if v != nil {
+				// Regular key-value pair, not a sub-bucket; skip
+				continue
+			}
+
+			// k is a sub-bucket name (domain)
+			domainBucket := knowledgeBucket.Bucket(k)
+			if domainBucket == nil {
+				continue
+			}
+
+			if err := domainBucket.ForEach(func(entryKey, entryValue []byte) error {
+				var entry KnowledgeEntry
+				if err := json.Unmarshal(entryValue, &entry); err != nil {
+					d.logger.Warningf("Failed to unmarshal knowledge entry %s/%s: %v", string(k), string(entryKey), err)
+					return nil // Continue iteration
+				}
+
+				// Case-insensitive substring match against Domain, Key, and Content
+				if strings.Contains(strings.ToLower(entry.Domain), lowerQuery) ||
+					strings.Contains(strings.ToLower(entry.Key), lowerQuery) ||
+					strings.Contains(strings.ToLower(entry.Content), lowerQuery) {
+					entries = append(entries, entry)
+				}
+
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if entries == nil {
+		entries = []KnowledgeEntry{}
+	}
+
+	d.logger.Debugf("Search for %q returned %d knowledge entries for user %s", query, len(entries), userID)
+	return entries, nil
+}

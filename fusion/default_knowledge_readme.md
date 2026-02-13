@@ -17,6 +17,7 @@ You are connected to MCPFusion, an MCP server that provides access to APIs, serv
 - `knowledge_set(domain, key, content)` — store or update an entry
 - `knowledge_delete(domain, key)` — remove an entry
 - `knowledge_rename(domain, old_key, new_key)` — rename an entry's key within the same domain
+- `knowledge_search(query)` — case-insensitive search across all domains, keys, and content
 
 ## Principles
 
