@@ -99,6 +99,15 @@ type Fusion struct {
 
 	// database provides direct access to the database for native tools (e.g., knowledge store)
 	database db.Database
+
+	// nativeToolPrefixRegistrar registers native tool prefixes with the config manager
+	nativeToolPrefixRegistrar NativeToolPrefixRegistrar
+}
+
+// NativeToolPrefixRegistrar allows registering prefixes for native (non-config-driven)
+// tools so that auth middleware recognises them as valid service names.
+type NativeToolPrefixRegistrar interface {
+	RegisterNativeToolPrefix(prefix string)
 }
 
 // Option defines a functional option type for configuring Fusion instances.
@@ -181,13 +190,18 @@ func WithConfig(config *Config) Option {
 	}
 }
 
-// WithConfigManager sets the configuration from a config manager
+// WithConfigManager sets the configuration from a config manager.
+// If the config manager also implements NativeToolPrefixRegistrar, the reference
+// is stored so that native tool prefixes can be registered during RegisterTools().
 func WithConfigManager(configManager interface{ GetConfig() *Config }) Option {
 	return func(f *Fusion) {
 		if configManager != nil {
 			f.config = configManager.GetConfig()
 			if f.logger != nil && f.config != nil {
 				f.logger.Infof("Loaded configuration from config manager with %d services", len(f.config.Services))
+			}
+			if registrar, ok := configManager.(NativeToolPrefixRegistrar); ok {
+				f.nativeToolPrefixRegistrar = registrar
 			}
 		}
 	}
@@ -535,6 +549,12 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 	// Register knowledge management tools (native, not config-driven)
 	knowledgeTools := f.registerKnowledgeTools()
 	tools = append(tools, knowledgeTools...)
+
+	// Register native tool prefixes so auth middleware recognises them
+	if f.nativeToolPrefixRegistrar != nil {
+		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("knowledge")
+		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("command")
+	}
 
 	if f.logger != nil {
 		f.logger.Infof("Registered %d dynamic tools from configuration", len(tools))

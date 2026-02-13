@@ -15,11 +15,12 @@ import (
 
 // Manager manages all service configurations loaded from multiple files
 type Manager struct {
-	configFiles []string                              // List of config files to load
-	services    map[string]*fusion.ServiceConfig      // Merged services from all files
-	commands    map[string]*fusion.CommandGroupConfig // Merged commands from all files
-	logger      global.Logger
-	mu          sync.RWMutex
+	configFiles    []string                              // List of config files to load
+	services       map[string]*fusion.ServiceConfig      // Merged services from all files
+	commands       map[string]*fusion.CommandGroupConfig  // Merged commands from all files
+	nativePrefixes map[string]bool                       // Prefixes for native (non-config) tools
+	logger         global.Logger
+	mu             sync.RWMutex
 }
 
 // Option defines a function type for configuring the Manager
@@ -42,9 +43,10 @@ func WithConfigFiles(files ...string) Option {
 // New creates a new config manager instance
 func New(options ...Option) *Manager {
 	m := &Manager{
-		services:    make(map[string]*fusion.ServiceConfig),
-		commands:    make(map[string]*fusion.CommandGroupConfig),
-		configFiles: []string{},
+		services:       make(map[string]*fusion.ServiceConfig),
+		commands:       make(map[string]*fusion.CommandGroupConfig),
+		nativePrefixes: make(map[string]bool),
+		configFiles:    []string{},
 	}
 
 	// Apply options
@@ -188,10 +190,35 @@ func (m *Manager) GetServiceNames() []string {
 	return names
 }
 
-// GetAvailableServices returns a list of all available service names
-// This method is for compatibility with the existing ServiceConfigResolver interface
+// GetAvailableServices returns a list of all available service names including
+// registered native tool prefixes (e.g. "knowledge", "command").
 func (m *Manager) GetAvailableServices() []string {
-	return m.GetServiceNames()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	names := make([]string, 0, len(m.services)+len(m.nativePrefixes))
+	for name := range m.services {
+		names = append(names, name)
+	}
+	for prefix := range m.nativePrefixes {
+		names = append(names, prefix)
+	}
+	return names
+}
+
+// RegisterNativeToolPrefix registers a prefix for a native (non-config-driven) tool
+// so that auth middleware recognises it as a valid service name.
+func (m *Manager) RegisterNativeToolPrefix(prefix string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.nativePrefixes[prefix] = true
+}
+
+// IsNativeToolPrefix returns true if the given prefix was registered as a native tool prefix.
+func (m *Manager) IsNativeToolPrefix(prefix string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.nativePrefixes[prefix]
 }
 
 // HasService checks if a service exists
