@@ -24,13 +24,22 @@ const (
 	BucketIndexByHash   = "by_hash"
 	BucketIndexByPrefix = "by_prefix"
 
+	// Root buckets for user management
+	BucketUsers     = "users"
+	BucketKeyToUser = "key_to_user"
+
+	// Keys and sub-buckets under users/{user_id}/
+	KeyUserMetadata     = "metadata"
+	BucketUserAPIKeys   = "api_keys"
+	BucketUserKnowledge = "knowledge"
+
 	// System keys
 	KeySchemaVersion = "schema_version"
 	KeyMetadata      = "metadata"
 )
 
 // SchemaVersion Current schema version
-const SchemaVersion = "1.0"
+const SchemaVersion = "1.1"
 
 // BucketPath represents a path to a bucket in the database
 type BucketPath []string
@@ -90,4 +99,24 @@ func GetTenantCredentialsPath(tenantHash string) BucketPath {
 //goland:noinspection GoUnusedExportedFunction
 func GetCredentialTypePath(tenantHash string, credType string) BucketPath {
 	return GetTenantCredentialsPath(tenantHash).Append(credType)
+}
+
+// GetUserPath returns the bucket path for a specific user
+func GetUserPath(userID string) BucketPath {
+	return NewBucketPath(BucketUsers, userID)
+}
+
+// GetUserAPIKeysPath returns the API keys bucket path for a user
+func GetUserAPIKeysPath(userID string) BucketPath {
+	return GetUserPath(userID).Append(BucketUserAPIKeys)
+}
+
+// GetUserKnowledgePath returns the knowledge bucket path for a user
+func GetUserKnowledgePath(userID string) BucketPath {
+	return GetUserPath(userID).Append(BucketUserKnowledge)
+}
+
+// GetUserKnowledgeDomainPath returns the knowledge domain bucket path for a user
+func GetUserKnowledgeDomainPath(userID string, domain string) BucketPath {
+	return GetUserKnowledgePath(userID).Append(domain)
 }

@@ -25,11 +25,12 @@ Users should carefully review their configuration to understand what access MCPF
 - **Enhanced Parameter System**: Rich parameter metadata with defaults, validation, and constraints
 - **Reliability**: Circuit breakers, retry logic, caching, and error handling
 - **CLI Token Management**: Command-line token management
+- **User Management**: Stable user identity with UUID-based accounts, API key linking, and automatic migration of existing tokens
+- **Knowledge Store**: Per-user persistent knowledge storage with domain/key organization, exposed as native MCP tools
 
 ## To Do
 
 - Decide on an appropriate approach to HTTPS implementation
-- Implement access to files as MCP tools or resources in support of knoledge bases, etc. (Considering read-only vs. allowing CRUD operations)
 - (What else do we need in a comprehensive universal MCP server solution?)
 
 ## Security
@@ -111,6 +112,72 @@ MCPFusion provides both legacy and modern MCP transports simultaneously:
 
 For clients unable to set custom HTTP headers, or those with unnecessarily restrictive support for network-based MCP servers, users may wish to consider bridging between MCP stdio transport and network-based MCP servers. In this case, https://github.com/PivotLLM/MCPRelay may be helpful.
 
+## User and Authentication Management
+
+MCPFusion provides multi-tenant authentication and stable user identity. API tokens authenticate clients, and user accounts provide a persistent identity that survives key rotation.
+
+### Token Management
+
+Tokens are managed via CLI flags. The server does not need to be running.
+
+```bash
+# Create a new API token
+./mcpfusion -token-add "Production token"
+
+# Create a token and immediately link it to an existing user
+./mcpfusion -token-add "Production token" -token-user <user-uuid>
+
+# List all tokens
+./mcpfusion -token-list
+
+# Delete a token (interactive confirmation)
+./mcpfusion -token-del <prefix-or-hash>
+```
+
+### User Management
+
+Each user has a UUID, a description, and one or more linked API keys. Knowledge store entries are stored per-user, so data is retained when keys are rotated.
+
+```bash
+# Create a user
+./mcpfusion -user-add "Alice"
+
+# Create a user and API token in one step
+./mcpfusion -user-add "Alice" -user-token "Alice laptop"
+
+# List users and linked keys
+./mcpfusion -user-list
+
+# Delete a user and all associated data (interactive confirmation)
+./mcpfusion -user-delete <user-uuid>
+
+# Link / unlink API keys
+./mcpfusion -user-link <user-uuid>:<key-hash>
+./mcpfusion -user-unlink <key-hash>
+```
+
+### Auto-Migration
+
+On server startup, any API tokens not yet linked to a user are automatically assigned to newly created user accounts. Upgrading to a version with user management requires no manual intervention.
+
+### Knowledge Store
+
+The knowledge store provides persistent, per-user storage organized by domain and key. AI clients can store preferences, rules, and context that persists across sessions. See [User & Knowledge Management](docs/user_management.md) for full details.
+
+### Typical Setup Workflow
+
+```bash
+# 1. Build
+go build -o mcpfusion .
+
+# 2. Create a user and API token in one step
+./mcpfusion -user-add "Alice" -user-token "Alice laptop"
+# Note the token for client configuration
+
+# 3. Start the server
+./mcpfusion -config configs/microsoft365.json
+```
+
 ## Included Configurations
 
 MCPFusion ships with JSON configurations for two services in the `configs/` directory. These can be used as-is or customized to suit your needs.
@@ -135,6 +202,7 @@ The author acknoledges the use of Claude® Code to assist with assigned dvelopme
 -  **[Command Execution Guide](docs/commands.md)** - Execute system commands and scripts with parameter control
 -  **[Client Integration](docs/clients.md)** - Connect Cline, Claude Desktop, and custom MCP clients
 -  **[Token Management Guide](docs/TOKEN_MANAGEMENT.md)** - Multi-tenant authentication and CLI usage
+-  **[User & Knowledge Management](docs/user_management.md)** - User accounts, API key linking, and persistent knowledge store
 -  **[Microsoft 365 Setup](docs/Microsoft365.md)** - Microsoft 365 setup
 -  **[Google APIs Setup](docs/Google_Workspace.md)** - Google Workspace setup
 -  **[HTTP Session Management](docs/HTTP_SESSION_MANAGEMENT.md)** - Connection pooling, timeouts, and reliability features

@@ -53,6 +53,24 @@ type Database interface {
 	GetTenantInfo(hash string) (*TenantInfo, error)
 	ListTenants() ([]TenantInfo, error)
 
+	// User Management
+	CreateUser(description string) (*UserMetadata, error)
+	GetUser(userID string) (*UserMetadata, error)
+	ListUsers() ([]UserMetadata, error)
+	DeleteUser(userID string) error
+	LinkAPIKey(userID, keyHash string) error
+	UnlinkAPIKey(keyHash string) error
+	GetUserByAPIKey(keyHash string) (string, error)
+	AutoMigrateKeys() error
+
+	// Knowledge Management
+	SetKnowledge(userID string, entry *KnowledgeEntry) error
+	GetKnowledge(userID, domain, key string) (*KnowledgeEntry, error)
+	ListKnowledge(userID, domain string) ([]KnowledgeEntry, error)
+	DeleteKnowledge(userID, domain, key string) error
+	RenameKnowledge(userID, domain, oldKey, newKey string) error
+	SearchKnowledge(userID, query string) ([]KnowledgeEntry, error)
+
 	// Database Management
 	Close() error
 	Backup(path string) error
@@ -198,6 +216,8 @@ func (d *DB) initializeSchema() error {
 			internal.BucketTokenIndex,
 			internal.BucketSystem,
 			internal.BucketAuthCodes,
+			internal.BucketUsers,
+			internal.BucketKeyToUser,
 		}
 
 		for _, bucketName := range rootBuckets {

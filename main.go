@@ -43,6 +43,15 @@ func main() {
 	tokenAddFlag := flag.String("token-add", "", "Add new API token with description")
 	tokenListFlag := flag.Bool("token-list", false, "List all API tokens")
 	tokenDeleteFlag := flag.String("token-del", "", "Delete API token by prefix or hash")
+	tokenUserFlag := flag.String("token-user", "", "User ID to link token to (use with -token-add)")
+
+	// User management subcommands
+	userAddFlag := flag.String("user-add", "", "Add new user with description")
+	userTokenFlag := flag.String("user-token", "", "Also create an API token with this description (use with -user-add)")
+	userListFlag := flag.Bool("user-list", false, "List all users")
+	userDeleteFlag := flag.String("user-delete", "", "Delete user by ID")
+	userLinkFlag := flag.String("user-link", "", "Link API key to user (format: user_id:key_hash)")
+	userUnlinkFlag := flag.String("user-unlink", "", "Unlink API key from user by key hash")
 
 	// Auth code generation
 	authCodeFlag := flag.String("auth-code", "", "Generate auth code for a service (e.g., google)")
@@ -71,10 +80,25 @@ func main() {
 		fmt.Printf("Token Management Commands:\n")
 		fmt.Printf("  -token-add string\n")
 		fmt.Printf("        Add new API token with description\n")
+		fmt.Printf("  -token-user string\n")
+		fmt.Printf("        User ID to link token to (use with -token-add)\n")
 		fmt.Printf("  -token-list\n")
 		fmt.Printf("        List all API tokens\n")
 		fmt.Printf("  -token-del string\n")
 		fmt.Printf("        Delete API token by prefix or hash\n\n")
+		fmt.Printf("User Management Commands:\n")
+		fmt.Printf("  -user-add string\n")
+		fmt.Printf("        Add new user with description\n")
+		fmt.Printf("  -user-token string\n")
+		fmt.Printf("        Also create an API token with this description (use with -user-add)\n")
+		fmt.Printf("  -user-list\n")
+		fmt.Printf("        List all users and their linked API keys\n")
+		fmt.Printf("  -user-delete string\n")
+		fmt.Printf("        Delete user by ID\n")
+		fmt.Printf("  -user-link string\n")
+		fmt.Printf("        Link API key to user (format: user_id:key_hash)\n")
+		fmt.Printf("  -user-unlink string\n")
+		fmt.Printf("        Unlink API key from user by key hash\n\n")
 		fmt.Printf("Auth Code Commands:\n")
 		fmt.Printf("  -auth-code string\n")
 		fmt.Printf("        Generate auth code for a service (e.g., google)\n")
@@ -89,8 +113,11 @@ func main() {
 		fmt.Printf("  %s -config configs/microsoft365.json -port 8888\n\n", os.Args[0])
 		fmt.Printf("  # Token management examples\n")
 		fmt.Printf("  %s -token-add \"Production token\"\n", os.Args[0])
+		fmt.Printf("  %s -token-add \"Production token\" -token-user <user-uuid>\n", os.Args[0])
 		fmt.Printf("  %s -token-list\n", os.Args[0])
 		fmt.Printf("  %s -token-del abc12345\n\n", os.Args[0])
+		fmt.Printf("  # Create user with API token in one step\n")
+		fmt.Printf("  %s -user-add \"Alice\" -user-token \"Alice laptop\"\n\n", os.Args[0])
 		fmt.Printf("  # Generate auth code for fusion-auth\n")
 		fmt.Printf("  %s -auth-code google -auth-url http://10.0.0.1:8888\n\n", os.Args[0])
 	}
@@ -218,10 +245,18 @@ func main() {
 
 	// Handle token management commands if specified
 	if *tokenAddFlag != "" || *tokenListFlag || *tokenDeleteFlag != "" {
-		if err := handleTokenCommands(database, *tokenAddFlag, *tokenListFlag, *tokenDeleteFlag, logger); err != nil {
+		if err := handleTokenCommands(database, *tokenAddFlag, *tokenListFlag, *tokenDeleteFlag, *tokenUserFlag, logger); err != nil {
 			logger.Fatalf("Token management failed: %v", err)
 		}
 		// Exit after token management - don't start server
+		os.Exit(0)
+	}
+
+	// Handle user management commands if specified
+	if *userAddFlag != "" || *userListFlag || *userDeleteFlag != "" || *userLinkFlag != "" || *userUnlinkFlag != "" {
+		if err := handleUserCommands(database, *userAddFlag, *userTokenFlag, *userListFlag, *userDeleteFlag, *userLinkFlag, *userUnlinkFlag, logger); err != nil {
+			logger.Fatalf("User management failed: %v", err)
+		}
 		os.Exit(0)
 	}
 
@@ -231,6 +266,11 @@ func main() {
 			logger.Fatalf("Auth code generation failed: %v", err)
 		}
 		os.Exit(0)
+	}
+
+	// Auto-migrate unlinked API keys to user accounts on startup
+	if err := database.AutoMigrateKeys(); err != nil {
+		logger.Warningf("API key auto-migration had issues: %v", err)
 	}
 
 	// Initialize database-backed cache
@@ -322,6 +362,9 @@ func main() {
 			fusionOpts = append(fusionOpts, fusion.WithMultiTenantAuth(multiTenantAuth))
 		}
 
+		// Provide database for native tools (e.g., knowledge store)
+		fusionOpts = append(fusionOpts, fusion.WithDatabase(database))
+
 		fusionProvider = fusion.New(fusionOpts...)
 		providers = append(providers, fusionProvider)
 	} else {
@@ -410,9 +453,9 @@ func main() {
 }
 
 // handleTokenCommands processes token management commands
-func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, tokenDelete string, logger global.Logger) error {
+func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, tokenDelete string, tokenUser string, logger global.Logger) error {
 	if tokenAdd != "" {
-		return handleTokenAdd(database, tokenAdd, logger)
+		return handleTokenAdd(database, tokenAdd, tokenUser, logger)
 	}
 
 	if tokenList {
@@ -427,7 +470,7 @@ func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, 
 }
 
 // handleTokenAdd creates a new API token
-func handleTokenAdd(database db.Database, description string, _ global.Logger) error {
+func handleTokenAdd(database db.Database, description string, userID string, _ global.Logger) error {
 	if description == "" {
 		description = "API Token"
 	}
@@ -458,6 +501,15 @@ func handleTokenAdd(database db.Database, description string, _ global.Logger) e
 	fmt.Printf("Use this token in the Authorization header:\n")
 	fmt.Printf("  Authorization: Bearer %s\n", token)
 	fmt.Printf("\n")
+
+	// Link token to user if specified
+	if userID != "" {
+		if err := database.LinkAPIKey(userID, hash); err != nil {
+			fmt.Printf("WARNING: Token created but failed to link to user %s: %v\n", userID, err)
+		} else {
+			fmt.Printf("Token linked to user %s\n", userID)
+		}
+	}
 
 	return nil
 }
@@ -616,6 +668,167 @@ func handleAuthCode(database db.Database, service, authURL, authToken string, lo
 	fmt.Printf("\n")
 
 	logger.Infof("Generated auth code for service %s (tenant %s)", service, tenantHash[:12])
+	return nil
+}
+
+// handleUserCommands processes user management commands
+func handleUserCommands(database db.Database, userAdd string, userToken string, userList bool, userDelete string, userLink string, userUnlink string, logger global.Logger) error {
+	if userAdd != "" {
+		return handleUserAdd(database, userAdd, userToken, logger)
+	}
+	if userList {
+		return handleUserList(database, logger)
+	}
+	if userDelete != "" {
+		return handleUserDelete(database, userDelete, logger)
+	}
+	if userLink != "" {
+		return handleUserLink(database, userLink, logger)
+	}
+	if userUnlink != "" {
+		return handleUserUnlink(database, userUnlink, logger)
+	}
+	return nil
+}
+
+// handleUserAdd creates a new user
+func handleUserAdd(database db.Database, description string, tokenDesc string, _ global.Logger) error {
+	user, err := database.CreateUser(description)
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	fmt.Printf("\nUser created successfully\n\n")
+	fmt.Printf("User ID:     %s\n", user.UserID)
+	fmt.Printf("Description: %s\n", user.Description)
+	fmt.Printf("Created:     %s\n\n", user.CreatedAt.Format("2006-01-02 15:04:05"))
+
+	// Create and link API token if requested
+	if tokenDesc != "" {
+		token, hash, err := database.AddAPIToken(tokenDesc)
+		if err != nil {
+			fmt.Printf("WARNING: User created but failed to create API token: %v\n", err)
+			return nil
+		}
+
+		if err := database.LinkAPIKey(user.UserID, hash); err != nil {
+			fmt.Printf("WARNING: Token created but failed to link to user: %v\n", err)
+		}
+
+		fmt.Printf("SECURITY WARNING: This token will only be displayed once!\n")
+		fmt.Printf("   Copy it now and store it securely.\n")
+		fmt.Printf("\n")
+		fmt.Printf("Token:       %s\n", token)
+		fmt.Printf("Hash:        %s\n", hash[:12])
+		fmt.Printf("\n")
+		fmt.Printf("Use this token in the Authorization header:\n")
+		fmt.Printf("  Authorization: Bearer %s\n", token)
+		fmt.Printf("\n")
+	}
+
+	return nil
+}
+
+// handleUserList displays all users
+func handleUserList(database db.Database, _ global.Logger) error {
+	users, err := database.ListUsers()
+	if err != nil {
+		return fmt.Errorf("failed to list users: %w", err)
+	}
+
+	if len(users) == 0 {
+		fmt.Printf("No users found.\n")
+		fmt.Printf("Create one with: %s -user-add \"Description\"\n", os.Args[0])
+		return nil
+	}
+
+	fmt.Printf("Users:\n")
+	fmt.Printf("%-38s %-20s %-20s %s\n", "USER ID", "CREATED", "UPDATED", "DESCRIPTION")
+	fmt.Printf("%-38s %-20s %-20s %s\n", "-------", "-------", "-------", "-----------")
+
+	for _, user := range users {
+		description := user.Description
+		if len(description) > 40 {
+			description = description[:37] + "..."
+		}
+
+		fmt.Printf("%-38s %-20s %-20s %s\n",
+			user.UserID,
+			user.CreatedAt.Format("2006-01-02 15:04:05"),
+			user.UpdatedAt.Format("2006-01-02 15:04:05"),
+			description)
+	}
+
+	fmt.Printf("\nTotal: %d users\n", len(users))
+	return nil
+}
+
+// handleUserDelete removes a user
+func handleUserDelete(database db.Database, userID string, _ global.Logger) error {
+	// Verify user exists
+	user, err := database.GetUser(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	fmt.Printf("User Details:\n")
+	fmt.Printf("  ID:          %s\n", user.UserID)
+	fmt.Printf("  Description: %s\n", user.Description)
+	fmt.Printf("  Created:     %s\n", user.CreatedAt.Format("2006-01-02 15:04:05"))
+
+	fmt.Printf("\nAre you sure you want to delete this user and all associated data? (y/N): ")
+	var response string
+	_, err = fmt.Scanln(&response)
+	if err != nil {
+		return err
+	}
+
+	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		fmt.Printf("User deletion cancelled.\n")
+		return nil
+	}
+
+	if err := database.DeleteUser(userID); err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	fmt.Printf("User deleted successfully.\n")
+	return nil
+}
+
+// handleUserLink links an API key to a user
+func handleUserLink(database db.Database, linkSpec string, _ global.Logger) error {
+	parts := strings.SplitN(linkSpec, ":", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return fmt.Errorf("invalid format. Use: -user-link user_id:key_hash")
+	}
+
+	userID := parts[0]
+	keyHash := parts[1]
+
+	if err := database.LinkAPIKey(userID, keyHash); err != nil {
+		return fmt.Errorf("failed to link API key: %w", err)
+	}
+
+	displayHash := keyHash
+	if len(displayHash) > 12 {
+		displayHash = displayHash[:12]
+	}
+	fmt.Printf("API key %s linked to user %s\n", displayHash, userID)
+	return nil
+}
+
+// handleUserUnlink unlinks an API key from its user
+func handleUserUnlink(database db.Database, keyHash string, _ global.Logger) error {
+	if err := database.UnlinkAPIKey(keyHash); err != nil {
+		return fmt.Errorf("failed to unlink API key: %w", err)
+	}
+
+	displayHash := keyHash
+	if len(displayHash) > 12 {
+		displayHash = displayHash[:12]
+	}
+	fmt.Printf("API key %s unlinked from user\n", displayHash)
 	return nil
 }
 

@@ -20,3 +20,4 @@ MCPFusion
 fusion-auth
 fusion-oauth
 cmd/auth/auth
+tests/test-knowledge-key.sh
