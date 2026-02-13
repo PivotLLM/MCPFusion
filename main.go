@@ -47,6 +47,7 @@ func main() {
 
 	// User management subcommands
 	userAddFlag := flag.String("user-add", "", "Add new user with description")
+	userTokenFlag := flag.String("user-token", "", "Also create an API token with this description (use with -user-add)")
 	userListFlag := flag.Bool("user-list", false, "List all users")
 	userDeleteFlag := flag.String("user-delete", "", "Delete user by ID")
 	userLinkFlag := flag.String("user-link", "", "Link API key to user (format: user_id:key_hash)")
@@ -88,6 +89,8 @@ func main() {
 		fmt.Printf("User Management Commands:\n")
 		fmt.Printf("  -user-add string\n")
 		fmt.Printf("        Add new user with description\n")
+		fmt.Printf("  -user-token string\n")
+		fmt.Printf("        Also create an API token with this description (use with -user-add)\n")
 		fmt.Printf("  -user-list\n")
 		fmt.Printf("        List all users and their linked API keys\n")
 		fmt.Printf("  -user-delete string\n")
@@ -113,6 +116,8 @@ func main() {
 		fmt.Printf("  %s -token-add \"Production token\" -token-user <user-uuid>\n", os.Args[0])
 		fmt.Printf("  %s -token-list\n", os.Args[0])
 		fmt.Printf("  %s -token-del abc12345\n\n", os.Args[0])
+		fmt.Printf("  # Create user with API token in one step\n")
+		fmt.Printf("  %s -user-add \"Alice\" -user-token \"Alice laptop\"\n\n", os.Args[0])
 		fmt.Printf("  # Generate auth code for fusion-auth\n")
 		fmt.Printf("  %s -auth-code google -auth-url http://10.0.0.1:8888\n\n", os.Args[0])
 	}
@@ -249,7 +254,7 @@ func main() {
 
 	// Handle user management commands if specified
 	if *userAddFlag != "" || *userListFlag || *userDeleteFlag != "" || *userLinkFlag != "" || *userUnlinkFlag != "" {
-		if err := handleUserCommands(database, *userAddFlag, *userListFlag, *userDeleteFlag, *userLinkFlag, *userUnlinkFlag, logger); err != nil {
+		if err := handleUserCommands(database, *userAddFlag, *userTokenFlag, *userListFlag, *userDeleteFlag, *userLinkFlag, *userUnlinkFlag, logger); err != nil {
 			logger.Fatalf("User management failed: %v", err)
 		}
 		os.Exit(0)
@@ -667,9 +672,9 @@ func handleAuthCode(database db.Database, service, authURL, authToken string, lo
 }
 
 // handleUserCommands processes user management commands
-func handleUserCommands(database db.Database, userAdd string, userList bool, userDelete string, userLink string, userUnlink string, logger global.Logger) error {
+func handleUserCommands(database db.Database, userAdd string, userToken string, userList bool, userDelete string, userLink string, userUnlink string, logger global.Logger) error {
 	if userAdd != "" {
-		return handleUserAdd(database, userAdd, logger)
+		return handleUserAdd(database, userAdd, userToken, logger)
 	}
 	if userList {
 		return handleUserList(database, logger)
@@ -687,7 +692,7 @@ func handleUserCommands(database db.Database, userAdd string, userList bool, use
 }
 
 // handleUserAdd creates a new user
-func handleUserAdd(database db.Database, description string, _ global.Logger) error {
+func handleUserAdd(database db.Database, description string, tokenDesc string, _ global.Logger) error {
 	user, err := database.CreateUser(description)
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
@@ -697,6 +702,29 @@ func handleUserAdd(database db.Database, description string, _ global.Logger) er
 	fmt.Printf("User ID:     %s\n", user.UserID)
 	fmt.Printf("Description: %s\n", user.Description)
 	fmt.Printf("Created:     %s\n\n", user.CreatedAt.Format("2006-01-02 15:04:05"))
+
+	// Create and link API token if requested
+	if tokenDesc != "" {
+		token, hash, err := database.AddAPIToken(tokenDesc)
+		if err != nil {
+			fmt.Printf("WARNING: User created but failed to create API token: %v\n", err)
+			return nil
+		}
+
+		if err := database.LinkAPIKey(user.UserID, hash); err != nil {
+			fmt.Printf("WARNING: Token created but failed to link to user: %v\n", err)
+		}
+
+		fmt.Printf("SECURITY WARNING: This token will only be displayed once!\n")
+		fmt.Printf("   Copy it now and store it securely.\n")
+		fmt.Printf("\n")
+		fmt.Printf("Token:       %s\n", token)
+		fmt.Printf("Hash:        %s\n", hash[:12])
+		fmt.Printf("\n")
+		fmt.Printf("Use this token in the Authorization header:\n")
+		fmt.Printf("  Authorization: Bearer %s\n", token)
+		fmt.Printf("\n")
+	}
 
 	return nil
 }

@@ -142,6 +142,9 @@ Each user has a UUID, a description, and one or more linked API keys. Knowledge 
 # Create a user
 ./mcpfusion -user-add "Alice"
 
+# Create a user and API token in one step
+./mcpfusion -user-add "Alice" -user-token "Alice laptop"
+
 # List users and linked keys
 ./mcpfusion -user-list
 
@@ -167,24 +170,12 @@ The knowledge store provides persistent, per-user storage organized by domain an
 # 1. Build
 go build -o mcpfusion .
 
-# 2. Create a user
-./mcpfusion -user-add "Alice"
-# Note the User ID from the output
-
-# 3. Create a token linked to that user
-./mcpfusion -token-add "Alice laptop" -token-user <user-uuid>
+# 2. Create a user and API token in one step
+./mcpfusion -user-add "Alice" -user-token "Alice laptop"
 # Note the token for client configuration
 
-# 4. Start the server
+# 3. Start the server
 ./mcpfusion -config configs/microsoft365.json
-```
-
-Alternatively, create the token first and link it afterward:
-
-```bash
-./mcpfusion -token-add "Alice laptop"
-# Note the hash prefix from the output
-./mcpfusion -user-link <user-uuid>:<key-hash>
 ```
 
 ## Included Configurations
