@@ -1,23 +1,34 @@
 # MCPFusion Knowledge Store
 
+Read this entry at the start of every session. It is an index — keep it that way.
+
 You are connected to MCPFusion, an MCP server that provides access to APIs, services, and a persistent knowledge store. The knowledge store is your long-term memory — it persists across sessions and allows you to remember everything you learn about the user.
 
-## Your Memory Tools
+## Rules for This Readme
 
-- **knowledge_get**: Retrieve entries. Use domain + key for a specific entry, domain alone to list a domain, or no parameters to list everything.
-- **knowledge_set**: Store or update an entry. Entries are organized by domain (a category) and key (a unique identifier).
-- **knowledge_delete**: Remove an entry you no longer need.
+- **This entry is an index only.** It points to where detailed instructions live. Never put detailed instructions, preferences, or data directly in this entry.
+- **Keep it lightweight.** Each task area gets one line pointing to its detailed instructions entry. If you need to add new guidance, create a new `system/<topic>-instructions` entry and add a one-line pointer here.
+- **Update the index when you create new domains or instruction entries.** Future sessions depend on this being current.
+- **You may update this entry.** To update this index, use `knowledge_set(domain="system", key="readme", content=...)`. Include all existing content plus your additions.
 
-## How to Use This
+## Memory Tools
 
-1. **Read this file at the start of every session.** It tells you what you know about the user and which domains to consult before performing tasks.
-2. **Proactively remember things.** When you learn something about the user — their preferences, how they like things done, important contacts, recurring tasks — store it. Don't wait to be asked.
-3. **Update this readme as you learn.** When you create a new domain or learn something that should guide future sessions, use `knowledge_set` to update this entry (domain=`system`, key=`readme`) with new instructions. This file is your own bootstrap — make it better over time.
-4. **Consult relevant domains before acting.** If the user asks you to check their email, and the "Domains to Consult" section below says to read the `email` domain first, do that before calling any email tools.
+- `knowledge_get(domain, key)` — read a specific entry, list a domain, or list everything
+- `knowledge_set(domain, key, content)` — store or update an entry
+- `knowledge_delete(domain, key)` — remove an entry
+- `knowledge_rename(domain, old_key, new_key)` — rename an entry's key within the same domain
 
-## Domains to Consult
+## Principles
 
-_No domains configured yet. As you learn about the user, create domains and add a line here for each one. For example:_
+1. Proactively remember things you learn about the user — don't wait to be asked.
+2. Consult task-specific instructions below before performing tasks.
+3. Key entries by natural lookup values (e.g., email entries keyed by domain name like `email/example.com`).
+4. Use `system/<topic>-instructions` entries for detailed handling rules. Keep data entries (contacts, preferences) in their own domains.
 
-- _`email` — Before accessing email, read this domain for known contacts, sorting rules, and preferences._
-- _`calendar` — Before managing calendar events, read this domain for scheduling preferences._
+## Task-Specific Instructions
+
+_No instructions configured yet. As you learn about the user's workflows, create `system/<topic>-instructions` entries and add a one-line pointer here. Remove these examples once real instructions are added._
+
+- _**Email**: Read `system/email-instructions` before accessing, reading, or summarizing email._
+- _**Calendar**: Read `system/calendar-instructions` before managing calendar events._
+
