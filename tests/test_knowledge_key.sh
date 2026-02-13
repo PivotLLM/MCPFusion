@@ -326,6 +326,64 @@ run_test "3.2.3 Verify empty domain returns no entries" \
     "No knowledge entries found"
 
 #===============================================================================
+# SECTION 3.5: knowledge_rename
+#===============================================================================
+
+print_section "SECTION 3.5: knowledge_rename"
+
+# At this point test-domain has test-key-1 and test-key-2
+
+print_subsection "3.5.1 Rename an entry"
+
+run_test "3.5.1.1 Rename test-key-2 to renamed-key" \
+    "knowledge_rename" \
+    '{"domain":"test-domain","old_key":"test-key-2","new_key":"renamed-key"}' \
+    "Knowledge entry renamed"
+
+run_test "3.5.1.2 Verify new key exists with correct content" \
+    "knowledge_get" \
+    '{"domain":"test-domain","key":"renamed-key"}' \
+    "Completely replaced content"
+
+run_test_expect_fail "3.5.1.3 Verify old key is gone" \
+    "knowledge_get" \
+    '{"domain":"test-domain","key":"test-key-2"}' \
+    "not found"
+
+print_subsection "3.5.2 Rename error cases"
+
+run_test_expect_fail "3.5.2.1 Rename non-existent key" \
+    "knowledge_rename" \
+    '{"domain":"test-domain","old_key":"no-such-key","new_key":"whatever"}' \
+    "not found"
+
+run_test_expect_fail "3.5.2.2 Rename to existing key" \
+    "knowledge_rename" \
+    '{"domain":"test-domain","old_key":"renamed-key","new_key":"test-key-1"}' \
+    "already exists"
+
+run_test_expect_fail "3.5.2.3 Rename with same old and new key" \
+    "knowledge_rename" \
+    '{"domain":"test-domain","old_key":"renamed-key","new_key":"renamed-key"}' \
+    ""
+
+run_test_expect_fail "3.5.2.4 Rename with empty old_key" \
+    "knowledge_rename" \
+    '{"domain":"test-domain","old_key":"","new_key":"something"}' \
+    ""
+
+run_test_expect_fail "3.5.2.5 Rename with empty new_key" \
+    "knowledge_rename" \
+    '{"domain":"test-domain","old_key":"renamed-key","new_key":""}' \
+    ""
+
+# Rename back so cleanup section works with expected keys
+run_test "3.5.3.1 Rename back for cleanup" \
+    "knowledge_rename" \
+    '{"domain":"test-domain","old_key":"renamed-key","new_key":"test-key-2"}' \
+    "Knowledge entry renamed"
+
+#===============================================================================
 # SECTION 4: Error Handling and Edge Cases
 #===============================================================================
 
