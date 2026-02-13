@@ -71,6 +71,7 @@ func (f *Fusion) registerKnowledgeTools() []global.ToolDefinition {
 		f.knowledgeSetTool(),
 		f.knowledgeGetTool(),
 		f.knowledgeDeleteTool(),
+		f.knowledgeRenameTool(),
 	}
 
 	if f.logger != nil {
@@ -241,6 +242,48 @@ func (f *Fusion) knowledgeDeleteTool() global.ToolDefinition {
 				}
 
 				return fmt.Sprintf("Knowledge entry deleted: domain=%s, key=%s", domain, key), nil
+			},
+		}).Call,
+	}
+}
+
+// knowledgeRenameTool returns the tool definition for knowledge_rename.
+func (f *Fusion) knowledgeRenameTool() global.ToolDefinition {
+	return global.ToolDefinition{
+		Name:        "knowledge_rename",
+		Description: "Rename the key of an existing knowledge entry within a domain, preserving its content and metadata.",
+		Parameters: []global.Parameter{
+			{
+				Name:        "domain",
+				Description: "Category of the entry to rename",
+				Required:    true,
+				Type:        "string",
+			},
+			{
+				Name:        "old_key",
+				Description: "Current key of the entry",
+				Required:    true,
+				Type:        "string",
+			},
+			{
+				Name:        "new_key",
+				Description: "New key for the entry",
+				Required:    true,
+				Type:        "string",
+			},
+		},
+		Handler: (&knowledgeToolHandler{
+			fusion: f,
+			handler: func(_ context.Context, userID string, args map[string]interface{}) (string, error) {
+				domain, _ := args["domain"].(string)
+				oldKey, _ := args["old_key"].(string)
+				newKey, _ := args["new_key"].(string)
+
+				if err := f.database.RenameKnowledge(userID, domain, oldKey, newKey); err != nil {
+					return "", fmt.Errorf("failed to rename knowledge: %w", err)
+				}
+
+				return fmt.Sprintf("Knowledge entry renamed: domain=%s, %s -> %s", domain, oldKey, newKey), nil
 			},
 		}).Call,
 	}

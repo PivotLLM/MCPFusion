@@ -350,3 +350,102 @@ func (d *DB) DeleteKnowledge(userID, domain, key string) error {
 	d.logger.Infof("Deleted knowledge entry for user %s domain %s key %s", userID, domain, key)
 	return nil
 }
+
+// RenameKnowledge renames a knowledge entry's key within a domain, preserving its content and metadata.
+func (d *DB) RenameKnowledge(userID, domain, oldKey, newKey string) error {
+	if err := d.checkClosed(); err != nil {
+		return err
+	}
+
+	// Validate inputs
+	if strings.TrimSpace(userID) == "" {
+		return NewValidationError("user_id", userID, "user ID cannot be empty")
+	}
+
+	if strings.TrimSpace(domain) == "" {
+		return NewValidationError("domain", domain, "domain cannot be empty")
+	}
+
+	if strings.TrimSpace(oldKey) == "" {
+		return NewValidationError("old_key", oldKey, "old key cannot be empty")
+	}
+
+	if strings.TrimSpace(newKey) == "" {
+		return NewValidationError("new_key", newKey, "new key cannot be empty")
+	}
+
+	if oldKey == newKey {
+		return NewValidationError("new_key", newKey, "new key must be different from old key")
+	}
+
+	err := d.db.Update(func(tx *bbolt.Tx) error {
+		// Navigate to the user bucket
+		usersBucket := tx.Bucket([]byte(internal.BucketUsers))
+		if usersBucket == nil {
+			return NewDatabaseError("rename_knowledge", fmt.Errorf("users bucket not found"))
+		}
+
+		userBucket := usersBucket.Bucket([]byte(userID))
+		if userBucket == nil {
+			return NewDatabaseError("rename_knowledge", ErrUserNotFound)
+		}
+
+		// Navigate to knowledge bucket
+		knowledgeBucket := userBucket.Bucket([]byte(internal.BucketUserKnowledge))
+		if knowledgeBucket == nil {
+			return NewDatabaseError("rename_knowledge", ErrKnowledgeNotFound)
+		}
+
+		// Navigate to domain bucket
+		domainBucket := knowledgeBucket.Bucket([]byte(domain))
+		if domainBucket == nil {
+			return NewDatabaseError("rename_knowledge", ErrKnowledgeNotFound)
+		}
+
+		// Get existing entry by oldKey
+		entryBytes := domainBucket.Get([]byte(oldKey))
+		if entryBytes == nil {
+			return NewDatabaseError("rename_knowledge", ErrKnowledgeNotFound)
+		}
+
+		// Check that newKey does not already exist
+		if domainBucket.Get([]byte(newKey)) != nil {
+			return NewDatabaseError("rename_knowledge", fmt.Errorf("key %q already exists in domain %q", newKey, domain))
+		}
+
+		// Unmarshal the entry
+		var entry KnowledgeEntry
+		if err := json.Unmarshal(entryBytes, &entry); err != nil {
+			return NewDatabaseError("rename_knowledge", fmt.Errorf("failed to unmarshal knowledge entry: %w", err))
+		}
+
+		// Update key and timestamp
+		entry.Key = newKey
+		entry.UpdatedAt = time.Now()
+
+		// Marshal updated entry
+		updatedBytes, err := json.Marshal(&entry)
+		if err != nil {
+			return NewDatabaseError("rename_knowledge", fmt.Errorf("failed to marshal knowledge entry: %w", err))
+		}
+
+		// Store under new key
+		if err := domainBucket.Put([]byte(newKey), updatedBytes); err != nil {
+			return NewDatabaseError("rename_knowledge", fmt.Errorf("failed to store renamed knowledge entry: %w", err))
+		}
+
+		// Delete old key
+		if err := domainBucket.Delete([]byte(oldKey)); err != nil {
+			return NewDatabaseError("rename_knowledge", fmt.Errorf("failed to delete old knowledge entry: %w", err))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	d.logger.Infof("Renamed knowledge entry for user %s domain %s: %s -> %s", userID, domain, oldKey, newKey)
+	return nil
+}

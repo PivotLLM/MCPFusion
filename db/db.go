@@ -68,6 +68,7 @@ type Database interface {
 	GetKnowledge(userID, domain, key string) (*KnowledgeEntry, error)
 	ListKnowledge(userID, domain string) ([]KnowledgeEntry, error)
 	DeleteKnowledge(userID, domain, key string) error
+	RenameKnowledge(userID, domain, oldKey, newKey string) error
 
 	// Database Management
 	Close() error
