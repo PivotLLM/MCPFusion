@@ -170,8 +170,13 @@ func (f *Fusion) knowledgeGetTool() global.ToolDefinition {
 				if domain != "" && key != "" {
 					entry, err := f.database.GetKnowledge(userID, domain, key)
 					if err != nil {
-						// Serve embedded default when system/readme has no user entry
+						// Seed embedded default into the user's knowledge store on first access
 						if domain == "system" && key == "readme" {
+							_ = f.database.SetKnowledge(userID, &db.KnowledgeEntry{
+								Domain:  "system",
+								Key:     "readme",
+								Content: defaultKnowledgeReadme,
+							})
 							return defaultKnowledgeReadme, nil
 						}
 						return "", fmt.Errorf("failed to get knowledge: %w", err)
