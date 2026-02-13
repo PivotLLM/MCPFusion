@@ -7,12 +7,16 @@ package fusion
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
 )
+
+//go:embed default_knowledge_readme.md
+var defaultKnowledgeReadme string
 
 // knowledgeToolHandler wraps a knowledge tool handler with context extraction and
 // tenant resolution. It extracts the MCP context from the args map, retrieves the
@@ -82,7 +86,9 @@ func (f *Fusion) knowledgeSetTool() global.ToolDefinition {
 		Name: "knowledge_set",
 		Description: "Store or update a knowledge entry. Use this to remember user preferences, " +
 			"rules, and context that should persist across sessions. Organize entries by domain " +
-			"(e.g., 'email', 'calendar', 'general') and a descriptive key.",
+			"(e.g., 'email', 'calendar', 'general') and a descriptive key. " +
+			"When the user asks you to remember new domains or instructions, update the " +
+			"'system' domain 'readme' entry to include a pointer so future sessions know to consult it.",
 		Parameters: []global.Parameter{
 			{
 				Name:        "domain",
@@ -132,7 +138,9 @@ func (f *Fusion) knowledgeGetTool() global.ToolDefinition {
 		Name: "knowledge_get",
 		Description: "Retrieve knowledge entries. Call with both domain and key to get a specific entry, " +
 			"with only domain to list all entries in that domain, or with neither to list all knowledge " +
-			"entries across all domains.",
+			"entries across all domains. " +
+			"IMPORTANT: At the start of a session, read domain='system' key='readme' for user preferences " +
+			"and instructions on which knowledge domains to consult before performing tasks.",
 		Parameters: []global.Parameter{
 			{
 				Name:        "domain",
@@ -162,6 +170,10 @@ func (f *Fusion) knowledgeGetTool() global.ToolDefinition {
 				if domain != "" && key != "" {
 					entry, err := f.database.GetKnowledge(userID, domain, key)
 					if err != nil {
+						// Serve embedded default when system/readme has no user entry
+						if domain == "system" && key == "readme" {
+							return defaultKnowledgeReadme, nil
+						}
 						return "", fmt.Errorf("failed to get knowledge: %w", err)
 					}
 					result, err := json.MarshalIndent(entry, "", "  ")
