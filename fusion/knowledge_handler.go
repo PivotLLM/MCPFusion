@@ -15,8 +15,8 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
-//go:embed default_knowledge_readme.md
-var defaultKnowledgeReadme string
+//go:embed knowledge_readme.md
+var knowledgeReadme string
 
 // knowledgeToolHandler wraps a knowledge tool handler with context extraction and
 // tenant resolution. It extracts the MCP context from the args map, retrieves the
@@ -170,17 +170,19 @@ func (f *Fusion) knowledgeGetTool() global.ToolDefinition {
 
 				// Specific entry requested
 				if domain != "" && key != "" {
+					// system/readme: always prepend the embedded header
+					if domain == "system" && key == "readme" {
+						entry, err := f.database.GetKnowledge(userID, domain, key)
+						if err != nil {
+							// No user content yet — return just the embedded header
+							return knowledgeReadme, nil
+						}
+						// Prepend embedded header to the user's stored content
+						return knowledgeReadme + entry.Content, nil
+					}
+
 					entry, err := f.database.GetKnowledge(userID, domain, key)
 					if err != nil {
-						// Seed embedded default into the user's knowledge store on first access
-						if domain == "system" && key == "readme" {
-							_ = f.database.SetKnowledge(userID, &db.KnowledgeEntry{
-								Domain:  "system",
-								Key:     "readme",
-								Content: defaultKnowledgeReadme,
-							})
-							return defaultKnowledgeReadme, nil
-						}
 						return "", fmt.Errorf("failed to get knowledge: %w", err)
 					}
 					result, err := json.MarshalIndent(entry, "", "  ")
