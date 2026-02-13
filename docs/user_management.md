@@ -27,8 +27,24 @@ On server startup, any API tokens that are not yet linked to a user are automati
 | `-user-delete ID` | Delete a user (with confirmation) | `./mcpfusion -user-delete abc123` |
 | `-user-link ID:HASH` | Link an API key to a user | `./mcpfusion -user-link abc123:def456` |
 | `-user-unlink HASH` | Unlink an API key from its user | `./mcpfusion -user-unlink def456` |
+| `-token-add "desc" -token-user ID` | Create a token and link it to a user in one step | `./mcpfusion -token-add "Token1" -token-user abc123` |
 
 When a user is deleted, all associated knowledge entries are also removed. Unlinking a key does not delete the user or their knowledge.
+
+### Combined Token + User Workflow
+
+You can create a token and link it to an existing user in a single command using `-token-user`:
+
+```bash
+# Create a user
+./mcpfusion -user-add "Alice"
+# Output: User ID: 550e8400-e29b-41d4-a716-446655440000
+
+# Create a token linked to that user
+./mcpfusion -token-add "Alice laptop" -token-user 550e8400-e29b-41d4-a716-446655440000
+```
+
+This is equivalent to running `-token-add` followed by `-user-link`, but saves a step and avoids needing to copy the key hash manually.
 
 ## Knowledge Store
 

@@ -112,6 +112,81 @@ MCPFusion provides both legacy and modern MCP transports simultaneously:
 
 For clients unable to set custom HTTP headers, or those with unnecessarily restrictive support for network-based MCP servers, users may wish to consider bridging between MCP stdio transport and network-based MCP servers. In this case, https://github.com/PivotLLM/MCPRelay may be helpful.
 
+## User and Authentication Management
+
+MCPFusion provides multi-tenant authentication and stable user identity. API tokens authenticate clients, and user accounts provide a persistent identity that survives key rotation.
+
+### Token Management
+
+Tokens are managed via CLI flags. The server does not need to be running.
+
+```bash
+# Create a new API token
+./mcpfusion -token-add "Production token"
+
+# Create a token and immediately link it to an existing user
+./mcpfusion -token-add "Production token" -token-user <user-uuid>
+
+# List all tokens
+./mcpfusion -token-list
+
+# Delete a token (interactive confirmation)
+./mcpfusion -token-del <prefix-or-hash>
+```
+
+### User Management
+
+Each user has a UUID, a description, and one or more linked API keys. Knowledge store entries are stored per-user, so data is retained when keys are rotated.
+
+```bash
+# Create a user
+./mcpfusion -user-add "Alice"
+
+# List users and linked keys
+./mcpfusion -user-list
+
+# Delete a user and all associated data (interactive confirmation)
+./mcpfusion -user-delete <user-uuid>
+
+# Link / unlink API keys
+./mcpfusion -user-link <user-uuid>:<key-hash>
+./mcpfusion -user-unlink <key-hash>
+```
+
+### Auto-Migration
+
+On server startup, any API tokens not yet linked to a user are automatically assigned to newly created user accounts. Upgrading to a version with user management requires no manual intervention.
+
+### Knowledge Store
+
+The knowledge store provides persistent, per-user storage organized by domain and key. AI clients can store preferences, rules, and context that persists across sessions. See [User & Knowledge Management](docs/user_management.md) for full details.
+
+### Typical Setup Workflow
+
+```bash
+# 1. Build
+go build -o mcpfusion .
+
+# 2. Create a user
+./mcpfusion -user-add "Alice"
+# Note the User ID from the output
+
+# 3. Create a token linked to that user
+./mcpfusion -token-add "Alice laptop" -token-user <user-uuid>
+# Note the token for client configuration
+
+# 4. Start the server
+./mcpfusion -config configs/microsoft365.json
+```
+
+Alternatively, create the token first and link it afterward:
+
+```bash
+./mcpfusion -token-add "Alice laptop"
+# Note the hash prefix from the output
+./mcpfusion -user-link <user-uuid>:<key-hash>
+```
+
 ## Included Configurations
 
 MCPFusion ships with JSON configurations for two services in the `configs/` directory. These can be used as-is or customized to suit your needs.

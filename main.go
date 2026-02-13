@@ -43,6 +43,7 @@ func main() {
 	tokenAddFlag := flag.String("token-add", "", "Add new API token with description")
 	tokenListFlag := flag.Bool("token-list", false, "List all API tokens")
 	tokenDeleteFlag := flag.String("token-del", "", "Delete API token by prefix or hash")
+	tokenUserFlag := flag.String("token-user", "", "User ID to link token to (use with -token-add)")
 
 	// User management subcommands
 	userAddFlag := flag.String("user-add", "", "Add new user with description")
@@ -78,6 +79,8 @@ func main() {
 		fmt.Printf("Token Management Commands:\n")
 		fmt.Printf("  -token-add string\n")
 		fmt.Printf("        Add new API token with description\n")
+		fmt.Printf("  -token-user string\n")
+		fmt.Printf("        User ID to link token to (use with -token-add)\n")
 		fmt.Printf("  -token-list\n")
 		fmt.Printf("        List all API tokens\n")
 		fmt.Printf("  -token-del string\n")
@@ -107,6 +110,7 @@ func main() {
 		fmt.Printf("  %s -config configs/microsoft365.json -port 8888\n\n", os.Args[0])
 		fmt.Printf("  # Token management examples\n")
 		fmt.Printf("  %s -token-add \"Production token\"\n", os.Args[0])
+		fmt.Printf("  %s -token-add \"Production token\" -token-user <user-uuid>\n", os.Args[0])
 		fmt.Printf("  %s -token-list\n", os.Args[0])
 		fmt.Printf("  %s -token-del abc12345\n\n", os.Args[0])
 		fmt.Printf("  # Generate auth code for fusion-auth\n")
@@ -236,7 +240,7 @@ func main() {
 
 	// Handle token management commands if specified
 	if *tokenAddFlag != "" || *tokenListFlag || *tokenDeleteFlag != "" {
-		if err := handleTokenCommands(database, *tokenAddFlag, *tokenListFlag, *tokenDeleteFlag, logger); err != nil {
+		if err := handleTokenCommands(database, *tokenAddFlag, *tokenListFlag, *tokenDeleteFlag, *tokenUserFlag, logger); err != nil {
 			logger.Fatalf("Token management failed: %v", err)
 		}
 		// Exit after token management - don't start server
@@ -444,9 +448,9 @@ func main() {
 }
 
 // handleTokenCommands processes token management commands
-func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, tokenDelete string, logger global.Logger) error {
+func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, tokenDelete string, tokenUser string, logger global.Logger) error {
 	if tokenAdd != "" {
-		return handleTokenAdd(database, tokenAdd, logger)
+		return handleTokenAdd(database, tokenAdd, tokenUser, logger)
 	}
 
 	if tokenList {
@@ -461,7 +465,7 @@ func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, 
 }
 
 // handleTokenAdd creates a new API token
-func handleTokenAdd(database db.Database, description string, _ global.Logger) error {
+func handleTokenAdd(database db.Database, description string, userID string, _ global.Logger) error {
 	if description == "" {
 		description = "API Token"
 	}
@@ -492,6 +496,15 @@ func handleTokenAdd(database db.Database, description string, _ global.Logger) e
 	fmt.Printf("Use this token in the Authorization header:\n")
 	fmt.Printf("  Authorization: Bearer %s\n", token)
 	fmt.Printf("\n")
+
+	// Link token to user if specified
+	if userID != "" {
+		if err := database.LinkAPIKey(userID, hash); err != nil {
+			fmt.Printf("WARNING: Token created but failed to link to user %s: %v\n", userID, err)
+		} else {
+			fmt.Printf("Token linked to user %s\n", userID)
+		}
+	}
 
 	return nil
 }
