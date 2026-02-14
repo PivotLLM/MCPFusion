@@ -7,6 +7,7 @@ package fusion
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1284,6 +1285,50 @@ func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenI
 	fields, ok := fieldsRaw.([]interface{})
 	if !ok {
 		return fmt.Errorf("user_credentials 'fields' must be an array")
+	}
+
+	// Check for authMethod
+	if authMethod, _ := config["authMethod"].(string); authMethod == "basic_auth" {
+		if len(fields) != 2 {
+			return fmt.Errorf("basic_auth requires exactly 2 fields, got %d", len(fields))
+		}
+
+		// Extract field names from config
+		field0, ok := fields[0].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("basic_auth field 0 must be an object")
+		}
+		field1, ok := fields[1].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("basic_auth field 1 must be an object")
+		}
+		name0, ok := field0["name"].(string)
+		if !ok || name0 == "" {
+			return fmt.Errorf("basic_auth field 0 requires 'name'")
+		}
+		name1, ok := field1["name"].(string)
+		if !ok || name1 == "" {
+			return fmt.Errorf("basic_auth field 1 requires 'name'")
+		}
+
+		// Look up values from metadata
+		value0, exists0 := tokenInfo.Metadata[name0]
+		if !exists0 || value0 == "" {
+			return fmt.Errorf("missing credential value for field '%s'", name0)
+		}
+		value1, exists1 := tokenInfo.Metadata[name1]
+		if !exists1 || value1 == "" {
+			return fmt.Errorf("missing credential value for field '%s'", name1)
+		}
+
+		// Combine and base64-encode
+		encoded := base64.StdEncoding.EncodeToString([]byte(value0 + ":" + value1))
+		req.Header.Set("Authorization", "Basic "+encoded)
+
+		if s.logger != nil {
+			s.logger.Debugf("Applied basic_auth credentials using fields '%s' and '%s'", name0, name1)
+		}
+		return nil
 	}
 
 	q := req.URL.Query()

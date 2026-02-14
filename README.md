@@ -213,7 +213,9 @@ Copyright (c) 2025-2026 by Tenebris Technologies Inc. This software is licensed 
 
 ## Trademarks
 
-“Kali Linux” is a trademark of OffSec Services Limited. “Linux” is a registered trademark of Linus Torvalds. "Claude" is a registered trademark of Anthropic PBC. Any references are for identification only and do not imply sponsorship, endorsement, or affiliation.
+Any trademarks referenced are the propery of their respective owners, used for identification only, and do not imply sponsorship, endorsement, or affiliation.
+
+“Kali Linux” is a trademark of OffSec Services Limited. “Linux” is a registered trademark of Linus Torvalds. "Claude" is a registered trademark of Anthropic PBC. 
 
 ## No Warranty (zilch, none, void, nil, null, "", {}, 0x00, 0b00000000, EOF)
 

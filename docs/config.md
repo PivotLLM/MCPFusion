@@ -1,6 +1,6 @@
 # MCPFusion Configuration Guide
 
-This guide explains how to create JSON configuration files for MCPFusion to integrate with any API that uses OAuth2 or Bearer token authentication.
+This guide explains how to create JSON configuration files for MCPFusion to integrate with any API. Supported authentication types include OAuth2, Bearer tokens, API keys, Basic auth, and user-provided credentials.
 
 ## Table of Contents
 
@@ -156,6 +156,100 @@ For APIs that use username/password:
 **Environment Variables Required:**
 - `API_USERNAME`: Username for basic auth
 - `API_PASSWORD`: Password for basic auth
+
+### User Credentials
+
+For APIs where each user provides their own credentials (API keys, tokens, etc.) through the `fusion-auth` CLI. Credentials are stored per-tenant and applied to requests based on field definitions. Unlike other auth types, credentials are not set via environment variables — each user runs `fusion-auth` to provide their own values interactively.
+
+There are two modes:
+
+#### Individual Mode (default)
+
+Each field is applied to the request independently based on its `location` and `paramName`. Use this when the API expects credentials as separate query parameters, headers, or cookies.
+
+```json
+{
+  "type": "user_credentials",
+  "config": {
+    "instructions": "To use this service, you need an API Key and Token.\n\n1. Go to https://example.com/developer to create an app\n2. Copy your API key and generate a token\n3. Enter both values when prompted below",
+    "fields": [
+      {
+        "name": "key",
+        "label": "API Key",
+        "description": "Your API Key from the developer portal",
+        "location": "query",
+        "paramName": "key"
+      },
+      {
+        "name": "token",
+        "label": "API Token",
+        "description": "Your API Token",
+        "location": "query",
+        "paramName": "token"
+      }
+    ]
+  }
+}
+```
+
+In this example, both credentials are sent as query parameters on every request: `?key=xxx&token=yyy`.
+
+#### Basic Auth Mode
+
+When `authMethod` is set to `"basic_auth"`, exactly two fields are combined into a standard HTTP Basic Authentication header: `Authorization: Basic base64(field1:field2)`. The `location` settings on individual fields are ignored.
+
+This is useful for APIs like Jira Cloud that use email + API token with Basic auth.
+
+```json
+{
+  "type": "user_credentials",
+  "config": {
+    "authMethod": "basic_auth",
+    "instructions": "You need your account email and an API token.\n\n1. Go to https://id.atlassian.com/manage-profile/security/api-tokens\n2. Click 'Create API token' and copy it\n3. Enter your email and token when prompted below",
+    "fields": [
+      {
+        "name": "email",
+        "label": "Email",
+        "description": "Your account email address"
+      },
+      {
+        "name": "api_token",
+        "label": "API Token",
+        "description": "Your API token"
+      }
+    ]
+  }
+}
+```
+
+The first field is used as the username and the second as the password in the Basic auth header.
+
+#### Config Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `authMethod` | string | No | How credentials are applied: omit for individual mode, `"basic_auth"` to combine two fields as HTTP Basic auth |
+| `instructions` | string | No | Setup instructions shown to the user before running `fusion-auth`. Include steps to obtain credentials. |
+| `fields` | array | Yes | Array of credential field definitions (exactly 2 for `basic_auth` mode) |
+
+#### Field Definition
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Internal field name, used as the key in credential storage |
+| `label` | string | No | Human-readable label shown during `fusion-auth` prompts |
+| `description` | string | No | Description shown during `fusion-auth` prompts |
+| `location` | string | Individual mode only | Where to apply the credential: `query`, `header`, or `cookie`. Ignored in `basic_auth` mode. |
+| `paramName` | string | No | The actual parameter name used in the request. Defaults to `name` if omitted. |
+
+#### How It Works
+
+1. When an API call fails due to missing credentials, the LLM calls the `<service>_auth_setup` tool
+2. The tool returns setup instructions (from `instructions` config) and a time-limited `fusion-auth` command
+3. The user runs `fusion-auth <code>`, which prompts for each field value and stores them on the server
+4. Subsequent API requests automatically apply the stored credentials to outgoing requests
+
+**Security Note:** Credentials sent as query parameters (individual mode) may be logged by proxies or intermediate servers. This is determined by the target API's design, not MCPFusion. When possible, prefer `basic_auth` mode or header-based credentials.
 
 ## Endpoint Configuration
 
