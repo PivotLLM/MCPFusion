@@ -205,8 +205,9 @@ func validateFlags(flags *cliFlags, _ *providers.ProviderRegistry) error {
 		return fmt.Errorf("MCPFusion API token is required")
 	}
 
-	// Service validation is deferred to the server - it may be a user_credentials
-	// service that doesn't have a local provider registered.
+	// Service validation is deferred to the server because user_credentials services
+	// don't require server-side OAuth config or a local provider. The server validates
+	// credentials on first use, so we allow any service name through here.
 	return nil
 }
 
@@ -283,7 +284,8 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 	// Fall back to standard OAuth provider flow
 	provider, err := registry.GetProvider(cfg.Service)
 	if err != nil {
-		return fmt.Errorf("unsupported service '%s' and no user_credentials config found on server: %w", cfg.Service, err)
+		return fmt.Errorf("no local OAuth provider registered for service '%s', "+
+			"and the server did not return a user_credentials auth config for it either: %w", cfg.Service, err)
 	}
 
 	// Validate the merged configuration (server config + local defaults)
@@ -361,7 +363,10 @@ func executeUserCredentialsFlow(ctx context.Context, cfg *config.Config, mcpClie
 		log.Printf("Collected %d credential fields, storing in MCPFusion...", len(metadata))
 	}
 
-	// Store credentials via the API
+	// Store credentials via the API.
+	// The access token "user_credentials:<service>" is a sentinel value that triggers
+	// the server to look up stored credential metadata from the database instead of
+	// using the token directly for API authentication.
 	_, err := mcpClient.StoreTokens(ctx, cfg.Service, "user_credentials:"+cfg.Service, "", 0, metadata)
 	if err != nil {
 		return fmt.Errorf("failed to store credentials in MCPFusion: %w", err)

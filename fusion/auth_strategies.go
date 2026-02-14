@@ -1307,6 +1307,7 @@ func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenI
 			return fmt.Errorf("missing credential value for field '%s'", name)
 		}
 
+		// NOTE: Only log field/param names here, never credential values.
 		switch location {
 		case "query":
 			q.Set(paramName, value)
