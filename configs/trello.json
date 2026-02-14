@@ -6,7 +6,7 @@
       "auth": {
         "type": "user_credentials",
         "config": {
-          "instructions": "To use Trello with MCPFusion, you need a Trello API Key and Token.\n\n1. Visit https://trello.com/power-ups/admin/ to get your API Key\n2. Click 'Generate a Token' link on that page to get your Token\n3. Enter both values when prompted below",
+          "instructions": "To use Trello with MCPFusion, you need a Trello API Key and Token.\n\n1. Go to https://trello.com/power-ups/admin and click 'New' to create a Power-Up\n2. Fill in information about your app and contact details. Leave 'Iframe connector URL' blank, then click 'Create'\n3. On the next screen, click 'Generate a new API key'\n4. Copy the 'API key' value\n5. Next to the API key, click the 'Token' link to manually generate a token\n6. Review and agree to give it access, then copy the token and store it safely\n7. Enter both values when prompted below",
           "fields": [
             { "name": "key", "label": "API Key", "description": "Your Trello API Key from https://trello.com/power-ups/admin/", "location": "query", "paramName": "key" },
             { "name": "token", "label": "API Token", "description": "Your Trello API Token", "location": "query", "paramName": "token" }
@@ -871,6 +871,78 @@
                 "minimum": 1,
                 "maximum": 1000
               }
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_board_custom_fields",
+          "name": "Get Board Custom Fields",
+          "description": "Get all custom field definitions on a board. Returns field IDs, names, types, and options (for list-type fields). Use this to discover available custom fields before getting or setting values.",
+          "method": "GET",
+          "path": "/boards/{boardId}/customFields",
+          "parameters": [
+            {
+              "name": "boardId",
+              "description": "The ID of the board",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_card_custom_field_items",
+          "name": "Get Card Custom Field Items",
+          "description": "Get all custom field values set on a card. Returns an array of custom field items with their field IDs and values. Use get_board_custom_fields to map field IDs to names.",
+          "method": "GET",
+          "path": "/cards/{cardId}/customFieldItems",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "set_card_custom_field",
+          "name": "Set Card Custom Field",
+          "description": "Set or update a custom field value on a card. The value format depends on the field type: text uses {\"value\":{\"text\":\"...\"}}, number uses {\"value\":{\"number\":\"...\"}}, date uses {\"value\":{\"date\":\"...\"}}, checkbox uses {\"value\":{\"checked\":\"true\"}}, and list uses {\"idValue\":\"option-id\"}.",
+          "method": "PUT",
+          "path": "/cards/{cardId}/customField/{customFieldId}/item",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "customFieldId",
+              "description": "The ID of the custom field (get from get_board_custom_fields)",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "value",
+              "description": "The value to set. For text: {\"text\":\"value\"}, number: {\"number\":\"value\"}, date: {\"date\":\"ISO-8601\"}, checkbox: {\"checked\":\"true\"or\"false\"}. For list type, use idValue parameter instead.",
+              "type": "object",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "idValue",
+              "description": "For list-type custom fields, the ID of the option to select (get option IDs from get_board_custom_fields). Set to empty string to clear.",
+              "type": "string",
+              "required": false,
+              "location": "body"
             }
           ],
           "response": { "type": "json" }

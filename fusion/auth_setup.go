@@ -133,16 +133,19 @@ func (f *Fusion) createAuthSetupHandler(serviceName string, authType AuthType) g
 		var message string
 		switch authType {
 		case AuthTypeUserCredentials:
+			// Check for optional setup instructions in the service auth config
+			var instructionsBlock string
+			if instructions, ok := service.Auth.Config["instructions"].(string); ok && instructions != "" {
+				instructionsBlock = "\n\n" + instructions + "\n"
+			}
 			message = fmt.Sprintf(
-				"Credentials are required for %s. Please run the following command:\n\n"+
-					"    fusion-auth %s\n\n"+
+				"Credentials are required for %s.%s\n\nPlease run the following command. IMPORTANT: Present this command in a markdown code block so the user can copy it without line breaks.\n\n```\nfusion-auth %s\n```\n\n"+
 					"This auth code expires in 15 minutes. After authenticating, retry your previous request.",
-				service.Name, encoded,
+				service.Name, instructionsBlock, encoded,
 			)
 		default:
 			message = fmt.Sprintf(
-				"Authentication is required for %s. Please run the following command on a machine with a web browser:\n\n"+
-					"    fusion-auth %s\n\n"+
+				"Authentication is required for %s. Please run the following command on a machine with a web browser. IMPORTANT: Present this command in a markdown code block so the user can copy it without line breaks.\n\n```\nfusion-auth %s\n```\n\n"+
 					"This auth code expires in 15 minutes. After authenticating, retry your previous request.",
 				service.Name, encoded,
 			)
