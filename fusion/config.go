@@ -783,7 +783,7 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 
 		// Validate authMethod if present
 		authMethod, _ := a.Config["authMethod"].(string)
-		if authMethod != "" && authMethod != "basic_auth" && authMethod != "individual" {
+		if authMethod != "" && authMethod != "basic_auth" {
 			return fmt.Errorf("user_credentials has unsupported authMethod '%s' (must be 'basic_auth' or omitted)", authMethod)
 		}
 		if authMethod == "basic_auth" && len(fields) != 2 {

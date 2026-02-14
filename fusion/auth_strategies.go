@@ -1294,10 +1294,22 @@ func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenI
 		}
 
 		// Extract field names from config
-		field0, _ := fields[0].(map[string]interface{})
-		field1, _ := fields[1].(map[string]interface{})
-		name0, _ := field0["name"].(string)
-		name1, _ := field1["name"].(string)
+		field0, ok := fields[0].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("basic_auth field 0 must be an object")
+		}
+		field1, ok := fields[1].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("basic_auth field 1 must be an object")
+		}
+		name0, ok := field0["name"].(string)
+		if !ok || name0 == "" {
+			return fmt.Errorf("basic_auth field 0 requires 'name'")
+		}
+		name1, ok := field1["name"].(string)
+		if !ok || name1 == "" {
+			return fmt.Errorf("basic_auth field 1 requires 'name'")
+		}
 
 		// Look up values from metadata
 		value0, exists0 := tokenInfo.Metadata[name0]

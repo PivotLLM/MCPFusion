@@ -460,3 +460,31 @@ func TestUserCredentials_BasicAuth_WrongFieldCount(t *testing.T) {
 		})
 	}
 }
+
+func TestUserCredentials_BasicAuth_EmptyFieldName(t *testing.T) {
+	strategy := NewUserCredentialsStrategy(nil)
+
+	req := httptest.NewRequest(http.MethodGet, "https://api.example.com/v1/resource", nil)
+
+	tokenInfo := &TokenInfo{
+		Metadata: map[string]string{
+			"username": "user",
+			"password": "pass",
+		},
+	}
+	config := map[string]interface{}{
+		"authMethod": "basic_auth",
+		"fields": []interface{}{
+			map[string]interface{}{"name": ""},
+			map[string]interface{}{"name": "password"},
+		},
+	}
+
+	err := strategy.ApplyAuth(req, tokenInfo, config)
+	if err == nil {
+		t.Fatal("expected error but got nil")
+	}
+	if !strings.Contains(err.Error(), "requires 'name'") {
+		t.Errorf("error = %q, want it to contain %q", err.Error(), "requires 'name'")
+	}
+}
