@@ -1268,8 +1268,8 @@ func (s *UserCredentialsStrategy) RefreshToken(_ context.Context, _ *TokenInfo, 
 }
 
 func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, config map[string]interface{}) error {
-	if tokenInfo == nil {
-		return fmt.Errorf("token info is nil")
+	if tokenInfo == nil || tokenInfo.Metadata == nil {
+		return fmt.Errorf("token info is nil or has no metadata")
 	}
 
 	if config == nil {
