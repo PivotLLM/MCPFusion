@@ -329,7 +329,7 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 	return newTokenInfo, nil
 }
 
-func (s *OAuth2DeviceFlowStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
+func (s *OAuth2DeviceFlowStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -363,7 +363,7 @@ func (s *BearerTokenStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ ma
 	return nil, fmt.Errorf("bearer token refresh not supported")
 }
 
-func (s *BearerTokenStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
+func (s *BearerTokenStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -397,7 +397,7 @@ func (s *APIKeyStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[str
 	return nil, fmt.Errorf("API key refresh not supported")
 }
 
-func (s *APIKeyStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
+func (s *APIKeyStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -432,7 +432,7 @@ func (s *BasicAuthStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[
 	return nil, fmt.Errorf("basic auth refresh not supported")
 }
 
-func (s *BasicAuthStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
+func (s *BasicAuthStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -1157,7 +1157,7 @@ func (s *SessionJWTStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenI
 	return newTokenInfo, nil
 }
 
-func (s *SessionJWTStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
+func (s *SessionJWTStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -1230,6 +1230,109 @@ func (s *SessionJWTStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) 
 		return fmt.Errorf("unsupported token location: %s", tokenLocation)
 	}
 
+	return nil
+}
+
+// ============================================================================
+// User Credentials Strategy
+// ============================================================================
+
+// UserCredentialsStrategy implements user-provided credential authentication
+// This strategy supports services that require per-user credentials (e.g., API key + token)
+// injected as query parameters, headers, or cookies. The credentials are stored in
+// TokenInfo.Metadata and applied per the field definitions in the auth config.
+type UserCredentialsStrategy struct {
+	logger global.Logger
+}
+
+// NewUserCredentialsStrategy creates a new user credentials strategy
+func NewUserCredentialsStrategy(logger global.Logger) *UserCredentialsStrategy {
+	return &UserCredentialsStrategy{logger: logger}
+}
+
+func (s *UserCredentialsStrategy) GetAuthType() AuthType {
+	return AuthTypeUserCredentials
+}
+
+func (s *UserCredentialsStrategy) SupportsRefresh() bool {
+	return false
+}
+
+func (s *UserCredentialsStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
+	return nil, fmt.Errorf("user_credentials authentication requires running fusion-auth to provide credentials")
+}
+
+func (s *UserCredentialsStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
+	return nil, fmt.Errorf("user_credentials does not support token refresh")
+}
+
+func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, config map[string]interface{}) error {
+	if tokenInfo == nil {
+		return fmt.Errorf("token info is nil")
+	}
+
+	if config == nil {
+		return fmt.Errorf("auth config is required for user_credentials")
+	}
+
+	// Parse fields from config
+	fieldsRaw, ok := config["fields"]
+	if !ok {
+		return fmt.Errorf("user_credentials config missing 'fields'")
+	}
+
+	fields, ok := fieldsRaw.([]interface{})
+	if !ok {
+		return fmt.Errorf("user_credentials 'fields' must be an array")
+	}
+
+	q := req.URL.Query()
+
+	for _, fieldRaw := range fields {
+		field, ok := fieldRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		name, _ := field["name"].(string)
+		location, _ := field["location"].(string)
+		paramName, _ := field["paramName"].(string)
+		if paramName == "" {
+			paramName = name
+		}
+
+		// Look up the value in tokenInfo.Metadata
+		value, exists := tokenInfo.Metadata[name]
+		if !exists || value == "" {
+			return fmt.Errorf("missing credential value for field '%s'", name)
+		}
+
+		// NOTE: Only log field/param names here, never credential values.
+		switch location {
+		case "query":
+			q.Set(paramName, value)
+			if s.logger != nil {
+				s.logger.Debugf("Applied user credential '%s' as query parameter '%s'", name, paramName)
+			}
+		case "header":
+			req.Header.Set(paramName, value)
+			if s.logger != nil {
+				s.logger.Debugf("Applied user credential '%s' as header '%s'", name, paramName)
+			}
+		case "cookie":
+			req.AddCookie(&http.Cookie{
+				Name:  paramName,
+				Value: value,
+			})
+			if s.logger != nil {
+				s.logger.Debugf("Applied user credential '%s' as cookie '%s'", name, paramName)
+			}
+		default:
+			return fmt.Errorf("unsupported credential location '%s' for field '%s'", location, name)
+		}
+	}
+
+	req.URL.RawQuery = q.Encode()
 	return nil
 }
 

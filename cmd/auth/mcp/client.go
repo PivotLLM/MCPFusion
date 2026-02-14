@@ -38,10 +38,11 @@ func NewClient(baseURL, apiToken string) *Client {
 
 // TokenRequest represents a request to store OAuth tokens
 type TokenRequest struct {
-	Service      string `json:"service"`
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in,omitempty"`
+	Service      string            `json:"service"`
+	AccessToken  string            `json:"access_token"`
+	RefreshToken string            `json:"refresh_token"`
+	ExpiresIn    int               `json:"expires_in,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
 }
 
 // TokenResponse represents the response from storing OAuth tokens
@@ -112,12 +113,13 @@ func (c *Client) Ping(ctx context.Context) (*PingResponse, error) {
 }
 
 // StoreTokens sends OAuth tokens to MCPFusion for storage
-func (c *Client) StoreTokens(ctx context.Context, service, accessToken, refreshToken string, expiresIn int) (*TokenResponse, error) {
+func (c *Client) StoreTokens(ctx context.Context, service, accessToken, refreshToken string, expiresIn int, metadata map[string]string) (*TokenResponse, error) {
 	req := &TokenRequest{
 		Service:      service,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    expiresIn,
+		Metadata:     metadata,
 	}
 
 	endpoint := fmt.Sprintf("%s/api/v1/oauth/tokens", c.baseURL)
@@ -277,10 +279,41 @@ func (c *Client) GetServiceConfig(ctx context.Context, serviceName string) (*Ser
 
 // ServiceConfigResponse represents the response from getting service config
 type ServiceConfigResponse struct {
-	Success     bool                     `json:"success"`
-	Message     string                   `json:"message"`
-	ServiceName string                   `json:"service_name,omitempty"`
-	Config      *providers.ServiceConfig `json:"config,omitempty"`
+	Success     bool               `json:"success"`
+	Message     string             `json:"message"`
+	ServiceName string             `json:"service_name,omitempty"`
+	Config      *ServiceConfigData `json:"config,omitempty"`
+}
+
+// ServiceConfigData represents the service configuration data returned by the server
+type ServiceConfigData struct {
+	ServiceName    string                 `json:"service_name,omitempty"`
+	OAuthAvailable bool                   `json:"oauth_available,omitempty"`
+	AuthTypeStr    string                 `json:"auth_type,omitempty"`
+	ClientID       string                 `json:"client_id,omitempty"`
+	ClientSecret   string                 `json:"client_secret,omitempty"`
+	Scopes         string                 `json:"scopes,omitempty"`
+	Instructions   string                 `json:"instructions,omitempty"`
+	Fields         []CredentialField      `json:"fields,omitempty"`
+	Endpoints      map[string]string      `json:"endpoints,omitempty"`
+	Extra          map[string]interface{} `json:"-"`
+}
+
+// CredentialField represents a field definition for user_credentials auth
+type CredentialField struct {
+	Name        string `json:"name"`
+	Label       string `json:"label,omitempty"`
+	Description string `json:"description,omitempty"`
+	Location    string `json:"location"`
+	ParamName   string `json:"paramName,omitempty"`
+}
+
+// AuthType returns the auth type and whether it was present
+func (s *ServiceConfigData) AuthType() (string, bool) {
+	if s == nil || s.AuthTypeStr == "" {
+		return "", false
+	}
+	return s.AuthTypeStr, true
 }
 
 // NotifySuccess sends a success notification to MCPFusion

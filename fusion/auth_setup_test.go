@@ -63,6 +63,19 @@ func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 		config: &Config{
 			Services: map[string]*ServiceConfig{
 				"google": {Name: "Google Workspace", Auth: AuthConfig{Type: AuthTypeOAuth2External}},
+				"trello": {Name: "Trello", Auth: AuthConfig{
+					Type: AuthTypeUserCredentials,
+					Config: map[string]interface{}{
+						"instructions": "To use Trello with MCPFusion, you need a Trello API Key and Token.\n\n" +
+							"1. Visit https://trello.com/power-ups/admin/ to get your API Key\n" +
+							"2. Click 'Generate a Token' link on that page to get your Token\n" +
+							"3. Enter both values when prompted below",
+					},
+				}},
+				"basic_creds": {Name: "Basic Service", Auth: AuthConfig{
+					Type:   AuthTypeUserCredentials,
+					Config: map[string]interface{}{},
+				}},
 			},
 		},
 		multiTenantAuth: mtam,
@@ -92,7 +105,7 @@ func TestCreateAuthSetupToolDefinition(t *testing.T) {
 func TestAuthSetupHandler_Success(t *testing.T) {
 	f := newAuthSetupTestFusion(t, "http://localhost:8888")
 
-	handler := f.createAuthSetupHandler("google")
+	handler := f.createAuthSetupHandler("google", AuthTypeOAuth2External)
 
 	// Build a context with a valid TenantContext
 	tenantCtx := &TenantContext{
@@ -129,7 +142,7 @@ func TestAuthSetupHandler_Success(t *testing.T) {
 func TestAuthSetupHandler_NoTenantContext(t *testing.T) {
 	f := newAuthSetupTestFusion(t, "http://localhost:8888")
 
-	handler := f.createAuthSetupHandler("google")
+	handler := f.createAuthSetupHandler("google", AuthTypeOAuth2External)
 
 	// Call without any tenant context in options
 	options := map[string]any{}
@@ -142,7 +155,7 @@ func TestAuthSetupHandler_NoTenantContext(t *testing.T) {
 func TestAuthSetupHandler_NoExternalURL(t *testing.T) {
 	f := newAuthSetupTestFusion(t, "")
 
-	handler := f.createAuthSetupHandler("google")
+	handler := f.createAuthSetupHandler("google", AuthTypeOAuth2External)
 
 	tenantCtx := &TenantContext{
 		TenantHash:  "abc123def456abc123def456abc123def456abc123def456abc123def456abcd",
@@ -183,4 +196,58 @@ func TestAuthCodeBlobRoundTrip(t *testing.T) {
 	assert.Equal(t, original.URL, roundTripped.URL)
 	assert.Equal(t, original.Code, roundTripped.Code)
 	assert.Equal(t, original.Service, roundTripped.Service)
+}
+
+func TestAuthSetupHandler_UserCredentialsWithInstructions(t *testing.T) {
+	f := newAuthSetupTestFusion(t, "http://localhost:8888")
+
+	handler := f.createAuthSetupHandler("trello", AuthTypeUserCredentials)
+
+	tenantCtx := &TenantContext{
+		TenantHash:  "abc123def456abc123def456abc123def456abc123def456abc123def456abcd",
+		ServiceName: "trello",
+	}
+	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantCtx)
+	options := map[string]any{"__mcp_context": ctx}
+
+	result, err := handler(options)
+	require.NoError(t, err, "handler should succeed")
+
+	// Verify the message includes the instructions
+	assert.Contains(t, result, "Credentials are required for Trello.")
+	assert.Contains(t, result, "To use Trello with MCPFusion, you need a Trello API Key and Token.")
+	assert.Contains(t, result, "https://trello.com/power-ups/admin/")
+	assert.Contains(t, result, "fusion-auth")
+	assert.Contains(t, result, "This auth code expires in 15 minutes.")
+
+	// Verify ordering: instructions come before the fusion-auth command
+	instructionsIdx := strings.Index(result, "Trello API Key and Token")
+	fusionAuthIdx := strings.Index(result, "fusion-auth")
+	assert.Greater(t, fusionAuthIdx, instructionsIdx,
+		"instructions should appear before the fusion-auth command")
+}
+
+func TestAuthSetupHandler_UserCredentialsWithoutInstructions(t *testing.T) {
+	f := newAuthSetupTestFusion(t, "http://localhost:8888")
+
+	handler := f.createAuthSetupHandler("basic_creds", AuthTypeUserCredentials)
+
+	tenantCtx := &TenantContext{
+		TenantHash:  "abc123def456abc123def456abc123def456abc123def456abc123def456abcd",
+		ServiceName: "basic_creds",
+	}
+	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantCtx)
+	options := map[string]any{"__mcp_context": ctx}
+
+	result, err := handler(options)
+	require.NoError(t, err, "handler should succeed")
+
+	// Verify the message works without instructions
+	assert.Contains(t, result, "Credentials are required for Basic Service.")
+	assert.Contains(t, result, "fusion-auth")
+	assert.Contains(t, result, "This auth code expires in 15 minutes.")
+
+	// The message should NOT contain double blank lines between
+	// "Credentials are required" and "Please run" (no instructions block)
+	assert.NotContains(t, result, "Credentials are required for Basic Service.\n\n\n\n")
 }

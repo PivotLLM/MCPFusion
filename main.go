@@ -302,6 +302,9 @@ func main() {
 		&http.Client{Timeout: 30 * time.Second}, logger)
 	multiTenantAuth.RegisterStrategy(oauth2ExternalStrategy)
 
+	userCredentialsStrategy := fusion.NewUserCredentialsStrategy(logger)
+	multiTenantAuth.RegisterStrategy(userCredentialsStrategy)
+
 	// Initialize config manager with all configuration files
 	configManager := config.New(
 		config.WithLogger(logger),

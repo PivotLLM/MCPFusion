@@ -105,7 +105,7 @@ type AuthStrategy interface {
 	SupportsRefresh() bool
 
 	// ApplyAuth applies authentication to an HTTP request
-	ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error
+	ApplyAuth(req *http.Request, tokenInfo *TokenInfo, config map[string]interface{}) error
 }
 
 // AuthType and AuthConfig are defined in config.go

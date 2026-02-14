@@ -21,13 +21,14 @@ import (
 type AuthType string
 
 const (
-	AuthTypeOAuth2Device   AuthType = "oauth2_device"
-	AuthTypeOAuth2External AuthType = "oauth2_external"
-	AuthTypeBearer         AuthType = "bearer"
-	AuthTypeAPIKey         AuthType = "api_key"
-	AuthTypeBasic          AuthType = "basic"
-	AuthTypeSessionJWT     AuthType = "session_jwt"
-	AuthTypeNone           AuthType = "none"
+	AuthTypeOAuth2Device    AuthType = "oauth2_device"
+	AuthTypeOAuth2External  AuthType = "oauth2_external"
+	AuthTypeBearer          AuthType = "bearer"
+	AuthTypeAPIKey          AuthType = "api_key"
+	AuthTypeBasic           AuthType = "basic"
+	AuthTypeSessionJWT      AuthType = "session_jwt"
+	AuthTypeUserCredentials AuthType = "user_credentials"
+	AuthTypeNone            AuthType = "none"
 )
 
 // DefaultTokenInvalidationStatusCodes defines HTTP status codes that trigger token invalidation by default
@@ -763,6 +764,39 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 		}
 		if logger != nil {
 			logger.Debugf("Service %s: session_jwt auth configuration validated", serviceName)
+		}
+	case AuthTypeUserCredentials:
+		fieldsRaw, ok := a.Config["fields"]
+		if !ok {
+			if logger != nil {
+				logger.Errorf("Service %s: user_credentials auth requires 'fields' in config", serviceName)
+			}
+			return fmt.Errorf("user_credentials auth requires 'fields' in config")
+		}
+		fields, ok := fieldsRaw.([]interface{})
+		if !ok || len(fields) == 0 {
+			if logger != nil {
+				logger.Errorf("Service %s: user_credentials 'fields' must be a non-empty array", serviceName)
+			}
+			return fmt.Errorf("user_credentials 'fields' must be a non-empty array")
+		}
+		validLocations := map[string]bool{"query": true, "header": true, "cookie": true}
+		for i, fieldRaw := range fields {
+			field, ok := fieldRaw.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("user_credentials field %d must be an object", i)
+			}
+			name, _ := field["name"].(string)
+			if name == "" {
+				return fmt.Errorf("user_credentials field %d requires 'name'", i)
+			}
+			location, _ := field["location"].(string)
+			if !validLocations[location] {
+				return fmt.Errorf("user_credentials field '%s' has invalid location '%s' (must be query, header, or cookie)", name, location)
+			}
+		}
+		if logger != nil {
+			logger.Debugf("Service %s: user_credentials auth configuration validated (%d fields)", serviceName, len(fields))
 		}
 	case AuthTypeNone:
 		if logger != nil {

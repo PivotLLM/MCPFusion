@@ -46,7 +46,7 @@ func (s *OAuth2ExternalStrategy) Authenticate(_ context.Context, _ map[string]in
 	return nil, fmt.Errorf("no stored token found for this service. Please run fusion-auth to authenticate.")
 }
 
-func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo) error {
+func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}

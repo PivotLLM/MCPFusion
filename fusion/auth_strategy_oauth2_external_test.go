@@ -85,7 +85,7 @@ func TestOAuth2ExternalStrategy_ApplyAuth(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://example.com/api", nil)
-			err := strategy.ApplyAuth(req, tt.tokenInfo)
+			err := strategy.ApplyAuth(req, tt.tokenInfo, nil)
 
 			if tt.wantError {
 				if err == nil {

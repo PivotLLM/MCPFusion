@@ -221,6 +221,15 @@ func (m *Manager) IsNativeToolPrefix(prefix string) bool {
 	return m.nativePrefixes[prefix]
 }
 
+// GetServiceAuthConfig returns the auth configuration for a specific service
+func (m *Manager) GetServiceAuthConfig(name string) (*fusion.AuthConfig, error) {
+	service, err := m.GetService(name)
+	if err != nil {
+		return nil, err
+	}
+	return &service.Auth, nil
+}
+
 // HasService checks if a service exists
 func (m *Manager) HasService(name string) bool {
 	m.mu.RLock()
