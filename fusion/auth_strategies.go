@@ -1268,8 +1268,11 @@ func (s *UserCredentialsStrategy) RefreshToken(_ context.Context, _ *TokenInfo, 
 }
 
 func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, config map[string]interface{}) error {
-	if tokenInfo == nil || tokenInfo.Metadata == nil {
-		return fmt.Errorf("token info is nil or has no metadata")
+	if tokenInfo == nil {
+		return fmt.Errorf("token info is nil")
+	}
+	if tokenInfo.Metadata == nil {
+		return fmt.Errorf("token metadata is nil")
 	}
 
 	if config == nil {
@@ -1288,7 +1291,7 @@ func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenI
 	}
 
 	// Check for authMethod
-	if authMethod, _ := config["authMethod"].(string); authMethod == "basic_auth" {
+	if authMethod, _ := config["authMethod"].(string); authMethod == AuthMethodBasicAuth {
 		if len(fields) != 2 {
 			return fmt.Errorf("basic_auth requires exactly 2 fields, got %d", len(fields))
 		}

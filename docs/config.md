@@ -222,7 +222,11 @@ This is useful for APIs like Jira Cloud that use email + API token with Basic au
 }
 ```
 
-The first field is used as the username and the second as the password in the Basic auth header.
+The first field is used as the username and the second as the password in the Basic auth header. For example, with `email="user@example.com"` and `api_token="abc123"`, the resulting header is:
+
+```
+Authorization: Basic dXNlckBleGFtcGxlLmNvbTphYmMxMjM=
+```
 
 #### Config Fields
 

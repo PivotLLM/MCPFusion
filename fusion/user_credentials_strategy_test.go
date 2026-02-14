@@ -194,7 +194,7 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 				"fields": []interface{}{},
 			},
 			wantErr: true,
-			errMsg:  "token info is nil or has no metadata",
+			errMsg:  "token info is nil",
 		},
 		{
 			name: "nil config",
