@@ -780,6 +780,16 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 			}
 			return fmt.Errorf("user_credentials 'fields' must be a non-empty array")
 		}
+
+		// Validate authMethod if present
+		authMethod, _ := a.Config["authMethod"].(string)
+		if authMethod != "" && authMethod != "basic_auth" && authMethod != "individual" {
+			return fmt.Errorf("user_credentials has unsupported authMethod '%s' (must be 'basic_auth' or omitted)", authMethod)
+		}
+		if authMethod == "basic_auth" && len(fields) != 2 {
+			return fmt.Errorf("user_credentials with authMethod 'basic_auth' requires exactly 2 fields")
+		}
+
 		validLocations := map[string]bool{"query": true, "header": true, "cookie": true}
 		for i, fieldRaw := range fields {
 			field, ok := fieldRaw.(map[string]interface{})
@@ -790,9 +800,12 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 			if name == "" {
 				return fmt.Errorf("user_credentials field %d requires 'name'", i)
 			}
-			location, _ := field["location"].(string)
-			if !validLocations[location] {
-				return fmt.Errorf("user_credentials field '%s' has invalid location '%s' (must be query, header, or cookie)", name, location)
+			// Skip location validation for basic_auth (location is ignored)
+			if authMethod != "basic_auth" {
+				location, _ := field["location"].(string)
+				if !validLocations[location] {
+					return fmt.Errorf("user_credentials field '%s' has invalid location '%s' (must be query, header, or cookie)", name, location)
+				}
 			}
 		}
 		if logger != nil {
