@@ -526,9 +526,9 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 		}
 	}
 
-	// Register auth setup tools for services using oauth2_external
+	// Register auth setup tools for services requiring authentication
 	for serviceName, service := range f.config.Services {
-		if service.Auth.Type == AuthTypeOAuth2External {
+		if service.Auth.Type == AuthTypeOAuth2External || service.Auth.Type == AuthTypeUserCredentials {
 			tool := f.createAuthSetupToolDefinition(serviceName, service)
 			tools = append(tools, tool)
 			if f.logger != nil {

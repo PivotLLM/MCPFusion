@@ -27,17 +27,29 @@ type AuthCodeBlob struct {
 // instructions when API calls fail due to missing authentication for a service.
 func (f *Fusion) createAuthSetupToolDefinition(serviceName string, service *ServiceConfig) global.ToolDefinition {
 	toolName := fmt.Sprintf("%s_auth_setup", serviceName)
-	description := fmt.Sprintf(
-		"Generates authentication instructions for %s when API calls fail due to missing authentication. "+
-			"Returns a fusion-auth command the user can run on a machine with a web browser to complete OAuth setup.",
-		service.Name,
-	)
+	authType := service.Auth.Type
+
+	var description string
+	switch authType {
+	case AuthTypeUserCredentials:
+		description = fmt.Sprintf(
+			"Generates authentication instructions for %s when API calls fail due to missing credentials. "+
+				"Returns a fusion-auth command the user can run to provide required credentials.",
+			service.Name,
+		)
+	default:
+		description = fmt.Sprintf(
+			"Generates authentication instructions for %s when API calls fail due to missing authentication. "+
+				"Returns a fusion-auth command the user can run on a machine with a web browser to complete OAuth setup.",
+			service.Name,
+		)
+	}
 
 	return global.ToolDefinition{
 		Name:        toolName,
 		Description: description,
 		Parameters:  []global.Parameter{},
-		Handler:     f.createAuthSetupHandler(serviceName),
+		Handler:     f.createAuthSetupHandler(serviceName, authType),
 		Hints: &global.ToolHints{
 			ReadOnly:    global.BoolPtr(false),
 			Destructive: global.BoolPtr(false),
@@ -49,7 +61,7 @@ func (f *Fusion) createAuthSetupToolDefinition(serviceName string, service *Serv
 
 // createAuthSetupHandler returns a tool handler that generates a time-limited auth code
 // and returns instructions for the user to authenticate via the fusion-auth CLI.
-func (f *Fusion) createAuthSetupHandler(serviceName string) global.ToolHandler {
+func (f *Fusion) createAuthSetupHandler(serviceName string, authType AuthType) global.ToolHandler {
 	return func(options map[string]any) (string, error) {
 		// Extract context from options using the __mcp_context key pattern
 		ctx := context.Background()
@@ -118,11 +130,24 @@ func (f *Fusion) createAuthSetupHandler(serviceName string) global.ToolHandler {
 				tenantContext.ShortHash(), serviceName)
 		}
 
-		return fmt.Sprintf(
-			"Authentication is required for %s. Please run the following command on a machine with a web browser:\n\n"+
-				"    fusion-auth %s\n\n"+
-				"This auth code expires in 15 minutes. After authenticating, retry your previous request.",
-			service.Name, encoded,
-		), nil
+		var message string
+		switch authType {
+		case AuthTypeUserCredentials:
+			message = fmt.Sprintf(
+				"Credentials are required for %s. Please run the following command:\n\n"+
+					"    fusion-auth %s\n\n"+
+					"This auth code expires in 15 minutes. After authenticating, retry your previous request.",
+				service.Name, encoded,
+			)
+		default:
+			message = fmt.Sprintf(
+				"Authentication is required for %s. Please run the following command on a machine with a web browser:\n\n"+
+					"    fusion-auth %s\n\n"+
+					"This auth code expires in 15 minutes. After authenticating, retry your previous request.",
+				service.Name, encoded,
+			)
+		}
+
+		return message, nil
 	}
 }

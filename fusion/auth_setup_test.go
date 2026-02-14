@@ -92,7 +92,7 @@ func TestCreateAuthSetupToolDefinition(t *testing.T) {
 func TestAuthSetupHandler_Success(t *testing.T) {
 	f := newAuthSetupTestFusion(t, "http://localhost:8888")
 
-	handler := f.createAuthSetupHandler("google")
+	handler := f.createAuthSetupHandler("google", AuthTypeOAuth2External)
 
 	// Build a context with a valid TenantContext
 	tenantCtx := &TenantContext{
@@ -129,7 +129,7 @@ func TestAuthSetupHandler_Success(t *testing.T) {
 func TestAuthSetupHandler_NoTenantContext(t *testing.T) {
 	f := newAuthSetupTestFusion(t, "http://localhost:8888")
 
-	handler := f.createAuthSetupHandler("google")
+	handler := f.createAuthSetupHandler("google", AuthTypeOAuth2External)
 
 	// Call without any tenant context in options
 	options := map[string]any{}
@@ -142,7 +142,7 @@ func TestAuthSetupHandler_NoTenantContext(t *testing.T) {
 func TestAuthSetupHandler_NoExternalURL(t *testing.T) {
 	f := newAuthSetupTestFusion(t, "")
 
-	handler := f.createAuthSetupHandler("google")
+	handler := f.createAuthSetupHandler("google", AuthTypeOAuth2External)
 
 	tenantCtx := &TenantContext{
 		TenantHash:  "abc123def456abc123def456abc123def456abc123def456abc123def456abcd",
