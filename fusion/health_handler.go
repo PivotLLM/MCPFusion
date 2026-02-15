@@ -31,13 +31,12 @@ type healthServer struct {
 // healthService describes the operational status of a single service.
 type healthService struct {
 	Name           string `json:"name"`
-	Type           string `json:"type"`
-	Transport      string `json:"transport,omitempty"`
+	Transport      string `json:"transport"`
 	Status         string `json:"status"`
+	Tools          int    `json:"tools"`
 	Requests       int64  `json:"requests,omitempty"`
 	Errors         int64  `json:"errors,omitempty"`
 	CircuitBreaker string `json:"circuit_breaker,omitempty"`
-	Tools          int    `json:"tools,omitempty"`
 }
 
 // registerHealthTool returns the tool definition for the health tool.
@@ -97,8 +96,9 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 
 			services = append(services, healthService{
 				Name:           serviceName,
-				Type:           "api",
+				Transport:      "api",
 				Status:         status,
+				Tools:          len(svc.Endpoints),
 				Requests:       requests,
 				Errors:         errors,
 				CircuitBreaker: cbState,
@@ -115,14 +115,34 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 				allHealthy = false
 			}
 
+			// Normalise hub transport names to mcp_* prefix
+			transport := hs.Transport
+			switch transport {
+			case "stdio":
+				transport = "mcp_stdio"
+			case "sse":
+				transport = "mcp_sse"
+			}
+			// "mcp_http" is already correct
+
 			services = append(services, healthService{
 				Name:      hs.ServiceKey,
-				Type:      "hub",
-				Transport: hs.Transport,
+				Transport: transport,
 				Status:    status,
 				Tools:     hs.ToolCount,
 			})
 		}
+	}
+
+	// Internal tools (knowledge store)
+	if f.database != nil {
+		knowledgeTools := f.registerKnowledgeTools()
+		services = append(services, healthService{
+			Name:      "knowledge",
+			Transport: "internal",
+			Status:    "operational",
+			Tools:     len(knowledgeTools),
+		})
 	}
 
 	overallStatus := "healthy"
