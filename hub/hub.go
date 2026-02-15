@@ -14,6 +14,7 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -21,7 +22,7 @@ import (
 // hubClient is a common interface for stdio and HTTP hub clients
 type hubClient interface {
 	Manager() *MCPClientManager
-	RunWithReconnect(ctx context.Context, onConnected func())
+	RunWithReconnect(ctx context.Context, onConnected func(), onDisconnected func())
 	Close() error
 }
 
@@ -38,16 +39,31 @@ type HubProvider struct {
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
 	tokenCounter    int64 // atomic counter for unique downstream progress tokens (int64 overflow is not a practical concern)
+	sharedCollector *metrics.Collector
+}
+
+// HubOption defines a functional option for configuring a HubProvider.
+type HubOption func(*HubProvider)
+
+// WithSharedCollector sets the cross-package metrics collector for request tracking.
+func WithSharedCollector(c *metrics.Collector) HubOption {
+	return func(h *HubProvider) {
+		h.sharedCollector = c
+	}
 }
 
 // NewHubProvider creates a new HubProvider with the given hub service configurations.
-func NewHubProvider(configs map[string]*fusion.ServiceConfig, logger global.Logger) *HubProvider {
-	return &HubProvider{
+func NewHubProvider(configs map[string]*fusion.ServiceConfig, logger global.Logger, opts ...HubOption) *HubProvider {
+	h := &HubProvider{
 		configs:        configs,
 		clients:        make(map[string]hubClient),
 		refreshCancels: make(map[string]context.CancelFunc),
 		logger:         logger,
 	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 // RegisterTools implements global.ToolProvider.
@@ -93,35 +109,43 @@ func (h *HubProvider) Start(ctx context.Context) {
 		h.wg.Add(1)
 		go func(key string, client hubClient, cfg *fusion.ServiceConfig) {
 			defer h.wg.Done()
-			client.RunWithReconnect(h.ctx, func() {
-				// Cancel any previous periodic refresh goroutine for this service
-				h.mu.Lock()
-				if cancelFn, ok := h.refreshCancels[key]; ok {
-					cancelFn()
-					delete(h.refreshCancels, key)
-				}
-				h.mu.Unlock()
-
-				// Remove stale tools from previous connection before re-registering
-				h.removeServiceTools(key, client.Manager())
-
-				// Discover and register tools
-				h.discoverAndRegisterTools(key, client.Manager())
-
-				// Start periodic refresh if configured
-				if cfg.ToolRefreshInterval > 0 {
-					refreshCtx, refreshCancel := context.WithCancel(h.ctx)
+			client.RunWithReconnect(h.ctx,
+				func() {
+					// Cancel any previous periodic refresh goroutine for this service
 					h.mu.Lock()
-					h.refreshCancels[key] = refreshCancel
+					if cancelFn, ok := h.refreshCancels[key]; ok {
+						cancelFn()
+						delete(h.refreshCancels, key)
+					}
 					h.mu.Unlock()
 
-					h.wg.Add(1)
-					go func() {
-						defer h.wg.Done()
-						h.periodicRefresh(refreshCtx, key, client.Manager(), cfg.ToolRefreshInterval)
-					}()
-				}
-			})
+					// Remove stale tools from previous connection before re-registering
+					h.removeServiceTools(key, client.Manager())
+
+					// Discover and register tools
+					h.discoverAndRegisterTools(key, client.Manager())
+
+					// Start periodic refresh if configured
+					if cfg.ToolRefreshInterval > 0 {
+						refreshCtx, refreshCancel := context.WithCancel(h.ctx)
+						h.mu.Lock()
+						h.refreshCancels[key] = refreshCancel
+						h.mu.Unlock()
+
+						h.wg.Add(1)
+						go func() {
+							defer h.wg.Done()
+							h.periodicRefresh(refreshCtx, key, client.Manager(), cfg.ToolRefreshInterval)
+						}()
+					}
+				},
+				func() {
+					// Set status to disconnected when connection drops or fails
+					if h.sharedCollector != nil {
+						h.sharedCollector.SetStatus(key, "disconnected")
+					}
+				},
+			)
 		}(serviceKey, c, config)
 	}
 
@@ -189,6 +213,26 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 	if len(serverTools) > 0 {
 		srv.AddTools(serverTools...)
 		h.logger.Infof("Hub service '%s': registered %d tools", serviceKey, len(serverTools))
+	}
+
+	// Register/update hub service in shared collector
+	if h.sharedCollector != nil {
+		transport := ""
+		if cfg, ok := h.configs[serviceKey]; ok {
+			switch cfg.Transport {
+			case fusion.TransportTypeStdio:
+				transport = "mcp_stdio"
+			case fusion.TransportTypeSSE:
+				transport = "mcp_sse"
+			case fusion.TransportTypeMCPHTTP:
+				transport = "mcp_http"
+			default:
+				transport = string(cfg.Transport)
+			}
+		}
+		toolCount := len(tools)
+		h.sharedCollector.RegisterService(serviceKey, transport, &toolCount)
+		h.sharedCollector.SetStatus(serviceKey, "operational")
 	}
 }
 
@@ -278,6 +322,17 @@ func (h *HubProvider) convertToServerTool(toolDef global.ToolDefinition, manager
 		ctxOptions["__meta"] = downstreamMeta
 
 		result, err := toolDef.Handler(ctxOptions)
+
+		// Record to shared collector for cross-package health reporting.
+		// Extract service key from the prefixed tool name (e.g. "svc_toolname" -> "svc").
+		if h.sharedCollector != nil {
+			if svcName := ctx.Value(global.ServiceNameKey); svcName != nil {
+				if svc, ok := svcName.(string); ok {
+					h.sharedCollector.RecordRequest(svc, err != nil)
+				}
+			}
+		}
+
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}

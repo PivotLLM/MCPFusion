@@ -580,6 +580,13 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		h.fusion.metricsCollector.RecordRequest(*metrics)
 	}
 
+	// Record to shared collector for cross-package health reporting.
+	// Use ServiceKey (config map key, e.g. "microsoft365") rather than
+	// ServiceName (display name, e.g. "Microsoft 365") to match registration.
+	if h.fusion.sharedCollector != nil && metrics != nil {
+		h.fusion.sharedCollector.RecordRequest(h.service.ServiceKey, !metrics.Success)
+	}
+
 	return resp, metrics, err
 }
 

@@ -111,7 +111,7 @@ func (s *StdioClient) Connect(ctx context.Context) error {
 
 // RunWithReconnect runs the client with automatic reconnection on failure.
 // This blocks until the context is cancelled.
-func (s *StdioClient) RunWithReconnect(ctx context.Context, onConnected func()) {
+func (s *StdioClient) RunWithReconnect(ctx context.Context, onConnected func(), onDisconnected func()) {
 	for {
 		// Check if context is done
 		if ctx.Err() != nil {
@@ -123,6 +123,10 @@ func (s *StdioClient) RunWithReconnect(ctx context.Context, onConnected func()) 
 		if err != nil {
 			s.logger.Errorf("Hub service '%s': connection failed: %v (retrying in %v)",
 				s.config.ServiceKey, err, s.backoff.CurrentDelay())
+
+			if onDisconnected != nil {
+				onDisconnected()
+			}
 
 			if waitErr := s.backoff.Wait(ctx); waitErr != nil {
 				return // context cancelled
@@ -146,6 +150,11 @@ func (s *StdioClient) RunWithReconnect(ctx context.Context, onConnected func()) 
 		// Connection lost, clean up and retry
 		s.logger.Warningf("Hub service '%s': disconnected, will reconnect in %v",
 			s.config.ServiceKey, s.backoff.CurrentDelay())
+
+		if onDisconnected != nil {
+			onDisconnected()
+		}
+
 		s.manager.Disconnect()
 
 		if waitErr := s.backoff.Wait(ctx); waitErr != nil {

@@ -47,6 +47,7 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/metrics"
 )
 
 // Ensure Fusion implements the required interfaces
@@ -99,6 +100,9 @@ type Fusion struct {
 
 	// database provides direct access to the database for native tools (e.g., knowledge store)
 	database db.Database
+
+	// sharedCollector is the cross-package metrics collector for the health tool
+	sharedCollector *metrics.Collector
 
 	// nativeToolPrefixRegistrar registers native tool prefixes with the config manager
 	nativeToolPrefixRegistrar NativeToolPrefixRegistrar
@@ -286,6 +290,14 @@ func WithExternalURL(url string) Option {
 func WithDatabase(database db.Database) Option {
 	return func(f *Fusion) {
 		f.database = database
+	}
+}
+
+// WithSharedCollector sets the cross-package metrics collector used by the health tool
+// to report request/error counts for all services (API, hub, knowledge, etc.).
+func WithSharedCollector(c *metrics.Collector) Option {
+	return func(f *Fusion) {
+		f.sharedCollector = c
 	}
 }
 
@@ -550,10 +562,32 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 	knowledgeTools := f.registerKnowledgeTools()
 	tools = append(tools, knowledgeTools...)
 
+	// Register health tool (native, not config-driven)
+	tools = append(tools, f.registerHealthTool())
+
 	// Register native tool prefixes so auth middleware recognises them
 	if f.nativeToolPrefixRegistrar != nil {
 		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("knowledge")
 		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("command")
+		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("health")
+	}
+
+	// Register services with the shared metrics collector
+	if f.sharedCollector != nil {
+		// API services (non-hub, config-driven)
+		for serviceName, svc := range f.config.Services {
+			if svc.IsHubService() {
+				continue
+			}
+			toolCount := len(svc.Endpoints)
+			f.sharedCollector.RegisterService(serviceName, "api", &toolCount)
+		}
+
+		// Knowledge store (internal)
+		if f.database != nil {
+			knowledgeToolCount := len(knowledgeTools)
+			f.sharedCollector.RegisterService("knowledge", "internal", &knowledgeToolCount)
+		}
 	}
 
 	if f.logger != nil {

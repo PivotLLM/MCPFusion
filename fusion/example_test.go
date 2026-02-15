@@ -76,7 +76,7 @@ func ExampleNew_withConfig() {
 
 	// Output:
 	// Loaded 1 services
-	// Generated 1 tools
+	// Generated 2 tools
 	// First tool: example_get_user
 }
 

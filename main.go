@@ -26,6 +26,7 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/hub"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
+	"github.com/PivotLLM/MCPFusion/metrics"
 	"github.com/PivotLLM/MCPFusion/mlogger"
 )
 
@@ -338,6 +339,9 @@ func main() {
 
 	logger.Info("Multi-tenant authentication system initialized")
 
+	// Create shared metrics collector for cross-package health reporting
+	sharedCollector := metrics.New()
+
 	// Create a slice (list) of tool providers
 	var providers []global.ToolProvider
 
@@ -351,6 +355,7 @@ func main() {
 		fusionOpts := []fusion.Option{
 			fusion.WithLogger(logger),
 			fusion.WithConfigManager(configManager),
+			fusion.WithSharedCollector(sharedCollector),
 		}
 
 		// Set external URL for auth setup tools
@@ -386,7 +391,7 @@ func main() {
 	}
 	if len(hubConfigs) > 0 {
 		logger.Infof("Found %d hub service(s) to connect", len(hubConfigs))
-		hubProvider = hub.NewHubProvider(hubConfigs, logger)
+		hubProvider = hub.NewHubProvider(hubConfigs, logger, hub.WithSharedCollector(sharedCollector))
 		providers = append(providers, hubProvider)
 	}
 

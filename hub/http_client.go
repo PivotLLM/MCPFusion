@@ -131,7 +131,7 @@ func (h *HTTPClient) buildAuthHeaders() map[string]string {
 
 // RunWithReconnect runs the client with automatic reconnection on failure.
 // This blocks until the context is cancelled.
-func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func()) {
+func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func(), onDisconnected func()) {
 	for {
 		if ctx.Err() != nil {
 			return
@@ -141,6 +141,10 @@ func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func()) {
 		if err != nil {
 			h.logger.Errorf("Hub service '%s': connection failed: %v (retrying in %v)",
 				h.config.ServiceKey, err, h.backoff.CurrentDelay())
+
+			if onDisconnected != nil {
+				onDisconnected()
+			}
 
 			if waitErr := h.backoff.Wait(ctx); waitErr != nil {
 				return
@@ -161,6 +165,11 @@ func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func()) {
 
 		h.logger.Warningf("Hub service '%s': disconnected, will reconnect in %v",
 			h.config.ServiceKey, h.backoff.CurrentDelay())
+
+		if onDisconnected != nil {
+			onDisconnected()
+		}
+
 		h.manager.Disconnect()
 
 		if waitErr := h.backoff.Wait(ctx); waitErr != nil {
