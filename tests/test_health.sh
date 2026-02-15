@@ -18,7 +18,7 @@
 #===============================================================================
 
 # API key for authentication - set this before running
-APIKEY="TEST API KEY HERE"
+APIKEY="SET_YOUR_API_KEY_HERE"
 
 # Server URL (MCPFusion must be running)
 SERVER_URL="http://127.0.0.1:9999/mcp"
@@ -193,10 +193,10 @@ run_test "3.1.1 Services contain name field" \
     '{}' \
     '"name"'
 
-run_test "3.1.2 Services contain type field" \
+run_test "3.1.2 Services contain transport field" \
     "health_status" \
     '{}' \
-    '"type"'
+    '"transport"'
 
 run_test "3.1.3 Services contain status field" \
     "health_status" \

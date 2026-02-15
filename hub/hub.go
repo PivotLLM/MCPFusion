@@ -22,7 +22,7 @@ import (
 // hubClient is a common interface for stdio and HTTP hub clients
 type hubClient interface {
 	Manager() *MCPClientManager
-	RunWithReconnect(ctx context.Context, onConnected func())
+	RunWithReconnect(ctx context.Context, onConnected func(), onDisconnected func())
 	Close() error
 }
 
@@ -109,35 +109,43 @@ func (h *HubProvider) Start(ctx context.Context) {
 		h.wg.Add(1)
 		go func(key string, client hubClient, cfg *fusion.ServiceConfig) {
 			defer h.wg.Done()
-			client.RunWithReconnect(h.ctx, func() {
-				// Cancel any previous periodic refresh goroutine for this service
-				h.mu.Lock()
-				if cancelFn, ok := h.refreshCancels[key]; ok {
-					cancelFn()
-					delete(h.refreshCancels, key)
-				}
-				h.mu.Unlock()
-
-				// Remove stale tools from previous connection before re-registering
-				h.removeServiceTools(key, client.Manager())
-
-				// Discover and register tools
-				h.discoverAndRegisterTools(key, client.Manager())
-
-				// Start periodic refresh if configured
-				if cfg.ToolRefreshInterval > 0 {
-					refreshCtx, refreshCancel := context.WithCancel(h.ctx)
+			client.RunWithReconnect(h.ctx,
+				func() {
+					// Cancel any previous periodic refresh goroutine for this service
 					h.mu.Lock()
-					h.refreshCancels[key] = refreshCancel
+					if cancelFn, ok := h.refreshCancels[key]; ok {
+						cancelFn()
+						delete(h.refreshCancels, key)
+					}
 					h.mu.Unlock()
 
-					h.wg.Add(1)
-					go func() {
-						defer h.wg.Done()
-						h.periodicRefresh(refreshCtx, key, client.Manager(), cfg.ToolRefreshInterval)
-					}()
-				}
-			})
+					// Remove stale tools from previous connection before re-registering
+					h.removeServiceTools(key, client.Manager())
+
+					// Discover and register tools
+					h.discoverAndRegisterTools(key, client.Manager())
+
+					// Start periodic refresh if configured
+					if cfg.ToolRefreshInterval > 0 {
+						refreshCtx, refreshCancel := context.WithCancel(h.ctx)
+						h.mu.Lock()
+						h.refreshCancels[key] = refreshCancel
+						h.mu.Unlock()
+
+						h.wg.Add(1)
+						go func() {
+							defer h.wg.Done()
+							h.periodicRefresh(refreshCtx, key, client.Manager(), cfg.ToolRefreshInterval)
+						}()
+					}
+				},
+				func() {
+					// Set status to disconnected when connection drops or fails
+					if h.sharedCollector != nil {
+						h.sharedCollector.SetStatus(key, "disconnected")
+					}
+				},
+			)
 		}(serviceKey, c, config)
 	}
 
@@ -224,6 +232,7 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 		}
 		toolCount := len(tools)
 		h.sharedCollector.RegisterService(serviceKey, transport, &toolCount)
+		h.sharedCollector.SetStatus(serviceKey, "operational")
 	}
 }
 

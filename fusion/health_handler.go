@@ -78,6 +78,11 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 				Errors:    ss.Errors,
 			}
 
+			// Check base status from shared collector first
+			if ss.Status == "disconnected" || ss.Status == "degraded" {
+				allHealthy = false
+			}
+
 			// Overlay circuit breaker state for API services
 			if cbm, ok := cbMetrics[ss.Name]; ok {
 				hs.CircuitBreaker = strings.ToLower(cbm.State.String())
@@ -85,10 +90,6 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 					hs.Status = "degraded"
 					allHealthy = false
 				}
-			}
-
-			if ss.Status == "disconnected" || ss.Status == "degraded" {
-				allHealthy = false
 			}
 
 			services = append(services, hs)

@@ -328,7 +328,7 @@ func TestSSEClient_RunWithReconnect_ContextCancellation(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		c.RunWithReconnect(ctx, nil)
+		c.RunWithReconnect(ctx, nil, nil)
 		close(done)
 	}()
 

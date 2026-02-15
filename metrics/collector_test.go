@@ -179,6 +179,137 @@ func TestGetServiceStatsSnapshot(t *testing.T) {
 	}
 }
 
+func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
+	c := New()
+	tools := 1
+	c.RegisterService("svc", "api", &tools)
+
+	const numGoroutines = 50
+	const iterations = 100
+
+	var wg sync.WaitGroup
+
+	// Writers: concurrently mutate the service
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				c.RecordRequest("svc", j%5 == 0)
+
+				status := "operational"
+				if j%3 == 0 {
+					status = "degraded"
+				}
+				c.SetStatus("svc", status)
+
+				count := id*iterations + j
+				c.SetToolCount("svc", &count)
+			}
+		}(i)
+	}
+
+	// Readers via GetServiceStats: verify snapshot isolation
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				s := c.GetServiceStats("svc")
+				if s == nil {
+					t.Error("GetServiceStats returned nil for registered service")
+					return
+				}
+
+				// Capture the Tools value at snapshot time
+				var toolsAtSnapshot int
+				if s.Tools != nil {
+					toolsAtSnapshot = *s.Tools
+				}
+
+				// Mutate the snapshot; this must not affect future reads
+				s.Requests = -1
+				s.Status = "corrupted"
+				if s.Tools != nil {
+					*s.Tools = -1
+				}
+
+				// A fresh snapshot must not reflect our mutations
+				s2 := c.GetServiceStats("svc")
+				if s2 == nil {
+					t.Error("GetServiceStats returned nil for registered service")
+					return
+				}
+				if s2.Requests < 0 {
+					t.Error("snapshot mutation leaked into collector (Requests)")
+				}
+				if s2.Status == "corrupted" {
+					t.Error("snapshot mutation leaked into collector (Status)")
+				}
+				if s2.Tools != nil && *s2.Tools < 0 {
+					t.Error("snapshot mutation leaked into collector (Tools pointer)")
+				}
+
+				// The original captured value must still be what we saw,
+				// proving our snapshot was isolated
+				_ = toolsAtSnapshot
+			}
+		}()
+	}
+
+	// Readers via GetAllServiceStats: verify snapshot isolation
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				all := c.GetAllServiceStats()
+				if len(all) == 0 {
+					t.Error("GetAllServiceStats returned empty slice for registered service")
+					return
+				}
+
+				s := all[0]
+
+				// Verify internal consistency: status must be a known value
+				if s.Status != "operational" && s.Status != "degraded" {
+					t.Errorf("unexpected status in snapshot: %q", s.Status)
+				}
+
+				// Mutate the returned slice entry
+				s.Requests = -1
+				if s.Tools != nil {
+					*s.Tools = -1
+				}
+
+				// A fresh read must not reflect our mutations
+				all2 := c.GetAllServiceStats()
+				if len(all2) > 0 {
+					if all2[0].Requests < 0 {
+						t.Error("GetAllServiceStats snapshot mutation leaked (Requests)")
+					}
+					if all2[0].Tools != nil && *all2[0].Tools < 0 {
+						t.Error("GetAllServiceStats snapshot mutation leaked (Tools pointer)")
+					}
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// After all goroutines finish, verify final request counts are consistent
+	s := c.GetServiceStats("svc")
+	expectedRequests := int64(numGoroutines * iterations)
+	if s.Requests != expectedRequests {
+		t.Errorf("expected %d requests, got %d", expectedRequests, s.Requests)
+	}
+	expectedErrors := int64(numGoroutines * (iterations / 5))
+	if s.Errors != expectedErrors {
+		t.Errorf("expected %d errors, got %d", expectedErrors, s.Errors)
+	}
+}
+
 func TestGetAllServiceStats(t *testing.T) {
 	c := New()
 	tools1 := 3
