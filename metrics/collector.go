@@ -12,6 +12,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/PivotLLM/MCPFusion/global"
 )
 
 // Collector tracks request and error counts for registered services.
@@ -56,7 +58,7 @@ func (c *Collector) RegisterService(name, transport string, tools *int) {
 	c.services[name] = &ServiceStats{
 		Name:      name,
 		Transport: transport,
-		Status:    "operational",
+		Status:    global.StatusOperational,
 		Tools:     tools,
 	}
 }

@@ -79,7 +79,7 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 			}
 
 			// Check base status from shared collector first
-			if ss.Status == "disconnected" || ss.Status == "degraded" {
+			if ss.Status == global.StatusDisconnected || ss.Status == global.StatusDegraded {
 				allHealthy = false
 			}
 
@@ -87,7 +87,7 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 			if cbm, ok := cbMetrics[ss.Name]; ok {
 				hs.CircuitBreaker = strings.ToLower(cbm.State.String())
 				if cbm.State == CircuitBreakerOpen {
-					hs.Status = "degraded"
+					hs.Status = global.StatusDegraded
 					allHealthy = false
 				}
 			}
@@ -95,9 +95,9 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 			services = append(services, hs)
 		}
 
-		overallStatus := "healthy"
+		overallStatus := global.StatusHealthy
 		if !allHealthy {
-			overallStatus = "degraded"
+			overallStatus = global.StatusDegraded
 		}
 
 		resp := healthResponse{
@@ -135,13 +135,13 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 				continue
 			}
 
-			status := "operational"
+			status := global.StatusOperational
 			cbState := "closed"
 
 			if cbm, ok := cbMetrics[serviceName]; ok {
 				cbState = strings.ToLower(cbm.State.String())
 				if cbm.State == CircuitBreakerOpen {
-					status = "degraded"
+					status = global.StatusDegraded
 					allHealthy = false
 				}
 			}
@@ -155,7 +155,7 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 			toolCount := len(svc.Endpoints)
 			services = append(services, healthService{
 				Name:           serviceName,
-				Transport:      "api",
+				Transport:      global.TransportAPI,
 				Status:         status,
 				Tools:          &toolCount,
 				Requests:       requests,
@@ -171,15 +171,15 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 		toolCount := len(knowledgeTools)
 		services = append(services, healthService{
 			Name:      "knowledge",
-			Transport: "internal",
-			Status:    "operational",
+			Transport: global.TransportInternal,
+			Status:    global.StatusOperational,
 			Tools:     &toolCount,
 		})
 	}
 
-	overallStatus := "healthy"
+	overallStatus := global.StatusHealthy
 	if !allHealthy {
-		overallStatus = "degraded"
+		overallStatus = global.StatusDegraded
 	}
 
 	resp := healthResponse{

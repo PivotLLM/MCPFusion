@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/PivotLLM/MCPFusion/global"
 )
 
 func TestNew(t *testing.T) {
@@ -24,7 +26,7 @@ func TestNew(t *testing.T) {
 func TestRegisterService(t *testing.T) {
 	c := New()
 	tools := 5
-	c.RegisterService("svc1", "api", &tools)
+	c.RegisterService("svc1", global.TransportAPI, &tools)
 
 	s := c.GetServiceStats("svc1")
 	if s == nil {
@@ -33,11 +35,11 @@ func TestRegisterService(t *testing.T) {
 	if s.Name != "svc1" {
 		t.Errorf("expected name 'svc1', got '%s'", s.Name)
 	}
-	if s.Transport != "api" {
-		t.Errorf("expected transport 'api', got '%s'", s.Transport)
+	if s.Transport != global.TransportAPI {
+		t.Errorf("expected transport '%s', got '%s'", global.TransportAPI, s.Transport)
 	}
-	if s.Status != "operational" {
-		t.Errorf("expected status 'operational', got '%s'", s.Status)
+	if s.Status != global.StatusOperational {
+		t.Errorf("expected status '%s', got '%s'", global.StatusOperational, s.Status)
 	}
 	if s.Tools == nil || *s.Tools != 5 {
 		t.Errorf("expected tools=5, got %v", s.Tools)
@@ -49,7 +51,7 @@ func TestRegisterService(t *testing.T) {
 
 func TestRegisterServiceNilTools(t *testing.T) {
 	c := New()
-	c.RegisterService("internal", "internal", nil)
+	c.RegisterService("internal", global.TransportInternal, nil)
 
 	s := c.GetServiceStats("internal")
 	if s == nil {
@@ -64,16 +66,16 @@ func TestRegisterServiceUpdate(t *testing.T) {
 	c := New()
 	tools3 := 3
 	tools7 := 7
-	c.RegisterService("svc", "api", &tools3)
+	c.RegisterService("svc", global.TransportAPI, &tools3)
 	c.RecordRequest("svc", false)
 	c.RecordRequest("svc", true)
 
 	// Re-register with updated transport and tools
-	c.RegisterService("svc", "mcp_stdio", &tools7)
+	c.RegisterService("svc", global.TransportMCPStdio, &tools7)
 
 	s := c.GetServiceStats("svc")
-	if s.Transport != "mcp_stdio" {
-		t.Errorf("expected transport 'mcp_stdio', got '%s'", s.Transport)
+	if s.Transport != global.TransportMCPStdio {
+		t.Errorf("expected transport '%s', got '%s'", global.TransportMCPStdio, s.Transport)
 	}
 	if s.Tools == nil || *s.Tools != 7 {
 		t.Errorf("expected tools=7, got %v", s.Tools)
@@ -90,7 +92,7 @@ func TestRegisterServiceUpdate(t *testing.T) {
 func TestRecordRequest(t *testing.T) {
 	c := New()
 	tools := 1
-	c.RegisterService("svc", "api", &tools)
+	c.RegisterService("svc", global.TransportAPI, &tools)
 
 	c.RecordRequest("svc", false)
 	c.RecordRequest("svc", false)
@@ -115,22 +117,22 @@ func TestRecordRequestUnregistered(t *testing.T) {
 func TestSetStatus(t *testing.T) {
 	c := New()
 	tools := 1
-	c.RegisterService("svc", "api", &tools)
+	c.RegisterService("svc", global.TransportAPI, &tools)
 
-	c.SetStatus("svc", "degraded")
+	c.SetStatus("svc", global.StatusDegraded)
 	s := c.GetServiceStats("svc")
-	if s.Status != "degraded" {
-		t.Errorf("expected status 'degraded', got '%s'", s.Status)
+	if s.Status != global.StatusDegraded {
+		t.Errorf("expected status '%s', got '%s'", global.StatusDegraded, s.Status)
 	}
 
 	// Unregistered service should not panic
-	c.SetStatus("unknown", "disconnected")
+	c.SetStatus("unknown", global.StatusDisconnected)
 }
 
 func TestSetToolCount(t *testing.T) {
 	c := New()
 	tools := 1
-	c.RegisterService("svc", "api", &tools)
+	c.RegisterService("svc", global.TransportAPI, &tools)
 
 	newCount := 10
 	c.SetToolCount("svc", &newCount)
@@ -160,7 +162,7 @@ func TestGetServiceStatsNotFound(t *testing.T) {
 func TestGetServiceStatsSnapshot(t *testing.T) {
 	c := New()
 	tools := 1
-	c.RegisterService("svc", "api", &tools)
+	c.RegisterService("svc", global.TransportAPI, &tools)
 	c.RecordRequest("svc", false)
 
 	s := c.GetServiceStats("svc")
@@ -182,7 +184,7 @@ func TestGetServiceStatsSnapshot(t *testing.T) {
 func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 	c := New()
 	tools := 1
-	c.RegisterService("svc", "api", &tools)
+	c.RegisterService("svc", global.TransportAPI, &tools)
 
 	const numGoroutines = 50
 	const iterations = 100
@@ -197,9 +199,9 @@ func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 			for j := 0; j < iterations; j++ {
 				c.RecordRequest("svc", j%5 == 0)
 
-				status := "operational"
+				status := global.StatusOperational
 				if j%3 == 0 {
-					status = "degraded"
+					status = global.StatusDegraded
 				}
 				c.SetStatus("svc", status)
 
@@ -272,7 +274,7 @@ func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 				s := all[0]
 
 				// Verify internal consistency: status must be a known value
-				if s.Status != "operational" && s.Status != "degraded" {
+				if s.Status != global.StatusOperational && s.Status != global.StatusDegraded {
 					t.Errorf("unexpected status in snapshot: %q", s.Status)
 				}
 
@@ -314,8 +316,8 @@ func TestGetAllServiceStats(t *testing.T) {
 	c := New()
 	tools1 := 3
 	tools2 := 5
-	c.RegisterService("beta", "api", &tools1)
-	c.RegisterService("alpha", "mcp_stdio", &tools2)
+	c.RegisterService("beta", global.TransportAPI, &tools1)
+	c.RegisterService("alpha", global.TransportMCPStdio, &tools2)
 
 	all := c.GetAllServiceStats()
 	if len(all) != 2 {
@@ -350,7 +352,7 @@ func TestGetUptime(t *testing.T) {
 func TestConcurrentAccess(t *testing.T) {
 	c := New()
 	tools := 5
-	c.RegisterService("svc", "api", &tools)
+	c.RegisterService("svc", global.TransportAPI, &tools)
 
 	const goroutines = 100
 	const requestsPerGoroutine = 100
@@ -393,7 +395,7 @@ func TestConcurrentMixedOperations(t *testing.T) {
 		defer wg.Done()
 		for i := 0; i < 50; i++ {
 			tools := i
-			c.RegisterService("svc", "api", &tools)
+			c.RegisterService("svc", global.TransportAPI, &tools)
 		}
 	}()
 
@@ -409,7 +411,7 @@ func TestConcurrentMixedOperations(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 50; i++ {
-			c.SetStatus("svc", "operational")
+			c.SetStatus("svc", global.StatusOperational)
 		}
 	}()
 

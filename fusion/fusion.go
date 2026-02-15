@@ -580,13 +580,13 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 				continue
 			}
 			toolCount := len(svc.Endpoints)
-			f.sharedCollector.RegisterService(serviceName, "api", &toolCount)
+			f.sharedCollector.RegisterService(serviceName, global.TransportAPI, &toolCount)
 		}
 
 		// Knowledge store (internal)
 		if f.database != nil {
 			knowledgeToolCount := len(knowledgeTools)
-			f.sharedCollector.RegisterService("knowledge", "internal", &knowledgeToolCount)
+			f.sharedCollector.RegisterService("knowledge", global.TransportInternal, &knowledgeToolCount)
 		}
 	}
 

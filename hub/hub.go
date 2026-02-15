@@ -142,7 +142,7 @@ func (h *HubProvider) Start(ctx context.Context) {
 				func() {
 					// Set status to disconnected when connection drops or fails
 					if h.sharedCollector != nil {
-						h.sharedCollector.SetStatus(key, "disconnected")
+						h.sharedCollector.SetStatus(key, global.StatusDisconnected)
 					}
 				},
 			)
