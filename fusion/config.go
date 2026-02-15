@@ -37,6 +37,7 @@ type TransportType string
 const (
 	TransportTypeStdio   TransportType = "stdio"
 	TransportTypeMCPHTTP TransportType = "mcp_http"
+	TransportTypeSSE     TransportType = "sse"
 )
 
 // AuthMethod constants for user_credentials auth type
@@ -110,7 +111,7 @@ type ServiceConfig struct {
 
 // IsHubService returns true if this service uses a hub transport (stdio or mcp_http)
 func (s *ServiceConfig) IsHubService() bool {
-	return s.Transport == TransportTypeStdio || s.Transport == TransportTypeMCPHTTP
+	return s.Transport == TransportTypeStdio || s.Transport == TransportTypeMCPHTTP || s.Transport == TransportTypeSSE
 }
 
 // UnmarshalJSON implements custom JSON unmarshaling for ServiceConfig
@@ -640,14 +641,14 @@ func (s *ServiceConfig) ValidateWithLogger(serviceName string, logger global.Log
 		}
 		return nil
 
-	case TransportTypeMCPHTTP:
+	case TransportTypeMCPHTTP, TransportTypeSSE:
 		if s.BaseURL == "" {
 			if logger != nil {
-				logger.Errorf("Service %s: baseURL is required for mcp_http transport", serviceName)
+				logger.Errorf("Service %s: baseURL is required for %s transport", serviceName, s.Transport)
 			}
-			return fmt.Errorf("baseURL is required for mcp_http transport")
+			return fmt.Errorf("baseURL is required for %s transport", s.Transport)
 		}
-		// Validate auth if present (auth type may be empty/none for mcp_http)
+		// Validate auth if present (auth type may be empty/none for hub transports)
 		if s.Auth.Type != "" && s.Auth.Type != AuthTypeNone {
 			if logger != nil {
 				logger.Debugf("Service %s: validating auth configuration (type: %s)", serviceName, s.Auth.Type)
@@ -660,7 +661,7 @@ func (s *ServiceConfig) ValidateWithLogger(serviceName string, logger global.Log
 			}
 		}
 		if logger != nil {
-			logger.Debugf("Service %s: mcp_http hub service validated (baseURL: %s)", serviceName, s.BaseURL)
+			logger.Debugf("Service %s: %s hub service validated (baseURL: %s)", serviceName, s.Transport, s.BaseURL)
 		}
 		return nil
 	}

@@ -72,6 +72,8 @@ func (h *HubProvider) Start(ctx context.Context) {
 			c = NewStdioClient(config, h.logger)
 		case fusion.TransportTypeMCPHTTP:
 			c = NewHTTPClient(config, h.logger)
+		case fusion.TransportTypeSSE:
+			c = NewSSEClient(config, h.logger)
 		default:
 			h.logger.Errorf("Hub service '%s': unsupported transport: %s", serviceKey, config.Transport)
 			continue
