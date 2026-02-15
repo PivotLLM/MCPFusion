@@ -272,6 +272,10 @@ func (m *MCPClientManager) RegisterNotificationHandler() {
 			}
 			tokenStr := fmt.Sprintf("%v", tokenVal)
 
+			// Look up the forwarder for this downstream token. There is a benign
+			// TOCTOU window: the forwarder could be unregistered between Load()
+			// and SendNotificationToClient(). In that case we simply deliver one
+			// extra (harmless) progress notification to the upstream client.
 			val, loaded := m.progressForwarders.Load(tokenStr)
 			if !loaded {
 				return
@@ -294,7 +298,7 @@ func (m *MCPClientManager) RegisterNotificationHandler() {
 
 			if err := fwd.mcpServer.SendNotificationToClient(fwd.upstreamCtx, "notifications/progress", params); err != nil {
 				if m.logger != nil {
-					m.logger.Debugf("Hub service '%s': failed to forward progress notification: %v",
+					m.logger.Warningf("Hub service '%s': failed to forward progress notification: %v",
 						m.serviceName, err)
 				}
 			}

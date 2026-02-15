@@ -94,8 +94,8 @@ func (s *SSEClient) Connect(ctx context.Context) error {
 
 	// Initialize the MCP session
 	if err := s.manager.Connect(ctx); err != nil {
-		c.Close()
 		s.manager.SetClient(nil)
+		c.Close()
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 

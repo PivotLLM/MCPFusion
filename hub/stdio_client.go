@@ -98,8 +98,8 @@ func (s *StdioClient) Connect(ctx context.Context) error {
 
 	// Initialize the MCP session
 	if err := s.manager.Connect(ctx); err != nil {
-		c.Close()
 		s.manager.SetClient(nil)
+		c.Close()
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
@@ -197,7 +197,7 @@ func resolveCommand(command string, logger global.Logger) string {
 	if addPath := getAddPath(logger); addPath != "" {
 		for _, dir := range strings.Split(addPath, ":") {
 			candidate := filepath.Join(dir, command)
-			if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			if info, err := os.Stat(candidate); err == nil && !info.IsDir() && info.Mode().Perm()&0111 != 0 {
 				logger.Debugf("Resolved command '%s' to '%s' via MCP_FUSION_ADD_PATH", command, candidate)
 				return candidate
 			}
