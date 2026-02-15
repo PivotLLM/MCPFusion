@@ -390,6 +390,11 @@ func main() {
 		providers = append(providers, hubProvider)
 	}
 
+	// Wire hub status provider so the health tool can report hub service status
+	if hubProvider != nil && fusionProvider != nil {
+		fusionProvider.SetHubStatusProvider(hubProvider)
+	}
+
 	// Create MCP server, passing in the logger and tool providers
 	// as well as setting other options
 	mcpOpts := []mcpserver.Option{

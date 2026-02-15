@@ -100,6 +100,9 @@ type Fusion struct {
 	// database provides direct access to the database for native tools (e.g., knowledge store)
 	database db.Database
 
+	// hubStatusProvider exposes operational status of hub services for the health tool
+	hubStatusProvider global.HubStatusProvider
+
 	// nativeToolPrefixRegistrar registers native tool prefixes with the config manager
 	nativeToolPrefixRegistrar NativeToolPrefixRegistrar
 }
@@ -474,6 +477,11 @@ func (f *Fusion) GetLogger() global.Logger {
 	return f.logger
 }
 
+// SetHubStatusProvider sets the hub status provider for the health tool.
+func (f *Fusion) SetHubStatusProvider(p global.HubStatusProvider) {
+	f.hubStatusProvider = p
+}
+
 // RegisterTools implements the global.ToolProvider interface and dynamically generates
 // MCP tools based on the loaded JSON configuration. Each API endpoint becomes an executable
 // tool that can be called by AI clients through the MCP protocol.
@@ -550,10 +558,14 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 	knowledgeTools := f.registerKnowledgeTools()
 	tools = append(tools, knowledgeTools...)
 
+	// Register health tool (native, not config-driven)
+	tools = append(tools, f.registerHealthTool())
+
 	// Register native tool prefixes so auth middleware recognises them
 	if f.nativeToolPrefixRegistrar != nil {
 		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("knowledge")
 		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("command")
+		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("health")
 	}
 
 	if f.logger != nil {

@@ -23,6 +23,9 @@ This directory contains comprehensive test scripts for all Microsoft 365 MCP too
 - `test_mail_search.sh` - Tests mail message search and filtering
 - `test_files_search.sh` - Tests OneDrive file search and listing
 
+### Server Tools Tests
+- `test_health.sh` - Tests the health tool (server status, service operational state)
+
 ### Test Infrastructure
 - `run_all_tests.sh` - Master test runner that executes all tests
 

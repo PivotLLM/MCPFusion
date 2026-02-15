@@ -355,6 +355,28 @@ func (h *HubProvider) periodicRefresh(refreshCtx context.Context, serviceKey str
 	}
 }
 
+// GetServiceStatuses returns the operational status of all hub services.
+func (h *HubProvider) GetServiceStatuses() []global.HubServiceStatus {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var statuses []global.HubServiceStatus
+	for key, c := range h.clients {
+		manager := c.Manager()
+		transport := ""
+		if cfg, ok := h.configs[key]; ok {
+			transport = string(cfg.Transport)
+		}
+		statuses = append(statuses, global.HubServiceStatus{
+			ServiceKey: key,
+			Connected:  manager.IsConnected(),
+			ToolCount:  len(manager.GetCachedTools()),
+			Transport:  transport,
+		})
+	}
+	return statuses
+}
+
 // Shutdown stops all hub connections and waits for goroutines to finish.
 func (h *HubProvider) Shutdown() {
 	if h.cancel != nil {
