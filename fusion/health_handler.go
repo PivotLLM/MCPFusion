@@ -33,9 +33,9 @@ type healthService struct {
 	Name           string `json:"name"`
 	Transport      string `json:"transport"`
 	Status         string `json:"status"`
-	Tools          int    `json:"tools"`
-	Requests       int64  `json:"requests,omitempty"`
-	Errors         int64  `json:"errors,omitempty"`
+	Tools          *int   `json:"tools,omitempty"`
+	Requests       int64  `json:"requests"`
+	Errors         int64  `json:"errors"`
 	CircuitBreaker string `json:"circuit_breaker,omitempty"`
 }
 
@@ -57,14 +57,71 @@ func (f *Fusion) registerHealthTool() global.ToolDefinition {
 
 // handleHealth is the tool handler for the health tool.
 func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
-	// Gather uptime from metrics collector
+	allHealthy := true
 	var uptime time.Duration
+
+	// Prefer shared collector for service data and uptime
+	if f.sharedCollector != nil {
+		uptime = f.sharedCollector.GetUptime()
+
+		allStats := f.sharedCollector.GetAllServiceStats()
+		cbMetrics := f.GetAllCircuitBreakerMetrics()
+
+		services := make([]healthService, 0, len(allStats))
+		for _, ss := range allStats {
+			hs := healthService{
+				Name:      ss.Name,
+				Transport: ss.Transport,
+				Status:    ss.Status,
+				Tools:     ss.Tools,
+				Requests:  ss.Requests,
+				Errors:    ss.Errors,
+			}
+
+			// Overlay circuit breaker state for API services
+			if cbm, ok := cbMetrics[ss.Name]; ok {
+				hs.CircuitBreaker = strings.ToLower(cbm.State.String())
+				if cbm.State == CircuitBreakerOpen {
+					hs.Status = "degraded"
+					allHealthy = false
+				}
+			}
+
+			if ss.Status == "disconnected" || ss.Status == "degraded" {
+				allHealthy = false
+			}
+
+			services = append(services, hs)
+		}
+
+		overallStatus := "healthy"
+		if !allHealthy {
+			overallStatus = "degraded"
+		}
+
+		resp := healthResponse{
+			Server: healthServer{
+				Name:    global.AppName,
+				Version: global.AppVersion,
+				Status:  overallStatus,
+				Uptime:  formatDuration(uptime),
+			},
+			Services: services,
+		}
+
+		data, err := json.MarshalIndent(resp, "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal health response: %w", err)
+		}
+		return string(data), nil
+	}
+
+	// Fallback: use existing per-package metrics if no shared collector
 	if f.metricsCollector != nil {
 		gm := f.metricsCollector.GetGlobalMetrics()
 		uptime = gm.Uptime
 	}
 
-	allHealthy := true
 	services := make([]healthService, 0)
 
 	// API services (config-driven, non-hub)
@@ -94,11 +151,12 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 				errors = sm.ErrorCount
 			}
 
+			toolCount := len(svc.Endpoints)
 			services = append(services, healthService{
 				Name:           serviceName,
 				Transport:      "api",
 				Status:         status,
-				Tools:          len(svc.Endpoints),
+				Tools:          &toolCount,
 				Requests:       requests,
 				Errors:         errors,
 				CircuitBreaker: cbState,
@@ -106,42 +164,15 @@ func (f *Fusion) handleHealth(_ map[string]interface{}) (string, error) {
 		}
 	}
 
-	// Hub services
-	if f.hubStatusProvider != nil {
-		for _, hs := range f.hubStatusProvider.GetServiceStatuses() {
-			status := "operational"
-			if !hs.Connected {
-				status = "disconnected"
-				allHealthy = false
-			}
-
-			// Normalise hub transport names to mcp_* prefix
-			transport := hs.Transport
-			switch transport {
-			case "stdio":
-				transport = "mcp_stdio"
-			case "sse":
-				transport = "mcp_sse"
-			}
-			// "mcp_http" is already correct
-
-			services = append(services, healthService{
-				Name:      hs.ServiceKey,
-				Transport: transport,
-				Status:    status,
-				Tools:     hs.ToolCount,
-			})
-		}
-	}
-
 	// Internal tools (knowledge store)
 	if f.database != nil {
 		knowledgeTools := f.registerKnowledgeTools()
+		toolCount := len(knowledgeTools)
 		services = append(services, healthService{
 			Name:      "knowledge",
 			Transport: "internal",
 			Status:    "operational",
-			Tools:     len(knowledgeTools),
+			Tools:     &toolCount,
 		})
 	}
 

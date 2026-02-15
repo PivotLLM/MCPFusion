@@ -54,7 +54,14 @@ func (h *knowledgeToolHandler) Call(args map[string]interface{}) (string, error)
 				"Link the API key to a user with: mcpfusion -user-link <user_id>:<key_hash>")
 	}
 
-	return h.handler(ctx, tc.UserID, filteredArgs)
+	result, err := h.handler(ctx, tc.UserID, filteredArgs)
+
+	// Record to shared collector for cross-package health reporting
+	if h.fusion.sharedCollector != nil {
+		h.fusion.sharedCollector.RecordRequest("knowledge", err != nil)
+	}
+
+	return result, err
 }
 
 // registerKnowledgeTools creates and returns knowledge management tool definitions.

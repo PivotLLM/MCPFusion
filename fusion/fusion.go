@@ -47,6 +47,7 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/metrics"
 )
 
 // Ensure Fusion implements the required interfaces
@@ -100,8 +101,8 @@ type Fusion struct {
 	// database provides direct access to the database for native tools (e.g., knowledge store)
 	database db.Database
 
-	// hubStatusProvider exposes operational status of hub services for the health tool
-	hubStatusProvider global.HubStatusProvider
+	// sharedCollector is the cross-package metrics collector for the health tool
+	sharedCollector *metrics.Collector
 
 	// nativeToolPrefixRegistrar registers native tool prefixes with the config manager
 	nativeToolPrefixRegistrar NativeToolPrefixRegistrar
@@ -292,6 +293,14 @@ func WithDatabase(database db.Database) Option {
 	}
 }
 
+// WithSharedCollector sets the cross-package metrics collector used by the health tool
+// to report request/error counts for all services (API, hub, knowledge, etc.).
+func WithSharedCollector(c *metrics.Collector) Option {
+	return func(f *Fusion) {
+		f.sharedCollector = c
+	}
+}
+
 // New creates a new production-ready Fusion instance with the provided configuration options.
 // This is the primary constructor for the Fusion provider and initializes all components
 // required for API integration including multi-tenant authentication, database caching,
@@ -477,11 +486,6 @@ func (f *Fusion) GetLogger() global.Logger {
 	return f.logger
 }
 
-// SetHubStatusProvider sets the hub status provider for the health tool.
-func (f *Fusion) SetHubStatusProvider(p global.HubStatusProvider) {
-	f.hubStatusProvider = p
-}
-
 // RegisterTools implements the global.ToolProvider interface and dynamically generates
 // MCP tools based on the loaded JSON configuration. Each API endpoint becomes an executable
 // tool that can be called by AI clients through the MCP protocol.
@@ -566,6 +570,24 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("knowledge")
 		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("command")
 		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("health")
+	}
+
+	// Register services with the shared metrics collector
+	if f.sharedCollector != nil {
+		// API services (non-hub, config-driven)
+		for serviceName, svc := range f.config.Services {
+			if svc.IsHubService() {
+				continue
+			}
+			toolCount := len(svc.Endpoints)
+			f.sharedCollector.RegisterService(serviceName, "api", &toolCount)
+		}
+
+		// Knowledge store (internal)
+		if f.database != nil {
+			knowledgeToolCount := len(knowledgeTools)
+			f.sharedCollector.RegisterService("knowledge", "internal", &knowledgeToolCount)
+		}
 	}
 
 	if f.logger != nil {

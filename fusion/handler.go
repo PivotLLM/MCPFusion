@@ -580,6 +580,11 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		h.fusion.metricsCollector.RecordRequest(*metrics)
 	}
 
+	// Record to shared collector for cross-package health reporting
+	if h.fusion.sharedCollector != nil {
+		h.fusion.sharedCollector.RecordRequest(metrics.ServiceName, !metrics.Success)
+	}
+
 	return resp, metrics, err
 }
 

@@ -221,19 +221,6 @@ type Authorizer interface {
 	Authorize(ctx context.Context, req ToolRequest) error
 }
 
-// HubServiceStatus represents the operational status of a hub service.
-type HubServiceStatus struct {
-	ServiceKey string
-	Connected  bool
-	ToolCount  int
-	Transport  string
-}
-
-// HubStatusProvider exposes the operational status of hub services.
-type HubStatusProvider interface {
-	GetServiceStatuses() []HubServiceStatus
-}
-
 // AllowAllAuthorizer is a default Authorizer that permits all requests.
 type AllowAllAuthorizer struct{}
 

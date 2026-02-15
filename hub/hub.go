@@ -14,6 +14,7 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/metrics"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -38,16 +39,31 @@ type HubProvider struct {
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
 	tokenCounter    int64 // atomic counter for unique downstream progress tokens (int64 overflow is not a practical concern)
+	sharedCollector *metrics.Collector
+}
+
+// HubOption defines a functional option for configuring a HubProvider.
+type HubOption func(*HubProvider)
+
+// WithSharedCollector sets the cross-package metrics collector for request tracking.
+func WithSharedCollector(c *metrics.Collector) HubOption {
+	return func(h *HubProvider) {
+		h.sharedCollector = c
+	}
 }
 
 // NewHubProvider creates a new HubProvider with the given hub service configurations.
-func NewHubProvider(configs map[string]*fusion.ServiceConfig, logger global.Logger) *HubProvider {
-	return &HubProvider{
+func NewHubProvider(configs map[string]*fusion.ServiceConfig, logger global.Logger, opts ...HubOption) *HubProvider {
+	h := &HubProvider{
 		configs:        configs,
 		clients:        make(map[string]hubClient),
 		refreshCancels: make(map[string]context.CancelFunc),
 		logger:         logger,
 	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 // RegisterTools implements global.ToolProvider.
@@ -190,6 +206,25 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 		srv.AddTools(serverTools...)
 		h.logger.Infof("Hub service '%s': registered %d tools", serviceKey, len(serverTools))
 	}
+
+	// Register/update hub service in shared collector
+	if h.sharedCollector != nil {
+		transport := ""
+		if cfg, ok := h.configs[serviceKey]; ok {
+			switch cfg.Transport {
+			case fusion.TransportTypeStdio:
+				transport = "mcp_stdio"
+			case fusion.TransportTypeSSE:
+				transport = "mcp_sse"
+			case fusion.TransportTypeMCPHTTP:
+				transport = "mcp_http"
+			default:
+				transport = string(cfg.Transport)
+			}
+		}
+		toolCount := len(tools)
+		h.sharedCollector.RegisterService(serviceKey, transport, &toolCount)
+	}
 }
 
 // convertToServerTool converts a global.ToolDefinition into a mcp.Tool and handler.
@@ -278,6 +313,17 @@ func (h *HubProvider) convertToServerTool(toolDef global.ToolDefinition, manager
 		ctxOptions["__meta"] = downstreamMeta
 
 		result, err := toolDef.Handler(ctxOptions)
+
+		// Record to shared collector for cross-package health reporting.
+		// Extract service key from the prefixed tool name (e.g. "svc_toolname" -> "svc").
+		if h.sharedCollector != nil {
+			if svcName := ctx.Value(global.ServiceNameKey); svcName != nil {
+				if svc, ok := svcName.(string); ok {
+					h.sharedCollector.RecordRequest(svc, err != nil)
+				}
+			}
+		}
+
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -353,28 +399,6 @@ func (h *HubProvider) periodicRefresh(refreshCtx context.Context, serviceKey str
 			cancel()
 		}
 	}
-}
-
-// GetServiceStatuses returns the operational status of all hub services.
-func (h *HubProvider) GetServiceStatuses() []global.HubServiceStatus {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	var statuses []global.HubServiceStatus
-	for key, c := range h.clients {
-		manager := c.Manager()
-		transport := ""
-		if cfg, ok := h.configs[key]; ok {
-			transport = string(cfg.Transport)
-		}
-		statuses = append(statuses, global.HubServiceStatus{
-			ServiceKey: key,
-			Connected:  manager.IsConnected(),
-			ToolCount:  len(manager.GetCachedTools()),
-			Transport:  transport,
-		})
-	}
-	return statuses
 }
 
 // Shutdown stops all hub connections and waits for goroutines to finish.
