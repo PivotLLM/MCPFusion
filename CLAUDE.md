@@ -120,6 +120,7 @@ Before committing any code changes:
 2. **Test Execution**: Run `go test ./...` to ensure all tests pass
 3. **Type Safety**: Verify all function calls match their signatures
 4. **Variable Declarations**: Ensure all variables are properly declared before use
+5. **Live Tool Testing**: When adding or modifying MCP tools, call the tool via the MCP connection (using the `mcp__fusion__*` tools) to verify it works end-to-end before committing. Compilation and unit tests alone are not sufficient — the tool must be invoked on a running server to catch routing, auth middleware, and integration issues.
 
 ### Common Issues to Avoid
 
