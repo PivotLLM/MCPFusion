@@ -131,6 +131,12 @@ func (f *Fusion) knowledgeSetTool() global.ToolDefinition {
 				return fmt.Sprintf("Knowledge entry stored: domain=%s, key=%s", domain, key), nil
 			},
 		}).Call,
+		Hints: &global.ToolHints{
+			ReadOnly:    global.BoolPtr(false),
+			Destructive: global.BoolPtr(false),
+			Idempotent:  global.BoolPtr(true),
+			OpenWorld:   global.BoolPtr(false),
+		},
 	}
 }
 
@@ -212,6 +218,12 @@ func (f *Fusion) knowledgeGetTool() global.ToolDefinition {
 				return string(result), nil
 			},
 		}).Call,
+		Hints: &global.ToolHints{
+			ReadOnly:    global.BoolPtr(true),
+			Destructive: global.BoolPtr(false),
+			Idempotent:  global.BoolPtr(true),
+			OpenWorld:   global.BoolPtr(false),
+		},
 	}
 }
 
@@ -247,6 +259,12 @@ func (f *Fusion) knowledgeDeleteTool() global.ToolDefinition {
 				return fmt.Sprintf("Knowledge entry deleted: domain=%s, key=%s", domain, key), nil
 			},
 		}).Call,
+		Hints: &global.ToolHints{
+			ReadOnly:    global.BoolPtr(false),
+			Destructive: global.BoolPtr(true),
+			Idempotent:  global.BoolPtr(false),
+			OpenWorld:   global.BoolPtr(false),
+		},
 	}
 }
 
@@ -285,6 +303,12 @@ func (f *Fusion) knowledgeSearchTool() global.ToolDefinition {
 				return string(result), nil
 			},
 		}).Call,
+		Hints: &global.ToolHints{
+			ReadOnly:    global.BoolPtr(true),
+			Destructive: global.BoolPtr(false),
+			Idempotent:  global.BoolPtr(true),
+			OpenWorld:   global.BoolPtr(false),
+		},
 	}
 }
 
@@ -327,5 +351,11 @@ func (f *Fusion) knowledgeRenameTool() global.ToolDefinition {
 				return fmt.Sprintf("Knowledge entry renamed: domain=%s, %s -> %s", domain, oldKey, newKey), nil
 			},
 		}).Call,
+		Hints: &global.ToolHints{
+			ReadOnly:    global.BoolPtr(false),
+			Destructive: global.BoolPtr(false),
+			Idempotent:  global.BoolPtr(false),
+			OpenWorld:   global.BoolPtr(false),
+		},
 	}
 }
