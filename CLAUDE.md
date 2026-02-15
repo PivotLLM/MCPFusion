@@ -121,6 +121,7 @@ Before committing any code changes:
 3. **Type Safety**: Verify all function calls match their signatures
 4. **Variable Declarations**: Ensure all variables are properly declared before use
 5. **Live Tool Testing**: When adding or modifying MCP tools, call the tool via the MCP connection (using the `mcp__fusion__*` tools) to verify it works end-to-end before committing. Compilation and unit tests alone are not sufficient — the tool must be invoked on a running server to catch routing, auth middleware, and integration issues.
+6. **Integration Verification**: After live tool testing, verify that side effects (metrics, logging, state changes) are correct by calling related tools or inspecting output. For example, after testing a feature that tracks request counts, make real calls to multiple services and then verify the counts are accurate. Do not assume wiring is correct just because a tool returns a result — confirm that data flows end-to-end through all layers (e.g., config keys vs display names, context propagation, cross-package recording). This is open-source, production-quality code that others will rely on.
 
 ### Common Issues to Avoid
 
