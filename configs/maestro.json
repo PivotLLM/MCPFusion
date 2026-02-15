@@ -2,7 +2,7 @@
   "services": {
     "maestro": {
       "name": "Maestro",
-      "transport": "stdio",
+      "transport": "mcp_stdio",
       "command": "/home/eric/bin/maestro",
       "toolRefreshInterval": "5m"
     }

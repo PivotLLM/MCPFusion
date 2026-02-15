@@ -221,18 +221,18 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 		if cfg, ok := h.configs[serviceKey]; ok {
 			switch cfg.Transport {
 			case fusion.TransportTypeStdio:
-				transport = "mcp_stdio"
+				transport = global.TransportMCPStdio
 			case fusion.TransportTypeSSE:
-				transport = "mcp_sse"
+				transport = global.TransportMCPSSE
 			case fusion.TransportTypeMCPHTTP:
-				transport = "mcp_http"
+				transport = global.TransportMCPHTTP
 			default:
 				transport = string(cfg.Transport)
 			}
 		}
 		toolCount := len(tools)
 		h.sharedCollector.RegisterService(serviceKey, transport, &toolCount)
-		h.sharedCollector.SetStatus(serviceKey, "operational")
+		h.sharedCollector.SetStatus(serviceKey, global.StatusOperational)
 	}
 }
 

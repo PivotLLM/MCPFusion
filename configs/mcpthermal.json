@@ -1,6 +1,6 @@
 {
   "services": {
-    "mcpthermal": {
+    "thermal1": {
       "name": "MCP Thermal",
       "transport": "mcp_http",
       "baseURL": "http://127.0.0.1:9990/mcp"

@@ -2,7 +2,7 @@
   "services": {
     "playwright": {
       "name": "Playwright Browser",
-      "transport": "stdio",
+      "transport": "mcp_stdio",
       "command": "npx",
       "args": [
         "@playwright/mcp@latest",
@@ -16,7 +16,7 @@
     },
     "playwright_visible": {
       "name": "Playwright Browser (GUI)",
-      "transport": "stdio",
+      "transport": "mcp_stdio",
       "command": "npx",
       "args": [
         "@playwright/mcp@latest",
