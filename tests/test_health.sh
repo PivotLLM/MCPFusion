@@ -136,17 +136,17 @@ print_section "SECTION 1: Basic Health Response"
 print_subsection "1.1 Tool invocation"
 
 run_test "1.1.1 Health tool returns successfully with no parameters" \
-    "health" \
+    "health_status" \
     '{}' \
     ""
 
 run_test "1.1.2 Response contains server object" \
-    "health" \
+    "health_status" \
     '{}' \
     '"server"'
 
 run_test "1.1.3 Response contains services array" \
-    "health" \
+    "health_status" \
     '{}' \
     '"services"'
 
@@ -159,24 +159,24 @@ print_section "SECTION 2: Server Fields"
 print_subsection "2.1 Server identity"
 
 run_test "2.1.1 Server name is MCPFusion" \
-    "health" \
+    "health_status" \
     '{}' \
     '"name": "MCPFusion"'
 
 run_test "2.1.2 Server version is present" \
-    "health" \
+    "health_status" \
     '{}' \
     '"version"'
 
 print_subsection "2.2 Server status"
 
 run_test "2.2.1 Server status field is present" \
-    "health" \
+    "health_status" \
     '{}' \
     '"status"'
 
 run_test "2.2.2 Server uptime field is present" \
-    "health" \
+    "health_status" \
     '{}' \
     '"uptime"'
 
@@ -189,17 +189,17 @@ print_section "SECTION 3: Service Fields"
 print_subsection "3.1 Service entries"
 
 run_test "3.1.1 Services contain name field" \
-    "health" \
+    "health_status" \
     '{}' \
     '"name"'
 
 run_test "3.1.2 Services contain type field" \
-    "health" \
+    "health_status" \
     '{}' \
     '"type"'
 
 run_test "3.1.3 Services contain status field" \
-    "health" \
+    "health_status" \
     '{}' \
     '"status"'
 

@@ -43,7 +43,7 @@ type healthService struct {
 // registerHealthTool returns the tool definition for the health tool.
 func (f *Fusion) registerHealthTool() global.ToolDefinition {
 	return global.ToolDefinition{
-		Name:        "health",
+		Name:        "health_status",
 		Description: "Returns the operational status of MCPFusion and all connected services as JSON.",
 		Parameters:  []global.Parameter{},
 		Handler:     f.handleHealth,
