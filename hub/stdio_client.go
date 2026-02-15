@@ -8,6 +8,11 @@ package hub
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/fusion"
@@ -63,10 +68,19 @@ func (s *StdioClient) Connect(ctx context.Context) error {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	s.logger.Infof("Hub service '%s': starting stdio process: %s %v", s.config.ServiceKey, s.config.Command, s.config.Args)
+	// If MCP_FUSION_ADD_PATH is set, prepend its directories to the subprocess PATH
+	// so child processes (e.g., node spawned by npx) can also be found.
+	if addPath := getAddPath(s.logger); addPath != "" {
+		env = append(env, fmt.Sprintf("PATH=%s:%s", addPath, os.Getenv("PATH")))
+	}
+
+	// Resolve the command to an absolute path
+	command := resolveCommand(s.config.Command, s.logger)
+
+	s.logger.Infof("Hub service '%s': starting stdio process: %s %v", s.config.ServiceKey, command, s.config.Args)
 
 	// Create the stdio MCP client
-	c, err := client.NewStdioMCPClient(s.config.Command, env, s.config.Args...)
+	c, err := client.NewStdioMCPClient(command, env, s.config.Args...)
 	if err != nil {
 		return fmt.Errorf("failed to create stdio client: %w", err)
 	}
@@ -159,4 +173,56 @@ func (s *StdioClient) waitForDisconnect(ctx context.Context) {
 // Close disconnects the stdio client
 func (s *StdioClient) Close() error {
 	return s.manager.Disconnect()
+}
+
+// resolveCommand attempts to resolve a command name to an absolute path.
+// It first checks exec.LookPath (process PATH), then searches any additional
+// directories specified via the MCP_FUSION_ADD_PATH environment variable.
+// This handles cases where MCPFusion is launched from an environment with a
+// limited PATH (e.g., systemd) that doesn't include directories like nvm,
+// pyenv, or other version managers.
+func resolveCommand(command string, logger global.Logger) string {
+	// Already absolute — nothing to resolve
+	if filepath.IsAbs(command) {
+		return command
+	}
+
+	// Try the current process PATH first
+	if resolved, err := exec.LookPath(command); err == nil {
+		logger.Debugf("Resolved command '%s' to '%s' via process PATH", command, resolved)
+		return resolved
+	}
+
+	// Fall back to MCP_FUSION_ADD_PATH directories
+	if addPath := getAddPath(logger); addPath != "" {
+		for _, dir := range strings.Split(addPath, ":") {
+			candidate := filepath.Join(dir, command)
+			if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+				logger.Debugf("Resolved command '%s' to '%s' via MCP_FUSION_ADD_PATH", command, candidate)
+				return candidate
+			}
+		}
+	}
+
+	// Could not resolve — return as-is and let the caller report the error
+	logger.Debugf("Could not resolve command '%s' in any PATH", command)
+	return command
+}
+
+// getAddPath reads and caches the MCP_FUSION_ADD_PATH environment variable.
+// This variable contains colon-separated directories to search when the
+// process PATH doesn't contain the required executables.
+var (
+	addPathOnce  sync.Once
+	addPathCache string
+)
+
+func getAddPath(logger global.Logger) string {
+	addPathOnce.Do(func() {
+		addPathCache = os.Getenv("MCP_FUSION_ADD_PATH")
+		if addPathCache != "" {
+			logger.Infof("MCP_FUSION_ADD_PATH: %s", addPathCache)
+		}
+	})
+	return addPathCache
 }
