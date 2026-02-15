@@ -96,7 +96,8 @@ func (s *StdioClient) Connect(ctx context.Context) error {
 		s.manager.SetConnected(false)
 	})
 
-	// Initialize the MCP session
+	// Initialize the MCP session. On failure, clear the manager reference
+	// first so concurrent callers cannot use the client while it is closing.
 	if err := s.manager.Connect(ctx); err != nil {
 		s.manager.SetClient(nil)
 		c.Close()
@@ -181,6 +182,11 @@ func (s *StdioClient) Close() error {
 // This handles cases where MCPFusion is launched from an environment with a
 // limited PATH (e.g., systemd) that doesn't include directories like nvm,
 // pyenv, or other version managers.
+//
+// Security: candidates from MCP_FUSION_ADD_PATH must have an executable bit
+// set, but ownership is not verified. Operators should ensure that directories
+// listed in MCP_FUSION_ADD_PATH are owned by the service user and are not
+// world-writable.
 func resolveCommand(command string, logger global.Logger) string {
 	// Already absolute — nothing to resolve
 	if filepath.IsAbs(command) {
@@ -212,6 +218,8 @@ func resolveCommand(command string, logger global.Logger) string {
 // getAddPath reads and caches the MCP_FUSION_ADD_PATH environment variable.
 // This variable contains colon-separated directories to search when the
 // process PATH doesn't contain the required executables.
+// The value is read once at first call and cached for the process lifetime;
+// subsequent changes to the environment variable will not be reflected.
 var (
 	addPathOnce  sync.Once
 	addPathCache string

@@ -37,7 +37,7 @@ type HubProvider struct {
 	ctx             context.Context
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
-	tokenCounter    int64 // atomic counter for generating unique downstream progress tokens
+	tokenCounter    int64 // atomic counter for unique downstream progress tokens (int64 overflow is not a practical concern)
 }
 
 // NewHubProvider creates a new HubProvider with the given hub service configurations.
@@ -256,7 +256,11 @@ func (h *HubProvider) convertToServerTool(toolDef global.ToolDefinition, manager
 		}
 		ctxOptions["__mcp_context"] = ctx
 
-		// Forward progress notifications from downstream to upstream
+		// Forward progress notifications from downstream to upstream.
+		// Each forwarder lives only for the duration of this handler call:
+		// it is registered before CallTool and cleaned up by defer when the
+		// handler returns. Concurrent tool calls each get their own token,
+		// so forwarders do not interfere with each other.
 		var downstreamMeta *mcp.Meta
 		if manager != nil && req.Params.Meta != nil && req.Params.Meta.ProgressToken != nil {
 			if srv := server.ServerFromContext(ctx); srv != nil {

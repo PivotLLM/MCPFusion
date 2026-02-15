@@ -92,7 +92,8 @@ func (s *SSEClient) Connect(ctx context.Context) error {
 		s.manager.SetConnected(false)
 	})
 
-	// Initialize the MCP session
+	// Initialize the MCP session. On failure, clear the manager reference
+	// first so concurrent callers cannot use the client while it is closing.
 	if err := s.manager.Connect(ctx); err != nil {
 		s.manager.SetClient(nil)
 		c.Close()

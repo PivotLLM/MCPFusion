@@ -17,7 +17,8 @@ import (
 )
 
 // newTestForwarder creates a progressForwarder suitable for unit tests that
-// do not call SendNotificationToClient.
+// exercise register/unregister lifecycle only. The mcpServer is nil, so tests
+// must NOT call SendNotificationToClient on the returned forwarder.
 func newTestForwarder(token mcp.ProgressToken) *progressForwarder {
 	return &progressForwarder{
 		upstreamCtx:   context.Background(),

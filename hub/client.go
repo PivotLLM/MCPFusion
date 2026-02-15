@@ -270,7 +270,13 @@ func (m *MCPClientManager) RegisterNotificationHandler() {
 			if !ok {
 				return
 			}
-			tokenStr := fmt.Sprintf("%v", tokenVal)
+			// ProgressToken is defined as `any` in the MCP spec. Try a direct
+			// string assertion first (the common case for hub-generated tokens)
+			// and fall back to fmt.Sprintf for numeric or other token types.
+			tokenStr, ok := tokenVal.(string)
+			if !ok {
+				tokenStr = fmt.Sprintf("%v", tokenVal)
+			}
 
 			// Look up the forwarder for this downstream token. There is a benign
 			// TOCTOU window: the forwarder could be unregistered between Load()
