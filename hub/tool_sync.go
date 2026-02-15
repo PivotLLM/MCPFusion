@@ -30,7 +30,7 @@ type ToolDiff struct {
 func ConvertDownstreamTool(
 	serviceName string,
 	tool mcp.Tool,
-	callFunc func(ctx context.Context, toolName string, args map[string]interface{}) (*mcp.CallToolResult, error),
+	callFunc func(ctx context.Context, toolName string, args map[string]interface{}, meta *mcp.Meta) (*mcp.CallToolResult, error),
 ) global.ToolDefinition {
 
 	prefixedName := fmt.Sprintf("%s_%s", serviceName, tool.Name)
@@ -51,16 +51,19 @@ func ConvertDownstreamTool(
 			ctx = context.Background()
 		}
 
-		// Remove the internal context key before forwarding
+		// Extract downstream meta (set by convertToServerTool for progress forwarding)
+		meta, _ := options["__meta"].(*mcp.Meta)
+
+		// Remove internal keys before forwarding
 		args := make(map[string]interface{}, len(options))
 		for k, v := range options {
-			if k == "__mcp_context" {
+			if k == "__mcp_context" || k == "__meta" {
 				continue
 			}
 			args[k] = v
 		}
 
-		result, err := callFunc(ctx, originalName, args)
+		result, err := callFunc(ctx, originalName, args, meta)
 		if err != nil {
 			return "", fmt.Errorf("downstream tool call failed: %w", err)
 		}

@@ -14,19 +14,29 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 )
+
+// progressForwarder holds the state needed to relay a progress notification
+// from a downstream MCP server back to the upstream client.
+type progressForwarder struct {
+	upstreamCtx   context.Context
+	upstreamToken mcp.ProgressToken
+	mcpServer     *server.MCPServer
+}
 
 // MCPClientManager wraps an mcp-go client with lifecycle management,
 // tool caching, and connection state tracking. All methods are safe
 // for concurrent use.
 type MCPClientManager struct {
-	mu             sync.RWMutex
-	client         *client.Client
-	serviceName    string
-	connected      bool
-	tools          map[string]mcp.Tool // cached tools keyed by name
-	logger         global.Logger
-	onToolsChanged func(serviceName string, added, removed []string)
+	mu                 sync.RWMutex
+	client             *client.Client
+	serviceName        string
+	connected          bool
+	tools              map[string]mcp.Tool // cached tools keyed by name
+	logger             global.Logger
+	onToolsChanged     func(serviceName string, added, removed []string)
+	progressForwarders sync.Map // downstream token string → *progressForwarder
 }
 
 // NewMCPClientManager creates a new client manager for the named service.
@@ -184,7 +194,9 @@ func (m *MCPClientManager) SetCachedTools(tools map[string]mcp.Tool) {
 }
 
 // CallTool invokes a tool on the downstream server with a 60-second timeout.
-func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args map[string]interface{}) (*mcp.CallToolResult, error) {
+// If meta is non-nil, it is forwarded as _meta in the downstream request
+// (typically carrying a progress token).
+func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args map[string]interface{}, meta *mcp.Meta) (*mcp.CallToolResult, error) {
 	m.mu.RLock()
 	c := m.client
 	connected := m.connected
@@ -201,6 +213,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	req := mcp.CallToolRequest{}
 	req.Params.Name = toolName
 	req.Params.Arguments = args
+	req.Params.Meta = meta
 
 	result, err := c.CallTool(callCtx, req)
 	if err != nil {
@@ -211,6 +224,16 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	}
 
 	return result, nil
+}
+
+// RegisterProgressForwarder registers a forwarder for a downstream progress token.
+func (m *MCPClientManager) RegisterProgressForwarder(downstreamToken string, fwd *progressForwarder) {
+	m.progressForwarders.Store(downstreamToken, fwd)
+}
+
+// UnregisterProgressForwarder removes a forwarder for a downstream progress token.
+func (m *MCPClientManager) UnregisterProgressForwarder(downstreamToken string) {
+	m.progressForwarders.Delete(downstreamToken)
 }
 
 // RegisterNotificationHandler sets up a handler for tool list change
@@ -226,7 +249,8 @@ func (m *MCPClientManager) RegisterNotificationHandler() {
 	}
 
 	c.OnNotification(func(notification mcp.JSONRPCNotification) {
-		if notification.Method == "notifications/tools/list_changed" {
+		switch notification.Method {
+		case "notifications/tools/list_changed":
 			if m.logger != nil {
 				m.logger.Infof("Hub service '%s': received tools/list_changed notification", m.serviceName)
 			}
@@ -240,6 +264,40 @@ func (m *MCPClientManager) RegisterNotificationHandler() {
 					}
 				}
 			}()
+
+		case "notifications/progress":
+			tokenVal, ok := notification.Params.AdditionalFields["progressToken"]
+			if !ok {
+				return
+			}
+			tokenStr := fmt.Sprintf("%v", tokenVal)
+
+			val, loaded := m.progressForwarders.Load(tokenStr)
+			if !loaded {
+				return
+			}
+			fwd := val.(*progressForwarder)
+
+			// Build upstream params with the original upstream token
+			params := map[string]any{
+				"progressToken": fwd.upstreamToken,
+			}
+			if p, exists := notification.Params.AdditionalFields["progress"]; exists {
+				params["progress"] = p
+			}
+			if t, exists := notification.Params.AdditionalFields["total"]; exists {
+				params["total"] = t
+			}
+			if msg, exists := notification.Params.AdditionalFields["message"]; exists {
+				params["message"] = msg
+			}
+
+			if err := fwd.mcpServer.SendNotificationToClient(fwd.upstreamCtx, "notifications/progress", params); err != nil {
+				if m.logger != nil {
+					m.logger.Debugf("Hub service '%s': failed to forward progress notification: %v",
+						m.serviceName, err)
+				}
+			}
 		}
 	})
 }

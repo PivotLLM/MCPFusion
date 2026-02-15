@@ -22,7 +22,7 @@ func TestConvertDownstreamTool(t *testing.T) {
 		mcp.WithDestructiveHintAnnotation(false),
 	)
 
-	mockCallFunc := func(_ context.Context, _ string, _ map[string]interface{}) (*mcp.CallToolResult, error) {
+	mockCallFunc := func(_ context.Context, _ string, _ map[string]interface{}, _ *mcp.Meta) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultText("ok"), nil
 	}
 
@@ -64,7 +64,7 @@ func TestConvertDownstreamTool_Handler(t *testing.T) {
 	var receivedName string
 	var receivedArgs map[string]interface{}
 
-	mockCallFunc := func(_ context.Context, toolName string, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	mockCallFunc := func(_ context.Context, toolName string, args map[string]interface{}, _ *mcp.Meta) (*mcp.CallToolResult, error) {
 		receivedName = toolName
 		receivedArgs = args
 		return mcp.NewToolResultText("done"), nil
@@ -100,7 +100,7 @@ func TestConvertDownstreamTool_NoHints(t *testing.T) {
 		},
 	}
 
-	mockCallFunc := func(_ context.Context, _ string, _ map[string]interface{}) (*mcp.CallToolResult, error) {
+	mockCallFunc := func(_ context.Context, _ string, _ map[string]interface{}, _ *mcp.Meta) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultText("ok"), nil
 	}
 
