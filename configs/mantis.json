@@ -1,0 +1,9 @@
+{
+  "services": {
+    "mantis": {
+      "name": "Mantis",
+      "transport": "sse",
+      "baseURL": "http://127.0.0.1:9000/sse"
+    }
+  }
+}

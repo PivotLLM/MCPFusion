@@ -7,7 +7,9 @@ package hub
 
 import (
 	"context"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/fusion"
@@ -35,6 +37,7 @@ type HubProvider struct {
 	ctx             context.Context
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
+	tokenCounter    int64 // atomic counter for unique downstream progress tokens (int64 overflow is not a practical concern)
 }
 
 // NewHubProvider creates a new HubProvider with the given hub service configurations.
@@ -72,6 +75,8 @@ func (h *HubProvider) Start(ctx context.Context) {
 			c = NewStdioClient(config, h.logger)
 		case fusion.TransportTypeMCPHTTP:
 			c = NewHTTPClient(config, h.logger)
+		case fusion.TransportTypeSSE:
+			c = NewSSEClient(config, h.logger)
 		default:
 			h.logger.Errorf("Hub service '%s': unsupported transport: %s", serviceKey, config.Transport)
 			continue
@@ -174,7 +179,7 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 	var serverTools []server.ServerTool
 	for _, tool := range tools {
 		toolDef := ConvertDownstreamTool(serviceKey, tool, manager.CallTool)
-		mcpTool, handler := h.convertToServerTool(toolDef)
+		mcpTool, handler := h.convertToServerTool(toolDef, manager)
 		serverTools = append(serverTools, server.ServerTool{
 			Tool:    mcpTool,
 			Handler: handler,
@@ -188,7 +193,9 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 }
 
 // convertToServerTool converts a global.ToolDefinition into a mcp.Tool and handler.
-func (h *HubProvider) convertToServerTool(toolDef global.ToolDefinition) (mcp.Tool, server.ToolHandlerFunc) {
+// When manager is non-nil, progress notifications from the downstream server are
+// forwarded back to the upstream client.
+func (h *HubProvider) convertToServerTool(toolDef global.ToolDefinition, manager *MCPClientManager) (mcp.Tool, server.ToolHandlerFunc) {
 	toolOptions := []mcp.ToolOption{
 		mcp.WithDescription(toolDef.Description),
 	}
@@ -249,6 +256,27 @@ func (h *HubProvider) convertToServerTool(toolDef global.ToolDefinition) (mcp.To
 		}
 		ctxOptions["__mcp_context"] = ctx
 
+		// Forward progress notifications from downstream to upstream.
+		// Each forwarder lives only for the duration of this handler call:
+		// it is registered before CallTool and cleaned up by defer when the
+		// handler returns. Concurrent tool calls each get their own token,
+		// so forwarders do not interfere with each other.
+		var downstreamMeta *mcp.Meta
+		if manager != nil && req.Params.Meta != nil && req.Params.Meta.ProgressToken != nil {
+			if srv := server.ServerFromContext(ctx); srv != nil {
+				downstreamToken := fmt.Sprintf("hub-%d", atomic.AddInt64(&h.tokenCounter, 1))
+				fwd := &progressForwarder{
+					upstreamCtx:   ctx,
+					upstreamToken: req.Params.Meta.ProgressToken,
+					mcpServer:     srv,
+				}
+				manager.RegisterProgressForwarder(downstreamToken, fwd)
+				defer manager.UnregisterProgressForwarder(downstreamToken)
+				downstreamMeta = &mcp.Meta{ProgressToken: downstreamToken}
+			}
+		}
+		ctxOptions["__meta"] = downstreamMeta
+
 		result, err := toolDef.Handler(ctxOptions)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -289,7 +317,7 @@ func (h *HubProvider) onToolsChanged(serviceName string, added, removed []string
 		for _, name := range added {
 			if tool, ok := cachedTools[name]; ok {
 				toolDef := ConvertDownstreamTool(serviceName, tool, manager.CallTool)
-				mcpTool, handler := h.convertToServerTool(toolDef)
+				mcpTool, handler := h.convertToServerTool(toolDef, manager)
 				serverTools = append(serverTools, server.ServerTool{
 					Tool:    mcpTool,
 					Handler: handler,
