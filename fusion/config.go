@@ -31,6 +31,14 @@ const (
 	AuthTypeNone            AuthType = "none"
 )
 
+// TransportType represents the transport mechanism for a service
+type TransportType string
+
+const (
+	TransportTypeStdio   TransportType = "stdio"
+	TransportTypeMCPHTTP TransportType = "mcp_http"
+)
+
 // AuthMethod constants for user_credentials auth type
 const AuthMethodBasicAuth = "basic_auth"
 
@@ -85,13 +93,49 @@ type Config struct {
 
 // ServiceConfig represents the configuration for a single service
 type ServiceConfig struct {
-	ServiceKey     string                `json:"-"`
-	Name           string                `json:"name"`
-	BaseURL        string                `json:"baseURL"`
-	Auth           AuthConfig            `json:"auth"`
-	Endpoints      []EndpointConfig      `json:"endpoints"`
-	Retry          *RetryConfig          `json:"retry,omitempty"`
-	CircuitBreaker *CircuitBreakerConfig `json:"circuitBreaker,omitempty"`
+	ServiceKey             string                `json:"-"`
+	Name                   string                `json:"name"`
+	Transport              TransportType         `json:"transport,omitempty"`
+	BaseURL                string                `json:"baseURL,omitempty"`
+	Command                string                `json:"command,omitempty"`
+	Args                   []string              `json:"args,omitempty"`
+	Env                    map[string]string     `json:"env,omitempty"`
+	ToolRefreshInterval    time.Duration         `json:"-"`
+	ToolRefreshIntervalStr string                `json:"toolRefreshInterval,omitempty"`
+	Auth                   AuthConfig            `json:"auth"`
+	Endpoints              []EndpointConfig      `json:"endpoints,omitempty"`
+	Retry                  *RetryConfig          `json:"retry,omitempty"`
+	CircuitBreaker         *CircuitBreakerConfig `json:"circuitBreaker,omitempty"`
+}
+
+// IsHubService returns true if this service uses a hub transport (stdio or mcp_http)
+func (s *ServiceConfig) IsHubService() bool {
+	return s.Transport == TransportTypeStdio || s.Transport == TransportTypeMCPHTTP
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for ServiceConfig
+func (s *ServiceConfig) UnmarshalJSON(data []byte) error {
+	type Alias ServiceConfig
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Parse ToolRefreshInterval string to duration
+	if s.ToolRefreshIntervalStr != "" {
+		duration, err := time.ParseDuration(s.ToolRefreshIntervalStr)
+		if err != nil {
+			return fmt.Errorf("invalid toolRefreshInterval duration '%s': %w", s.ToolRefreshIntervalStr, err)
+		}
+		s.ToolRefreshInterval = duration
+	}
+
+	return nil
 }
 
 // CommandGroupConfig represents a group of related commands
@@ -582,6 +626,46 @@ func (s *ServiceConfig) ValidateWithLogger(serviceName string, logger global.Log
 		return fmt.Errorf("service name is required")
 	}
 
+	// Branch validation based on transport type
+	switch s.Transport {
+	case TransportTypeStdio:
+		if s.Command == "" {
+			if logger != nil {
+				logger.Errorf("Service %s: command is required for stdio transport", serviceName)
+			}
+			return fmt.Errorf("command is required for stdio transport")
+		}
+		if logger != nil {
+			logger.Debugf("Service %s: stdio hub service validated (command: %s)", serviceName, s.Command)
+		}
+		return nil
+
+	case TransportTypeMCPHTTP:
+		if s.BaseURL == "" {
+			if logger != nil {
+				logger.Errorf("Service %s: baseURL is required for mcp_http transport", serviceName)
+			}
+			return fmt.Errorf("baseURL is required for mcp_http transport")
+		}
+		// Validate auth if present (auth type may be empty/none for mcp_http)
+		if s.Auth.Type != "" && s.Auth.Type != AuthTypeNone {
+			if logger != nil {
+				logger.Debugf("Service %s: validating auth configuration (type: %s)", serviceName, s.Auth.Type)
+			}
+			if err := s.Auth.ValidateWithLogger(serviceName, logger); err != nil {
+				if logger != nil {
+					logger.Errorf("Service %s: auth configuration validation failed: %v", serviceName, err)
+				}
+				return fmt.Errorf("auth configuration: %w", err)
+			}
+		}
+		if logger != nil {
+			logger.Debugf("Service %s: mcp_http hub service validated (baseURL: %s)", serviceName, s.BaseURL)
+		}
+		return nil
+	}
+
+	// Original validation for non-hub services (no transport set)
 	if s.BaseURL == "" {
 		if logger != nil {
 			logger.Errorf("Service %s: baseURL is required", serviceName)

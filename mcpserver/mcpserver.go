@@ -240,7 +240,8 @@ func New(options ...Option) (*MCPServer, error) {
 	serverOptions := []server.ServerOption{
 		server.WithLogging(),
 		server.WithRecovery(),
-		WithRequestLogging(m.logger), // Our custom request logging middleware
+		WithRequestLogging(m.logger),              // Our custom request logging middleware
+		server.WithToolCapabilities(true),          // Enable dynamic tool list change notifications
 	}
 
 	// Add MCP authentication middleware if configured
@@ -387,6 +388,11 @@ func (s *MCPServer) Stop() error {
 		// This prevents the context deadline exceeded error
 		return nil
 	}
+}
+
+// GetMCPServer returns the underlying mcp-go server for dynamic tool management
+func (s *MCPServer) GetMCPServer() *server.MCPServer {
+	return s.srv
 }
 
 // WithRequestLogging is a middleware function that logs request details.

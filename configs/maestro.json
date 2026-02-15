@@ -1,0 +1,10 @@
+{
+  "services": {
+    "maestro": {
+      "name": "Maestro",
+      "transport": "stdio",
+      "command": "/home/eric/bin/maestro",
+      "toolRefreshInterval": "5m"
+    }
+  }
+}

@@ -11,6 +11,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadConfigFromJSON_ValidConfig(t *testing.T) {
@@ -1223,6 +1226,135 @@ func TestConfig_MergeConfig(t *testing.T) {
 	if !errors.As(err, &configErr) {
 		t.Error("Expected ConfigurationError for merge conflict")
 	}
+}
+
+func TestServiceConfig_StdioValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		service     ServiceConfig
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid stdio config",
+			service: ServiceConfig{
+				Name:      "Test Stdio Service",
+				Transport: TransportTypeStdio,
+				Command:   "/usr/bin/test-server",
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid stdio config missing command",
+			service: ServiceConfig{
+				Name:      "Test Stdio Service",
+				Transport: TransportTypeStdio,
+				Command:   "",
+			},
+			expectError: true,
+			errorMsg:    "command is required for stdio transport",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.service.Validate()
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestServiceConfig_MCPHTTPValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		service     ServiceConfig
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid mcp_http config",
+			service: ServiceConfig{
+				Name:      "Test MCP HTTP Service",
+				Transport: TransportTypeMCPHTTP,
+				BaseURL:   "http://localhost:9090/mcp",
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid mcp_http config missing baseURL",
+			service: ServiceConfig{
+				Name:      "Test MCP HTTP Service",
+				Transport: TransportTypeMCPHTTP,
+				BaseURL:   "",
+			},
+			expectError: true,
+			errorMsg:    "baseURL is required for mcp_http transport",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.service.Validate()
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestServiceConfig_IsHubService(t *testing.T) {
+	tests := []struct {
+		name      string
+		transport TransportType
+		expected  bool
+	}{
+		{
+			name:      "stdio transport is hub service",
+			transport: TransportTypeStdio,
+			expected:  true,
+		},
+		{
+			name:      "mcp_http transport is hub service",
+			transport: TransportTypeMCPHTTP,
+			expected:  true,
+		},
+		{
+			name:      "empty transport is not hub service",
+			transport: TransportType(""),
+			expected:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := &ServiceConfig{
+				Transport: tt.transport,
+			}
+			assert.Equal(t, tt.expected, service.IsHubService())
+		})
+	}
+}
+
+func TestServiceConfig_ToolRefreshInterval(t *testing.T) {
+	configJSON := `{
+		"name": "Test Hub Service",
+		"transport": "stdio",
+		"command": "/usr/bin/test-server",
+		"toolRefreshInterval": "5m"
+	}`
+
+	var service ServiceConfig
+	err := json.Unmarshal([]byte(configJSON), &service)
+	assert.NoError(t, err)
+	assert.Equal(t, 5*time.Minute, service.ToolRefreshInterval)
 }
 
 // Helper functions for testing

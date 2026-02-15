@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -23,6 +24,7 @@ import (
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/hub"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
 	"github.com/PivotLLM/MCPFusion/mlogger"
 )
@@ -374,6 +376,20 @@ func main() {
 		logger.Warning("No fusion provider created - no configurations loaded")
 	}
 
+	// Identify hub services and create hub provider
+	var hubProvider *hub.HubProvider
+	hubConfigs := make(map[string]*fusion.ServiceConfig)
+	for name, svc := range configManager.GetAllServices() {
+		if svc.IsHubService() {
+			hubConfigs[name] = svc
+		}
+	}
+	if len(hubConfigs) > 0 {
+		logger.Infof("Found %d hub service(s) to connect", len(hubConfigs))
+		hubProvider = hub.NewHubProvider(hubConfigs, logger)
+		providers = append(providers, hubProvider)
+	}
+
 	// Create MCP server, passing in the logger and tool providers
 	// as well as setting other options
 	mcpOpts := []mcpserver.Option{
@@ -385,10 +401,14 @@ func main() {
 
 		// Pass in the tool providers
 		mcpserver.WithToolProviders(providers),
+	}
 
-		// Setup resource and prompt providers
-		mcpserver.WithResourceProviders([]global.ResourceProvider{fusionProvider}),
-		mcpserver.WithPromptProviders([]global.PromptProvider{fusionProvider}),
+	// Setup resource and prompt providers (only if fusionProvider is initialized)
+	if fusionProvider != nil {
+		mcpOpts = append(mcpOpts,
+			mcpserver.WithResourceProviders([]global.ResourceProvider{fusionProvider}),
+			mcpserver.WithPromptProviders([]global.PromptProvider{fusionProvider}),
+		)
 	}
 
 	// Add OAuth API support components
@@ -416,6 +436,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Start hub provider after MCP server is created
+	if hubProvider != nil {
+		hubProvider.SetMCPServer(mcp.GetMCPServer())
+		hubProvider.Start(context.Background())
+	}
+
 	// Start MCP server
 	if err = mcp.Start(); err != nil {
 		logger.Fatalf("MCP server failed to start: %v", err)
@@ -433,6 +459,11 @@ func main() {
 	if err = mcp.Stop(); err != nil {
 		logger.Errorf("Error stopping MCP server: %s", err.Error())
 		os.Exit(1)
+	}
+
+	// Shutdown hub provider if initialized
+	if hubProvider != nil {
+		hubProvider.Shutdown()
 	}
 
 	// Shutdown Fusion provider if initialized

@@ -1,0 +1,29 @@
+{
+  "services": {
+    "playwright": {
+      "name": "Playwright Browser",
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--proxy-server", "http://127.0.0.1:8088",
+        "--ignore-https-errors",
+        "--user-data-dir", "/home/eric/.mantis-chrome"
+      ],
+      "env": {
+        "PLAYWRIGHT_CHROMIUM_USE_HEADLESS_NEW": "1"
+      }
+    },
+    "playwright_visible": {
+      "name": "Playwright Browser (GUI)",
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--proxy-server", "http://127.0.0.1:8088",
+        "--ignore-https-errors",
+        "--user-data-dir", "/home/eric/.mantis-chrome"
+      ]
+    }
+  }
+}
