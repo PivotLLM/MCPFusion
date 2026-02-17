@@ -145,11 +145,11 @@
             {
               "name": "$select",
               "alias": "select",
-              "description": "Fields to include in response",
+              "description": "Fields to include in response (default: subject,bodyPreview,organizer,attendees,start,end,location)",
               "type": "string",
               "required": false,
               "location": "query",
-              "default": "subject,body,bodyPreview,organizer,attendees,start,end,location"
+              "default": "subject,bodyPreview,organizer,attendees,start,end,location"
             },
             {
               "name": "$top",
@@ -374,11 +374,11 @@
             {
               "name": "$select",
               "alias": "select",
-              "description": "Fields to include in response",
+              "description": "Fields to include in response (default: subject,bodyPreview,organizer,attendees,start,end,location)",
               "type": "string",
               "required": false,
               "location": "query",
-              "default": "subject,body,bodyPreview,organizer,attendees,start,end,location"
+              "default": "subject,bodyPreview,organizer,attendees,start,end,location"
             },
             {
               "name": "$top",
