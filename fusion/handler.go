@@ -627,6 +627,18 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 		return string(body), nil
 	}
 
+	// Enforce response size limit for successful responses
+	if h.fusion.MaxResponseBytes() > 0 && len(body) > h.fusion.MaxResponseBytes() {
+		if h.fusion.logger != nil {
+			h.fusion.logger.Warningf("Response size %d bytes exceeds limit of %d bytes [%s]",
+				len(body), h.fusion.MaxResponseBytes(), correlationID)
+		}
+		return fmt.Sprintf(
+			"Response too large (%d bytes, limit %d bytes). Request fewer records or fields and try again.",
+			len(body), h.fusion.MaxResponseBytes(),
+		), nil
+	}
+
 	// Handle different response types
 	switch h.endpoint.Response.Type {
 	case "json":

@@ -106,6 +106,11 @@ type Fusion struct {
 
 	// nativeToolPrefixRegistrar registers native tool prefixes with the config manager
 	nativeToolPrefixRegistrar NativeToolPrefixRegistrar
+
+	// maxResponseBytes limits the size of responses returned to callers.
+	// Responses exceeding this limit are replaced with an informational message.
+	// A value of 0 disables the limit.
+	maxResponseBytes int
 }
 
 // NativeToolPrefixRegistrar allows registering prefixes for native (non-config-driven)
@@ -301,6 +306,15 @@ func WithSharedCollector(c *metrics.Collector) Option {
 	}
 }
 
+// WithMaxResponseBytes sets a limit on the size of responses returned to callers.
+// Responses exceeding this limit are replaced with an informational message.
+// A value of 0 disables the limit. Default is 51200 (50KB).
+func WithMaxResponseBytes(n int) Option {
+	return func(f *Fusion) {
+		f.maxResponseBytes = n
+	}
+}
+
 // New creates a new production-ready Fusion instance with the provided configuration options.
 // This is the primary constructor for the Fusion provider and initializes all components
 // required for API integration including multi-tenant authentication, database caching,
@@ -378,6 +392,7 @@ func New(options ...Option) *Fusion {
 		metricsCollector:       NewMetricsCollector(nil, true), // Enable metrics by default
 		correlationIDGenerator: NewCorrelationIDGenerator(),
 		circuitBreakers:        make(map[string]*CircuitBreaker),
+		maxResponseBytes:       51200, // 50KB default
 	}
 
 	// Apply all options
@@ -484,6 +499,12 @@ func (f *Fusion) GetCache() Cache {
 // GetLogger returns the logger
 func (f *Fusion) GetLogger() global.Logger {
 	return f.logger
+}
+
+// MaxResponseBytes returns the configured response size limit in bytes.
+// A value of 0 means no limit is enforced.
+func (f *Fusion) MaxResponseBytes() int {
+	return f.maxResponseBytes
 }
 
 // RegisterTools implements the global.ToolProvider interface and dynamically generates
