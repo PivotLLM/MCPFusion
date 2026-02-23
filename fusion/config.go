@@ -35,9 +35,9 @@ const (
 type TransportType string
 
 const (
-	TransportTypeStdio   TransportType = "stdio"
+	TransportTypeStdio   TransportType = "mcp_stdio"
 	TransportTypeMCPHTTP TransportType = "mcp_http"
-	TransportTypeSSE     TransportType = "sse"
+	TransportTypeSSE     TransportType = "mcp_sse"
 )
 
 // AuthMethod constants for user_credentials auth type

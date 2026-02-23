@@ -1327,6 +1327,11 @@ func TestServiceConfig_IsHubService(t *testing.T) {
 			expected:  true,
 		},
 		{
+			name:      "mcp_sse transport is hub service",
+			transport: TransportTypeSSE,
+			expected:  true,
+		},
+		{
 			name:      "empty transport is not hub service",
 			transport: TransportType(""),
 			expected:  false,
@@ -1346,7 +1351,7 @@ func TestServiceConfig_IsHubService(t *testing.T) {
 func TestServiceConfig_ToolRefreshInterval(t *testing.T) {
 	configJSON := `{
 		"name": "Test Hub Service",
-		"transport": "stdio",
+		"transport": "mcp_stdio",
 		"command": "/usr/bin/test-server",
 		"toolRefreshInterval": "5m"
 	}`
@@ -1355,6 +1360,38 @@ func TestServiceConfig_ToolRefreshInterval(t *testing.T) {
 	err := json.Unmarshal([]byte(configJSON), &service)
 	assert.NoError(t, err)
 	assert.Equal(t, 5*time.Minute, service.ToolRefreshInterval)
+}
+
+func TestLoadConfigFromJSON_StdioTransport(t *testing.T) {
+	configJSON := `{
+		"services": {
+			"test_mcp": {
+				"name": "Test MCP Server",
+				"transport": "mcp_stdio",
+				"command": "/usr/bin/test-server"
+			}
+		}
+	}`
+	config, err := LoadConfigFromJSON([]byte(configJSON), "test-stdio.json")
+	assert.NoError(t, err, "stdio config should not require baseURL")
+	assert.NotNil(t, config)
+	assert.True(t, config.Services["test_mcp"].IsHubService())
+}
+
+func TestLoadConfigFromJSON_SSETransport(t *testing.T) {
+	configJSON := `{
+		"services": {
+			"test_sse": {
+				"name": "Test SSE Server",
+				"transport": "mcp_sse",
+				"baseURL": "http://localhost:8080/sse"
+			}
+		}
+	}`
+	config, err := LoadConfigFromJSON([]byte(configJSON), "test-sse.json")
+	assert.NoError(t, err, "mcp_sse config should parse successfully")
+	assert.NotNil(t, config)
+	assert.True(t, config.Services["test_sse"].IsHubService())
 }
 
 // Helper functions for testing
