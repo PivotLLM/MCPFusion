@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -636,7 +638,20 @@ func (s *ServiceConfig) ValidateWithLogger(serviceName string, logger global.Log
 			}
 			return fmt.Errorf("command is required for stdio transport")
 		}
+		// Warn (but do not fail) if the command cannot be found at config load
+		// time. The binary may be installed later or resolved via a runtime PATH.
 		if logger != nil {
+			if filepath.IsAbs(s.Command) {
+				if info, err := os.Stat(s.Command); err != nil || info.IsDir() || info.Mode().Perm()&0111 == 0 {
+					logger.Warningf("Service %s: command '%s' not found or not executable - ensure it is installed before connecting",
+						serviceName, s.Command)
+				}
+			} else {
+				if _, err := exec.LookPath(s.Command); err != nil {
+					logger.Warningf("Service %s: command '%s' not found in PATH - ensure it is installed and PATH is correct",
+						serviceName, s.Command)
+				}
+			}
 			logger.Debugf("Service %s: stdio hub service validated (command: %s)", serviceName, s.Command)
 		}
 		return nil

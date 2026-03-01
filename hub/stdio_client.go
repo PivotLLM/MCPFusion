@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/fusion"
@@ -26,6 +25,7 @@ type StdioClient struct {
 	manager *MCPClientManager
 	backoff *ExponentialBackoff
 	logger  global.Logger
+	addPath string
 }
 
 // NewStdioClient creates a new stdio client for the given service config
@@ -47,11 +47,19 @@ func NewStdioClient(config *fusion.ServiceConfig, logger global.Logger) *StdioCl
 		}
 	}
 
+	// Read MCP_FUSION_ADD_PATH once at construction time so the value is
+	// stable for the lifetime of this client and test-friendly (t.Setenv works).
+	addPath := os.Getenv("MCP_FUSION_ADD_PATH")
+	if addPath != "" {
+		logger.Infof("MCP_FUSION_ADD_PATH: %s", addPath)
+	}
+
 	return &StdioClient{
 		config:  config,
 		manager: NewMCPClientManager(config.ServiceKey, logger),
 		backoff: NewExponentialBackoff(baseDelay, maxDelay, factor),
 		logger:  logger,
+		addPath: addPath,
 	}
 }
 
@@ -60,22 +68,50 @@ func (s *StdioClient) Manager() *MCPClientManager {
 	return s.manager
 }
 
-// Connect creates and connects the stdio MCP client
-func (s *StdioClient) Connect(ctx context.Context) error {
-	// Build environment variables as []string in "KEY=VALUE" format
-	var env []string
-	for k, v := range s.config.Env {
+// buildEnv merges configEnv and addPath into a []string slice of "KEY=VALUE"
+// pairs suitable for passing to exec.Cmd.Env.
+//
+// If addPath is non-empty it is prepended to the PATH value:
+//   - If configEnv already contains a "PATH" key, addPath is prepended to that
+//     value so the subprocess inherits the operator-specified PATH rather than
+//     the parent process PATH.
+//   - Otherwise addPath is prepended to os.Getenv("PATH").
+//
+// If configEnv is empty and addPath is empty the function returns nil.
+func buildEnv(configEnv map[string]string, addPath string) []string {
+	// Work on a copy so the caller's map is not mutated.
+	merged := make(map[string]string, len(configEnv)+1)
+	for k, v := range configEnv {
+		merged[k] = v
+	}
+
+	if addPath != "" {
+		existingPath, ok := merged["PATH"]
+		if !ok {
+			existingPath = os.Getenv("PATH")
+		}
+		merged["PATH"] = addPath + string(filepath.ListSeparator) + existingPath
+	}
+
+	if len(merged) == 0 {
+		return nil
+	}
+
+	env := make([]string, 0, len(merged))
+	for k, v := range merged {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
+	return env
+}
 
-	// If MCP_FUSION_ADD_PATH is set, prepend its directories to the subprocess PATH
-	// so child processes (e.g., node spawned by npx) can also be found.
-	if addPath := getAddPath(s.logger); addPath != "" {
-		env = append(env, fmt.Sprintf("PATH=%s:%s", addPath, os.Getenv("PATH")))
-	}
+// Connect creates and connects the stdio MCP client
+func (s *StdioClient) Connect(ctx context.Context) error {
+	// Build environment variables, merging PATH correctly when both
+	// config.Env and MCP_FUSION_ADD_PATH supply a PATH value.
+	env := buildEnv(s.config.Env, s.addPath)
 
 	// Resolve the command to an absolute path
-	command := resolveCommand(s.config.Command, s.logger)
+	command := resolveCommand(s.config.Command, s.addPath, s.logger)
 
 	s.logger.Infof("Hub service '%s': starting stdio process: %s %v", s.config.ServiceKey, command, s.config.Args)
 
@@ -187,16 +223,15 @@ func (s *StdioClient) Close() error {
 
 // resolveCommand attempts to resolve a command name to an absolute path.
 // It first checks exec.LookPath (process PATH), then searches any additional
-// directories specified via the MCP_FUSION_ADD_PATH environment variable.
-// This handles cases where MCPFusion is launched from an environment with a
-// limited PATH (e.g., systemd) that doesn't include directories like nvm,
-// pyenv, or other version managers.
+// directories specified via addPath (the value of MCP_FUSION_ADD_PATH read at
+// client construction time). This handles cases where MCPFusion is launched
+// from an environment with a limited PATH (e.g., systemd) that doesn't include
+// directories like nvm, pyenv, or other version managers.
 //
-// Security: candidates from MCP_FUSION_ADD_PATH must have an executable bit
-// set, but ownership is not verified. Operators should ensure that directories
-// listed in MCP_FUSION_ADD_PATH are owned by the service user and are not
-// world-writable.
-func resolveCommand(command string, logger global.Logger) string {
+// Security: candidates from addPath must have an executable bit set, but
+// ownership is not verified. Operators should ensure that directories listed in
+// MCP_FUSION_ADD_PATH are owned by the service user and are not world-writable.
+func resolveCommand(command string, addPath string, logger global.Logger) string {
 	// Already absolute — nothing to resolve
 	if filepath.IsAbs(command) {
 		return command
@@ -208,9 +243,9 @@ func resolveCommand(command string, logger global.Logger) string {
 		return resolved
 	}
 
-	// Fall back to MCP_FUSION_ADD_PATH directories
-	if addPath := getAddPath(logger); addPath != "" {
-		for _, dir := range strings.Split(addPath, ":") {
+	// Fall back to addPath directories (MCP_FUSION_ADD_PATH)
+	if addPath != "" {
+		for _, dir := range strings.Split(addPath, string(filepath.ListSeparator)) {
 			candidate := filepath.Join(dir, command)
 			if info, err := os.Stat(candidate); err == nil && !info.IsDir() && info.Mode().Perm()&0111 != 0 {
 				logger.Debugf("Resolved command '%s' to '%s' via MCP_FUSION_ADD_PATH", command, candidate)
@@ -222,24 +257,4 @@ func resolveCommand(command string, logger global.Logger) string {
 	// Could not resolve — return as-is and let the caller report the error
 	logger.Debugf("Could not resolve command '%s' in any PATH", command)
 	return command
-}
-
-// getAddPath reads and caches the MCP_FUSION_ADD_PATH environment variable.
-// This variable contains colon-separated directories to search when the
-// process PATH doesn't contain the required executables.
-// The value is read once at first call and cached for the process lifetime;
-// subsequent changes to the environment variable will not be reflected.
-var (
-	addPathOnce  sync.Once
-	addPathCache string
-)
-
-func getAddPath(logger global.Logger) string {
-	addPathOnce.Do(func() {
-		addPathCache = os.Getenv("MCP_FUSION_ADD_PATH")
-		if addPathCache != "" {
-			logger.Infof("MCP_FUSION_ADD_PATH: %s", addPathCache)
-		}
-	})
-	return addPathCache
 }
