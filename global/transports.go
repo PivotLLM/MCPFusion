@@ -8,9 +8,7 @@ package global
 // Transport display names for metrics and health reporting.
 // These are normalized forms used consistently across the application for
 // identifying transport types in metrics, health status, and logging.
-//
-// Note: Config files use different values (e.g., "stdio" vs "mcp_stdio")
-// which are defined in fusion.TransportType constants.
+// These values are also used as transport identifiers in JSON configuration files.
 const (
 	TransportAPI       = "api"        // Standard HTTP/REST API services
 	TransportMCPStdio  = "mcp_stdio"  // MCP over stdio transport
