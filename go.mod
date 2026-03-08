@@ -1,6 +1,6 @@
 module github.com/PivotLLM/MCPFusion
 
-go 1.24.2
+go 1.26.0
 
 require (
 	github.com/PivotLLM/mlogger v0.0.0

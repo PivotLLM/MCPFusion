@@ -51,7 +51,7 @@ func NewStdioClient(config *fusion.ServiceConfig, logger global.Logger) *StdioCl
 	// stable for the lifetime of this client and test-friendly (t.Setenv works).
 	addPath := os.Getenv("MCP_FUSION_ADD_PATH")
 	if addPath != "" {
-		logger.Infof("MCP_FUSION_ADD_PATH: %s", addPath)
+		logger.Debugf("MCP_FUSION_ADD_PATH: %s", addPath)
 	}
 
 	return &StdioClient{
@@ -77,12 +77,32 @@ func (s *StdioClient) Manager() *MCPClientManager {
 //     the parent process PATH.
 //   - Otherwise addPath is prepended to os.Getenv("PATH").
 //
-// If configEnv is empty and addPath is empty the function returns nil.
+// If configEnv is empty and addPath is empty the function returns nil, which
+// causes exec.Cmd to inherit the full parent environment unchanged.
+//
+// If configEnv is empty but addPath is non-empty, the function seeds the
+// environment from os.Environ() and patches only the PATH entry, so the
+// subprocess retains HOME, USER, SHELL, and other variables it needs.
 func buildEnv(configEnv map[string]string, addPath string) []string {
+	if len(configEnv) == 0 && addPath == "" {
+		return nil
+	}
+
 	// Work on a copy so the caller's map is not mutated.
 	merged := make(map[string]string, len(configEnv)+1)
-	for k, v := range configEnv {
-		merged[k] = v
+
+	// When the operator has not specified explicit env vars, seed from the
+	// parent environment so the subprocess inherits HOME, USER, SHELL, etc.
+	if len(configEnv) == 0 {
+		for _, entry := range os.Environ() {
+			if k, v, ok := strings.Cut(entry, "="); ok {
+				merged[k] = v
+			}
+		}
+	} else {
+		for k, v := range configEnv {
+			merged[k] = v
+		}
 	}
 
 	if addPath != "" {
@@ -91,10 +111,6 @@ func buildEnv(configEnv map[string]string, addPath string) []string {
 			existingPath = os.Getenv("PATH")
 		}
 		merged["PATH"] = addPath + string(filepath.ListSeparator) + existingPath
-	}
-
-	if len(merged) == 0 {
-		return nil
 	}
 
 	env := make([]string, 0, len(merged))
