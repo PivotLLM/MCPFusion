@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PivotLLM/MCPFusion/mlogger"
+	"github.com/PivotLLM/mlogger"
 )
 
 func TestRetryExecutor(t *testing.T) {

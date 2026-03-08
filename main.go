@@ -27,7 +27,7 @@ import (
 	"github.com/PivotLLM/MCPFusion/hub"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
 	"github.com/PivotLLM/MCPFusion/metrics"
-	"github.com/PivotLLM/MCPFusion/mlogger"
+	"github.com/PivotLLM/mlogger"
 )
 
 func main() {
