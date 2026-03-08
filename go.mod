@@ -3,7 +3,7 @@ module github.com/PivotLLM/MCPFusion
 go 1.26.0
 
 require (
-	github.com/PivotLLM/mlogger v0.0.0
+	github.com/tenebris-tech/mlogger v0.0.0
 	github.com/itchyny/gojq v0.12.18
 	github.com/joho/godotenv v1.5.1
 	github.com/mark3labs/mcp-go v0.43.2
@@ -11,7 +11,7 @@ require (
 	go.etcd.io/bbolt v1.4.3
 )
 
-replace github.com/PivotLLM/mlogger => ../mlogger
+replace github.com/tenebris-tech/mlogger => ../mlogger
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect

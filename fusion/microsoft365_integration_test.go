@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/mlogger"
+	"github.com/tenebris-tech/mlogger"
 )
 
 // TestMicrosoft365Integration tests the Microsoft 365 Graph API integration

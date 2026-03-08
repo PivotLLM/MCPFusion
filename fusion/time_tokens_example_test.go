@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/PivotLLM/mlogger"
+	"github.com/tenebris-tech/mlogger"
 )
 
 // demonstrateTimeTokens demonstrates how the time token substitution system works

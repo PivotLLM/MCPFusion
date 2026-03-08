@@ -5,7 +5,7 @@
 
 package global
 
-import "github.com/PivotLLM/mlogger"
+import "github.com/tenebris-tech/mlogger"
 
 // DumpTools causes extended debugging
 const DumpTools = false

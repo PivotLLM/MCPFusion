@@ -8,7 +8,7 @@ package fusion
 import (
 	"testing"
 
-	"github.com/PivotLLM/mlogger"
+	"github.com/tenebris-tech/mlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

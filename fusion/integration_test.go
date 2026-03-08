@@ -11,7 +11,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/PivotLLM/mlogger"
+	"github.com/tenebris-tech/mlogger"
 )
 
 func TestFusionIntegration_EndToEnd(t *testing.T) {
