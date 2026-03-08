@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/mlogger"
 )
 
 // TestMicrosoft365Integration tests the Microsoft 365 Graph API integration
@@ -51,7 +52,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 	config := createTestMicrosoft365ConfigWithBearer(server.URL)
 
 	// Create fusion instance
-	logger := &MockLogger{}
+	logger := mlogger.NewMemoryLogger()
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-config.json"),
 		WithLogger(logger),
@@ -258,7 +259,7 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 
 	// Test OAuth2 device flow configuration
 	config := createTestMicrosoft365Config(server.URL)
-	logger := &MockLogger{}
+	logger := mlogger.NewMemoryLogger()
 
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-oauth-config.json"),
@@ -863,63 +864,3 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 	return string(configBytes)
 }
 
-// MockLogger implements the global.Logger interface for testing
-type MockLogger struct {
-	logs []string
-}
-
-func (m *MockLogger) Debug(msg string) {
-	m.logs = append(m.logs, "DEBUG: "+msg)
-}
-
-func (m *MockLogger) Debugf(format string, args ...interface{}) {
-	m.logs = append(m.logs, fmt.Sprintf("DEBUG: "+format, args...))
-}
-
-func (m *MockLogger) Info(msg string) {
-	m.logs = append(m.logs, "INFO: "+msg)
-}
-
-func (m *MockLogger) Infof(format string, args ...interface{}) {
-	m.logs = append(m.logs, fmt.Sprintf("INFO: "+format, args...))
-}
-
-func (m *MockLogger) Notice(msg string) {
-	m.logs = append(m.logs, "NOTICE: "+msg)
-}
-
-func (m *MockLogger) Noticef(format string, args ...interface{}) {
-	m.logs = append(m.logs, fmt.Sprintf("NOTICE: "+format, args...))
-}
-
-func (m *MockLogger) Warning(msg string) {
-	m.logs = append(m.logs, "WARNING: "+msg)
-}
-
-func (m *MockLogger) Warningf(format string, args ...interface{}) {
-	m.logs = append(m.logs, fmt.Sprintf("WARNING: "+format, args...))
-}
-
-func (m *MockLogger) Error(msg string) {
-	m.logs = append(m.logs, "ERROR: "+msg)
-}
-
-func (m *MockLogger) Errorf(format string, args ...interface{}) {
-	m.logs = append(m.logs, fmt.Sprintf("ERROR: "+format, args...))
-}
-
-func (m *MockLogger) Fatal(msg string) {
-	m.logs = append(m.logs, "FATAL: "+msg)
-}
-
-func (m *MockLogger) Fatalf(format string, args ...interface{}) {
-	m.logs = append(m.logs, fmt.Sprintf("FATAL: "+format, args...))
-}
-
-// Close implements the global.Logger interface
-func (m *MockLogger) Close() {}
-
-// GetLogs returns all logged messages
-func (m *MockLogger) GetLogs() []string {
-	return m.logs
-}

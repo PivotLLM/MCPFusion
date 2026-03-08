@@ -14,7 +14,7 @@ import (
 
 func TestCommandsConfig_ShellExec(t *testing.T) {
 	// Create a test logger
-	logger := &testLogger{t: t}
+	logger := newTestLogger(t)
 
 	// Load commands.json config
 	fusion := New(
@@ -61,7 +61,7 @@ func TestCommandsConfig_ShellExec(t *testing.T) {
 }
 
 func TestCommandsConfig_DirectExec(t *testing.T) {
-	logger := &testLogger{t: t}
+	logger := newTestLogger(t)
 
 	fusion := New(
 		WithLogger(logger),
@@ -103,7 +103,7 @@ func TestCommandsConfig_DirectExec(t *testing.T) {
 }
 
 func TestCommandsConfig_WithEnvironment(t *testing.T) {
-	logger := &testLogger{t: t}
+	logger := newTestLogger(t)
 
 	fusion := New(
 		WithLogger(logger),
@@ -146,7 +146,7 @@ func TestCommandsConfig_WithEnvironment(t *testing.T) {
 }
 
 func TestCommandsConfig_DirectExecWithStdin(t *testing.T) {
-	logger := &testLogger{t: t}
+	logger := newTestLogger(t)
 
 	fusion := New(
 		WithLogger(logger),

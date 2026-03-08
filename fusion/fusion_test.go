@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/mlogger"
 )
 
 func TestNew(t *testing.T) {
@@ -25,15 +26,15 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewWithOptions(t *testing.T) {
-	// Create a mock logger
-	mockLogger := &mockLogger{}
+	// Create a memory logger
+	memLogger := mlogger.NewMemoryLogger()
 
 	// Test creating with options
 	fusion := New(
-		WithLogger(mockLogger),
+		WithLogger(memLogger),
 	)
 
-	if fusion.logger != mockLogger {
+	if fusion.logger != memLogger {
 		t.Error("Logger not set correctly")
 	}
 
@@ -205,26 +206,3 @@ func TestGetServiceNames(t *testing.T) {
 		t.Error("Expected to find both service1 and service2")
 	}
 }
-
-// mockLogger implements global.Logger for testing
-type mockLogger struct {
-	logs []string
-}
-
-func (m *mockLogger) Debug(msg string)   { m.logs = append(m.logs, "DEBUG: "+msg) }
-func (m *mockLogger) Info(msg string)    { m.logs = append(m.logs, "INFO: "+msg) }
-func (m *mockLogger) Notice(msg string)  { m.logs = append(m.logs, "NOTICE: "+msg) }
-func (m *mockLogger) Warning(msg string) { m.logs = append(m.logs, "WARNING: "+msg) }
-func (m *mockLogger) Error(msg string)   { m.logs = append(m.logs, "ERROR: "+msg) }
-func (m *mockLogger) Fatal(msg string)   { m.logs = append(m.logs, "FATAL: "+msg) }
-
-func (m *mockLogger) Debugf(format string, _ ...any)  { m.logs = append(m.logs, "DEBUG: "+format) }
-func (m *mockLogger) Infof(format string, _ ...any)   { m.logs = append(m.logs, "INFO: "+format) }
-func (m *mockLogger) Noticef(format string, _ ...any) { m.logs = append(m.logs, "NOTICE: "+format) }
-func (m *mockLogger) Warningf(format string, _ ...any) {
-	m.logs = append(m.logs, "WARNING: "+format)
-}
-func (m *mockLogger) Errorf(format string, _ ...any) { m.logs = append(m.logs, "ERROR: "+format) }
-func (m *mockLogger) Fatalf(format string, _ ...any) { m.logs = append(m.logs, "FATAL: "+format) }
-
-func (m *mockLogger) Close() {}
