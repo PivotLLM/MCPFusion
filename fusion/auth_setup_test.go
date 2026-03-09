@@ -15,7 +15,7 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/tenebris-tech/mlogger/testlogger"
+	"github.com/PivotLLM/MCPFusion/mlogger/testlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

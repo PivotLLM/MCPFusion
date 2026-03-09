@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tenebris-tech/mlogger"
+	"github.com/PivotLLM/MCPFusion/mlogger"
 )
 
 func TestMetricsCollector(t *testing.T) {

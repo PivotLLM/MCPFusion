@@ -1320,6 +1320,13 @@ func expandEnvironmentVariables(data []byte) ([]byte, error) {
 		return match
 	})
 
+	// Expand tilde (~/) to the user's home directory.
+	// This allows paths like ~/.config to be used in JSON config files.
+	home, homeErr := os.UserHomeDir()
+	if homeErr == nil && home != "" {
+		result = strings.ReplaceAll(result, "~/", home+"/")
+	}
+
 	return []byte(result), nil
 }
 

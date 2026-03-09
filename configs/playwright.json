@@ -8,7 +8,7 @@
         "@playwright/mcp@latest",
         "--proxy-server", "http://127.0.0.1:8088",
         "--ignore-https-errors",
-        "--user-data-dir", "${PLAYWRIGHT_USER_DATA_DIR:${HOME}/.mantis-chrome}"
+        "--user-data-dir", "${PLAYWRIGHT_USER_DATA_DIR:~/.mantis-chrome}"
       ],
       "env": {
         "PLAYWRIGHT_CHROMIUM_USE_HEADLESS_NEW": "1"
@@ -20,7 +20,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "export DISPLAY=:0; export XAUTHORITY=${XAUTHORITY:${HOME}/.Xauthority}; export WAYLAND_DISPLAY=wayland-0; export XDG_SESSION_TYPE=wayland; export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:/run/user/1000}; exec npx @playwright/mcp@latest --proxy-server http://127.0.0.1:8088 --ignore-https-errors --user-data-dir ${PLAYWRIGHT_VISIBLE_USER_DATA_DIR:${HOME}/.mantis-chrome-visible}"
+        "export DISPLAY=:0; export XAUTHORITY=${XAUTHORITY:~/.Xauthority}; export WAYLAND_DISPLAY=wayland-0; export XDG_SESSION_TYPE=wayland; export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:/run/user/1000}; exec npx @playwright/mcp@latest --proxy-server http://127.0.0.1:8088 --ignore-https-errors --user-data-dir ${PLAYWRIGHT_VISIBLE_USER_DATA_DIR:~/.mantis-chrome-visible}"
       ]
     }
   }

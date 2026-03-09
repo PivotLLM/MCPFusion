@@ -18,7 +18,7 @@ import (
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
-	"github.com/tenebris-tech/mlogger"
+	"github.com/PivotLLM/MCPFusion/mlogger"
 )
 
 // main demonstrates production-ready integration of Fusion with MCPFusion server
