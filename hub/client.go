@@ -8,6 +8,7 @@ package hub
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +17,18 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
+
+// isTransportError returns true if err indicates a transport-level failure
+// (e.g. invalid session ID after upstream restart) rather than an
+// application-level error from the tool itself.
+func isTransportError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "transport error") ||
+		strings.Contains(msg, "invalid session")
+}
 
 // progressForwarder holds the state needed to relay a progress notification
 // from a downstream MCP server back to the upstream client.
@@ -121,6 +134,23 @@ func (m *MCPClientManager) SetConnected(connected bool) {
 	m.connected = connected
 }
 
+// waitForReconnect blocks until the manager is connected or the timeout
+// elapses. Returns true if the connection was re-established in time.
+func (m *MCPClientManager) waitForReconnect(ctx context.Context, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if m.IsConnected() {
+			return true
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	return false
+}
+
 // ListTools discovers tools from the downstream server without updating the cache.
 func (m *MCPClientManager) ListTools(ctx context.Context) (map[string]mcp.Tool, error) {
 	m.mu.RLock()
@@ -196,6 +226,10 @@ func (m *MCPClientManager) SetCachedTools(tools map[string]mcp.Tool) {
 // CallTool invokes a tool on the downstream server with a 60-second timeout.
 // If meta is non-nil, it is forwarded as _meta in the downstream request
 // (typically carrying a progress token).
+//
+// If a transport error is detected (e.g. the upstream server restarted and
+// invalidated the session without dropping the TCP connection), CallTool
+// triggers the reconnect loop and retries the call once after reconnection.
 func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args map[string]interface{}, meta *mcp.Meta) (*mcp.CallToolResult, error) {
 	m.mu.RLock()
 	c := m.client
@@ -219,6 +253,38 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	if err != nil {
 		if callCtx.Err() == context.DeadlineExceeded {
 			return nil, fmt.Errorf("tool call timed out after 60s")
+		}
+
+		// Transport errors (e.g. "Invalid session ID" after an upstream restart
+		// that did not drop the TCP connection) indicate the session is silently
+		// broken. Trigger the existing reconnect loop and retry once.
+		if isTransportError(err) {
+			if m.logger != nil {
+				m.logger.Warningf("Hub service '%s': transport error on tool '%s', triggering reconnect: %v",
+					m.serviceName, toolName, err)
+			}
+			m.SetConnected(false)
+			if m.waitForReconnect(ctx, 15*time.Second) {
+				m.mu.RLock()
+				c = m.client
+				m.mu.RUnlock()
+				if c != nil {
+					retryCtx, retryCancel := context.WithTimeout(ctx, 60*time.Second)
+					defer retryCancel()
+					if result, err = c.CallTool(retryCtx, req); err == nil {
+						if m.logger != nil {
+							m.logger.Infof("Hub service '%s': tool '%s' succeeded after reconnect",
+								m.serviceName, toolName)
+						}
+						return result, nil
+					}
+				}
+			} else {
+				if m.logger != nil {
+					m.logger.Errorf("Hub service '%s': reconnect timed out, tool '%s' failed",
+						m.serviceName, toolName)
+				}
+			}
 		}
 		return nil, err
 	}
