@@ -434,6 +434,20 @@
               "type": "array",
               "required": false,
               "location": "body"
+            },
+            {
+              "name": "customFields",
+              "description": "Custom fields array (e.g. OWASP category)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "remediationComplexity",
+              "description": "Remediation complexity (1=Easy, 2=Medium, 3=Hard)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
             }
           ],
           "response": { "type": "json" }
@@ -533,6 +547,20 @@
               "name": "references",
               "description": "References (array of strings)",
               "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "customFields",
+              "description": "Custom fields array (e.g. OWASP category)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "remediationComplexity",
+              "description": "Remediation complexity (1=Easy, 2=Medium, 3=Hard)",
+              "type": "integer",
               "required": false,
               "location": "body"
             }
