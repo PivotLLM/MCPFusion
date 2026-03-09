@@ -895,24 +895,15 @@
         {
           "id": "list_vulnerabilities",
           "name": "List Vulnerabilities",
-          "description": "List all vulnerability templates in the library",
-          "method": "GET",
-          "path": "/api/vulnerabilities",
-          "parameters": [],
-          "response": { "type": "json" }
-        },
-        {
-          "id": "get_vulnerabilities_by_locale",
-          "name": "Get Vulnerabilities by Locale",
-          "description": "Get vulnerability templates for a specific language",
+          "description": "List vulnerability templates as a summary (ID, title, type, CVSS, priority, category). Use the returned _id to reference a specific vulnerability. Defaults to English; specify locale for other languages.",
           "method": "GET",
           "path": "/api/vulnerabilities/{locale}",
           "parameters": [
             {
               "name": "locale",
-              "description": "Language code (e.g., 'en', 'fr')",
+              "description": "Language code (e.g., 'en', 'fr'). Defaults to 'en'.",
               "type": "string",
-              "required": true,
+              "required": false,
               "location": "path",
               "default": "en"
             }
