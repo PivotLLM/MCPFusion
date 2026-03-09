@@ -321,23 +321,6 @@
           "response": { "type": "binary" }
         },
         {
-          "id": "get_audit_findings",
-          "name": "Get Audit Findings",
-          "description": "Get all findings/vulnerabilities from a specific audit",
-          "method": "GET",
-          "path": "/api/audits/{audit_id}/findings",
-          "parameters": [
-            {
-              "name": "audit_id",
-              "description": "The audit ID",
-              "type": "string",
-              "required": true,
-              "location": "path"
-            }
-          ],
-          "response": { "type": "json" }
-        },
-        {
           "id": "get_finding",
           "name": "Get Finding",
           "description": "Get details of a specific finding in an audit",
