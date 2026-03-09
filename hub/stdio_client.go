@@ -80,9 +80,9 @@ func (s *StdioClient) Manager() *MCPClientManager {
 // If configEnv is empty and addPath is empty the function returns nil, which
 // causes exec.Cmd to inherit the full parent environment unchanged.
 //
-// If configEnv is empty but addPath is non-empty, the function seeds the
-// environment from os.Environ() and patches only the PATH entry, so the
-// subprocess retains HOME, USER, SHELL, and other variables it needs.
+// Otherwise the function always seeds from os.Environ() so the subprocess
+// retains HOME, USER, SHELL, and other variables it needs, then overlays
+// configEnv on top so operators can override specific variables.
 func buildEnv(configEnv map[string]string, addPath string) []string {
 	if len(configEnv) == 0 && addPath == "" {
 		return nil
@@ -91,18 +91,16 @@ func buildEnv(configEnv map[string]string, addPath string) []string {
 	// Work on a copy so the caller's map is not mutated.
 	merged := make(map[string]string, len(configEnv)+1)
 
-	// When the operator has not specified explicit env vars, seed from the
-	// parent environment so the subprocess inherits HOME, USER, SHELL, etc.
-	if len(configEnv) == 0 {
-		for _, entry := range os.Environ() {
-			if k, v, ok := strings.Cut(entry, "="); ok {
-				merged[k] = v
-			}
-		}
-	} else {
-		for k, v := range configEnv {
+	// Always seed from the parent environment so the subprocess inherits
+	// HOME, USER, SHELL, and other variables it needs.
+	for _, entry := range os.Environ() {
+		if k, v, ok := strings.Cut(entry, "="); ok {
 			merged[k] = v
 		}
+	}
+	// Overlay configEnv on top, allowing operators to override specific variables.
+	for k, v := range configEnv {
+		merged[k] = v
 	}
 
 	if addPath != "" {
