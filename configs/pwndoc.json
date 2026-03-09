@@ -20,7 +20,7 @@
           "cookieFormat": "JWT {token}",
           "expiresIn": 3600,
           "refreshURL": "/api/users/refreshtoken",
-          "refreshMethod": "POST",
+          "refreshMethod": "GET",
           "refreshTokenLocation": "cookie",
           "refreshTokenCookieName": "refreshToken"
         },
