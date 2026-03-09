@@ -17,12 +17,10 @@
     "playwright_visible": {
       "name": "Playwright Browser (GUI)",
       "transport": "mcp_stdio",
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "@playwright/mcp@latest",
-        "--proxy-server", "http://127.0.0.1:8088",
-        "--ignore-https-errors",
-        "--user-data-dir", "/home/eric/.mantis-chrome"
+        "-c",
+        "export DISPLAY=:0; export XAUTHORITY=/home/eric/.Xauthority; export WAYLAND_DISPLAY=wayland-0; export XDG_SESSION_TYPE=wayland; export XDG_RUNTIME_DIR=/run/user/1000; exec npx @playwright/mcp@latest --proxy-server http://127.0.0.1:8088 --ignore-https-errors --user-data-dir /home/eric/.mantis-chrome-visible"
       ]
     }
   }
