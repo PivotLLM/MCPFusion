@@ -908,7 +908,10 @@
               "default": "en"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json",
+            "transform": "[.datas[] | {_id, title: .detail.title, type: .detail.vulnType, category, priority, cvssv3}]"
+          }
         },
         {
           "id": "create_vulnerability",
