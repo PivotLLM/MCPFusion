@@ -110,7 +110,8 @@ func main() {
 		fmt.Printf("  -auth-token string\n")
 		fmt.Printf("        API token prefix/hash to identify tenant (for multi-token setups)\n\n")
 		fmt.Printf("Environment Variables:\n")
-		fmt.Printf("  MCP_FUSION_DB_DIR   Custom database directory (default: /opt/mcpfusion or ~/.mcpfusion)\n\n")
+		fmt.Printf("  MCP_FUSION_DB_DIR   Custom database directory (default: /opt/mcpfusion or ~/.mcpfusion)\n")
+		fmt.Printf("  MCP_FUSION_DL_DIR   Directory for saving binary downloads (e.g. generated reports)\n\n")
 		fmt.Printf("Examples:\n")
 		fmt.Printf("  # Start server with configuration\n")
 		fmt.Printf("  %s -config configs/microsoft365.json -port 8888\n\n", os.Args[0])
@@ -365,6 +366,12 @@ func main() {
 		} else {
 			fusionOpts = append(fusionOpts, fusion.WithExternalURL("http://"+listen))
 			logger.Warningf("MCP_FUSION_EXTERNAL_URL not set, using http://%s (may not be reachable externally)", listen)
+		}
+
+		// Set download directory for binary responses
+		if dlDir := os.Getenv("MCP_FUSION_DL_DIR"); dlDir != "" {
+			fusionOpts = append(fusionOpts, fusion.WithDownloadDir(dlDir))
+			logger.Infof("Download directory: %s", dlDir)
 		}
 
 		// Add multi-tenant support if available
