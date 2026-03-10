@@ -15,6 +15,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -671,14 +673,82 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 		return string(body), nil
 
 	case "binary":
-		// For binary responses, return base64 encoded string
-		// This is a simplified implementation
-		return fmt.Sprintf("Binary data (%d bytes)", len(body)), nil
+		dlDir := h.fusion.DownloadDir()
+		if dlDir == "" {
+			return fmt.Sprintf("Binary data (%d bytes). Set MCP_FUSION_DL_DIR to save downloads to disk.", len(body)), nil
+		}
+
+		// Ensure download directory exists
+		if err := os.MkdirAll(dlDir, 0750); err != nil {
+			return "", fmt.Errorf("failed to create download directory %s: %w", dlDir, err)
+		}
+
+		// Determine file extension from Content-Type
+		ext := extensionFromContentType(resp.Header.Get("Content-Type"))
+
+		// Build filename: <service>_<endpoint>_<timestamp><ext>
+		filename := fmt.Sprintf("%s_%s_%s%s",
+			sanitizeFilename(h.service.Name),
+			sanitizeFilename(h.endpoint.ID),
+			time.Now().Format("20060102_150405"),
+			ext,
+		)
+		filePath := filepath.Join(dlDir, filename)
+
+		if err := os.WriteFile(filePath, body, 0640); err != nil {
+			return "", fmt.Errorf("failed to write download to %s: %w", filePath, err)
+		}
+
+		if h.fusion.logger != nil {
+			h.fusion.logger.Infof("Binary response saved: %s (%d bytes)", filePath, len(body))
+		}
+
+		return fmt.Sprintf("File saved to %s (%d bytes)", filePath, len(body)), nil
 
 	default:
 		// Default to JSON
 		return string(body), nil
 	}
+}
+
+// extensionFromContentType returns a file extension for common MIME types.
+func extensionFromContentType(contentType string) string {
+	// Strip parameters (e.g. "; charset=utf-8")
+	if i := strings.Index(contentType, ";"); i >= 0 {
+		contentType = strings.TrimSpace(contentType[:i])
+	}
+	switch contentType {
+	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+		return ".docx"
+	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		return ".xlsx"
+	case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+		return ".pptx"
+	case "application/pdf":
+		return ".pdf"
+	case "application/zip":
+		return ".zip"
+	case "text/plain":
+		return ".txt"
+	case "text/csv":
+		return ".csv"
+	default:
+		return ".bin"
+	}
+}
+
+// sanitizeFilename replaces characters that are unsafe in filenames with underscores.
+func sanitizeFilename(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r == '/' || r == '\\' || r == ':' || r == '*' || r == '?' ||
+			r == '"' || r == '<' || r == '>' || r == '|' || r == ' ' {
+			b.WriteRune('_')
+		} else {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // wrapNetworkError wraps network errors in NetworkError type

@@ -111,6 +111,10 @@ type Fusion struct {
 	// Responses exceeding this limit are replaced with an informational message.
 	// A value of 0 disables the limit.
 	maxResponseBytes int
+
+	// downloadDir is the directory where binary responses are saved.
+	// If empty, binary responses return an informational message only.
+	downloadDir string
 }
 
 // NativeToolPrefixRegistrar allows registering prefixes for native (non-config-driven)
@@ -288,6 +292,14 @@ func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
 func WithExternalURL(url string) Option {
 	return func(f *Fusion) {
 		f.externalURL = url
+	}
+}
+
+// WithDownloadDir sets the directory where binary responses (e.g. DOCX files) are saved.
+// If the directory does not exist, Fusion will attempt to create it.
+func WithDownloadDir(dir string) Option {
+	return func(f *Fusion) {
+		f.downloadDir = dir
 	}
 }
 
@@ -505,6 +517,11 @@ func (f *Fusion) GetLogger() global.Logger {
 // A value of 0 means no limit is enforced.
 func (f *Fusion) MaxResponseBytes() int {
 	return f.maxResponseBytes
+}
+
+// DownloadDir returns the configured download directory for binary responses.
+func (f *Fusion) DownloadDir() string {
+	return f.downloadDir
 }
 
 // RegisterTools implements the global.ToolProvider interface and dynamically generates
