@@ -112,6 +112,8 @@ MS365_TENANT_ID=your-tenant-id
 
 **CRITICAL**: All code MUST compile and pass tests before being committed. This is non-negotiable.
 
+**CRITICAL**: NEVER push directly to main or master. Always create a feature or bug branch and open a PR.
+
 ### Pre-Commit Checklist
 
 Before committing any code changes:
