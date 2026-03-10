@@ -46,7 +46,7 @@
         {
           "id": "get_audit",
           "name": "Get Audit",
-          "description": "Get audit metadata and a summary of findings (ID, identifier, title, priority, status, CVSS, category). Full finding details are intentionally excluded \u2014 use pwndoc_get_finding with the returned _id to retrieve the complete details of any specific finding. Section content is also excluded \u2014 use pwndoc_get_audit_sections for section text.",
+          "description": "Get audit metadata with a summary of findings (ID, identifier, title, priority, status, CVSS, category) and sections (ID, name). Full finding details are excluded — use pwndoc_get_finding with a finding _id. Section content is excluded — use pwndoc_get_audit_sections with a section _id.",
           "method": "GET",
           "path": "/api/audits/{audit_id}",
           "parameters": [
@@ -60,7 +60,7 @@
           ],
           "response": {
             "type": "json",
-            "transform": ".datas | {_id, name, auditType, language, state, createdAt, creator, collaborators, reviewers, company, client, findings: [.findings[] | {_id, identifier, title, priority, status, cvssv3, category}]}"
+            "transform": ".datas | {_id, name, auditType, language, state, createdAt, creator, collaborators, reviewers, company, client, findings: [.findings[] | {_id, identifier, title, priority, status, cvssv3, category}], sections: [.sections[] | {_id, name}]}"
           }
         },
         {
@@ -133,6 +133,26 @@
           "response": {
             "type": "json",
             "transform": "[.datas.findings[] | {_id, identifier, title, category, priority, cvssv3, status}]"
+          }
+        },
+        {
+          "id": "list_audit_sections",
+          "name": "List Audit Sections",
+          "description": "List all sections in an audit as a summary (ID and name only). Use the returned _id with pwndoc_get_audit_sections to retrieve the full content of a specific section.",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "[.datas.sections[] | {_id, name}]"
           }
         },
         {
