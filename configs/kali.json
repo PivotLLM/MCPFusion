@@ -40,7 +40,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "target",
@@ -98,7 +99,12 @@
               "required": true,
               "location": "argument",
               "validation": {
-                "enum": ["dir", "dns", "fuzz", "vhost"]
+                "enum": [
+                  "dir",
+                  "dns",
+                  "fuzz",
+                  "vhost"
+                ]
               }
             },
             {
@@ -123,7 +129,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "timeout",
@@ -187,7 +194,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "timeout",
@@ -245,7 +253,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "timeout",
@@ -319,7 +328,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "timeout",
@@ -361,7 +371,7 @@
               "required": true,
               "location": "control",
               "default": "/usr/bin/msfconsole",
-	      "static": true
+              "static": true
             },
             {
               "name": "arguments",
@@ -370,8 +380,11 @@
               "required": false,
               "location": "arglist",
               "examples": [
-                ["help"]
-              ]
+                [
+                  "help"
+                ]
+              ],
+              "items": "string"
             },
             {
               "name": "environment",
@@ -380,8 +393,12 @@
               "required": false,
               "location": "environment",
               "examples": [
-                {"API_KEY": "your-api-key"},
-                {"PATH": "/usr/local/bin:/usr/bin"}
+                {
+                  "API_KEY": "your-api-key"
+                },
+                {
+                  "PATH": "/usr/local/bin:/usr/bin"
+                }
               ]
             },
             {
@@ -402,9 +419,11 @@
               "type": "string",
               "required": false,
               "location": "control",
-	      "default": "/tmp",
-              "examples": ["/tmp"],
-	      "static": true
+              "default": "/tmp",
+              "examples": [
+                "/tmp"
+              ],
+              "static": true
             },
             {
               "name": "timeout",
@@ -436,7 +455,6 @@
               "static": true
             }
           ]
-
         },
         {
           "id": "hydra",
@@ -498,7 +516,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "target",
@@ -578,7 +597,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "hash_file",
@@ -643,7 +663,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "timeout",
@@ -693,7 +714,8 @@
               "type": "array",
               "required": false,
               "location": "arglist",
-              "default": []
+              "default": [],
+              "items": "string"
             },
             {
               "name": "target",

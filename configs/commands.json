@@ -30,9 +30,17 @@
               "required": false,
               "location": "environment",
               "examples": [
-                {"API_KEY": "your-api-key", "LOG_LEVEL": "info"},
-                {"PATH": "/usr/local/bin:/usr/bin:/bin"},
-                {"HOME": "/tmp", "USER": "testuser"}
+                {
+                  "API_KEY": "your-api-key",
+                  "LOG_LEVEL": "info"
+                },
+                {
+                  "PATH": "/usr/local/bin:/usr/bin:/bin"
+                },
+                {
+                  "HOME": "/tmp",
+                  "USER": "testuser"
+                }
               ]
             },
             {
@@ -41,7 +49,11 @@
               "type": "string",
               "required": false,
               "location": "control",
-              "examples": ["/tmp", "/home/user", "/opt/project"]
+              "examples": [
+                "/tmp",
+                "/home/user",
+                "/opt/project"
+              ]
             },
             {
               "name": "timeout",
@@ -92,7 +104,12 @@
               "type": "string",
               "required": true,
               "location": "control",
-              "examples": ["/usr/bin/ls", "/bin/cat", "/usr/bin/python3", "/usr/bin/nmap"]
+              "examples": [
+                "/usr/bin/ls",
+                "/bin/cat",
+                "/usr/bin/python3",
+                "/usr/bin/nmap"
+              ]
             },
             {
               "name": "arguments",
@@ -101,10 +118,20 @@
               "required": false,
               "location": "arglist",
               "examples": [
-                ["-la", "/tmp"],
-                ["--version"],
-                ["-p", "80,443", "192.168.1.1"]
-              ]
+                [
+                  "-la",
+                  "/tmp"
+                ],
+                [
+                  "--version"
+                ],
+                [
+                  "-p",
+                  "80,443",
+                  "192.168.1.1"
+                ]
+              ],
+              "items": "string"
             },
             {
               "name": "environment",
@@ -113,8 +140,12 @@
               "required": false,
               "location": "environment",
               "examples": [
-                {"API_KEY": "your-api-key"},
-                {"PATH": "/usr/local/bin:/usr/bin"}
+                {
+                  "API_KEY": "your-api-key"
+                },
+                {
+                  "PATH": "/usr/local/bin:/usr/bin"
+                }
               ]
             },
             {
@@ -135,7 +166,10 @@
               "type": "string",
               "required": false,
               "location": "control",
-              "examples": ["/tmp", "/home/user"]
+              "examples": [
+                "/tmp",
+                "/home/user"
+              ]
             },
             {
               "name": "timeout",
