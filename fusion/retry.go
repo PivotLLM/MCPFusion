@@ -254,14 +254,21 @@ func (r *RetryExecutor) calculateDelay(attempt int) time.Duration {
 	return delay
 }
 
-// cloneRequest creates a copy of an HTTP request for retry
+// cloneRequest creates a copy of an HTTP request for retry.
+// If GetBody is set (as it is for bytes.Reader bodies created by
+// http.NewRequestWithContext), a fresh body reader is obtained so that
+// retried POST/PUT requests are not sent with an already-consumed body.
 func (r *RetryExecutor) cloneRequest(req *http.Request) *http.Request {
-	// Clone the request
 	cloned := req.Clone(req.Context())
 
-	// Note: We don't clone the body here because it's more complex
-	// In practice, most retryable requests are GET requests without body
-	// For POST/PUT requests with body, the caller should handle body cloning
+	if req.GetBody != nil {
+		body, err := req.GetBody()
+		if err == nil {
+			cloned.Body = body
+		} else if r.logger != nil {
+			r.logger.Warningf("Failed to clone request body for retry: %v", err)
+		}
+	}
 
 	return cloned
 }
