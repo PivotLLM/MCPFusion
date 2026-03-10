@@ -218,6 +218,10 @@ run_test "Mail Draft List API Test" \
     "$TESTS_DIR/test_mail_draft_list.sh" \
     "$TESTS_DIR/mail_draft_list_test_${TIMESTAMP}.log"
 
+run_test "Object Array Parameters Regression Test" \
+    "$TESTS_DIR/test_object_array_params.sh" \
+    "$TESTS_DIR/object_array_params_test_${TIMESTAMP}.log"
+
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"
 echo "Total Tests: $tests_run"
