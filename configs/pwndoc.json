@@ -946,12 +946,12 @@
               "description": "Vulnerability template ID (obtained from list_vulnerabilities)",
               "type": "string",
               "required": true,
-              "location": "body"
+              "location": "query"
             }
           ],
           "response": {
             "type": "json",
-            "transform": ".datas[] | select(._id == \"{vuln_id}\")"
+            "transform": ".datas[] | select(._id == $vuln_id)"
           }
         },
         {

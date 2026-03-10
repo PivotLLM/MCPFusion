@@ -129,7 +129,7 @@ func (m *MLogger) open() (*MLogger, error) {
 		}
 
 		// Open the log file
-		fh, err = os.OpenFile(m.logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		fh, err = os.OpenFile(m.logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}

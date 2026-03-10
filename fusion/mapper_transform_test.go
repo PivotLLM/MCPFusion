@@ -172,7 +172,7 @@ func TestMapper_TransformResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := mapper.TransformResponse(tt.data, tt.transform)
+			result, err := mapper.TransformResponse(tt.data, tt.transform, nil)
 
 			if tt.expectError {
 				require.Error(t, err, "Expected an error but got none")
@@ -230,7 +230,7 @@ func TestMapper_TransformResponse_GmailMessage(t *testing.T) {
 		},
 	}
 
-	result, err := mapper.TransformResponse(data, transform)
+	result, err := mapper.TransformResponse(data, transform, nil)
 	require.NoError(t, err, "Gmail transform should not error")
 
 	resultMap, ok := result.(map[string]interface{})
@@ -325,7 +325,7 @@ func TestMapper_TransformResponse_CalendarEvents(t *testing.T) {
 		},
 	}
 
-	result, err := mapper.TransformResponse(data, transform)
+	result, err := mapper.TransformResponse(data, transform, nil)
 	require.NoError(t, err, "Calendar transform should not error")
 
 	items, ok := result.([]interface{})
@@ -413,7 +413,7 @@ func TestMapper_TransformResponse_DriveFiles(t *testing.T) {
 		},
 	}
 
-	result, err := mapper.TransformResponse(data, transform)
+	result, err := mapper.TransformResponse(data, transform, nil)
 	require.NoError(t, err, "Drive transform should not error")
 
 	files, ok := result.([]interface{})
