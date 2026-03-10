@@ -105,6 +105,26 @@
           "response": { "type": "json" }
         },
         {
+          "id": "list_audit_findings",
+          "name": "List Audit Findings",
+          "description": "List all findings in an audit as a summary (ID, title, category, priority, CVSS, status). Use the returned _id with pwndoc_get_finding to retrieve full details of a specific finding.",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "[.datas.findings[] | {_id, identifier, title, category, priority, cvssv3, status}]"
+          }
+        },
+        {
           "id": "get_audit_general",
           "name": "Get Audit General",
           "description": "Get audit general information (dates, client, company, scope)",
