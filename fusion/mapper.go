@@ -413,13 +413,17 @@ func (m *Mapper) TransformResponse(data interface{}, transform string, vars map[
 	}
 
 	// Build variable names and values for gojq from args.
+	// Only include variables that are actually referenced in the transform
+	// expression (as $name) — gojq rejects unused variable declarations.
 	// JQ variable names require a leading $ but gojq.WithVariables expects
-	// the name without the $; the expression itself uses $name syntax.
+	// the name without the $.
 	var varNames []string
 	var varValues []interface{}
 	for k, v := range vars {
-		varNames = append(varNames, k)
-		varValues = append(varValues, v)
+		if strings.Contains(transform, "$"+k) {
+			varNames = append(varNames, k)
+			varValues = append(varValues, v)
+		}
 	}
 
 	var iter gojq.Iter
