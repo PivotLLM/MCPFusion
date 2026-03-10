@@ -42,7 +42,7 @@
         {
           "id": "get_audit",
           "name": "Get Audit",
-          "description": "Get detailed information about a specific audit including all findings, scope, sections, and metadata",
+          "description": "Get audit metadata and a summary of findings (ID, identifier, title, priority, status, CVSS, category). Full finding details are intentionally excluded — use pwndoc_get_finding with the returned _id to retrieve the complete details of any specific finding. Section content is also excluded — use pwndoc_get_audit_sections for section text.",
           "method": "GET",
           "path": "/api/audits/{audit_id}",
           "parameters": [
@@ -54,7 +54,10 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json",
+            "transform": ".datas | {_id, name, auditType, language, state, createdAt, creator, collaborators, reviewers, company, client, findings: [.findings[] | {_id, identifier, title, priority, status, cvssv3, category}]}"
+          }
         },
         {
           "id": "create_audit",
