@@ -15,39 +15,17 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/mlogger/testlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// authSetupTestLogger implements global.Logger for auth setup tests
-type authSetupTestLogger struct {
-	t *testing.T
-}
-
-func (l *authSetupTestLogger) Debug(msg string)                          { l.t.Log("DEBUG:", msg) }
-func (l *authSetupTestLogger) Debugf(format string, args ...interface{}) { l.t.Logf("DEBUG: "+format, args...) }
-func (l *authSetupTestLogger) Info(msg string)                           { l.t.Log("INFO:", msg) }
-func (l *authSetupTestLogger) Infof(format string, args ...interface{})  { l.t.Logf("INFO: "+format, args...) }
-func (l *authSetupTestLogger) Notice(msg string)                         { l.t.Log("NOTICE:", msg) }
-func (l *authSetupTestLogger) Noticef(format string, args ...interface{}) {
-	l.t.Logf("NOTICE: "+format, args...)
-}
-func (l *authSetupTestLogger) Warning(msg string)                          { l.t.Log("WARN:", msg) }
-func (l *authSetupTestLogger) Warningf(format string, args ...interface{}) { l.t.Logf("WARN: "+format, args...) }
-func (l *authSetupTestLogger) Error(msg string)                            { l.t.Log("ERROR:", msg) }
-func (l *authSetupTestLogger) Errorf(format string, args ...interface{})   { l.t.Logf("ERROR: "+format, args...) }
-func (l *authSetupTestLogger) Fatal(msg string)                            { l.t.Fatal("FATAL:", msg) }
-func (l *authSetupTestLogger) Fatalf(format string, args ...interface{}) {
-	l.t.Fatalf("FATAL: "+format, args...)
-}
-func (l *authSetupTestLogger) Close() {}
 
 // newAuthSetupTestFusion creates a Fusion instance with a real database and MultiTenantAuthManager
 // for auth setup handler tests. Returns the Fusion instance and a cleanup function.
 func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 	t.Helper()
 
-	logger := &authSetupTestLogger{t: t}
+	logger := testlogger.New(t)
 
 	tempDir, err := os.MkdirTemp("", "auth-setup-test-*")
 	require.NoError(t, err, "failed to create temp directory")

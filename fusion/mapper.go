@@ -400,7 +400,9 @@ func (m *Mapper) transformParameter(param ParameterConfig, value interface{}) (i
 }
 
 // TransformResponse applies jq transformations to the response using gojq.
-func (m *Mapper) TransformResponse(data interface{}, transform string) (interface{}, error) {
+// vars contains request args that are passed as JQ variables (e.g., $vuln_id).
+// Variable names in the transform expression must be prefixed with $ per JQ syntax.
+func (m *Mapper) TransformResponse(data interface{}, transform string, vars map[string]interface{}) (interface{}, error) {
 	if transform == "" {
 		return data, nil
 	}
@@ -410,7 +412,28 @@ func (m *Mapper) TransformResponse(data interface{}, transform string) (interfac
 		return nil, fmt.Errorf("invalid transform expression: %w", err)
 	}
 
-	iter := query.Run(data)
+	// Build variable names and values for gojq from args.
+	// JQ variable names require a leading $ but gojq.WithVariables expects
+	// the name without the $; the expression itself uses $name syntax.
+	var varNames []string
+	var varValues []interface{}
+	for k, v := range vars {
+		varNames = append(varNames, k)
+		varValues = append(varValues, v)
+	}
+
+	var iter gojq.Iter
+	if len(varNames) > 0 {
+		code, err := gojq.Compile(query, gojq.WithVariables(varNames))
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile transform with variables: %w", err)
+		}
+		// code.Run(v any, variables ...any): data first, then variable values
+		iter = code.Run(data, varValues...)
+	} else {
+		iter = query.Run(data)
+	}
+
 	v, ok := iter.Next()
 	if !ok {
 		return nil, fmt.Errorf("transform produced no output")

@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/PivotLLM/MCPFusion/mlogger"
 )
 
 func TestFusionIntegration_EndToEnd(t *testing.T) {
@@ -172,7 +174,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 	// Create Fusion instance
 	fusion := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
-		WithLogger(&mockLogger{}),
+		WithLogger(mlogger.NewMemoryLogger()),
 	)
 
 	// Verify configuration loaded
@@ -340,7 +342,7 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 
 	fusion := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
-		WithLogger(&mockLogger{}),
+		WithLogger(mlogger.NewMemoryLogger()),
 	)
 
 	tools := fusion.RegisterTools()
@@ -393,7 +395,7 @@ func TestFusionIntegration_NetworkError(t *testing.T) {
 
 	fusion := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
-		WithLogger(&mockLogger{}),
+		WithLogger(mlogger.NewMemoryLogger()),
 	)
 
 	tools := fusion.RegisterTools()

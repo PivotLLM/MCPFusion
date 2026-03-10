@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/mlogger"
 )
 
 // TestGoogleIntegration tests the Google APIs integration
@@ -74,7 +75,7 @@ func TestGoogleIntegration(t *testing.T) {
 	config := createTestGoogleConfigWithBearer(server.URL)
 
 	// Create fusion instance
-	logger := &MockLogger{}
+	logger := mlogger.NewMemoryLogger()
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-google-config.json"),
 		WithLogger(logger),
@@ -589,7 +590,7 @@ func TestGoogleOAuth2DeviceFlow(t *testing.T) {
 
 	// Test OAuth2 device flow configuration
 	config := createTestGoogleConfig(server.URL)
-	logger := &MockLogger{}
+	logger := mlogger.NewMemoryLogger()
 
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-google-oauth-config.json"),

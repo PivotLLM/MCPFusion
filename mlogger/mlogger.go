@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/PivotLLM/MCPFusion/global"
 )
 
 type MLogger struct {
@@ -27,14 +25,14 @@ type MLogger struct {
 	dateFormat string
 }
 
-// This package implements interfaces.Logger
-var _ global.Logger = (*MLogger)(nil)
+// This package implements Logger
+var _ Logger = (*MLogger)(nil)
 
 // Option is a function that configures a MLogger
 type Option func(*MLogger) error
 
 // New creates a new instance of MLogger with the provided options
-func New(options ...Option) (global.Logger, error) {
+func New(options ...Option) (Logger, error) {
 	m := &MLogger{
 		logLevel:   true,
 		dateFormat: "2006-01-02 15:04:05",
@@ -133,15 +131,9 @@ func (m *MLogger) open() (*MLogger, error) {
 		// Open the log file
 		fh, err = os.OpenFile(m.logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
-			m.fileHandle = nil
-			// If unable to log to file, force stdout logging
-			m.logStdout = true
-		} else {
-			m.fileHandle = fh
-
-			// Attempt to set the file mode to 0644 on a best-effort basis
-			_ = os.Chmod(m.logfile, 0644)
+			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}
+		m.fileHandle = fh
 	} else {
 		// If no log file is specified, force stdout logging
 		m.logStdout = true
@@ -186,75 +178,8 @@ func (m *MLogger) writeLog(level string, message string) {
 	}
 }
 
-// Debug logs a debug message.
-func (m *MLogger) Debug(message string) {
-	if m.debug {
-		m.writeLog("DEBUG", message)
-	}
-}
-
-// Info logs an informational message.
-func (m *MLogger) Info(message string) {
-	m.writeLog("INFO", message)
-}
-
-// Notice logs a notice message.
-func (m *MLogger) Notice(message string) {
-	m.writeLog("NOTICE", message)
-}
-
-// Warning logs a warning message.
-func (m *MLogger) Warning(message string) {
-	m.writeLog("WARNING", message)
-}
-
-// Error logs an error message.
-func (m *MLogger) Error(message string) {
-	m.writeLog("ERROR", message)
-}
-
-// Fatal logs a fatal error message.
-func (m *MLogger) Fatal(message string) {
-	m.writeLog("FATAL", message)
-	m.FatalExit()
-}
-
-// Debugf logs a formatted debug message.
-func (m *MLogger) Debugf(format string, v ...any) {
-	if m.debug {
-		m.writeLog("DEBUG", fmt.Sprintf(format, v...))
-	}
-}
-
-// Infof logs a formatted informational message.
-func (m *MLogger) Infof(format string, v ...any) {
-	m.writeLog("INFO", fmt.Sprintf(format, v...))
-}
-
-// Noticef logs a formatted notice message.
-func (m *MLogger) Noticef(format string, v ...any) {
-	m.writeLog("NOTICE", fmt.Sprintf(format, v...))
-}
-
-// Warningf logs a formatted warning message.
-func (m *MLogger) Warningf(format string, v ...any) {
-	m.writeLog("WARNING", fmt.Sprintf(format, v...))
-}
-
-// Errorf logs a formatted error message.
-func (m *MLogger) Errorf(format string, v ...any) {
-	m.writeLog("ERROR", fmt.Sprintf(format, v...))
-}
-
-// Fatalf logs a formatted fatal message.
-func (m *MLogger) Fatalf(format string, v ...any) {
-	m.writeLog("FATAL", fmt.Sprintf(format, v...))
-	m.FatalExit()
-}
-
-// FatalExit attempts to close the log and exits with a status code of 1
+// FatalExit closes the log and exits with a status code of 1
 func (m *MLogger) FatalExit() {
-	m.writeLog("FATAL", "Exiting with code 1 on fatal error")
 	m.Close()
 	os.Exit(1)
 }

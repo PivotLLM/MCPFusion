@@ -29,7 +29,7 @@
 APIKEY="SET_YOUR_API_KEY_HERE"
 
 # Server URL (MCPFusion must be running)
-SERVER_URL="http://127.0.0.1:9999/mcp"
+: "${SERVER_URL:=http://127.0.0.1:8888/mcp}"
 TRANSPORT="http"
 
 # Name of the stdio hub service to verify (overridable via environment variable)

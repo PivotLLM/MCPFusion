@@ -14,33 +14,14 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/mlogger/testlogger"
 )
 
-// testLogger implements global.Logger using testing.T for log output.
-type testLogger struct {
-	t *testing.T
+// newTestLogger returns a Logger backed by t for use across hub package tests.
+func newTestLogger(t *testing.T) *testlogger.Logger {
+	t.Helper()
+	return testlogger.New(t)
 }
-
-func newTestLogger(t *testing.T) *testLogger {
-	return &testLogger{t: t}
-}
-
-func (l *testLogger) Debug(msg string)                    { l.t.Log("[DEBUG] " + msg) }
-func (l *testLogger) Debugf(format string, args ...any)   { l.t.Logf("[DEBUG] "+format, args...) }
-func (l *testLogger) Info(msg string)                     { l.t.Log("[INFO] " + msg) }
-func (l *testLogger) Infof(format string, args ...any)    { l.t.Logf("[INFO] "+format, args...) }
-func (l *testLogger) Notice(msg string)                   { l.t.Log("[NOTICE] " + msg) }
-func (l *testLogger) Noticef(format string, args ...any)  { l.t.Logf("[NOTICE] "+format, args...) }
-func (l *testLogger) Warning(msg string)                  { l.t.Log("[WARNING] " + msg) }
-func (l *testLogger) Warningf(format string, args ...any) { l.t.Logf("[WARNING] "+format, args...) }
-func (l *testLogger) Error(msg string)                    { l.t.Log("[ERROR] " + msg) }
-func (l *testLogger) Errorf(format string, args ...any)   { l.t.Logf("[ERROR] "+format, args...) }
-func (l *testLogger) Fatal(msg string)                    { l.t.Log("[FATAL] " + msg) }
-func (l *testLogger) Fatalf(format string, args ...any)   { l.t.Logf("[FATAL] "+format, args...) }
-func (l *testLogger) Close()                              {}
-
-// Compile-time check that testLogger satisfies global.Logger.
-var _ global.Logger = (*testLogger)(nil)
 
 // newTestConfigs returns a standard set of service configs for tests.
 func newTestConfigs() map[string]*fusion.ServiceConfig {
@@ -61,7 +42,7 @@ func newTestConfigs() map[string]*fusion.ServiceConfig {
 }
 
 func TestHubProvider_RegisterTools_ReturnsEmpty(t *testing.T) {
-	logger := newTestLogger(t)
+	logger := testlogger.New(t)
 	configs := newTestConfigs()
 
 	provider := NewHubProvider(configs, logger)
@@ -74,7 +55,7 @@ func TestHubProvider_RegisterTools_ReturnsEmpty(t *testing.T) {
 }
 
 func TestHubProvider_NewHubProvider(t *testing.T) {
-	logger := newTestLogger(t)
+	logger := testlogger.New(t)
 	configs := newTestConfigs()
 
 	provider := NewHubProvider(configs, logger)
@@ -90,7 +71,7 @@ func TestHubProvider_NewHubProvider(t *testing.T) {
 }
 
 func TestHubProvider_Shutdown_NoStart(t *testing.T) {
-	logger := newTestLogger(t)
+	logger := testlogger.New(t)
 	configs := newTestConfigs()
 
 	provider := NewHubProvider(configs, logger)

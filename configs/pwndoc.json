@@ -20,7 +20,7 @@
           "cookieFormat": "JWT {token}",
           "expiresIn": 3600,
           "refreshURL": "/api/users/refreshtoken",
-          "refreshMethod": "POST",
+          "refreshMethod": "GET",
           "refreshTokenLocation": "cookie",
           "refreshTokenCookieName": "refreshToken"
         },
@@ -103,6 +103,26 @@
             }
           ],
           "response": { "type": "json" }
+        },
+        {
+          "id": "list_audit_findings",
+          "name": "List Audit Findings",
+          "description": "List all findings in an audit as a summary (ID, title, category, priority, CVSS, status). Use the returned _id with pwndoc_get_finding to retrieve full details of a specific finding.",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "[.datas.findings[] | {_id, identifier, title, category, priority, cvssv3, status}]"
+          }
         },
         {
           "id": "get_audit_general",
@@ -264,27 +284,10 @@
         },
         {
           "id": "get_audit_sections",
-          "name": "Get Audit Sections",
-          "description": "Get audit sections content",
+          "name": "Get Audit Section",
+          "description": "Get content of a specific audit section by section ID (use get_audit to list sections and their IDs)",
           "method": "GET",
-          "path": "/api/audits/{audit_id}/sections",
-          "parameters": [
-            {
-              "name": "audit_id",
-              "description": "The audit ID",
-              "type": "string",
-              "required": true,
-              "location": "path"
-            }
-          ],
-          "response": { "type": "json" }
-        },
-        {
-          "id": "update_audit_sections",
-          "name": "Update Audit Sections",
-          "description": "Update audit sections content",
-          "method": "PUT",
-          "path": "/api/audits/{audit_id}/sections",
+          "path": "/api/audits/{audit_id}/sections/{section_id}",
           "parameters": [
             {
               "name": "audit_id",
@@ -294,10 +297,48 @@
               "location": "path"
             },
             {
-              "name": "sections",
-              "description": "Sections data to update",
-              "type": "object",
+              "name": "section_id",
+              "description": "The section ID (obtained from get_audit)",
+              "type": "string",
               "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_audit_sections",
+          "name": "Update Audit Section",
+          "description": "Update content of a specific audit section by section ID (use get_audit to list sections and their IDs)",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/sections/{section_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "section_id",
+              "description": "The section ID (obtained from get_audit)",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "customFields",
+              "description": "Array of custom field objects with customField ID and text value",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "text",
+              "description": "Section text content",
+              "type": "string",
+              "required": false,
               "location": "body"
             }
           ],
@@ -319,23 +360,6 @@
             }
           ],
           "response": { "type": "binary" }
-        },
-        {
-          "id": "get_audit_findings",
-          "name": "Get Audit Findings",
-          "description": "Get all findings/vulnerabilities from a specific audit",
-          "method": "GET",
-          "path": "/api/audits/{audit_id}/findings",
-          "parameters": [
-            {
-              "name": "audit_id",
-              "description": "The audit ID",
-              "type": "string",
-              "required": true,
-              "location": "path"
-            }
-          ],
-          "response": { "type": "json" }
         },
         {
           "id": "get_finding",
@@ -451,6 +475,20 @@
               "type": "array",
               "required": false,
               "location": "body"
+            },
+            {
+              "name": "customFields",
+              "description": "Custom fields array (e.g. OWASP category)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "remediationComplexity",
+              "description": "Remediation complexity (1=Easy, 2=Medium, 3=Hard)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
             }
           ],
           "response": { "type": "json" }
@@ -552,6 +590,20 @@
               "type": "array",
               "required": false,
               "location": "body"
+            },
+            {
+              "name": "customFields",
+              "description": "Custom fields array (e.g. OWASP category)",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "remediationComplexity",
+              "description": "Remediation complexity (1=Easy, 2=Medium, 3=Hard)",
+              "type": "integer",
+              "required": false,
+              "location": "body"
             }
           ],
           "response": { "type": "json" }
@@ -585,7 +637,7 @@
           "name": "Sort Findings",
           "description": "Reorder findings within an audit",
           "method": "PUT",
-          "path": "/api/audits/{audit_id}/sortFindings",
+          "path": "/api/audits/{audit_id}/sortfindings",
           "parameters": [
             {
               "name": "audit_id",
@@ -608,8 +660,8 @@
           "id": "move_finding",
           "name": "Move Finding",
           "description": "Move a finding from one audit to another",
-          "method": "POST",
-          "path": "/api/audits/{audit_id}/findings/{finding_id}/move/{destination_audit_id}",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/movefinding",
           "parameters": [
             {
               "name": "audit_id",
@@ -619,18 +671,18 @@
               "location": "path"
             },
             {
-              "name": "finding_id",
+              "name": "findingId",
               "description": "Finding ID to move",
               "type": "string",
               "required": true,
-              "location": "path"
+              "location": "body"
             },
             {
-              "name": "destination_audit_id",
+              "name": "auditId",
               "description": "Destination audit ID",
               "type": "string",
               "required": true,
-              "location": "path"
+              "location": "body"
             }
           ],
           "response": { "type": "json" }
@@ -884,29 +936,43 @@
         {
           "id": "list_vulnerabilities",
           "name": "List Vulnerabilities",
-          "description": "List all vulnerability templates in the library",
-          "method": "GET",
-          "path": "/api/vulnerabilities",
-          "parameters": [],
-          "response": { "type": "json" }
-        },
-        {
-          "id": "get_vulnerabilities_by_locale",
-          "name": "Get Vulnerabilities by Locale",
-          "description": "Get vulnerability templates for a specific language",
+          "description": "List vulnerability templates as a summary (ID, title, type, CVSS, priority, category). Use the returned _id to reference a specific vulnerability. Defaults to English; specify locale for other languages.",
           "method": "GET",
           "path": "/api/vulnerabilities/{locale}",
           "parameters": [
             {
               "name": "locale",
-              "description": "Language code (e.g., 'en', 'fr')",
+              "description": "Language code (e.g., 'en', 'fr'). Defaults to 'en'.",
               "type": "string",
-              "required": true,
+              "required": false,
               "location": "path",
               "default": "en"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json",
+            "transform": "[.datas[] | {_id, title: .detail.title, type: .detail.vulnType, category, priority, cvssv3}]"
+          }
+        },
+        {
+          "id": "get_vulnerability",
+          "name": "Get Vulnerability",
+          "description": "Get the full details of a single vulnerability template by ID (use list_vulnerabilities to find the _id). Returns all fields including description, observation, remediation, references, and custom fields.",
+          "method": "GET",
+          "path": "/api/vulnerabilities",
+          "parameters": [
+            {
+              "name": "vuln_id",
+              "description": "Vulnerability template ID (obtained from list_vulnerabilities)",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": ".datas[] | select(._id == $vuln_id)"
+          }
         },
         {
           "id": "create_vulnerability",
@@ -917,8 +983,8 @@
           "parameters": [
             {
               "name": "details",
-              "description": "Vulnerability details by locale",
-              "type": "object",
+              "description": "Vulnerability details by locale (array of locale objects, each with: locale, title, vulnType, description, observation, remediation, references, customFields)",
+              "type": "array",
               "required": true,
               "location": "body"
             },
@@ -969,8 +1035,8 @@
             },
             {
               "name": "details",
-              "description": "Vulnerability details by locale",
-              "type": "object",
+              "description": "Vulnerability details by locale (array of locale objects, each with: locale, title, vulnType, description, observation, remediation, references, customFields)",
+              "type": "array",
               "required": false,
               "location": "body"
             },

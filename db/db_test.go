@@ -14,62 +14,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PivotLLM/MCPFusion/mlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// testLogger implements the global.Logger interface for testing
-type testLogger struct {
-	logs []string
-	mu   sync.Mutex
-}
-
-func newTestLogger() *testLogger {
-	return &testLogger{
-		logs: make([]string, 0),
-	}
-}
-
-func (l *testLogger) addLog(msg string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.logs = append(l.logs, msg)
-}
-
-func (l *testLogger) getLogs() []string {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	cpy := make([]string, len(l.logs))
-	for i, log := range l.logs {
-		cpy[i] = log
-	}
-	return cpy
-}
-
-func (l *testLogger) Debug(msg string)                { l.addLog("DEBUG: " + msg) }
-func (l *testLogger) Info(msg string)                 { l.addLog("INFO: " + msg) }
-func (l *testLogger) Notice(msg string)               { l.addLog("NOTICE: " + msg) }
-func (l *testLogger) Warning(msg string)              { l.addLog("WARNING: " + msg) }
-func (l *testLogger) Error(msg string)                { l.addLog("ERROR: " + msg) }
-func (l *testLogger) Fatal(msg string)                { l.addLog("FATAL: " + msg) }
-func (l *testLogger) Debugf(format string, v ...any)  { l.addLog(fmt.Sprintf("DEBUG: "+format, v...)) }
-func (l *testLogger) Infof(format string, v ...any)   { l.addLog(fmt.Sprintf("INFO: "+format, v...)) }
-func (l *testLogger) Noticef(format string, v ...any) { l.addLog(fmt.Sprintf("NOTICE: "+format, v...)) }
-func (l *testLogger) Warningf(format string, v ...any) {
-	l.addLog(fmt.Sprintf("WARNING: "+format, v...))
-}
-func (l *testLogger) Errorf(format string, v ...any) { l.addLog(fmt.Sprintf("ERROR: "+format, v...)) }
-func (l *testLogger) Fatalf(format string, v ...any) { l.addLog(fmt.Sprintf("FATAL: "+format, v...)) }
-func (l *testLogger) Close()                         {}
-
 // Test helper functions
 
 // setupTestDB creates a temporary database for testing
-func setupTestDB(t *testing.T) (Database, string, *testLogger) {
+func setupTestDB(t *testing.T) (Database, string, *mlogger.MemoryLogger) {
 	tempDir, err := os.MkdirTemp("", "mcpfusion_test_")
 	require.NoError(t, err, "Failed to create temp directory")
 
-	logger := newTestLogger()
+	logger := mlogger.NewMemoryLogger()
 	db, err := New(
 		WithLogger(logger),
 		WithDataDir(tempDir),

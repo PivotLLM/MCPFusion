@@ -11,34 +11,18 @@ import (
 	"testing"
 
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/mlogger/testlogger"
 )
 
-// testLogger is a simple logger for tests
-type testLogger struct {
-	t *testing.T
+// newTestLogger returns a Logger backed by t for use across fusion package tests.
+func newTestLogger(t *testing.T) *testlogger.Logger {
+	t.Helper()
+	return testlogger.New(t)
 }
-
-func (l *testLogger) Debug(msg string)                          { l.t.Log("DEBUG:", msg) }
-func (l *testLogger) Debugf(format string, args ...interface{}) { l.t.Logf("DEBUG: "+format, args...) }
-func (l *testLogger) Info(msg string)                           { l.t.Log("INFO:", msg) }
-func (l *testLogger) Infof(format string, args ...interface{})  { l.t.Logf("INFO: "+format, args...) }
-func (l *testLogger) Notice(msg string)                         { l.t.Log("NOTICE:", msg) }
-func (l *testLogger) Noticef(format string, args ...interface{}) {
-	l.t.Logf("NOTICE: "+format, args...)
-}
-func (l *testLogger) Warning(msg string)                          { l.t.Log("WARN:", msg) }
-func (l *testLogger) Warningf(format string, args ...interface{}) { l.t.Logf("WARN: "+format, args...) }
-func (l *testLogger) Error(msg string)                            { l.t.Log("ERROR:", msg) }
-func (l *testLogger) Errorf(format string, args ...interface{})   { l.t.Logf("ERROR: "+format, args...) }
-func (l *testLogger) Fatal(msg string)                            { l.t.Fatal("FATAL:", msg) }
-func (l *testLogger) Fatalf(format string, args ...interface{}) {
-	l.t.Fatalf("FATAL: "+format, args...)
-}
-func (l *testLogger) Close() {}
 
 func TestKaliConfig_CommandExec(t *testing.T) {
 	// Create a test logger
-	logger := &testLogger{t: t}
+	logger := newTestLogger(t)
 
 	// Load kali.json config
 	fusion := New(
@@ -99,7 +83,7 @@ func TestKaliConfig_Nmap(t *testing.T) {
 	}
 
 	// Load config and test
-	logger := &testLogger{t: t}
+	logger := newTestLogger(t)
 	fusion := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/kali.json"),

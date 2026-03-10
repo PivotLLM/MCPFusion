@@ -176,16 +176,35 @@ MCPFusion provides multi-tenant authentication (keyed to the user's API key) wit
 - The `run_all_tests.sh` script should include all individual test scripts
 
 ### Current Test Coverage
+
+**Core tests** (`tests/`): run via `tests/run_all_tests.sh`
+- `test_health.sh` - Tests server health endpoint
+- `test_knowledge.sh` - Tests knowledge store tools
+- `test_knowledge_key.sh` - Tests knowledge key operations
+- `test_stdio.sh` - Tests stdio transport
+
+**Microsoft 365** (`tests/M365/`): run via `tests/M365/run_all_tests.sh`
 - `test_profile.sh` - Tests `microsoft365_profile_get`
 - `test_calendar_summary.sh` - Tests `microsoft365_calendar_read_summary`
 - `test_calendar_details.sh` - Tests `microsoft365_calendar_read_details`
 - `test_mail.sh` - Tests `microsoft365_mail_read_inbox`
 - `test_contacts.sh` - Tests `microsoft365_contacts_list`
+- (and many more — see `tests/M365/`)
+
+**Google** (`tests/Google/`): run via `tests/Google/run_all_tests.sh`
+- `test_profile.sh` - Tests `google_profile_get`
+- `test_contacts_list.sh`, `test_contacts_get.sh`, `test_contacts_search.sh`
+- `test_gmail_draft_*.sh` - Tests Gmail draft operations
+
+**PwnDoc** (`tests/PwnDoc/`)
+- `test_audits.sh` - Tests audit listing
+- `test_findings.sh` - Tests finding operations
+- `test_clients.sh` - Tests client/company management
 
 ### Adding New Tool Tests
 When adding new MCP tools:
-1. Create a dedicated test script in `tests/test_newtool.sh`
-2. Add the test to `tests/run_all_tests.sh`
+1. Create a dedicated test script in the appropriate subdirectory (e.g., `tests/M365/test_newtool.sh`)
+2. Add the test to the corresponding `run_all_tests.sh` for that subdirectory
 3. Update the test documentation in `tests/README.md`
 4. Ensure the test covers multiple scenarios (default params, custom fields, edge cases)
 

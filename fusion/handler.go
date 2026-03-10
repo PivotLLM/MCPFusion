@@ -351,7 +351,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Handle response
-	result, err := h.handleResponse(resp, correlationID)
+	result, err := h.handleResponse(resp, correlationID, args)
 	if err != nil {
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Response handling failed [%s]: %v", correlationID, err)
@@ -591,7 +591,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 }
 
 // handleResponse processes the HTTP response
-func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) (string, error) {
+func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, args map[string]interface{}) (string, error) {
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -627,18 +627,6 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 		return string(body), nil
 	}
 
-	// Enforce response size limit for successful responses
-	if h.fusion.MaxResponseBytes() > 0 && len(body) > h.fusion.MaxResponseBytes() {
-		if h.fusion.logger != nil {
-			h.fusion.logger.Warningf("Response size %d bytes exceeds limit of %d bytes [%s]",
-				len(body), h.fusion.MaxResponseBytes(), correlationID)
-		}
-		return fmt.Sprintf(
-			"Response too large (%d bytes, limit %d bytes). Request fewer records or fields and try again.",
-			len(body), h.fusion.MaxResponseBytes(),
-		), nil
-	}
-
 	// Handle different response types
 	switch h.endpoint.Response.Type {
 	case "json":
@@ -648,10 +636,11 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 			return "", fmt.Errorf("failed to parse JSON response: %w", err)
 		}
 
-		// Apply transformation if specified
+		// Apply transformation if specified before enforcing the size limit,
+		// so that transforms can reduce an oversized response to a valid one.
 		if h.endpoint.Response.Transform != "" {
 			mapper := NewMapper(h.fusion.logger)
-			transformed, err := mapper.TransformResponse(data, h.endpoint.Response.Transform)
+			transformed, err := mapper.TransformResponse(data, h.endpoint.Response.Transform, args)
 			if err != nil {
 				return "", fmt.Errorf("failed to transform response: %w", err)
 			}
@@ -663,6 +652,19 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal response: %w", err)
 		}
+
+		// Enforce response size limit against the final (post-transform) output.
+		if h.fusion.MaxResponseBytes() > 0 && len(result) > h.fusion.MaxResponseBytes() {
+			if h.fusion.logger != nil {
+				h.fusion.logger.Warningf("Response size %d bytes exceeds limit of %d bytes [%s]",
+					len(result), h.fusion.MaxResponseBytes(), correlationID)
+			}
+			return fmt.Sprintf(
+				"Response too large (%d bytes, limit %d bytes). Request fewer records or fields and try again.",
+				len(result), h.fusion.MaxResponseBytes(),
+			), nil
+		}
+
 		return string(result), nil
 
 	case "text":
@@ -719,3 +721,4 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 	message := err.Error()
 	return NewNetworkError(req.URL.String(), req.Method, message, err, timeout, retryable)
 }
+
