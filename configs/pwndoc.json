@@ -942,8 +942,8 @@
           "parameters": [
             {
               "name": "details",
-              "description": "Vulnerability details by locale",
-              "type": "object",
+              "description": "Vulnerability details by locale (array of locale objects, each with: locale, title, vulnType, description, observation, remediation, references, customFields)",
+              "type": "array",
               "required": true,
               "location": "body"
             },
@@ -994,8 +994,8 @@
             },
             {
               "name": "details",
-              "description": "Vulnerability details by locale",
-              "type": "object",
+              "description": "Vulnerability details by locale (array of locale objects, each with: locale, title, vulnType, description, observation, remediation, references, customFields)",
+              "type": "array",
               "required": false,
               "location": "body"
             },
