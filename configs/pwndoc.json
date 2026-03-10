@@ -264,27 +264,10 @@
         },
         {
           "id": "get_audit_sections",
-          "name": "Get Audit Sections",
-          "description": "Get audit sections content",
+          "name": "Get Audit Section",
+          "description": "Get content of a specific audit section by section ID (use get_audit to list sections and their IDs)",
           "method": "GET",
-          "path": "/api/audits/{audit_id}/sections",
-          "parameters": [
-            {
-              "name": "audit_id",
-              "description": "The audit ID",
-              "type": "string",
-              "required": true,
-              "location": "path"
-            }
-          ],
-          "response": { "type": "json" }
-        },
-        {
-          "id": "update_audit_sections",
-          "name": "Update Audit Sections",
-          "description": "Update audit sections content",
-          "method": "PUT",
-          "path": "/api/audits/{audit_id}/sections",
+          "path": "/api/audits/{audit_id}/sections/{section_id}",
           "parameters": [
             {
               "name": "audit_id",
@@ -294,10 +277,48 @@
               "location": "path"
             },
             {
-              "name": "sections",
-              "description": "Sections data to update",
-              "type": "object",
+              "name": "section_id",
+              "description": "The section ID (obtained from get_audit)",
+              "type": "string",
               "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "update_audit_sections",
+          "name": "Update Audit Section",
+          "description": "Update content of a specific audit section by section ID (use get_audit to list sections and their IDs)",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/sections/{section_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "section_id",
+              "description": "The section ID (obtained from get_audit)",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "customFields",
+              "description": "Array of custom field objects with customField ID and text value",
+              "type": "array",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "text",
+              "description": "Section text content",
+              "type": "string",
+              "required": false,
               "location": "body"
             }
           ],
@@ -596,7 +617,7 @@
           "name": "Sort Findings",
           "description": "Reorder findings within an audit",
           "method": "PUT",
-          "path": "/api/audits/{audit_id}/sortFindings",
+          "path": "/api/audits/{audit_id}/sortfindings",
           "parameters": [
             {
               "name": "audit_id",
@@ -619,8 +640,8 @@
           "id": "move_finding",
           "name": "Move Finding",
           "description": "Move a finding from one audit to another",
-          "method": "POST",
-          "path": "/api/audits/{audit_id}/findings/{finding_id}/move/{destination_audit_id}",
+          "method": "PUT",
+          "path": "/api/audits/{audit_id}/movefinding",
           "parameters": [
             {
               "name": "audit_id",
@@ -630,18 +651,18 @@
               "location": "path"
             },
             {
-              "name": "finding_id",
+              "name": "findingId",
               "description": "Finding ID to move",
               "type": "string",
               "required": true,
-              "location": "path"
+              "location": "body"
             },
             {
-              "name": "destination_audit_id",
+              "name": "auditId",
               "description": "Destination audit ID",
               "type": "string",
               "required": true,
-              "location": "path"
+              "location": "body"
             }
           ],
           "response": { "type": "json" }
