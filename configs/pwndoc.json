@@ -914,6 +914,26 @@
           }
         },
         {
+          "id": "get_vulnerability",
+          "name": "Get Vulnerability",
+          "description": "Get the full details of a single vulnerability template by ID (use list_vulnerabilities to find the _id). Returns all fields including description, observation, remediation, references, and custom fields.",
+          "method": "GET",
+          "path": "/api/vulnerabilities",
+          "parameters": [
+            {
+              "name": "vuln_id",
+              "description": "Vulnerability template ID (obtained from list_vulnerabilities)",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": ".datas[] | select(._id == \"{vuln_id}\")"
+          }
+        },
+        {
           "id": "create_vulnerability",
           "name": "Create Vulnerability",
           "description": "Create a new vulnerability template",

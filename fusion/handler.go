@@ -351,7 +351,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Handle response
-	result, err := h.handleResponse(resp, correlationID)
+	result, err := h.handleResponse(resp, correlationID, args)
 	if err != nil {
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Response handling failed [%s]: %v", correlationID, err)
@@ -591,7 +591,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 }
 
 // handleResponse processes the HTTP response
-func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) (string, error) {
+func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, args map[string]interface{}) (string, error) {
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -640,7 +640,8 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string) 
 		// so that transforms can reduce an oversized response to a valid one.
 		if h.endpoint.Response.Transform != "" {
 			mapper := NewMapper(h.fusion.logger)
-			transformed, err := mapper.TransformResponse(data, h.endpoint.Response.Transform)
+			transform := interpolateTransform(h.endpoint.Response.Transform, args)
+			transformed, err := mapper.TransformResponse(data, transform)
 			if err != nil {
 				return "", fmt.Errorf("failed to transform response: %w", err)
 			}
@@ -720,4 +721,15 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 
 	message := err.Error()
 	return NewNetworkError(req.URL.String(), req.Method, message, err, timeout, retryable)
+}
+
+// interpolateTransform replaces {param_name} placeholders in a transform
+// expression with the corresponding values from args. This allows response
+// transforms to filter or select based on request parameters (e.g.,
+// `.datas[] | select(._id == "{vuln_id}")`).
+func interpolateTransform(transform string, args map[string]interface{}) string {
+	for k, v := range args {
+		transform = strings.ReplaceAll(transform, "{"+k+"}", fmt.Sprintf("%v", v))
+	}
+	return transform
 }
