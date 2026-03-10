@@ -45,9 +45,11 @@ func (s *MCPServer) AddTools() {
 				case "boolean":
 					toolOption = mcp.WithBoolean(param.Name, options...)
 				case "array":
-					// Only constrain item type to string when explicitly specified or when unset (default).
-					// Parameters with items="object" accept structured objects, so no item type constraint is added.
-					if param.Items != "object" {
+					// Set the items schema based on the declared item type.
+					// JSON Schema requires arrays to have an items field, so we always set one.
+					if param.Items == "object" {
+						options = append(options, mcp.Items(map[string]any{"type": "object"}))
+					} else {
 						options = append(options, mcp.WithStringItems())
 					}
 					toolOption = mcp.WithArray(param.Name, options...)
