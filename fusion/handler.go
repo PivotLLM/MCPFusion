@@ -92,6 +92,10 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	timeTokenProcessor := NewTimeTokenProcessor(h.fusion.logger)
 	args = timeTokenProcessor.ProcessParameterArgs(args)
 
+	// Coerce JSON-encoded string values to native array/object types.
+	// Some MCP clients serialize structured parameters as strings.
+	coerceArgumentTypes(h.endpoint.Parameters, args)
+
 	// Validate parameters
 	validator := NewValidator(h.fusion.logger)
 	if err := validator.ValidateParameters(h.endpoint.Parameters, args); err != nil {
@@ -749,6 +753,30 @@ func sanitizeFilename(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// coerceArgumentTypes attempts to convert string values to their declared types for
+// array and object parameters. Some MCP clients serialize arrays/objects as
+// JSON-encoded strings rather than native JSON types; this coercion ensures
+// MCPFusion handles both representations uniformly.
+func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}) {
+	for _, param := range params {
+		if param.Type != ParameterTypeArray && param.Type != ParameterTypeObject {
+			continue
+		}
+		val, ok := args[param.Name]
+		if !ok {
+			continue
+		}
+		str, ok := val.(string)
+		if !ok {
+			continue // already the right type
+		}
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(str), &parsed); err == nil {
+			args[param.Name] = parsed
+		}
+	}
 }
 
 // wrapNetworkError wraps network errors in NetworkError type
