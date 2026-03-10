@@ -375,7 +375,7 @@
             },
             {
               "name": "customFields",
-              "description": "Array of custom field objects with customField ID and text value",
+              "description": "Array of custom field objects. Each element must be the full embedded object: {\"customField\": {\"_id\": \"...\", \"label\": \"...\", \"fieldType\": \"...\", \"description\": \"...\"}, \"text\": \"value\"}. Do NOT pass a plain ID string — PwnDoc's report generator requires the full inline object and will crash if given only a reference ID.",
               "type": "array",
               "required": false,
               "location": "body",
@@ -532,7 +532,7 @@
             },
             {
               "name": "customFields",
-              "description": "Custom fields array (e.g. OWASP category)",
+              "description": "Array of custom field objects. Each element must be the full embedded object: {\"customField\": {\"_id\": \"...\", \"label\": \"...\", \"fieldType\": \"...\", \"description\": \"...\"}, \"text\": \"value\"}. Do NOT pass a plain ID string — PwnDoc's report generator requires the full inline object and will crash if given only a reference ID.",
               "type": "array",
               "required": false,
               "location": "body",
@@ -651,7 +651,7 @@
             },
             {
               "name": "customFields",
-              "description": "Custom fields array (e.g. OWASP category)",
+              "description": "Array of custom field objects. Each element must be the full embedded object: {\"customField\": {\"_id\": \"...\", \"label\": \"...\", \"fieldType\": \"...\", \"description\": \"...\"}, \"text\": \"value\"}. Do NOT pass a plain ID string — PwnDoc's report generator requires the full inline object and will crash if given only a reference ID.",
               "type": "array",
               "required": false,
               "location": "body",
