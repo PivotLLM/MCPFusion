@@ -98,7 +98,12 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	coerceArgumentTypes(h.endpoint.Parameters, args, h.fusion.logger)
 
 	// Apply declared named transforms to string parameter values.
-	applyParameterTransforms(h.endpoint.Parameters, args, h.fusion.logger)
+	if err := applyParameterTransforms(h.endpoint.Parameters, args, h.fusion.logger); err != nil {
+		if h.fusion.logger != nil {
+			h.fusion.logger.Errorf("Parameter transform validation failed [%s]: %v", correlationID, err)
+		}
+		return "", err
+	}
 
 	// Validate parameters
 	validator := NewValidator(h.fusion.logger)
@@ -515,7 +520,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 				}
 				httpClient = &http.Client{
 					Transport: transport,
-					Timeout:   timeout,
+					Timeout:   timeout + time.Minute,
 				}
 				if h.fusion.logger != nil {
 					h.fusion.logger.Debugf("Using custom timeout %v for request [%s]", timeout, correlationID)
@@ -662,9 +667,9 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("API error [%s]: status=%d, body=%s", correlationID, resp.StatusCode, string(body))
 		}
-		// Return the actual API error response instead of a generic message
-		// This allows LLMs to understand what went wrong and correct their requests
-		return string(body), nil
+		retryable := resp.StatusCode >= 500 || resp.StatusCode == 429
+		return "", NewAPIErrorWithCorrelation(h.service.Name, h.endpoint.ID,
+			resp.StatusCode, "API request failed", string(body), retryable, correlationID)
 	}
 
 	// Handle different response types
@@ -674,6 +679,22 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 		var data interface{}
 		if err := json.Unmarshal(body, &data); err != nil {
 			return "", fmt.Errorf("failed to parse JSON response: %w", err)
+		}
+
+		// For paginated responses without an explicit transform, extract the data array
+		// using the configured dataPath. When a transform is present it is expected to
+		// select the data itself, so we leave the full object intact for the transform.
+		if h.endpoint.Response.Paginated &&
+			h.endpoint.Response.PaginationConfig != nil &&
+			h.endpoint.Response.Transform == "" {
+			dataPath := h.endpoint.Response.PaginationConfig.DataPath
+			if dataPath != "" {
+				if obj, ok := data.(map[string]interface{}); ok {
+					if pageData, exists := obj[dataPath]; exists {
+						data = pageData
+					}
+				}
+			}
 		}
 
 		// Apply transformation if specified before enforcing the size limit,
@@ -810,7 +831,7 @@ func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}, 
 		if err := json.Unmarshal([]byte(str), &parsed); err == nil {
 			args[param.Name] = parsed
 			if logger != nil {
-				logger.Debugf("coerced parameter %q from JSON string to native %s type", param.Name, param.Type)
+				logger.Warningf("coerced parameter %q from JSON string to native %s type — MCP client should send native JSON type", param.Name, param.Type)
 			}
 		} else {
 			if logger != nil {
@@ -836,7 +857,12 @@ var interElementWhitespace = regexp.MustCompile(`>[ \t]*[\r\n]+[ \t\r\n]*<`)
 // Currently supported transforms:
 //   - "html_compact": strips whitespace-only text nodes between HTML tags, preventing
 //     crashes in HTML-to-OOXML converters (e.g. PwnDoc) that cannot handle inter-element whitespace.
-func applyParameterTransforms(params []ParameterConfig, args map[string]interface{}, logger global.Logger) {
+//   - "html_compact_fields:<field1>,<field2>,...": for array-of-object parameters, applies
+//     interElementWhitespace stripping to the specified field keys in each element.
+//   - "validate_object_fields:<field1>,<field2>,...": for array-of-object parameters, validates
+//     that each specified dot-path field exists and is non-empty in every element. Returns an
+//     error describing the first missing or empty field found.
+func applyParameterTransforms(params []ParameterConfig, args map[string]interface{}, logger global.Logger) error {
 	for _, param := range params {
 		if len(param.Transforms) == 0 {
 			continue
@@ -845,13 +871,14 @@ func applyParameterTransforms(params []ParameterConfig, args map[string]interfac
 		if !ok {
 			continue
 		}
-		str, ok := val.(string)
-		if !ok {
-			continue
-		}
+
 		for _, transform := range param.Transforms {
-			switch transform {
-			case "html_compact":
+			// --- html_compact (string parameter) ---
+			if transform == "html_compact" {
+				str, ok := val.(string)
+				if !ok {
+					continue
+				}
 				compacted := interElementWhitespace.ReplaceAllString(str, "><")
 				if compacted != str {
 					if logger != nil {
@@ -859,14 +886,122 @@ func applyParameterTransforms(params []ParameterConfig, args map[string]interfac
 					}
 					str = compacted
 				}
-			default:
-				if logger != nil {
-					logger.Warningf("unknown transform %q declared for parameter %q — skipping", transform, param.Name)
+				args[param.Name] = str
+				val = args[param.Name]
+				continue
+			}
+
+			// --- html_compact_fields:<field1>,<field2>,... (array-of-object parameter) ---
+			if strings.HasPrefix(transform, "html_compact_fields:") {
+				if param.Type != ParameterTypeArray || param.Items != "object" {
+					continue
 				}
+				fieldNames := strings.Split(strings.TrimPrefix(transform, "html_compact_fields:"), ",")
+				arr, ok := val.([]interface{})
+				if !ok {
+					if logger != nil {
+						logger.Warningf("transform html_compact_fields: parameter %q is not []interface{} — skipping", param.Name)
+					}
+					continue
+				}
+				for i, elem := range arr {
+					obj, ok := elem.(map[string]interface{})
+					if !ok {
+						if logger != nil {
+							logger.Warningf("transform html_compact_fields: element %d in parameter %q is not a map — skipping", i, param.Name)
+						}
+						continue
+					}
+					for _, field := range fieldNames {
+						fieldVal, exists := obj[field]
+						if !exists {
+							continue
+						}
+						fieldStr, ok := fieldVal.(string)
+						if !ok {
+							continue
+						}
+						compacted := interElementWhitespace.ReplaceAllString(fieldStr, "><")
+						if compacted != fieldStr {
+							obj[field] = compacted
+							if logger != nil {
+								logger.Debugf("transform html_compact_fields modified field %q in element %d of parameter %q", field, i, param.Name)
+							}
+						}
+					}
+				}
+				continue
+			}
+
+			// --- validate_object_fields:<field1>,<field2>,... (array-of-object parameter) ---
+			if strings.HasPrefix(transform, "validate_object_fields:") {
+				if param.Type != ParameterTypeArray || param.Items != "object" {
+					continue
+				}
+				fieldPaths := strings.Split(strings.TrimPrefix(transform, "validate_object_fields:"), ",")
+				arr, ok := val.([]interface{})
+				if !ok {
+					if logger != nil {
+						logger.Warningf("transform validate_object_fields: parameter %q is not []interface{} — skipping", param.Name)
+					}
+					continue
+				}
+				for i, elem := range arr {
+					obj, ok := elem.(map[string]interface{})
+					if !ok {
+						if logger != nil {
+							logger.Warningf("transform validate_object_fields: element %d in parameter %q is not a map — skipping", i, param.Name)
+						}
+						continue
+					}
+					for _, path := range fieldPaths {
+						fieldVal, found := getNestedField(obj, path)
+						if !found {
+							return fmt.Errorf("parameter %q element %d: required field %q is missing", param.Name, i, path)
+						}
+						// Check for empty string
+						if str, ok := fieldVal.(string); ok && str == "" {
+							return fmt.Errorf("parameter %q element %d: required field %q is empty", param.Name, i, path)
+						}
+						// Check for nil
+						if fieldVal == nil {
+							return fmt.Errorf("parameter %q element %d: required field %q is nil", param.Name, i, path)
+						}
+					}
+				}
+				continue
+			}
+
+			// --- unknown transform ---
+			if logger != nil {
+				logger.Warningf("unknown transform %q declared for parameter %q — skipping", transform, param.Name)
 			}
 		}
-		args[param.Name] = str
 	}
+	return nil
+}
+
+// getNestedField retrieves a value from obj using a dot-separated path.
+// Splits on the first dot only, supporting two-level paths like "customField._id".
+// Returns (value, true) if found at every level, (nil, false) if any key is missing.
+func getNestedField(obj map[string]interface{}, dotPath string) (interface{}, bool) {
+	dotIdx := strings.Index(dotPath, ".")
+	if dotIdx < 0 {
+		val, ok := obj[dotPath]
+		return val, ok
+	}
+	parent := dotPath[:dotIdx]
+	child := dotPath[dotIdx+1:]
+	parentVal, ok := obj[parent]
+	if !ok {
+		return nil, false
+	}
+	parentMap, ok := parentVal.(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+	val, ok := parentMap[child]
+	return val, ok
 }
 
 // wrapNetworkError wraps network errors in NetworkError type

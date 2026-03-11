@@ -356,8 +356,15 @@ func (s *BearerTokenStrategy) SupportsRefresh() bool {
 	return false
 }
 
-func (s *BearerTokenStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
-	return nil, fmt.Errorf("bearer token authentication not implemented in database-only mode")
+func (s *BearerTokenStrategy) Authenticate(_ context.Context, config map[string]interface{}) (*TokenInfo, error) {
+	// If a static token is provided in config, return it directly.
+	if token, ok := config["token"].(string); ok && token != "" {
+		return &TokenInfo{
+			AccessToken: token,
+			TokenType:   "Bearer",
+		}, nil
+	}
+	return nil, fmt.Errorf("bearer token: no static token in config")
 }
 
 func (s *BearerTokenStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {

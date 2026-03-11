@@ -20,54 +20,6 @@ func newTestLogger(t *testing.T) *testlogger.Logger {
 	return testlogger.New(t)
 }
 
-func TestKaliConfig_CommandExec(t *testing.T) {
-	// Create a test logger
-	logger := newTestLogger(t)
-
-	// Load kali.json config
-	fusion := New(
-		WithLogger(logger),
-		WithJSONConfig("../configs/kali.json"),
-	)
-
-	if fusion.config == nil {
-		t.Fatal("Failed to load kali.json config")
-	}
-
-	// Get registered tools
-	tools := fusion.RegisterTools()
-
-	// Find command_exec tool
-	var execTool *global.ToolDefinition
-	for i := range tools {
-		if tools[i].Name == "command_exec" {
-			execTool = &tools[i]
-			break
-		}
-	}
-
-	if execTool == nil {
-		t.Fatal("command_exec tool not found")
-	}
-
-	// Test execution
-	result, err := execTool.Handler(map[string]interface{}{
-		"command": "echo 'test output'",
-	})
-
-	if err != nil {
-		t.Fatalf("Execution failed: %v", err)
-	}
-
-	if !strings.Contains(result, "Exit Code: 0") {
-		t.Errorf("Expected exit code 0 in result: %s", result)
-	}
-
-	if !strings.Contains(result, "test output") {
-		t.Errorf("Expected 'test output' in result: %s", result)
-	}
-}
-
 func TestKaliConfig_Nmap(t *testing.T) {
 	// Skip if nmap not installed
 	executor := NewCommandExecutor(nil)

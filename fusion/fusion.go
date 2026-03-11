@@ -40,6 +40,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -324,6 +325,14 @@ func WithSharedCollector(c *metrics.Collector) Option {
 func WithMaxResponseBytes(n int) Option {
 	return func(f *Fusion) {
 		f.maxResponseBytes = n
+	}
+}
+
+// WithAllowDestructive enables destructive tools (e.g. DELETE operations) for this instance.
+// This option overrides the MCP_FUSION_ALLOW_DESTRUCTIVE environment variable.
+func WithAllowDestructive(allow bool) Option {
+	return func(f *Fusion) {
+		f.allowDestructive = allow
 	}
 }
 
@@ -852,43 +861,18 @@ type contextAwareHandler struct {
 func (h *contextAwareHandler) Call(options map[string]any) (string, error) {
 	ctx := context.Background()
 
-	// Debug: Log what options we're receiving
-	if h.httpHandler.fusion.logger != nil {
-		h.httpHandler.fusion.logger.Debugf("contextAwareHandler.Call received options: %+v", options)
-		for k, v := range options {
-			h.httpHandler.fusion.logger.Debugf("  option[%s] = %T: %v", k, v, v)
-		}
-	}
-
-	// Check if the MCP server passed the context through options
 	if ctxValue, exists := options["__mcp_context"]; exists {
-		if h.httpHandler.fusion.logger != nil {
-			h.httpHandler.fusion.logger.Debugf("Found __mcp_context in options: %T", ctxValue)
-		}
 		if contextFromMCP, ok := ctxValue.(context.Context); ok {
 			ctx = contextFromMCP
-			if h.httpHandler.fusion.logger != nil {
-				h.httpHandler.fusion.logger.Debugf("Successfully extracted context from MCP server")
-			}
-			// Remove the context from options so it doesn't interfere with API calls
-			filteredOptions := make(map[string]any)
+			filteredOptions := make(map[string]any, len(options)-1)
 			for k, v := range options {
 				if k != "__mcp_context" {
 					filteredOptions[k] = v
 				}
 			}
 			return h.CallWithContext(ctx, filteredOptions)
-		} else {
-			if h.httpHandler.fusion.logger != nil {
-				h.httpHandler.fusion.logger.Warningf("__mcp_context found but is not context.Context: %T", ctxValue)
-			}
-		}
-	} else {
-		if h.httpHandler.fusion.logger != nil {
-			h.httpHandler.fusion.logger.Warningf("No __mcp_context found in options")
 		}
 	}
-
 	return h.CallWithContext(ctx, options)
 }
 
@@ -1906,6 +1890,9 @@ func (f *Fusion) startConnectionHealthManagement() {
 			select {
 			case <-f.connectionCleanupTicker.C:
 				f.cleanupConnections()
+				if f.logger != nil {
+					f.logger.Debugf("Goroutine count: %d", runtime.NumGoroutine())
+				}
 			case <-f.shutdownChan:
 				if f.logger != nil {
 					f.logger.Debug("Connection health management shutting down")

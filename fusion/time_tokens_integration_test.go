@@ -219,9 +219,10 @@ func TestTimeTokenIntegration_PathParameters(t *testing.T) {
 		t.Fatalf("BuildURL failed: %v", err)
 	}
 
-	// Check that the URL contains a properly formatted date
-	// Note: URL path encoding doesn't encode colons in the time portion
-	expectedPattern := `https://api\.example\.com/events/\d{4}-\d{2}-\d{2}T00:00:00Z`
+	// Check that the URL contains a properly formatted date.
+	// RFC 3986 allows colons to be percent-encoded in path segments, so accept both
+	// literal colons and percent-encoded %3A variants.
+	expectedPattern := `https://api\.example\.com/events/\d{4}-\d{2}-\d{2}T00(%3A|:)00(%3A|:)00Z`
 	matched, err := regexp.MatchString(expectedPattern, resultURL)
 	if err != nil {
 		t.Fatalf("Regex error: %v", err)

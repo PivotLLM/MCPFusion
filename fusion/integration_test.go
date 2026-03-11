@@ -6,13 +6,32 @@
 package fusion
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/mlogger"
 )
+
+// testTenantContext returns a context containing a minimal TenantContext for use in tests.
+func testTenantContext() context.Context {
+	tc := &TenantContext{
+		TenantHash:  "test-tenant-hash",
+		ServiceName: "test",
+		CreatedAt:   time.Now(),
+	}
+	return context.WithValue(context.Background(), global.TenantContextKey, tc)
+}
+
+// withTestContext adds the test tenant context to an args map.
+func withTestContext(args map[string]any) map[string]any {
+	args["__mcp_context"] = testTenantContext()
+	return args
+}
 
 func TestFusionIntegration_EndToEnd(t *testing.T) {
 	// Create a mock API server
@@ -111,7 +130,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 						],
 						"response": {
 							"type": "json",
-							"transform": "$.users"
+							"transform": ".users"
 						}
 					},
 					{
@@ -182,10 +201,20 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 		t.Fatal("Configuration not loaded")
 	}
 
-	// Get the registered tools
+	// Get the registered tools. Additional built-in tools (e.g. health_status) may also
+	// be registered, so iterate by name rather than asserting an exact count.
 	tools := fusion.RegisterTools()
-	if len(tools) != 3 {
-		t.Fatalf("Expected 3 tools, got %d", len(tools))
+
+	// Verify the three expected API tools are present.
+	expectedTools := []string{"testapi_list_users", "testapi_get_user", "testapi_create_user"}
+	toolsByName := make(map[string]bool, len(tools))
+	for _, tool := range tools {
+		toolsByName[tool.Name] = true
+	}
+	for _, name := range expectedTools {
+		if !toolsByName[name] {
+			t.Fatalf("Expected tool %q not found in registered tools", name)
+		}
 	}
 
 	// Test each tool
@@ -194,7 +223,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 		case "testapi_list_users":
 			t.Run("list_users", func(t *testing.T) {
 				// Test with default limit
-				result, err := tool.Handler(map[string]any{})
+				result, err := tool.Handler(withTestContext(map[string]any{}))
 				if err != nil {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
@@ -210,7 +239,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				}
 
 				// Test with limit parameter
-				result, err = tool.Handler(map[string]any{"limit": 1})
+				result, err = tool.Handler(withTestContext(map[string]any{"limit": 1}))
 				if err != nil {
 					t.Fatalf("Tool execution with limit failed: %v", err)
 				}
@@ -227,7 +256,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 
 		case "testapi_get_user":
 			t.Run("get_user", func(t *testing.T) {
-				result, err := tool.Handler(map[string]any{"id": "123"})
+				result, err := tool.Handler(withTestContext(map[string]any{"id": "123"}))
 				if err != nil {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
@@ -245,8 +274,8 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					t.Errorf("Expected user name 'Specific User', got %v", user["name"])
 				}
 
-				// Test missing required parameter
-				_, err = tool.Handler(map[string]any{})
+				// Test missing required parameter - context is provided but id is omitted
+				_, err = tool.Handler(withTestContext(map[string]any{}))
 				if err == nil {
 					t.Error("Expected error for missing required parameter")
 				}
@@ -254,10 +283,10 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 
 		case "testapi_create_user":
 			t.Run("create_user", func(t *testing.T) {
-				result, err := tool.Handler(map[string]any{
+				result, err := tool.Handler(withTestContext(map[string]any{
 					"name":  "New User",
 					"email": "newuser@example.com",
-				})
+				}))
 				if err != nil {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
@@ -276,19 +305,19 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				}
 
 				// Test validation - name too short
-				_, err = tool.Handler(map[string]any{
+				_, err = tool.Handler(withTestContext(map[string]any{
 					"name":  "X",
 					"email": "test@example.com",
-				})
+				}))
 				if err == nil {
 					t.Error("Expected validation error for short name")
 				}
 
 				// Test validation - invalid email
-				_, err = tool.Handler(map[string]any{
+				_, err = tool.Handler(withTestContext(map[string]any{
 					"name":  "Valid Name",
 					"email": "invalid-email",
-				})
+				}))
 				if err == nil {
 					t.Error("Expected validation error for invalid email")
 				}
@@ -346,12 +375,21 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 	)
 
 	tools := fusion.RegisterTools()
-	if len(tools) != 1 {
-		t.Fatalf("Expected 1 tool, got %d", len(tools))
+
+	// Find the target tool by name rather than relying on exact count.
+	var targetTool *global.ToolDefinition
+	for i := range tools {
+		if tools[i].Name == "testapi_test_endpoint" {
+			targetTool = &tools[i]
+			break
+		}
+	}
+	if targetTool == nil {
+		t.Fatal("Expected tool 'testapi_test_endpoint' not found")
 	}
 
 	// Execute the tool - should get an API error
-	_, err := tools[0].Handler(map[string]any{})
+	_, err := targetTool.Handler(withTestContext(map[string]any{}))
 	if err == nil {
 		t.Fatal("Expected API error for invalid authentication")
 	}
@@ -399,12 +437,21 @@ func TestFusionIntegration_NetworkError(t *testing.T) {
 	)
 
 	tools := fusion.RegisterTools()
-	if len(tools) != 1 {
-		t.Fatalf("Expected 1 tool, got %d", len(tools))
+
+	// Find the target tool by name rather than relying on exact count.
+	var targetTool *global.ToolDefinition
+	for i := range tools {
+		if tools[i].Name == "testapi_test_endpoint" {
+			targetTool = &tools[i]
+			break
+		}
+	}
+	if targetTool == nil {
+		t.Fatal("Expected tool 'testapi_test_endpoint' not found")
 	}
 
 	// Execute the tool - should get a network error
-	_, err := tools[0].Handler(map[string]any{})
+	_, err := targetTool.Handler(withTestContext(map[string]any{}))
 	if err == nil {
 		t.Fatal("Expected network error for invalid host")
 	}

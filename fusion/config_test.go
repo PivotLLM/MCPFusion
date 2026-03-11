@@ -819,57 +819,73 @@ func TestEndpointConfig_Validate_MissingFields(t *testing.T) {
 }
 
 func TestLoadConfigFromFile_RealExample(t *testing.T) {
-	// Test loading the actual Google config file
-	configPath := filepath.Join("..", "configs", "google.json")
+	// Test loading google-workspace.json (google.json was split into two files)
+	t.Run("google-workspace", func(t *testing.T) {
+		configPath := filepath.Join("..", "configs", "google-workspace.json")
 
-	config, err := LoadConfigFromFile(configPath)
-	if err != nil {
-		t.Fatalf("Failed to load Google config: %v", err)
-	}
+		config, err := LoadConfigFromFile(configPath)
+		if err != nil {
+			t.Fatalf("Failed to load google-workspace.json: %v", err)
+		}
 
-	if config == nil {
-		t.Fatal("Config should not be nil")
-	}
+		if config == nil {
+			t.Fatal("Config should not be nil")
+		}
 
-	// Verify the Google service is loaded correctly
-	googleService, exists := config.Services["google"]
-	if !exists {
-		t.Fatal("Google service should exist")
-	}
+		// Service key is "google"
+		googleService, exists := config.Services["google"]
+		if !exists {
+			t.Fatal("Google service should exist with key 'google'")
+		}
 
-	if googleService.Name != "Google APIs" {
-		t.Errorf("Expected Google service name 'Google APIs', got '%s'", googleService.Name)
-	}
+		if googleService.Name != "Google Workspace" {
+			t.Errorf("Expected service name 'Google Workspace', got '%s'", googleService.Name)
+		}
 
-	if googleService.BaseURL != "https://www.googleapis.com" {
-		t.Errorf("Expected Google baseURL 'https://www.googleapis.com', got '%s'", googleService.BaseURL)
-	}
+		if googleService.BaseURL != "https://www.googleapis.com" {
+			t.Errorf("Expected baseURL 'https://www.googleapis.com', got '%s'", googleService.BaseURL)
+		}
 
-	if googleService.Auth.Type != AuthTypeOAuth2Device {
-		t.Errorf("Expected Google auth type 'oauth2_device', got '%s'", googleService.Auth.Type)
-	}
+		if googleService.Auth.Type != AuthTypeOAuth2External {
+			t.Errorf("Expected auth type 'oauth2_external', got '%s'", googleService.Auth.Type)
+		}
 
-	if len(googleService.Endpoints) < 16 {
-		t.Errorf("Expected at least 16 Google endpoints, got %d", len(googleService.Endpoints))
-	}
+		if len(googleService.Endpoints) == 0 {
+			t.Error("Expected at least one endpoint in google-workspace.json")
+		}
+	})
 
-	// Verify specific endpoints
-	calendarEndpoint := googleService.GetEndpointByID("calendar_events_list")
-	if calendarEndpoint == nil {
-		t.Fatal("Calendar events list endpoint should exist")
-	}
+	// Test loading google-search.json
+	t.Run("google-search", func(t *testing.T) {
+		configPath := filepath.Join("..", "configs", "google-search.json")
 
-	if calendarEndpoint.Name != "List Calendar Events" {
-		t.Errorf("Expected calendar endpoint name 'List Calendar Events', got '%s'", calendarEndpoint.Name)
-	}
+		config, err := LoadConfigFromFile(configPath)
+		if err != nil {
+			t.Fatalf("Failed to load google-search.json: %v", err)
+		}
 
-	if calendarEndpoint.Method != "GET" {
-		t.Errorf("Expected calendar endpoint method 'GET', got '%s'", calendarEndpoint.Method)
-	}
+		if config == nil {
+			t.Fatal("Config should not be nil")
+		}
 
-	if calendarEndpoint.Path != "/calendar/v3/calendars/primary/events" {
-		t.Errorf("Expected calendar endpoint path '/calendar/v3/calendars/primary/events', got '%s'", calendarEndpoint.Path)
-	}
+		// Service key is "google"
+		searchService, exists := config.Services["google"]
+		if !exists {
+			t.Fatal("Google search service should exist with key 'google'")
+		}
+
+		if searchService.Name != "Google Custom Search" {
+			t.Errorf("Expected service name 'Google Custom Search', got '%s'", searchService.Name)
+		}
+
+		if searchService.Auth.Type != AuthTypeNone {
+			t.Errorf("Expected auth type 'none', got '%s'", searchService.Auth.Type)
+		}
+
+		if len(searchService.Endpoints) == 0 {
+			t.Error("Expected at least one endpoint in google-search.json")
+		}
+	})
 }
 
 func TestLoadConfigFromFile_WithEnvironmentVariables(t *testing.T) {

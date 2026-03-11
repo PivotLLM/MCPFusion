@@ -224,8 +224,13 @@ func (e APIError) Error() string {
 		return "Invalid token"
 	}
 
-	// For other errors, provide minimal information without exposing sensitive data
-	return fmt.Sprintf("API request failed (HTTP %d)", e.StatusCode)
+	// For other errors, provide minimal information without exposing sensitive data.
+	// Include the correlation ID when available to aid log tracing.
+	base := fmt.Sprintf("API request failed (HTTP %d)", e.StatusCode)
+	if e.CorrelationID != "" {
+		return base + " [" + e.CorrelationID + "]"
+	}
+	return base
 }
 
 // IsRetryable returns whether the error is retryable

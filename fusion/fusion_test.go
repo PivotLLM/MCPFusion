@@ -137,20 +137,33 @@ func TestRegisterTools(t *testing.T) {
 
 	tools := fusion.RegisterTools()
 
-	if len(tools) != 1 {
-		t.Errorf("Expected 1 tool, got %d", len(tools))
+	// Find the tool by name rather than relying on position or count,
+	// since additional built-in tools (e.g. health_status) may also be registered.
+	var targetTool *global.ToolDefinition
+	for i := range tools {
+		if tools[i].Name == "test_test_endpoint" {
+			targetTool = &tools[i]
+			break
+		}
 	}
 
-	if tools[0].Name != "test_test_endpoint" {
-		t.Errorf("Expected tool name 'test_test_endpoint', got '%s'", tools[0].Name)
+	if targetTool == nil {
+		t.Fatalf("Expected to find tool 'test_test_endpoint', got tools: %v",
+			func() []string {
+				names := make([]string, len(tools))
+				for i, tool := range tools {
+					names[i] = tool.Name
+				}
+				return names
+			}())
 	}
 
-	if len(tools[0].Parameters) != 1 {
-		t.Errorf("Expected 1 parameter, got %d", len(tools[0].Parameters))
+	if len(targetTool.Parameters) != 1 {
+		t.Errorf("Expected 1 parameter, got %d", len(targetTool.Parameters))
 	}
 
-	if tools[0].Parameters[0].Name != "id" {
-		t.Errorf("Expected parameter name 'id', got '%s'", tools[0].Parameters[0].Name)
+	if targetTool.Parameters[0].Name != "id" {
+		t.Errorf("Expected parameter name 'id', got '%s'", targetTool.Parameters[0].Name)
 	}
 }
 
