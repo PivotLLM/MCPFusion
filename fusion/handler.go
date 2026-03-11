@@ -92,6 +92,10 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	timeTokenProcessor := NewTimeTokenProcessor(h.fusion.logger)
 	args = timeTokenProcessor.ProcessParameterArgs(args)
 
+	// Coerce JSON-encoded string values to native array/object types.
+	// Some MCP clients serialize structured parameters as strings.
+	coerceArgumentTypes(h.endpoint.Parameters, args, h.fusion.logger)
+
 	// Validate parameters
 	validator := NewValidator(h.fusion.logger)
 	if err := validator.ValidateParameters(h.endpoint.Parameters, args); err != nil {
@@ -109,6 +113,23 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		}
 		return "", err
 	}
+
+	// Wrap ctx with an independent deadline for the outbound request and body read.
+	// The timeout defaults to 60 seconds but respects endpoint-level connection.timeout
+	// overrides so slow endpoints (e.g. report generation) can use longer values.
+	// Deferred here so the cancel fires AFTER handleResponse reads the body.
+	outboundTimeout := 60 * time.Second
+	if h.endpoint.Connection != nil && h.endpoint.Connection.Timeout != "" {
+		if t, err := time.ParseDuration(h.endpoint.Connection.Timeout); err == nil {
+			outboundTimeout = t
+		} else if h.fusion.logger != nil {
+			h.fusion.logger.Warningf("Invalid connection.timeout %q for endpoint %s, using default %v: %v",
+				h.endpoint.Connection.Timeout, h.endpoint.ID, outboundTimeout, err)
+		}
+	}
+	outboundCtx, outboundCancel := context.WithTimeout(ctx, outboundTimeout)
+	defer outboundCancel()
+	req = req.WithContext(outboundCtx)
 
 	// Apply multi-tenant authentication if available
 	if h.fusion.multiTenantAuth != nil {
@@ -206,7 +227,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Execute request with enhanced retry logic and metrics
-	resp, requestMetrics, err := h.executeRequest(ctx, req, correlationID)
+	resp, requestMetrics, err := h.executeRequest(outboundCtx, req, correlationID)
 	if err != nil {
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Request execution failed [%s]: %v", correlationID, err)
@@ -330,7 +351,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 					// Execute the retry request (only one retry to prevent infinite loops)
 					var retryMetrics *RequestMetrics
-					resp, retryMetrics, err = h.executeRequest(ctx, retryReq, correlationID)
+					resp, retryMetrics, err = h.executeRequest(outboundCtx, retryReq, correlationID)
 					if err != nil {
 						if h.fusion.logger != nil {
 							h.fusion.logger.Errorf("Retry request failed [%s]: %v", correlationID, err)
@@ -504,7 +525,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 
 	executeFunc := func() error {
 		if retryConfig.Enabled {
-			// Use retry executor
+			// Use retry executor with the request context.
 			retryExecutor := NewRetryExecutor(retryConfig, h.fusion.logger)
 			resp, err = retryExecutor.Execute(ctx, httpClient, req)
 			if err != nil && resp == nil {
@@ -559,6 +580,12 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 			h.fusion.ForceConnectionCleanup()
 		} else if strings.Contains(err.Error(), "circuit breaker") {
 			metrics.ErrorCategory = ErrorCategoryServer
+		} else if strings.Contains(err.Error(), "context canceled") || strings.Contains(err.Error(), "context deadline exceeded") {
+			metrics.ErrorCategory = ErrorCategoryTimeout
+			if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("Request cancelled (context done) for [%s]: %v", correlationID, err)
+			}
+			h.fusion.ForceConnectionCleanup()
 		} else {
 			metrics.ErrorCategory = ErrorCategoryPermanent
 		}
@@ -675,7 +702,7 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 	case "binary":
 		dlDir := h.fusion.DownloadDir()
 		if dlDir == "" {
-			return fmt.Sprintf("Binary data (%d bytes). Set MCP_FUSION_DL_DIR to save downloads to disk.", len(body)), nil
+			return fmt.Sprintf("Tool call succeeded. Binary data received (%d bytes), but MCP_FUSION_DL_DIR is not configured so the data was discarded. Set MCP_FUSION_DL_DIR to enable saving binary downloads to disk.", len(body)), nil
 		}
 
 		// Ensure download directory exists
@@ -703,7 +730,7 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 			h.fusion.logger.Infof("Binary response saved: %s (%d bytes)", filePath, len(body))
 		}
 
-		return fmt.Sprintf("File saved to %s (%d bytes)", filePath, len(body)), nil
+		return fmt.Sprintf("Tool call succeeded. Binary data saved to %s (%d bytes).", filePath, len(body)), nil
 
 	default:
 		// Default to JSON
@@ -749,6 +776,37 @@ func sanitizeFilename(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// coerceArgumentTypes attempts to convert string values to their declared types for
+// array and object parameters. Some MCP clients serialize arrays/objects as
+// JSON-encoded strings rather than native JSON types; this coercion ensures
+// MCPFusion handles both representations uniformly.
+func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}, logger global.Logger) {
+	for _, param := range params {
+		if param.Type != ParameterTypeArray && param.Type != ParameterTypeObject {
+			continue
+		}
+		val, ok := args[param.Name]
+		if !ok {
+			continue
+		}
+		str, ok := val.(string)
+		if !ok {
+			continue // already the right type
+		}
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(str), &parsed); err == nil {
+			args[param.Name] = parsed
+			if logger != nil {
+				logger.Debugf("coerced parameter %q from JSON string to native %s type", param.Name, param.Type)
+			}
+		} else {
+			if logger != nil {
+				logger.Warningf("parameter %q is declared as %s but value is a non-parseable string; passing raw string to API which will likely fail: %v", param.Name, param.Type, err)
+			}
+		}
+	}
 }
 
 // wrapNetworkError wraps network errors in NetworkError type

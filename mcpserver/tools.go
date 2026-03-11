@@ -45,9 +45,13 @@ func (s *MCPServer) AddTools() {
 				case "boolean":
 					toolOption = mcp.WithBoolean(param.Name, options...)
 				case "array":
-					// Add string items specification for array parameters to satisfy strict JSON Schema validators
-					// Command-line arguments are typically arrays of strings
-					options = append(options, mcp.WithStringItems())
+					// Set the items schema based on the declared item type.
+					// JSON Schema requires arrays to have an items field, so we always set one.
+					if param.Items == "object" {
+						options = append(options, mcp.Items(map[string]any{"type": "object"}))
+					} else {
+						options = append(options, mcp.WithStringItems())
+					}
 					toolOption = mcp.WithArray(param.Name, options...)
 				case "object":
 					// Add additionalProperties for object parameters to satisfy strict JSON Schema validators

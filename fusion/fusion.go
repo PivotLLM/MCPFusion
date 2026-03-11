@@ -675,6 +675,7 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 			Description: param.Description,
 			Required:    param.Required,
 			Type:        string(param.Type),
+			Items:       string(param.Items),
 			Default:     param.Default,
 			Examples:    param.Examples,
 		}
@@ -786,6 +787,7 @@ func (f *Fusion) createCommandToolDefinition(groupName string, commandGroup *Com
 			Description: param.Description,
 			Required:    param.Required,
 			Type:        string(param.Type),
+			Items:       string(param.Items),
 			Default:     param.Default,
 			Examples:    param.Examples,
 		}

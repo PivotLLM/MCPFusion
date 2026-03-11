@@ -29,8 +29,11 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 # Test Google Gmail Draft Update API
 echo "=== Testing Google Gmail Draft Update API ==="
@@ -43,7 +46,7 @@ echo "Test 1: Update draft subject"
 echo "Command: google_gmail_draft_update with draftId and subject"
 echo "Parameters: {\"draftId\": \"DRAFT_ID_HERE\", \"subject\": \"Updated: Project Update - Q1 Review (Revised)\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_update -params '{"draftId": "DRAFT_ID_HERE", "subject": "Updated: Project Update - Q1 Review (Revised)"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_update -params '{"draftId": "DRAFT_ID_HERE", "subject": "Updated: Project Update - Q1 Review (Revised)"}'
 
 echo ""
 echo "=========================================="
@@ -53,7 +56,7 @@ echo "Test 2: Update draft body and recipients"
 echo "Command: google_gmail_draft_update with draftId, body, and recipients"
 echo "Parameters: {\"draftId\": \"DRAFT_ID_HERE\", \"to\": \"new-recipient@example.com\", \"cc\": \"cc-user@example.com\", \"body\": \"<html><body><p>This is the revised content for the draft message.</p></body></html>\", \"bodyContentType\": \"HTML\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_update -params '{"draftId": "DRAFT_ID_HERE", "to": "new-recipient@example.com", "cc": "cc-user@example.com", "body": "<html><body><p>This is the revised content for the draft message.</p></body></html>", "bodyContentType": "HTML"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_update -params '{"draftId": "DRAFT_ID_HERE", "to": "new-recipient@example.com", "cc": "cc-user@example.com", "body": "<html><body><p>This is the revised content for the draft message.</p></body></html>", "bodyContentType": "HTML"}'
 
 echo ""
 echo "=== Gmail Draft Update API Tests Complete ==="

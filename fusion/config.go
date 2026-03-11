@@ -261,6 +261,7 @@ type ParameterConfig struct {
 	Prefix      string            `json:"prefix,omitempty"` // Prefix for argument location (e.g., "-p", "--port")
 	Description string            `json:"description"`
 	Type        ParameterType     `json:"type"`
+	Items       ParameterType     `json:"items,omitempty"`  // Item type for array parameters: "string" or "object"
 	Required    bool              `json:"required"`
 	Location    ParameterLocation `json:"location"`
 	Default     interface{}       `json:"default,omitempty"`

@@ -25,7 +25,9 @@
           "refreshTokenCookieName": "refreshToken"
         },
         "tokenInvalidation": {
-          "statusCodes": [401],
+          "statusCodes": [
+            401
+          ],
           "retryOnInvalidation": true
         }
       },
@@ -37,12 +39,14 @@
           "method": "GET",
           "path": "/api/audits",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "get_audit",
           "name": "Get Audit",
-          "description": "Get audit metadata and a summary of findings (ID, identifier, title, priority, status, CVSS, category). Full finding details are intentionally excluded — use pwndoc_get_finding with the returned _id to retrieve the complete details of any specific finding. Section content is also excluded — use pwndoc_get_audit_sections for section text.",
+          "description": "Get audit metadata with a summary of findings (ID, identifier, title, priority, status, CVSS, category) and sections (ID, name). Full finding details are excluded — use pwndoc_get_finding with a finding _id. Section content is excluded — use pwndoc_get_audit_sections with a section _id.",
           "method": "GET",
           "path": "/api/audits/{audit_id}",
           "parameters": [
@@ -56,7 +60,7 @@
           ],
           "response": {
             "type": "json",
-            "transform": ".datas | {_id, name, auditType, language, state, createdAt, creator, collaborators, reviewers, company, client, findings: [.findings[] | {_id, identifier, title, priority, status, cvssv3, category}]}"
+            "transform": ".datas | {_id, name, auditType, language, state, createdAt, creator, collaborators, reviewers, company, client, findings: [.findings[] | {_id, identifier, title, priority, status, cvssv3, category}], sections: [.sections[] | {_id, name}]}"
           }
         },
         {
@@ -88,7 +92,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "delete_audit",
@@ -105,7 +111,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_audit_findings",
@@ -128,6 +136,26 @@
           }
         },
         {
+          "id": "list_audit_sections",
+          "name": "List Audit Sections",
+          "description": "List all sections in an audit as a summary (ID and name only). Use the returned _id with pwndoc_get_audit_sections to retrieve the full content of a specific section.",
+          "method": "GET",
+          "path": "/api/audits/{audit_id}",
+          "parameters": [
+            {
+              "name": "audit_id",
+              "description": "The audit ID",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "[.datas.sections[] | {_id, name}]"
+          }
+        },
+        {
           "id": "get_audit_general",
           "name": "Get Audit General",
           "description": "Get audit general information (dates, client, company, scope)",
@@ -142,7 +170,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_audit_general",
@@ -198,10 +228,13 @@
               "description": "Scope items (array of strings)",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "get_audit_network",
@@ -218,7 +251,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_audit_network",
@@ -242,7 +277,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "toggle_audit_approval",
@@ -259,7 +296,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_review_status",
@@ -283,7 +322,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "get_audit_sections",
@@ -307,7 +348,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_audit_sections",
@@ -332,10 +375,11 @@
             },
             {
               "name": "customFields",
-              "description": "Array of custom field objects with customField ID and text value",
+              "description": "Array of custom field objects. Each element must be the full embedded object: {\"customField\": {\"_id\": \"...\", \"label\": \"...\", \"fieldType\": \"...\", \"description\": \"...\"}, \"text\": \"value\"}. Do NOT pass a plain ID string — PwnDoc's report generator requires the full inline object and will crash if given only a reference ID.",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "text",
@@ -345,7 +389,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "generate_audit_report",
@@ -362,7 +408,12 @@
               "location": "path"
             }
           ],
-          "response": { "type": "binary" }
+          "connection": {
+            "timeout": "300s"
+          },
+          "response": {
+            "type": "binary"
+          }
         },
         {
           "id": "get_finding",
@@ -386,7 +437,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "create_finding",
@@ -477,14 +530,16 @@
               "description": "References (array of strings)",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             },
             {
               "name": "customFields",
-              "description": "Custom fields array (e.g. OWASP category)",
+              "description": "Array of custom field objects. Each element must be the full embedded object: {\"customField\": {\"_id\": \"...\", \"label\": \"...\", \"fieldType\": \"...\", \"description\": \"...\"}, \"text\": \"value\"}. Do NOT pass a plain ID string — PwnDoc's report generator requires the full inline object and will crash if given only a reference ID.",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "remediationComplexity",
@@ -494,7 +549,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_finding",
@@ -592,14 +649,16 @@
               "description": "References (array of strings)",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             },
             {
               "name": "customFields",
-              "description": "Custom fields array (e.g. OWASP category)",
+              "description": "Array of custom field objects. Each element must be the full embedded object: {\"customField\": {\"_id\": \"...\", \"label\": \"...\", \"fieldType\": \"...\", \"description\": \"...\"}, \"text\": \"value\"}. Do NOT pass a plain ID string — PwnDoc's report generator requires the full inline object and will crash if given only a reference ID.",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "remediationComplexity",
@@ -609,7 +668,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "delete_finding",
@@ -633,7 +694,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "sort_findings",
@@ -654,10 +717,13 @@
               "description": "Ordered array of finding IDs",
               "type": "array",
               "required": true,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "move_finding",
@@ -688,7 +754,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_clients",
@@ -697,7 +765,9 @@
           "method": "GET",
           "path": "/api/clients",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "create_client",
@@ -756,7 +826,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_client",
@@ -822,7 +894,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "delete_client",
@@ -839,7 +913,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_companies",
@@ -848,7 +924,9 @@
           "method": "GET",
           "path": "/api/companies",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "create_company",
@@ -879,7 +957,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_company",
@@ -917,7 +997,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "delete_company",
@@ -934,7 +1016,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_vulnerabilities",
@@ -989,7 +1073,8 @@
               "description": "Vulnerability details by locale (array of locale objects, each with: locale, title, vulnType, description, observation, remediation, references, customFields)",
               "type": "array",
               "required": true,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "cvssv3",
@@ -1020,7 +1105,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_vulnerability",
@@ -1041,7 +1128,8 @@
               "description": "Vulnerability details by locale (array of locale objects, each with: locale, title, vulnType, description, observation, remediation, references, customFields)",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "cvssv3",
@@ -1072,7 +1160,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "delete_vulnerability",
@@ -1089,7 +1179,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "export_vulnerabilities",
@@ -1098,7 +1190,9 @@
           "method": "GET",
           "path": "/api/vulnerabilities/export",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_users",
@@ -1107,7 +1201,9 @@
           "method": "GET",
           "path": "/api/users",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "get_current_user",
@@ -1116,7 +1212,9 @@
           "method": "GET",
           "path": "/api/users/me",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "get_user",
@@ -1133,7 +1231,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "create_user",
@@ -1185,7 +1285,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_user",
@@ -1237,7 +1339,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_current_user",
@@ -1275,7 +1379,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_reviewers",
@@ -1284,7 +1390,9 @@
           "method": "GET",
           "path": "/api/users/reviewers",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_templates",
@@ -1293,7 +1401,9 @@
           "method": "GET",
           "path": "/api/templates",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "delete_template",
@@ -1310,7 +1420,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "get_settings",
@@ -1319,7 +1431,9 @@
           "method": "GET",
           "path": "/api/settings",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "get_public_settings",
@@ -1328,7 +1442,9 @@
           "method": "GET",
           "path": "/api/settings/public",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_settings",
@@ -1345,7 +1461,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_languages",
@@ -1354,7 +1472,9 @@
           "method": "GET",
           "path": "/api/data/languages",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "create_language",
@@ -1378,7 +1498,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_language",
@@ -1409,7 +1531,9 @@
               "location": "body"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "delete_language",
@@ -1426,7 +1550,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_audit_types",
@@ -1435,7 +1561,9 @@
           "method": "GET",
           "path": "/api/data/audit-types",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "create_audit_type",
@@ -1456,10 +1584,13 @@
               "description": "Template IDs (array)",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "update_audit_type",
@@ -1487,10 +1618,13 @@
               "description": "Template IDs (array)",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "delete_audit_type",
@@ -1507,7 +1641,9 @@
               "location": "path"
             }
           ],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_vulnerability_types",
@@ -1516,7 +1652,9 @@
           "method": "GET",
           "path": "/api/data/vulnerability-types",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_vulnerability_categories",
@@ -1525,7 +1663,9 @@
           "method": "GET",
           "path": "/api/data/vulnerability-categories",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_sections",
@@ -1534,7 +1674,9 @@
           "method": "GET",
           "path": "/api/data/sections",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "list_custom_fields",
@@ -1543,7 +1685,9 @@
           "method": "GET",
           "path": "/api/data/custom-fields",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         },
         {
           "id": "get_statistics",
@@ -1552,7 +1696,9 @@
           "method": "GET",
           "path": "/api/audits/stats",
           "parameters": [],
-          "response": { "type": "json" }
+          "response": {
+            "type": "json"
+          }
         }
       ],
       "retry": {
@@ -1563,7 +1709,11 @@
         "maxDelay": "30s",
         "jitter": true,
         "backoffFactor": 2.0,
-        "retryableErrors": ["network_error", "timeout", "server_error"]
+        "retryableErrors": [
+          "network_error",
+          "timeout",
+          "server_error"
+        ]
       }
     }
   }

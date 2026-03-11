@@ -12,7 +12,9 @@
           "tokenURL": "https://oauth2.googleapis.com/token"
         },
         "tokenInvalidation": {
-          "statusCodes": [401],
+          "statusCodes": [
+            401
+          ],
           "retryOnInvalidation": true
         }
       },
@@ -24,7 +26,12 @@
         "maxDelay": "30s",
         "jitter": true,
         "backoffFactor": 2.0,
-        "retryableErrors": ["network_error", "timeout", "server_error", "rate_limited"]
+        "retryableErrors": [
+          "network_error",
+          "timeout",
+          "server_error",
+          "rate_limited"
+        ]
       },
       "circuitBreaker": {
         "enabled": true,
@@ -113,7 +120,10 @@
               "location": "query",
               "default": "startTime",
               "validation": {
-                "enum": ["startTime", "updated"]
+                "enum": [
+                  "startTime",
+                  "updated"
+                ]
               }
             }
           ],
@@ -193,7 +203,12 @@
             "maxDelay": "60s",
             "jitter": true,
             "backoffFactor": 2.0,
-            "retryableErrors": ["network_error", "timeout", "server_error", "rate_limited"]
+            "retryableErrors": [
+              "network_error",
+              "timeout",
+              "server_error",
+              "rate_limited"
+            ]
           }
         },
         {
@@ -369,7 +384,10 @@
               "location": "query",
               "default": "startTime",
               "validation": {
-                "enum": ["startTime", "updated"]
+                "enum": [
+                  "startTime",
+                  "updated"
+                ]
               }
             }
           ],
@@ -535,7 +553,12 @@
               "location": "query",
               "default": "full",
               "validation": {
-                "enum": ["minimal", "full", "raw", "metadata"]
+                "enum": [
+                  "minimal",
+                  "full",
+                  "raw",
+                  "metadata"
+                ]
               }
             }
           ],
@@ -620,7 +643,12 @@
               "location": "query",
               "default": "full",
               "validation": {
-                "enum": ["minimal", "full", "raw", "metadata"]
+                "enum": [
+                  "minimal",
+                  "full",
+                  "raw",
+                  "metadata"
+                ]
               }
             }
           ],
@@ -1016,14 +1044,16 @@
               "description": "Array of label IDs to add to the message (e.g., [\"Label_123\", \"STARRED\"])",
               "type": "array",
               "required": true,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             },
             {
               "name": "removeLabelIds",
               "description": "Array of label IDs to remove from the message (e.g., [\"INBOX\", \"UNREAD\"])",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             }
           ],
           "response": {
@@ -1072,7 +1102,18 @@
               "location": "query",
               "default": "modifiedTime desc",
               "validation": {
-                "enum": ["createdTime", "folder", "modifiedByMeTime", "modifiedTime", "name", "quotaBytesUsed", "recency", "sharedWithMeTime", "starred", "viewedByMeTime"]
+                "enum": [
+                  "createdTime",
+                  "folder",
+                  "modifiedByMeTime",
+                  "modifiedTime",
+                  "name",
+                  "quotaBytesUsed",
+                  "recency",
+                  "sharedWithMeTime",
+                  "starred",
+                  "viewedByMeTime"
+                ]
               }
             }
           ],
@@ -1144,7 +1185,9 @@
               "location": "query",
               "default": "media",
               "validation": {
-                "enum": ["media"]
+                "enum": [
+                  "media"
+                ]
               }
             }
           ],
@@ -1171,7 +1214,8 @@
               "description": "Parent folder IDs (array of strings)",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "string"
             },
             {
               "name": "description",
@@ -1196,7 +1240,11 @@
               "location": "query",
               "default": "multipart",
               "validation": {
-                "enum": ["media", "multipart", "resumable"]
+                "enum": [
+                  "media",
+                  "multipart",
+                  "resumable"
+                ]
               }
             }
           ],
@@ -1244,7 +1292,12 @@
               "required": true,
               "location": "body",
               "validation": {
-                "enum": ["reader", "writer", "commenter", "owner"]
+                "enum": [
+                  "reader",
+                  "writer",
+                  "commenter",
+                  "owner"
+                ]
               }
             },
             {
@@ -1254,7 +1307,12 @@
               "required": true,
               "location": "body",
               "validation": {
-                "enum": ["user", "group", "domain", "anyone"]
+                "enum": [
+                  "user",
+                  "group",
+                  "domain",
+                  "anyone"
+                ]
               }
             },
             {
@@ -1326,7 +1384,12 @@
               "required": false,
               "location": "query",
               "validation": {
-                "enum": ["LAST_MODIFIED_ASCENDING", "LAST_MODIFIED_DESCENDING", "FIRST_NAME_ASCENDING", "LAST_NAME_ASCENDING"]
+                "enum": [
+                  "LAST_MODIFIED_ASCENDING",
+                  "LAST_MODIFIED_DESCENDING",
+                  "FIRST_NAME_ASCENDING",
+                  "LAST_NAME_ASCENDING"
+                ]
               }
             }
           ],

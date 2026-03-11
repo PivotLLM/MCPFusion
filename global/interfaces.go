@@ -16,6 +16,7 @@ type Parameter struct {
 	Description string                 `json:"description"`
 	Required    bool                   `json:"required"`
 	Type        string                 `json:"type"`      // "string", "number", "boolean", "array", "object"
+	Items       string                 `json:"items,omitempty"`   // Item type for arrays: "string" or "object"
 	Default     interface{}            `json:"default"`   // Default value
 	Enum        []interface{}          `json:"enum"`      // Valid values
 	Pattern     string                 `json:"pattern"`   // Validation pattern

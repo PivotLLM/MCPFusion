@@ -7,11 +7,14 @@
 
 # Direct test of OAuth flow via MCP
 
+# Get the directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Load environment variables
-if [ -f ".env" ]; then
-    source .env
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
 else
-    echo "Error: .env file not found"
+    echo "Error: .env file not found in $SCRIPT_DIR"
     echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi

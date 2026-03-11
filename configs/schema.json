@@ -185,6 +185,11 @@
           "enum": ["string", "number", "boolean", "array", "object"],
           "description": "Parameter data type"
         },
+        "items": {
+          "type": "string",
+          "enum": ["string", "object"],
+          "description": "Item type for array parameters. Use 'object' when items are structured objects rather than plain strings. Defaults to 'string' if omitted."
+        },
         "required": {
           "type": "boolean",
           "description": "Whether the parameter is required"

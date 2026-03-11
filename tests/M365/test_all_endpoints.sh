@@ -5,11 +5,14 @@
 # Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
+# Get the directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Load environment variables
-if [ -f ".env" ]; then
-    source .env
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
 else
-    echo "Error: .env file not found"
+    echo "Error: .env file not found in $SCRIPT_DIR"
     echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi
@@ -25,7 +28,10 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 echo "=== Testing All Microsoft 365 Endpoints ==="
 echo "Timestamp: $(date)"
 echo "Server: $FULL_SERVER_URL"
@@ -44,9 +50,9 @@ run_test() {
     echo "Parameters: $params"
     
     # Run with timeout and capture result
-    result=$(gtimeout 8 /Users/eric/source/MCPProbe/probe \
+    result=$(gtimeout 8 $PROBE_PATH \
         -url "$FULL_SERVER_URL" \
-        -transport sse \
+        -transport http \
         -headers "Authorization:Bearer $APIKEY" \
         -call "$tool_name" \
         -params "$params" 2>&1)

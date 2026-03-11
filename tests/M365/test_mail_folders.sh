@@ -5,12 +5,15 @@
 # Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
+# Get the directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Load environment variables
-if [ -f ".env" ]; then
-    source .env
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
 else
-    echo "Error: .env file not found"
-    echo "Please create a .env file with APIKEY=your-api-token"
+    echo "Error: .env file not found in $SCRIPT_DIR"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi
 
@@ -26,8 +29,11 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
 # Test Microsoft 365 Mail Folders API
-FULL_SERVER_URL="${SERVER_URL}/sse"
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 echo "=== Testing Microsoft 365 Mail Folders API ===" 
 echo "Timestamp: $(date)"
@@ -39,7 +45,7 @@ echo "Test 1: List all mail folders (default fields)"
 echo "Command: microsoft365_mail_folders_list"
 echo "Parameters: {}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folders_list -params "{}"
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folders_list -params "{}"
 
 echo ""
 echo "=========================================="
@@ -49,7 +55,7 @@ echo "Test 2: List mail folders with custom fields"
 echo "Command: microsoft365_mail_folders_list"
 echo "Parameters: {\"\$select\": \"displayName,id,unreadItemCount,totalItemCount\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folders_list -params '{"$select": "displayName,id,unreadItemCount,totalItemCount"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folders_list -params '{"$select": "displayName,id,unreadItemCount,totalItemCount"}'
 
 echo ""
 echo "=========================================="
@@ -59,7 +65,7 @@ echo "Test 3: List mail folders with pagination"
 echo "Command: microsoft365_mail_folders_list"
 echo "Parameters: {\"\$top\": \"10\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folders_list -params '{"$top": "10"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_folders_list -params '{"$top": "10"}'
 
 echo ""
 echo "=== Mail Folders API Tests Complete ==="

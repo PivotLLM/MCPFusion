@@ -29,8 +29,11 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 # Test Google Contacts Get API
 echo "=== Testing Google Contacts Get API ==="
@@ -43,7 +46,7 @@ echo "Test 1: Get a specific contact by resource name"
 echo "Command: google_contacts_get with resourceName"
 echo "Parameters: {\"resourceName\": \"RESOURCE_NAME_HERE\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_contacts_get -params '{"resourceName": "RESOURCE_NAME_HERE"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_contacts_get -params '{"resourceName": "RESOURCE_NAME_HERE"}'
 
 echo ""
 echo "=== Contacts Get API Tests Complete ==="

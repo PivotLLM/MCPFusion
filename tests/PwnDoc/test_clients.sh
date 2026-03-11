@@ -32,10 +32,10 @@ if [ -z "$SERVER_URL" ]; then
 fi
 
 # Check if PROBE_PATH is set, otherwise use default
-PROBE_PATH="${PROBE_PATH:-/Users/eric/source/MCPProbe/probe}"
+PROBE_PATH="${PROBE_PATH:-probe}"
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 echo "=== Testing PwnDoc Client/Company API ==="
 echo "Timestamp: $(date)"
@@ -48,7 +48,7 @@ echo "Test 1: List all clients"
 echo "Command: pwndoc_list_clients"
 echo "Parameters: {}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_list_clients -params '{}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_list_clients -params '{}'
 
 echo ""
 echo "=========================================="
@@ -59,7 +59,7 @@ echo "Test 2: List all companies"
 echo "Command: pwndoc_list_companies"
 echo "Parameters: {}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_list_companies -params '{}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_list_companies -params '{}'
 
 echo ""
 echo "=========================================="
@@ -70,7 +70,7 @@ echo "Test 3: Get current authenticated user"
 echo "Command: pwndoc_get_current_user"
 echo "Parameters: {}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_get_current_user -params '{}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_get_current_user -params '{}'
 
 echo ""
 echo "=========================================="

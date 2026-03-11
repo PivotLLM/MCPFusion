@@ -5,12 +5,11 @@
 # Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
-# MCPFusion Google Workspace Test Runner
+# PwnDoc Test Runner
 # Executes all individual tests and saves output to separate .log files
 
 # Configuration
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# SERVER_URL will be loaded from .env file and /mcp will be appended
 PROBE_PATH="${PROBE_PATH:-probe}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
@@ -46,7 +45,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}=== MCPFusion Google Workspace Test Suite Runner ===${NC}"
+echo -e "${BLUE}=== PwnDoc Test Suite Runner ===${NC}"
 echo "Timestamp: $(date)"
 echo "Tests Directory: $TESTS_DIR"
 echo "Server URL: $SERVER_URL"
@@ -108,44 +107,21 @@ run_test() {
 echo -e "${BLUE}[INFO]${NC} Starting test execution..."
 echo ""
 
-# Profile
-run_test "Google Profile API Test" \
-    "$TESTS_DIR/test_profile.sh" \
-    "$TESTS_DIR/profile_test_${TIMESTAMP}.log"
+run_test "Audits API Test" \
+    "$TESTS_DIR/test_audits.sh" \
+    "$TESTS_DIR/audits_test_${TIMESTAMP}.log"
 
-# Gmail Draft Management
-run_test "Gmail Draft Create API Test" \
-    "$TESTS_DIR/test_gmail_draft_create.sh" \
-    "$TESTS_DIR/gmail_draft_create_test_${TIMESTAMP}.log"
+run_test "Findings API Test" \
+    "$TESTS_DIR/test_findings.sh" \
+    "$TESTS_DIR/findings_test_${TIMESTAMP}.log"
 
-run_test "Gmail Draft Get API Test" \
-    "$TESTS_DIR/test_gmail_draft_get.sh" \
-    "$TESTS_DIR/gmail_draft_get_test_${TIMESTAMP}.log"
+run_test "Clients API Test" \
+    "$TESTS_DIR/test_clients.sh" \
+    "$TESTS_DIR/clients_test_${TIMESTAMP}.log"
 
-run_test "Gmail Draft Update API Test" \
-    "$TESTS_DIR/test_gmail_draft_update.sh" \
-    "$TESTS_DIR/gmail_draft_update_test_${TIMESTAMP}.log"
-
-run_test "Gmail Draft Delete API Test" \
-    "$TESTS_DIR/test_gmail_draft_delete.sh" \
-    "$TESTS_DIR/gmail_draft_delete_test_${TIMESTAMP}.log"
-
-run_test "Gmail Draft List API Test" \
-    "$TESTS_DIR/test_gmail_draft_list.sh" \
-    "$TESTS_DIR/gmail_draft_list_test_${TIMESTAMP}.log"
-
-# Contacts
-run_test "Google Contacts List API Test" \
-    "$TESTS_DIR/test_contacts_list.sh" \
-    "$TESTS_DIR/contacts_list_test_${TIMESTAMP}.log"
-
-run_test "Google Contacts Get API Test" \
-    "$TESTS_DIR/test_contacts_get.sh" \
-    "$TESTS_DIR/contacts_get_test_${TIMESTAMP}.log"
-
-run_test "Google Contacts Search API Test" \
-    "$TESTS_DIR/test_contacts_search.sh" \
-    "$TESTS_DIR/contacts_search_test_${TIMESTAMP}.log"
+run_test "Object Array Parameters Regression Test" \
+    "$TESTS_DIR/test_object_array_params.sh" \
+    "$TESTS_DIR/object_array_params_test_${TIMESTAMP}.log"
 
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"

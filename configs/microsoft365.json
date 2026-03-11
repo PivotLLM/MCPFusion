@@ -13,7 +13,10 @@
           "tokenURL": "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token"
         },
         "tokenInvalidation": {
-          "statusCodes": [401, 403],
+          "statusCodes": [
+            401,
+            403
+          ],
           "retryOnInvalidation": true
         }
       },
@@ -25,7 +28,12 @@
         "maxDelay": "30s",
         "jitter": true,
         "backoffFactor": 2.0,
-        "retryableErrors": ["network_error", "timeout", "server_error", "rate_limited"]
+        "retryableErrors": [
+          "network_error",
+          "timeout",
+          "server_error",
+          "rate_limited"
+        ]
       },
       "circuitBreaker": {
         "enabled": true,
@@ -88,7 +96,7 @@
               "required": false,
               "location": "query",
               "default": 100,
-             "validation": {
+              "validation": {
                 "minimum": 1,
                 "maximum": 1000
               }
@@ -470,7 +478,7 @@
                 "lastModifiedDateTime desc",
                 "lastModifiedDateTime asc",
                 "receivedDateTime desc",
-                "receivedDateTime asc", 
+                "receivedDateTime asc",
                 "subject asc",
                 "subject desc"
               ]
@@ -514,7 +522,7 @@
               "required": false,
               "location": "query",
               "default": 1000,
-               "validation": {
+              "validation": {
                 "minimum": 1,
                 "maximum": 1000
               }
@@ -830,7 +838,8 @@
               "description": "Array of attendees. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User\"}, \"type\": \"required\"}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "showAs",
@@ -839,7 +848,14 @@
               "required": false,
               "location": "body",
               "default": "busy",
-              "enum": ["free", "tentative", "busy", "oof", "workingElsewhere", "unknown"]
+              "enum": [
+                "free",
+                "tentative",
+                "busy",
+                "oof",
+                "workingElsewhere",
+                "unknown"
+              ]
             },
             {
               "name": "isAllDay",
@@ -863,7 +879,11 @@
               "type": "string",
               "required": false,
               "location": "body",
-              "enum": ["teamsForBusiness", "skypeForBusiness", "skypeForConsumer"]
+              "enum": [
+                "teamsForBusiness",
+                "skypeForBusiness",
+                "skypeForConsumer"
+              ]
             },
             {
               "name": "importance",
@@ -871,7 +891,11 @@
               "type": "string",
               "required": false,
               "location": "body",
-              "enum": ["low", "normal", "high"],
+              "enum": [
+                "low",
+                "normal",
+                "high"
+              ],
               "default": "normal"
             },
             {
@@ -944,7 +968,8 @@
               "description": "Updated array of attendees. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User\"}, \"type\": \"required\"}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "showAs",
@@ -952,7 +977,14 @@
               "type": "string",
               "required": false,
               "location": "body",
-              "enum": ["free", "tentative", "busy", "oof", "workingElsewhere", "unknown"]
+              "enum": [
+                "free",
+                "tentative",
+                "busy",
+                "oof",
+                "workingElsewhere",
+                "unknown"
+              ]
             },
             {
               "name": "isAllDay",
@@ -974,7 +1006,11 @@
               "type": "string",
               "required": false,
               "location": "body",
-              "enum": ["low", "normal", "high"]
+              "enum": [
+                "low",
+                "normal",
+                "high"
+              ]
             },
             {
               "name": "reminderMinutesBeforeStart",
@@ -1083,7 +1119,7 @@
               "required": false,
               "location": "query",
               "default": 50,
-               "validation": {
+              "validation": {
                 "minimum": 1,
                 "maximum": 1000
               }
@@ -1204,21 +1240,24 @@
               "description": "Array of To recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "ccRecipients",
               "description": "Array of CC recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "bccRecipients",
               "description": "Array of BCC recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "importance",
@@ -1226,7 +1265,11 @@
               "type": "string",
               "required": false,
               "location": "body",
-              "enum": ["low", "normal", "high"],
+              "enum": [
+                "low",
+                "normal",
+                "high"
+              ],
               "default": "normal"
             }
           ],
@@ -1312,7 +1355,8 @@
               "description": "Array of recipients to forward to. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             }
           ],
           "response": {
@@ -1352,21 +1396,24 @@
               "description": "Updated array of To recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "ccRecipients",
               "description": "Updated array of CC recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "bccRecipients",
               "description": "Updated array of BCC recipients. Example: [{\"emailAddress\": {\"address\": \"user@example.com\", \"name\": \"User Name\"}}]",
               "type": "array",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "items": "object"
             },
             {
               "name": "importance",
@@ -1374,7 +1421,11 @@
               "type": "string",
               "required": false,
               "location": "body",
-              "enum": ["low", "normal", "high"]
+              "enum": [
+                "low",
+                "normal",
+                "high"
+              ]
             }
           ],
           "response": {
@@ -1639,7 +1690,7 @@
               "required": false,
               "location": "query",
               "default": 100,
-               "validation": {
+              "validation": {
                 "minimum": 1,
                 "maximum": 1000
               }

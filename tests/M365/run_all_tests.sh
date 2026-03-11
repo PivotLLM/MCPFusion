@@ -10,8 +10,8 @@
 
 # Configuration
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# SERVER_URL will be loaded from .env file and /sse will be appended
-PROBE_TOOL="/Users/eric/source/MCPProbe/probe"
+# SERVER_URL will be loaded from .env file and /mcp will be appended
+PROBE_PATH="${PROBE_PATH:-probe}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Load environment variables
@@ -36,8 +36,8 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-SERVER_URL="${SERVER_URL}/sse"
+# Append /mcp to the base URL
+SERVER_URL="${SERVER_URL}/mcp"
 
 # Colors for output
 RED='\033[0;31m'
@@ -56,13 +56,9 @@ echo ""
 # Check prerequisites
 echo -e "${BLUE}[INFO]${NC} Checking prerequisites..."
 
-if [ ! -f "$PROBE_TOOL" ]; then
-    echo -e "${RED}[ERROR]${NC} Probe tool not found at: $PROBE_TOOL"
-    exit 1
-fi
-
-if [ ! -x "$PROBE_TOOL" ]; then
-    echo -e "${RED}[ERROR]${NC} Probe tool is not executable: $PROBE_TOOL"
+if ! command -v "$PROBE_PATH" > /dev/null 2>&1; then
+    echo -e "${RED}[ERROR]${NC} Probe tool not found: $PROBE_PATH"
+    echo "Install probe or set PROBE_PATH to the full path of the probe binary"
     exit 1
 fi
 
@@ -71,7 +67,7 @@ echo ""
 
 # Test server connectivity
 echo -e "${BLUE}[INFO]${NC} Testing server connectivity..."
-if ! "$PROBE_TOOL" -url "$SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -list-only >/dev/null 2>&1; then
+if ! "$PROBE_PATH" -url "$SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -list-only >/dev/null 2>&1; then
     echo -e "${RED}[ERROR]${NC} Cannot connect to MCP server at $SERVER_URL"
     echo "Please ensure the MCPFusion server is running"
     exit 1
@@ -217,6 +213,10 @@ run_test "Mail Draft Delete API Test" \
 run_test "Mail Draft List API Test" \
     "$TESTS_DIR/test_mail_draft_list.sh" \
     "$TESTS_DIR/mail_draft_list_test_${TIMESTAMP}.log"
+
+run_test "Object Array Parameters Regression Test" \
+    "$TESTS_DIR/test_object_array_params.sh" \
+    "$TESTS_DIR/object_array_params_test_${TIMESTAMP}.log"
 
 # Summary
 echo -e "${BLUE}=== Test Summary ===${NC}"

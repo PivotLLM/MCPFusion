@@ -5,6 +5,8 @@
 # Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
+# Simple script to list all PwnDoc audits via MCPFusion
+
 # Get the directory of the script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -32,5 +34,6 @@ fi
 # Check if PROBE_PATH is set, otherwise use default
 PROBE_PATH="${PROBE_PATH:-probe}"
 
-$PROBE_PATH -url "${SERVER_URL}/mcp" -transport http -headers "Authorization:Bearer $APIKEY"
-
+$PROBE_PATH -url "${SERVER_URL}/mcp" -transport http \
+    -headers "Authorization:Bearer $APIKEY" \
+    -call pwndoc_list_audits -params '{}'

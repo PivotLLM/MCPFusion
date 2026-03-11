@@ -32,10 +32,14 @@ if [ -z "$SERVER_URL" ]; then
 fi
 
 # Check if PROBE_PATH is set, otherwise use default
-PROBE_PATH="${PROBE_PATH:-/Users/eric/source/MCPProbe/probe}"
+PROBE_PATH="${PROBE_PATH:-probe}"
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
+
+# MCPFusion Integration Test audit ID
+AUDIT_ID="696c3f8051d8f95c85499d33"
+FINDING_ID="696c3f9151d8f95c85499d3d"
 
 echo "=== Testing PwnDoc Finding API ==="
 echo "Timestamp: $(date)"
@@ -43,34 +47,23 @@ echo "Server: $FULL_SERVER_URL"
 echo "Using API Token: ${APIKEY:0:8}..."
 echo ""
 
-# Test 1: Search findings
-echo "Test 1: Search all findings"
-echo "Command: pwndoc_search_findings"
-echo "Parameters: {}"
+# Test 1: List findings for a known audit
+echo "Test 1: List findings for audit"
+echo "Command: pwndoc_list_audit_findings"
+echo "Parameters: {\"audit_id\": \"$AUDIT_ID\"}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_search_findings -params '{}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_list_audit_findings -params "{\"audit_id\": \"$AUDIT_ID\"}"
 
 echo ""
 echo "=========================================="
 echo ""
 
-# Test 2: Search findings by severity
-echo "Test 2: Search findings by severity"
-echo "Command: pwndoc_search_findings with severity filter"
-echo "Parameters: {\"severity\": \"Critical\"}"
+# Test 2: Get a specific finding
+echo "Test 2: Get specific finding"
+echo "Command: pwndoc_get_finding"
+echo "Parameters: {\"audit_id\": \"$AUDIT_ID\", \"finding_id\": \"$FINDING_ID\"}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_search_findings -params '{"severity": "Critical"}'
-
-echo ""
-echo "=========================================="
-echo ""
-
-# Test 3: Get all findings with context
-echo "Test 3: Get all findings with full context"
-echo "Command: pwndoc_get_all_findings_with_context"
-echo "Parameters: {\"include_failed\": false}"
-echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_get_all_findings_with_context -params '{"include_failed": false}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_get_finding -params "{\"audit_id\": \"$AUDIT_ID\", \"finding_id\": \"$FINDING_ID\"}"
 
 echo ""
 echo "=========================================="
