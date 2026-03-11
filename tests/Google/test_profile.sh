@@ -29,8 +29,11 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 # Test Google Workspace Profile API
 echo "=== Testing Google Workspace Profile API ==="
@@ -43,7 +46,7 @@ echo "Test 1: Basic profile retrieval"
 echo "Command: google_profile_get with default parameters"
 echo "Parameters: {}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_profile_get -params '{}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_profile_get -params '{}'
 
 echo ""
 echo "=== Profile API Tests Complete ==="

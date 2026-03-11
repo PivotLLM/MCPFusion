@@ -5,12 +5,15 @@
 # Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
+# Get the directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Load environment variables
-if [ -f ".env" ]; then
-    source .env
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
 else
-    echo "Error: .env file not found"
-    echo "Please create a .env file with APIKEY=your-api-token"
+    echo "Error: .env file not found in $SCRIPT_DIR"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi
 
@@ -20,5 +23,14 @@ if [ -z "$APIKEY" ]; then
     exit 1
 fi
 
-/Users/eric/source/MCPProbe/probe -url http://127.0.0.1:8888/sse -transport sse -headers "Authorization:Bearer $APIKEY"
+# Check if SERVER_URL is set
+if [ -z "$SERVER_URL" ]; then
+    echo "Error: SERVER_URL not set in .env file"
+    exit 1
+fi
+
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+$PROBE_PATH -url "${SERVER_URL}/mcp" -transport http -headers "Authorization:Bearer $APIKEY"
 

@@ -5,11 +5,14 @@
 # Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
+# Get the directory of the script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Load environment variables
-if [ -f ".env" ]; then
-    source .env
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
 else
-    echo "Error: .env file not found"
+    echo "Error: .env file not found in $SCRIPT_DIR"
     echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
     exit 1
 fi
@@ -33,8 +36,8 @@ echo "==============================================="
 echo
 
 # Configuration
-PROBE_PATH="/Users/eric/source/MCPProbe/probe"
-FULL_SERVER_URL="${SERVER_URL}/sse"
+PROBE_PATH="${PROBE_PATH:-probe}"
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 OUTPUT_FILE="files_search_fixed_${TIMESTAMP}.log"
 
@@ -46,7 +49,7 @@ echo | tee -a "$OUTPUT_FILE"
 
 # Test 1: Search for files with 'document' in name
 echo "=== Test 1: Search for files containing 'document' ===" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport http \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_search \
   -params '{"searchQuery":"document","$top":"10"}' \
@@ -55,7 +58,7 @@ echo | tee -a "$OUTPUT_FILE"
 
 # Test 2: Search for files with different query
 echo "=== Test 2: Search for files containing 'report' ===" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport http \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_search \
   -params '{"searchQuery":"report","$top":"5"}' \
@@ -64,7 +67,7 @@ echo | tee -a "$OUTPUT_FILE"
 
 # Test 3: Search for files with field selection
 echo "=== Test 3: Search with custom field selection ===" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport http \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_search \
   -params '{"searchQuery":"presentation","$select":"name,size,lastModifiedDateTime","$top":"5"}' \
@@ -73,7 +76,7 @@ echo | tee -a "$OUTPUT_FILE"
 
 # Test 4: Search for common file types
 echo "=== Test 4: Search for files (top 5) ===" | tee -a "$OUTPUT_FILE"
-"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport sse \
+"$PROBE_PATH" -url "$FULL_SERVER_URL" -transport http \
   -headers "Authorization:Bearer $APIKEY" \
   -call microsoft365_files_search \
   -params '{"searchQuery":"doc","$top":"5"}' \

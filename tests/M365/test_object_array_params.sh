@@ -41,10 +41,10 @@ if [ -z "$SERVER_URL" ]; then
 fi
 
 # Check if PROBE_PATH is set, otherwise use default
-PROBE_PATH="${PROBE_PATH:-/home/eric/bin/probe}"
+PROBE_PATH="${PROBE_PATH:-probe}"
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 echo "=== M365 Object Array Parameters Regression Test ==="
 echo "Timestamp: $(date)"
@@ -61,7 +61,7 @@ echo "Test 1: Create mail draft with toRecipients as an object array"
 echo "Command: microsoft365_mail_draft_create"
 echo "Parameters: {\"subject\": \"Object Array Regression Test\", \"body\": \"Testing toRecipients as object array\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"test@example.com\", \"name\": \"Test User\"}}]}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_draft_create -params '{"subject": "Object Array Regression Test", "body": "Testing toRecipients as object array", "toRecipients": [{"emailAddress": {"address": "test@example.com", "name": "Test User"}}]}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_draft_create -params '{"subject": "Object Array Regression Test", "body": "Testing toRecipients as object array", "toRecipients": [{"emailAddress": {"address": "test@example.com", "name": "Test User"}}]}'
 
 echo ""
 echo "=========================================="
@@ -72,7 +72,7 @@ echo "Test 2: Create mail draft with toRecipients, ccRecipients, and bccRecipien
 echo "Command: microsoft365_mail_draft_create"
 echo "Parameters: {\"subject\": \"Object Array Multi-Recipient Test\", \"body\": \"Testing multiple recipient object arrays\", \"toRecipients\": [{\"emailAddress\": {\"address\": \"to@example.com\", \"name\": \"To User\"}}], \"ccRecipients\": [{\"emailAddress\": {\"address\": \"cc@example.com\", \"name\": \"CC User\"}}], \"bccRecipients\": [{\"emailAddress\": {\"address\": \"bcc@example.com\", \"name\": \"BCC User\"}}]}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_draft_create -params '{"subject": "Object Array Multi-Recipient Test", "body": "Testing multiple recipient object arrays", "toRecipients": [{"emailAddress": {"address": "to@example.com", "name": "To User"}}], "ccRecipients": [{"emailAddress": {"address": "cc@example.com", "name": "CC User"}}], "bccRecipients": [{"emailAddress": {"address": "bcc@example.com", "name": "BCC User"}}]}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_draft_create -params '{"subject": "Object Array Multi-Recipient Test", "body": "Testing multiple recipient object arrays", "toRecipients": [{"emailAddress": {"address": "to@example.com", "name": "To User"}}], "ccRecipients": [{"emailAddress": {"address": "cc@example.com", "name": "CC User"}}], "bccRecipients": [{"emailAddress": {"address": "bcc@example.com", "name": "BCC User"}}]}'
 
 echo ""
 echo "=========================================="
@@ -83,7 +83,7 @@ echo "Test 3: List drafts to verify the drafts from Tests 1 and 2 were created"
 echo "Command: microsoft365_mail_draft_list"
 echo "Parameters: {}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_draft_list -params '{}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call microsoft365_mail_draft_list -params '{}'
 
 echo ""
 echo "=========================================="
@@ -94,7 +94,7 @@ echo "Test 4: Create calendar event with attendees as an object array"
 echo "Command: microsoft365_calendar_event_create"
 echo "Parameters: {\"subject\": \"Object Array Regression Test Event\", \"body\": \"Testing attendees as object array - please delete\", \"start\": \"2099-12-31T10:00:00\", \"end\": \"2099-12-31T11:00:00\", \"attendees\": [{\"emailAddress\": {\"address\": \"test@example.com\", \"name\": \"Test Attendee\"}, \"type\": \"required\"}]}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_event_create -params '{"subject": "Object Array Regression Test Event", "body": "Testing attendees as object array - please delete", "start": "2099-12-31T10:00:00", "end": "2099-12-31T11:00:00", "attendees": [{"emailAddress": {"address": "test@example.com", "name": "Test Attendee"}, "type": "required"}]}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call microsoft365_calendar_event_create -params '{"subject": "Object Array Regression Test Event", "body": "Testing attendees as object array - please delete", "start": "2099-12-31T10:00:00", "end": "2099-12-31T11:00:00", "attendees": [{"emailAddress": {"address": "test@example.com", "name": "Test Attendee"}, "type": "required"}]}'
 
 echo ""
 echo "=========================================="

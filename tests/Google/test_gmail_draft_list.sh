@@ -29,8 +29,11 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 # Test Google Gmail Draft List API
 echo "=== Testing Google Gmail Draft List API ==="
@@ -43,7 +46,7 @@ echo "Test 1: List drafts with defaults"
 echo "Command: google_gmail_draft_list with default parameters"
 echo "Parameters: {}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_list -params '{}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_list -params '{}'
 
 echo ""
 echo "=========================================="
@@ -53,7 +56,7 @@ echo "Test 2: List drafts with maxResults 5"
 echo "Command: google_gmail_draft_list with maxResults 5"
 echo "Parameters: {\"maxResults\": \"5\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_list -params '{"maxResults": "5"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_list -params '{"maxResults": "5"}'
 
 echo ""
 echo "=========================================="
@@ -63,7 +66,7 @@ echo "Test 3: List drafts with search query"
 echo "Command: google_gmail_draft_list with query filter"
 echo "Parameters: {\"q\": \"subject:meeting\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_list -params '{"q": "subject:meeting"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_list -params '{"q": "subject:meeting"}'
 
 echo ""
 echo "=== Gmail Draft List API Tests Complete ==="

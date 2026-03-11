@@ -10,7 +10,7 @@
 
 # Configuration
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROBE_PATH="${PROBE_PATH:-/home/eric/bin/probe}"
+PROBE_PATH="${PROBE_PATH:-probe}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Load environment variables
@@ -35,8 +35,8 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-SERVER_URL="${SERVER_URL}/sse"
+# Append /mcp to the base URL
+SERVER_URL="${SERVER_URL}/mcp"
 
 # Colors for output
 RED='\033[0;31m'
@@ -55,13 +55,9 @@ echo ""
 # Check prerequisites
 echo -e "${BLUE}[INFO]${NC} Checking prerequisites..."
 
-if [ ! -f "$PROBE_PATH" ]; then
-    echo -e "${RED}[ERROR]${NC} Probe tool not found at: $PROBE_PATH"
-    exit 1
-fi
-
-if [ ! -x "$PROBE_PATH" ]; then
-    echo -e "${RED}[ERROR]${NC} Probe tool is not executable: $PROBE_PATH"
+if ! command -v "$PROBE_PATH" > /dev/null 2>&1; then
+    echo -e "${RED}[ERROR]${NC} Probe tool not found: $PROBE_PATH"
+    echo "Install probe or set PROBE_PATH to the full path of the probe binary"
     exit 1
 fi
 
@@ -70,7 +66,7 @@ echo ""
 
 # Test server connectivity
 echo -e "${BLUE}[INFO]${NC} Testing server connectivity..."
-if ! "$PROBE_PATH" -url "$SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -list-only >/dev/null 2>&1; then
+if ! "$PROBE_PATH" -url "$SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -list-only >/dev/null 2>&1; then
     echo -e "${RED}[ERROR]${NC} Cannot connect to MCP server at $SERVER_URL"
     echo "Please ensure the MCPFusion server is running"
     exit 1

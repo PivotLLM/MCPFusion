@@ -29,8 +29,11 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 # Test Google Gmail Draft Get API
 echo "=== Testing Google Gmail Draft Get API ==="
@@ -43,7 +46,7 @@ echo "Test 1: Get a specific draft by ID"
 echo "Command: google_gmail_draft_get with draftId"
 echo "Parameters: {\"draftId\": \"DRAFT_ID_HERE\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_get -params '{"draftId": "DRAFT_ID_HERE"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_get -params '{"draftId": "DRAFT_ID_HERE"}'
 
 echo ""
 echo "=== Gmail Draft Get API Tests Complete ==="

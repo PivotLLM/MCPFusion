@@ -42,10 +42,10 @@ if [ -z "$SERVER_URL" ]; then
 fi
 
 # Check if PROBE_PATH is set, otherwise use default
-PROBE_PATH="${PROBE_PATH:-/home/eric/bin/probe}"
+PROBE_PATH="${PROBE_PATH:-probe}"
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 echo "=== PwnDoc Object Array Parameters Regression Test ==="
 echo "Timestamp: $(date)"
@@ -58,7 +58,7 @@ echo "Test 1: Update SQL Injection finding with customFields as object array"
 echo "Command: pwndoc_update_finding"
 echo "Parameters: {\"audit_id\": \"696c3f8051d8f95c85499d33\", \"finding_id\": \"696c3f9151d8f95c85499d3d\", \"customFields\": [{\"customField\": \"64b23406fc882b3cbf9eb035\", \"text\": \"A03:2021-Injection\"}]}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_update_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d3d", "customFields": [{"customField": "64b23406fc882b3cbf9eb035", "text": "A03:2021-Injection"}]}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_update_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d3d", "customFields": [{"customField": "64b23406fc882b3cbf9eb035", "text": "A03:2021-Injection"}]}'
 
 echo ""
 echo "=========================================="
@@ -69,7 +69,7 @@ echo "Test 2: Get SQL Injection finding to verify customFields were saved (not s
 echo "Command: pwndoc_get_finding"
 echo "Parameters: {\"audit_id\": \"696c3f8051d8f95c85499d33\", \"finding_id\": \"696c3f9151d8f95c85499d3d\"}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_get_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d3d"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_get_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d3d"}'
 echo ""
 echo "Verify customFields array is present in the response above (not empty)"
 
@@ -82,7 +82,7 @@ echo "Test 3: Clear customFields on SQL Injection finding (cleanup)"
 echo "Command: pwndoc_update_finding"
 echo "Parameters: {\"audit_id\": \"696c3f8051d8f95c85499d33\", \"finding_id\": \"696c3f9151d8f95c85499d3d\", \"customFields\": []}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_update_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d3d", "customFields": []}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_update_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d3d", "customFields": []}'
 
 echo ""
 echo "=========================================="
@@ -93,7 +93,7 @@ echo "Test 4: Update XSS finding with customFields as object array"
 echo "Command: pwndoc_update_finding"
 echo "Parameters: {\"audit_id\": \"696c3f8051d8f95c85499d33\", \"finding_id\": \"696c3f9151d8f95c85499d4d\", \"customFields\": [{\"customField\": \"64b23406fc882b3cbf9eb035\", \"text\": \"A03:2021-Injection\"}]}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_update_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d4d", "customFields": [{"customField": "64b23406fc882b3cbf9eb035", "text": "A03:2021-Injection"}]}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_update_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d4d", "customFields": [{"customField": "64b23406fc882b3cbf9eb035", "text": "A03:2021-Injection"}]}'
 
 echo ""
 echo "=========================================="
@@ -104,7 +104,7 @@ echo "Test 5: Get XSS finding to verify customFields were saved (not silently dr
 echo "Command: pwndoc_get_finding"
 echo "Parameters: {\"audit_id\": \"696c3f8051d8f95c85499d33\", \"finding_id\": \"696c3f9151d8f95c85499d4d\"}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_get_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d4d"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_get_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d4d"}'
 echo ""
 echo "Verify customFields array is present in the response above"
 
@@ -117,7 +117,7 @@ echo "Test 6: Clear customFields on XSS finding (cleanup)"
 echo "Command: pwndoc_update_finding"
 echo "Parameters: {\"audit_id\": \"696c3f8051d8f95c85499d33\", \"finding_id\": \"696c3f9151d8f95c85499d4d\", \"customFields\": []}"
 echo ""
-$PROBE_PATH -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call pwndoc_update_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d4d", "customFields": []}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call pwndoc_update_finding -params '{"audit_id": "696c3f8051d8f95c85499d33", "finding_id": "696c3f9151d8f95c85499d4d", "customFields": []}'
 
 echo ""
 echo "=========================================="

@@ -29,8 +29,11 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 # Test Google Gmail Draft Create API
 echo "=== Testing Google Gmail Draft Create API ==="
@@ -43,7 +46,7 @@ echo "Test 1: Create draft with to, subject, and body"
 echo "Command: google_gmail_draft_create with to, subject, and body"
 echo "Parameters: {\"to\": \"user@example.com\", \"subject\": \"Project Update - Q1 Review\", \"body\": \"Please find the quarterly update below.\", \"bodyContentType\": \"Text\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_create -params '{"to": "user@example.com", "subject": "Project Update - Q1 Review", "body": "Please find the quarterly update below.", "bodyContentType": "Text"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_create -params '{"to": "user@example.com", "subject": "Project Update - Q1 Review", "body": "Please find the quarterly update below.", "bodyContentType": "Text"}'
 
 echo ""
 echo "=========================================="
@@ -53,7 +56,7 @@ echo "Test 2: Create draft with subject and body only (no recipient)"
 echo "Command: google_gmail_draft_create with subject and body only"
 echo "Parameters: {\"subject\": \"Meeting Notes - Draft\", \"body\": \"These are the meeting notes from today.\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_create -params '{"subject": "Meeting Notes - Draft", "body": "These are the meeting notes from today."}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_create -params '{"subject": "Meeting Notes - Draft", "body": "These are the meeting notes from today."}'
 
 echo ""
 echo "=========================================="
@@ -63,7 +66,7 @@ echo "Test 3: Create draft with to, cc, bcc, subject, and body"
 echo "Command: google_gmail_draft_create with all recipient types"
 echo "Parameters: {\"to\": \"manager@example.com\", \"cc\": \"finance@example.com\", \"bcc\": \"archive@example.com\", \"subject\": \"Budget Approval Required\", \"body\": \"<html><body><p>Please review and approve the attached budget proposal.</p></body></html>\", \"bodyContentType\": \"HTML\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_create -params '{"to": "manager@example.com", "cc": "finance@example.com", "bcc": "archive@example.com", "subject": "Budget Approval Required", "body": "<html><body><p>Please review and approve the attached budget proposal.</p></body></html>", "bodyContentType": "HTML"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_gmail_draft_create -params '{"to": "manager@example.com", "cc": "finance@example.com", "bcc": "archive@example.com", "subject": "Budget Approval Required", "body": "<html><body><p>Please review and approve the attached budget proposal.</p></body></html>", "bodyContentType": "HTML"}'
 
 echo ""
 echo "=== Gmail Draft Create API Tests Complete ==="

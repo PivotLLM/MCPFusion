@@ -29,8 +29,11 @@ if [ -z "$SERVER_URL" ]; then
     exit 1
 fi
 
-# Append /sse to the base URL
-FULL_SERVER_URL="${SERVER_URL}/sse"
+# Check if PROBE_PATH is set, otherwise use default
+PROBE_PATH="${PROBE_PATH:-probe}"
+
+# Append /mcp to the base URL
+FULL_SERVER_URL="${SERVER_URL}/mcp"
 
 # Test Google Contacts List API
 echo "=== Testing Google Contacts List API ==="
@@ -43,7 +46,7 @@ echo "Test 1: List contacts with default personFields"
 echo "Command: google_contacts_list with default parameters"
 echo "Parameters: {}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_contacts_list -params '{}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_contacts_list -params '{}'
 
 echo ""
 echo "=========================================="
@@ -53,7 +56,7 @@ echo "Test 2: List contacts with custom pageSize"
 echo "Command: google_contacts_list with pageSize 5"
 echo "Parameters: {\"pageSize\": \"5\"}"
 echo ""
-/Users/eric/source/MCPProbe/probe -url "$FULL_SERVER_URL" -transport sse -headers "Authorization:Bearer $APIKEY" -call google_contacts_list -params '{"pageSize": "5"}'
+$PROBE_PATH -url "$FULL_SERVER_URL" -transport http -headers "Authorization:Bearer $APIKEY" -call google_contacts_list -params '{"pageSize": "5"}'
 
 echo ""
 echo "=== Contacts List API Tests Complete ==="
