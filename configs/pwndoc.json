@@ -408,6 +408,9 @@
               "location": "path"
             }
           ],
+          "connection": {
+            "timeout": "300s"
+          },
           "response": {
             "type": "binary"
           }

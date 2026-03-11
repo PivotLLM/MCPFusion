@@ -114,9 +114,20 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
-	// Wrap ctx with an independent 60-second deadline for the outbound request
-	// and body read. Deferred here so the cancel fires AFTER handleResponse reads the body.
-	outboundCtx, outboundCancel := context.WithTimeout(ctx, 60*time.Second)
+	// Wrap ctx with an independent deadline for the outbound request and body read.
+	// The timeout defaults to 60 seconds but respects endpoint-level connection.timeout
+	// overrides so slow endpoints (e.g. report generation) can use longer values.
+	// Deferred here so the cancel fires AFTER handleResponse reads the body.
+	outboundTimeout := 60 * time.Second
+	if h.endpoint.Connection != nil && h.endpoint.Connection.Timeout != "" {
+		if t, err := time.ParseDuration(h.endpoint.Connection.Timeout); err == nil {
+			outboundTimeout = t
+		} else if h.fusion.logger != nil {
+			h.fusion.logger.Warningf("Invalid connection.timeout %q for endpoint %s, using default %v: %v",
+				h.endpoint.Connection.Timeout, h.endpoint.ID, outboundTimeout, err)
+		}
+	}
+	outboundCtx, outboundCancel := context.WithTimeout(ctx, outboundTimeout)
 	defer outboundCancel()
 	req = req.WithContext(outboundCtx)
 
@@ -691,7 +702,7 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 	case "binary":
 		dlDir := h.fusion.DownloadDir()
 		if dlDir == "" {
-			return fmt.Sprintf("Binary data (%d bytes). Set MCP_FUSION_DL_DIR to save downloads to disk.", len(body)), nil
+			return fmt.Sprintf("Tool call succeeded. Binary data received (%d bytes), but MCP_FUSION_DL_DIR is not configured so the data was discarded. Set MCP_FUSION_DL_DIR to enable saving binary downloads to disk.", len(body)), nil
 		}
 
 		// Ensure download directory exists
@@ -719,7 +730,7 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 			h.fusion.logger.Infof("Binary response saved: %s (%d bytes)", filePath, len(body))
 		}
 
-		return fmt.Sprintf("File saved to %s (%d bytes)", filePath, len(body)), nil
+		return fmt.Sprintf("Tool call succeeded. Binary data saved to %s (%d bytes).", filePath, len(body)), nil
 
 	default:
 		// Default to JSON
