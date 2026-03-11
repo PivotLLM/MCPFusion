@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -95,6 +96,9 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	// Coerce JSON-encoded string values to native array/object types.
 	// Some MCP clients serialize structured parameters as strings.
 	coerceArgumentTypes(h.endpoint.Parameters, args, h.fusion.logger)
+
+	// Apply declared named transforms to string parameter values.
+	applyParameterTransforms(h.endpoint.Parameters, args, h.fusion.logger)
 
 	// Validate parameters
 	validator := NewValidator(h.fusion.logger)
@@ -806,6 +810,55 @@ func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}, 
 				logger.Warningf("parameter %q is declared as %s but value is a non-parseable string; passing raw string to API which will likely fail: %v", param.Name, param.Type, err)
 			}
 		}
+	}
+}
+
+// interElementWhitespace matches whitespace-only content (including at least one newline)
+// between an HTML closing tag boundary (>) and the next opening tag boundary (<).
+// This strips inter-element text nodes that cause null-pointer crashes in HTML-to-OOXML
+// converters such as PwnDoc's html2ooxml.js.
+//
+// The regex is safe for content inside <pre><code> blocks because those newlines appear
+// between text characters and tag boundaries, not between two tag boundaries.
+// Note: whitespace-only text nodes between adjacent tags such as <pre>\n<code> are also
+// stripped — this is acceptable because no supported renderer relies on that distinction.
+var interElementWhitespace = regexp.MustCompile(`>[ \t]*[\r\n]+[ \t\r\n]*<`)
+
+// applyParameterTransforms applies declared named transforms to string parameter values.
+// Transforms are applied in order after argument coercion and before validation.
+// Currently supported transforms:
+//   - "html_compact": strips whitespace-only text nodes between HTML tags, preventing
+//     crashes in HTML-to-OOXML converters (e.g. PwnDoc) that cannot handle inter-element whitespace.
+func applyParameterTransforms(params []ParameterConfig, args map[string]interface{}, logger global.Logger) {
+	for _, param := range params {
+		if len(param.Transforms) == 0 {
+			continue
+		}
+		val, ok := args[param.Name]
+		if !ok {
+			continue
+		}
+		str, ok := val.(string)
+		if !ok {
+			continue
+		}
+		for _, transform := range param.Transforms {
+			switch transform {
+			case "html_compact":
+				compacted := interElementWhitespace.ReplaceAllString(str, "><")
+				if compacted != str {
+					if logger != nil {
+						logger.Debugf("transform html_compact modified parameter %q: stripped inter-element whitespace", param.Name)
+					}
+					str = compacted
+				}
+			default:
+				if logger != nil {
+					logger.Warningf("unknown transform %q declared for parameter %q — skipping", transform, param.Name)
+				}
+			}
+		}
+		args[param.Name] = str
 	}
 }
 

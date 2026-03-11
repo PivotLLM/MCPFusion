@@ -268,6 +268,7 @@ type ParameterConfig struct {
 	Examples    []interface{}     `json:"examples,omitempty"`
 	Validation  *ValidationConfig `json:"validation,omitempty"`
 	Transform   *TransformConfig  `json:"transform,omitempty"`
+	Transforms  []string          `json:"transforms,omitempty"` // Named value transforms to apply (e.g. "html_compact")
 	Quoted      bool              `json:"quoted,omitempty"` // Whether to quote the parameter value
 	Static      bool              `json:"static,omitempty"` // Whether this is a static parameter (not exposed to MCP, always uses default)
 }
