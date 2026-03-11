@@ -2,6 +2,14 @@
 
 This guide explains how to configure various MCP clients to connect to MCPFusion servers.
 
+## Supported Clients
+
+- [Claude Code](#claude-code)
+- [Claude Desktop](#claude-desktop)
+- [Cline](#cline)
+- [Gemini CLI](#gemini-cli)
+- [Visual Studio Code with GitHub Copilot](#visual-studio-code-with-github-copilot)
+
 ## Overview
 
 MCPFusion serves as an MCP (Model Context Protocol) server that provides AI clients with access to external APIs through standardized tools. Clients connect to MCPFusion using either the legacy SSE transport or the modern Streamable HTTP transport.
@@ -26,7 +34,7 @@ For clients unable or unwilling to support MCP over HTTP, it may be preferable t
 ## Claude Code
 MCP servers can be added to Claude code via the command line. To add an MCP server scoped to the user (all projects):
 
-`claude mcp add --transport http Fusion --scope user http://127.0.0.1:8888/mcp --header "Authorization: Bearer <token>"`
+`claude mcp add --transport http fusion --scope user http://127.0.0.1:8888/mcp --header "Authorization: Bearer <token>"`
 
 To list configured MCP servers:
 
@@ -39,7 +47,7 @@ For further information use:
 
 ## Claude Desktop
 
-Claude Desktop does not support HTTP header bearer tokens, nor will it support HTTP (as opposed to HTTPS) even on localhost. The author's decision to only support OAUTH authentication may be future-facing, but it ignore the practical solutions required today.
+Claude Desktop does not support HTTP header bearer tokens, nor will it support HTTP (as opposed to HTTPS) even on localhost. The author's decision to only support OAUTH authentication may be future-facing, but it ignores the practical solutions required today.
 
 Since Claude Desktop does fully support "Local MCP servers" that use the stdio transport, you can use a utility such as MCPRelay to bridge between a stdio transport and a network-accessible MCP server.
 
@@ -48,7 +56,7 @@ Example:
 ```json
 {
   "mcpServers": {
-    "Fusion": {
+    "fusion": {
       "command": "/opt/mcprelay/mcprelay",
       "args": [
         "-url",
@@ -98,8 +106,8 @@ Create or edit the Cline configuration file:
 ```json
 {
   "mcpServers": {
-    "MCPFusion": {
-      "url": "http://localhost:8888/sse",
+    "fusion": {
+      "url": "http://127.0.0.1:8888/sse",
       "headers": {
 				"Authorization": "Bearer <token>"
 			},
@@ -122,20 +130,77 @@ Create or edit the Cline configuration file:
 
 For more information please refer to https://docs.cline.bot/mcp/configuring-mcp-servers
 
+## Gemini CLI
+
+[Gemini CLI](https://github.com/google-gemini/gemini-cli) supports MCP servers via the `gemini mcp add` command or by editing `~/.gemini/settings.json` directly.
+
+### Command Line
+
+To add MCPFusion scoped to the user (all projects):
+
+```bash
+gemini mcp add fusion http://127.0.0.1:8888/mcp --scope user --transport http --header "Authorization: Bearer <token>"
+```
+
+Omit `--scope user` to configure MCPFusion at the project level instead.
+
+> **Warning:** The `--trust` flag grants Gemini CLI unrestricted access to all MCP tools without prompting for permission. Only use `--trust` in controlled environments where you fully trust the MCP server and its tools. Do not use it with servers you do not control or that have access to sensitive data or destructive operations.
+
+To grant access to all tools without prompting (use with caution — see warning above):
+
+```bash
+gemini mcp add fusion http://127.0.0.1:8888/mcp --scope user --transport http --header "Authorization: Bearer <token>" --trust
+```
+
+### Manual Configuration
+
+Alternatively, add the following to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "fusion": {
+      "url": "http://127.0.0.1:8888/mcp",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    }
+  }
+}
+```
+
+To allow Gemini CLI access to all tools without prompting for permission, add `"trust": true` to the server definition (use with caution — see warning above):
+
+```json
+{
+  "mcpServers": {
+    "fusion": {
+      "url": "http://127.0.0.1:8888/mcp",
+      "type": "http",
+      "trust": true,
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    }
+  }
+}
+```
+
 ## Visual Studio Code with GitHub Copilot
 
-The is more than one way to configure VS Code with Copilot. Opening the command palate and searching for @mcp should find "MCP: Open User Configuration."
+There is more than one way to configure VS Code with Copilot. Opening the command palette and searching for @mcp should find "MCP: Open User Configuration."
 
 VS Code appears to prefer the more modern streaming HTTP. The following configuration is recommended:
 
 ```json
 {
   "servers": {
-    "Fusion": {
-    "type": "http",
-	  "url": "http://localhost:8888/mcp",
+    "fusion": {
+      "type": "http",
+      "url": "http://127.0.0.1:8888/mcp",
       "headers": {
-        "Authorization": "Bearer <your-key>"
+        "Authorization": "Bearer <token>"
       }
     }
   },
