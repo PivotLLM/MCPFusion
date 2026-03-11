@@ -8,5 +8,5 @@ package global
 // Version information
 const (
 	AppName    = "MCPFusion"
-	AppVersion = "0.3.10"
+	AppVersion = "0.3.11"
 )
