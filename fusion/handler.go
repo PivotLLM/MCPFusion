@@ -442,6 +442,12 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		Timestamp:     startTime,
 	}
 
+	// Apply an independent timeout for the outbound request so it doesn't
+	// depend solely on the MCP client's session context.
+	outboundCtx, outboundCancel := context.WithTimeout(ctx, 60*time.Second)
+	defer outboundCancel()
+	req = req.Clone(outboundCtx)
+
 	// Get effective retry configuration
 	retryConfig := h.endpoint.GetEffectiveRetryConfig(h.service)
 
@@ -508,9 +514,10 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 
 	executeFunc := func() error {
 		if retryConfig.Enabled {
-			// Use retry executor
+			// Use retry executor with the outbound context so the retry loop
+			// is bounded by the independent outbound timeout.
 			retryExecutor := NewRetryExecutor(retryConfig, h.fusion.logger)
-			resp, err = retryExecutor.Execute(ctx, httpClient, req)
+			resp, err = retryExecutor.Execute(outboundCtx, httpClient, req)
 			if err != nil && resp == nil {
 				// Count retry attempts from the error context
 				metrics.RetryCount = retryConfig.MaxAttempts - 1
@@ -563,6 +570,12 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 			h.fusion.ForceConnectionCleanup()
 		} else if strings.Contains(err.Error(), "circuit breaker") {
 			metrics.ErrorCategory = ErrorCategoryServer
+		} else if strings.Contains(err.Error(), "context canceled") || strings.Contains(err.Error(), "context deadline exceeded") {
+			metrics.ErrorCategory = ErrorCategoryTimeout
+			if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("Request cancelled (context done) for [%s]: %v", correlationID, err)
+			}
+			h.fusion.ForceConnectionCleanup()
 		} else {
 			metrics.ErrorCategory = ErrorCategoryPermanent
 		}
