@@ -49,6 +49,7 @@ import (
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/metrics"
+	"github.com/PivotLLM/MCPFusion/providers/health"
 )
 
 // Ensure Fusion implements the required interfaces
@@ -605,18 +606,9 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 		}
 	}
 
-	// Register knowledge management tools (native, not config-driven)
-	knowledgeTools := f.registerKnowledgeTools()
-	tools = append(tools, knowledgeTools...)
-
-	// Register health tool (native, not config-driven)
-	tools = append(tools, f.registerHealthTool())
-
 	// Register native tool prefixes so auth middleware recognises them
 	if f.nativeToolPrefixRegistrar != nil {
-		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("knowledge")
 		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("command")
-		f.nativeToolPrefixRegistrar.RegisterNativeToolPrefix("health")
 	}
 
 	// Register services with the shared metrics collector
@@ -628,12 +620,6 @@ func (f *Fusion) RegisterTools() []global.ToolDefinition {
 			}
 			toolCount := len(svc.Endpoints)
 			f.sharedCollector.RegisterService(serviceName, global.TransportAPI, &toolCount)
-		}
-
-		// Knowledge store (internal)
-		if f.database != nil {
-			knowledgeToolCount := len(knowledgeTools)
-			f.sharedCollector.RegisterService("knowledge", global.TransportInternal, &knowledgeToolCount)
 		}
 	}
 
@@ -1947,4 +1933,29 @@ func (f *Fusion) ForceConnectionCleanup() {
 		f.logger.Info("Forcing connection pool cleanup")
 	}
 	f.cleanupConnections()
+}
+
+// circuitBreakerSourceAdapter adapts Fusion's internal CircuitBreakerMetrics to
+// the health.CircuitBreakerSource interface without exposing internal types.
+type circuitBreakerSourceAdapter struct {
+	fusion *Fusion
+}
+
+// GetAllCircuitBreakerMetrics implements health.CircuitBreakerSource.
+func (a *circuitBreakerSourceAdapter) GetAllCircuitBreakerMetrics() map[string]health.CircuitBreakerInfo {
+	raw := a.fusion.GetAllCircuitBreakerMetrics()
+	result := make(map[string]health.CircuitBreakerInfo, len(raw))
+	for name, m := range raw {
+		result[name] = health.CircuitBreakerInfo{
+			State:  strings.ToLower(m.State.String()),
+			IsOpen: m.State == CircuitBreakerOpen,
+		}
+	}
+	return result
+}
+
+// GetCircuitBreakerSource returns a health.CircuitBreakerSource that exposes the
+// circuit-breaker state of all services managed by this Fusion instance.
+func (f *Fusion) GetCircuitBreakerSource() health.CircuitBreakerSource {
+	return &circuitBreakerSourceAdapter{fusion: f}
 }
