@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/fusion"
@@ -33,6 +34,7 @@ type AuthMiddleware struct {
 	logger          global.Logger
 	skipPaths       []string // Paths that should skip authentication
 	requireAuth     bool     // Whether authentication is required for all requests
+	requestCounter  atomic.Int64
 }
 
 // AuthMiddlewareOption represents configuration options for the auth middleware
@@ -360,19 +362,11 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, _ *fusion.TenantCo
 
 // generateRequestID generates a unique request ID for tracking
 func (am *AuthMiddleware) generateRequestID(r *http.Request) string {
-	// Check if request ID already exists in headers
 	if existingID := r.Header.Get("X-Request-ID"); existingID != "" {
 		return existingID
 	}
-
-	// Generate a simple request ID based on timestamp and remote address
-	timestamp := time.Now().Unix()
-	remoteAddr := r.RemoteAddr
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		remoteAddr = strings.Split(forwarded, ",")[0]
-	}
-
-	return fmt.Sprintf("req_%d_%s", timestamp, strings.ReplaceAll(remoteAddr, ":", "_"))
+	n := am.requestCounter.Add(1)
+	return fmt.Sprintf("req_%d_%04d", time.Now().Unix(), n)
 }
 
 // writeErrorResponse writes a JSON error response

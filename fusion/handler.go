@@ -135,6 +135,10 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	defer outboundCancel()
 	req = req.WithContext(outboundCtx)
 
+	if h.fusion.logger != nil {
+		h.fusion.logger.Debugf("Outbound timeout for %s [%s]: %v", h.endpoint.ID, correlationID, outboundTimeout)
+	}
+
 	// Apply multi-tenant authentication if available
 	if h.fusion.multiTenantAuth != nil {
 		// Extract tenant context from the request context (set by auth middleware)
@@ -529,7 +533,10 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 
 	executeFunc := func() error {
 		if retryConfig.Enabled {
-			// Use retry executor with the request context.
+			if h.fusion.logger != nil {
+				h.fusion.logger.Debugf("Executing HTTP request with retry (max %d attempts): %s %s [%s]",
+					retryConfig.MaxAttempts, req.Method, req.URL.String(), correlationID)
+			}
 			retryExecutor := NewRetryExecutor(retryConfig, h.fusion.logger)
 			resp, err = retryExecutor.Execute(ctx, httpClient, req)
 			if err != nil && resp == nil {

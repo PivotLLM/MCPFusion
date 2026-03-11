@@ -50,12 +50,28 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 	var lastResp *http.Response
 
 	for attempt := 0; attempt < r.config.MaxAttempts; attempt++ {
+		// Check if context is already done before this attempt
+		select {
+		case <-ctx.Done():
+			if r.logger != nil {
+				r.logger.Errorf("Context cancelled before attempt %d/%d: %v",
+					attempt+1, r.config.MaxAttempts, ctx.Err())
+			}
+			return lastResp, ctx.Err()
+		default:
+		}
+
 		// Clone the request for retry attempts (in case body needs to be read again)
 		clonedReq := r.cloneRequest(req)
 
-		if r.logger != nil && attempt > 0 {
-			r.logger.Infof("Retry attempt %d/%d for %s %s",
-				attempt+1, r.config.MaxAttempts, req.Method, req.URL.String())
+		if r.logger != nil {
+			if attempt == 0 {
+				r.logger.Debugf("HTTP request attempt 1/%d: %s %s",
+					r.config.MaxAttempts, req.Method, req.URL.String())
+			} else {
+				r.logger.Infof("HTTP request attempt %d/%d (retry): %s %s",
+					attempt+1, r.config.MaxAttempts, req.Method, req.URL.String())
+			}
 		}
 
 		// Execute the request
@@ -70,8 +86,12 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 		shouldRetry, retryReason := r.shouldRetry(err, resp, attempt)
 
 		if !shouldRetry {
-			if r.logger != nil && attempt > 0 {
-				r.logger.Infof("Request succeeded after %d attempts", attempt+1)
+			if r.logger != nil {
+				if attempt > 0 {
+					r.logger.Infof("Request succeeded after %d attempts", attempt+1)
+				} else if err != nil {
+					r.logger.Debugf("Request failed (no retry): %v", err)
+				}
 			}
 			return resp, err
 		}
@@ -83,17 +103,18 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 		}
 		lastResp = resp
 
-		// Log retry reason
+		// Log failure and retry reason
 		if r.logger != nil {
-			r.logger.Warningf("Request failed (attempt %d/%d): %s. Will retry after delay.",
-				attempt+1, r.config.MaxAttempts, retryReason)
+			r.logger.Warningf("HTTP request failed (attempt %d/%d): %s — error: %v",
+				attempt+1, r.config.MaxAttempts, retryReason, err)
 		}
 
 		// Don't wait after the last attempt
 		if attempt < r.config.MaxAttempts-1 {
 			delay := r.calculateDelay(attempt)
 			if r.logger != nil {
-				r.logger.Debugf("Waiting %v before retry", delay)
+				r.logger.Debugf("Waiting %v before retry attempt %d/%d",
+					delay, attempt+2, r.config.MaxAttempts)
 			}
 
 			select {
@@ -103,6 +124,10 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 				if resp != nil {
 					_ = resp.Body.Close()
 				}
+				if r.logger != nil {
+					r.logger.Errorf("Context cancelled during retry delay after attempt %d/%d: %v",
+						attempt+1, r.config.MaxAttempts, ctx.Err())
+				}
 				return nil, ctx.Err()
 			}
 		}
@@ -110,8 +135,8 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 
 	// All retries exhausted
 	if r.logger != nil {
-		r.logger.Errorf("All %d retry attempts exhausted for %s %s",
-			r.config.MaxAttempts, req.Method, req.URL.String())
+		r.logger.Errorf("All %d retry attempts exhausted for %s %s — last error: %v",
+			r.config.MaxAttempts, req.Method, req.URL.String(), lastErr)
 	}
 
 	// Return the last response and error
