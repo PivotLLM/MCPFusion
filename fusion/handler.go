@@ -94,7 +94,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 	// Coerce JSON-encoded string values to native array/object types.
 	// Some MCP clients serialize structured parameters as strings.
-	coerceArgumentTypes(h.endpoint.Parameters, args)
+	coerceArgumentTypes(h.endpoint.Parameters, args, h.fusion.logger)
 
 	// Validate parameters
 	validator := NewValidator(h.fusion.logger)
@@ -782,7 +782,7 @@ func sanitizeFilename(s string) string {
 // array and object parameters. Some MCP clients serialize arrays/objects as
 // JSON-encoded strings rather than native JSON types; this coercion ensures
 // MCPFusion handles both representations uniformly.
-func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}) {
+func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}, logger global.Logger) {
 	for _, param := range params {
 		if param.Type != ParameterTypeArray && param.Type != ParameterTypeObject {
 			continue
@@ -798,6 +798,13 @@ func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}) 
 		var parsed interface{}
 		if err := json.Unmarshal([]byte(str), &parsed); err == nil {
 			args[param.Name] = parsed
+			if logger != nil {
+				logger.Debugf("coerced parameter %q from JSON string to native %s type", param.Name, param.Type)
+			}
+		} else {
+			if logger != nil {
+				logger.Warningf("parameter %q is declared as %s but value is a non-parseable string; passing raw string to API which will likely fail: %v", param.Name, param.Type, err)
+			}
 		}
 	}
 }
