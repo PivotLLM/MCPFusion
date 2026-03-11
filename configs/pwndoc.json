@@ -379,7 +379,8 @@
               "type": "array",
               "required": false,
               "location": "body",
-              "items": "object"
+              "items": "object",
+              "transforms": ["validate_object_fields:customField._id,customField.label"]
             },
             {
               "name": "text",
@@ -543,7 +544,8 @@
               "type": "array",
               "required": false,
               "location": "body",
-              "items": "object"
+              "items": "object",
+              "transforms": ["validate_object_fields:customField._id,customField.label"]
             },
             {
               "name": "remediationComplexity",
@@ -666,7 +668,8 @@
               "type": "array",
               "required": false,
               "location": "body",
-              "items": "object"
+              "items": "object",
+              "transforms": ["validate_object_fields:customField._id,customField.label"]
             },
             {
               "name": "remediationComplexity",
@@ -1082,7 +1085,8 @@
               "type": "array",
               "required": true,
               "location": "body",
-              "items": "object"
+              "items": "object",
+              "transforms": ["html_compact_fields:description,observation,remediation"]
             },
             {
               "name": "cvssv3",
@@ -1137,7 +1141,8 @@
               "type": "array",
               "required": false,
               "location": "body",
-              "items": "object"
+              "items": "object",
+              "transforms": ["html_compact_fields:description,observation,remediation"]
             },
             {
               "name": "cvssv3",

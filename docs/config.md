@@ -343,7 +343,8 @@ Use curly braces for path placeholders:
 | `default` | any | No | Default value if not provided |
 | `examples` | array | No | Example values for LLM |
 | `validation` | object | No | Validation rules |
-| `transform` | object | No | Parameter transformation rules |
+| `transform` | object | No | Parameter transformation rules (rename/reshape, see [Parameter Transformation](#parameter-transformation)) |
+| `transforms` | array | No | Pre-send value transforms applied in order (see [Pre-Send Transforms](#pre-send-transforms)) |
 | `quoted` | boolean | No | Whether to quote the parameter value |
 | `static` | boolean | No | **Static parameter** - not exposed to MCP, always uses default value |
 
@@ -497,6 +498,79 @@ Transform parameter values before sending to API:
     "expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')"
   }
 }
+```
+
+### Pre-Send Transforms
+
+The `transforms` field is an array of named transform strings applied to a parameter's value after type coercion and before validation. Transforms are applied in order and are distinct from the `transform` field (which reshapes parameter names and structure).
+
+```json
+{
+  "name": "content",
+  "type": "string",
+  "transforms": ["html_compact"]
+}
+```
+
+**Supported transforms:**
+
+#### `html_compact`
+
+Applies to: `string` parameters.
+
+Strips whitespace-only text nodes between HTML tags by replacing any sequence of `>`, optional horizontal whitespace, at least one newline, optional further whitespace, and `<` with `><`. This prevents crashes in HTML-to-OOXML converters (such as PwnDoc's `html2ooxml.js` SAX parser) that cannot handle inter-element text nodes.
+
+Content inside `<pre><code>` blocks is preserved because those newlines appear between text characters and tag boundaries, not between two tag boundaries.
+
+```json
+{
+  "name": "description",
+  "type": "string",
+  "location": "body",
+  "transforms": ["html_compact"]
+}
+```
+
+#### `html_compact_fields:field1,field2,...`
+
+Applies to: `array` parameters with `"items": "object"`.
+
+Like `html_compact`, but operates on specific string fields within each object element of an array. The transform name includes the field list as a colon-separated suffix. Field names are top-level keys within each array element.
+
+Use this when an array parameter contains objects that each have HTML string fields. For example, a vulnerability `details` array where each element has `description`, `observation`, and `remediation` HTML fields:
+
+```json
+{
+  "name": "details",
+  "type": "array",
+  "items": "object",
+  "transforms": ["html_compact_fields:description,observation,remediation"]
+}
+```
+
+#### `validate_object_fields:field1,field2,...`
+
+Applies to: `array` parameters with `"items": "object"`.
+
+Validates that each object element in the array contains the specified fields, using dot-notation for nested fields. Returns an error (rejecting the request) if any element is missing a required field or has an empty string value. Supports two-level dot paths such as `customField._id`.
+
+Use this to enforce structural constraints on array-of-object parameters where the API requires fully embedded objects rather than reference IDs.
+
+```json
+{
+  "name": "customFields",
+  "type": "array",
+  "items": "object",
+  "transforms": ["validate_object_fields:customField._id,customField.label"]
+}
+```
+
+If validation fails, the request is rejected before it reaches the API with a descriptive error indicating which element and field failed.
+
+**Note:** `transforms` (plural) is always an array. Multiple transforms are applied in order:
+
+```json
+"transforms": ["validate_object_fields:customField._id,customField.label"]
 ```
 
 ## Response Configuration
