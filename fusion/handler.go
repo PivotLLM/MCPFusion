@@ -114,6 +114,12 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		return "", err
 	}
 
+	// Wrap ctx with an independent 60-second deadline for the outbound request
+	// and body read. Deferred here so the cancel fires AFTER handleResponse reads the body.
+	outboundCtx, outboundCancel := context.WithTimeout(ctx, 60*time.Second)
+	defer outboundCancel()
+	req = req.WithContext(outboundCtx)
+
 	// Apply multi-tenant authentication if available
 	if h.fusion.multiTenantAuth != nil {
 		// Extract tenant context from the request context (set by auth middleware)
@@ -210,7 +216,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Execute request with enhanced retry logic and metrics
-	resp, requestMetrics, err := h.executeRequest(ctx, req, correlationID)
+	resp, requestMetrics, err := h.executeRequest(outboundCtx, req, correlationID)
 	if err != nil {
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Request execution failed [%s]: %v", correlationID, err)
@@ -334,7 +340,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 
 					// Execute the retry request (only one retry to prevent infinite loops)
 					var retryMetrics *RequestMetrics
-					resp, retryMetrics, err = h.executeRequest(ctx, retryReq, correlationID)
+					resp, retryMetrics, err = h.executeRequest(outboundCtx, retryReq, correlationID)
 					if err != nil {
 						if h.fusion.logger != nil {
 							h.fusion.logger.Errorf("Retry request failed [%s]: %v", correlationID, err)
@@ -442,12 +448,6 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		Timestamp:     startTime,
 	}
 
-	// Apply an independent timeout for the outbound request so it doesn't
-	// depend solely on the MCP client's session context.
-	outboundCtx, outboundCancel := context.WithTimeout(ctx, 60*time.Second)
-	defer outboundCancel()
-	req = req.Clone(outboundCtx)
-
 	// Get effective retry configuration
 	retryConfig := h.endpoint.GetEffectiveRetryConfig(h.service)
 
@@ -514,10 +514,9 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 
 	executeFunc := func() error {
 		if retryConfig.Enabled {
-			// Use retry executor with the outbound context so the retry loop
-			// is bounded by the independent outbound timeout.
+			// Use retry executor with the request context.
 			retryExecutor := NewRetryExecutor(retryConfig, h.fusion.logger)
-			resp, err = retryExecutor.Execute(outboundCtx, httpClient, req)
+			resp, err = retryExecutor.Execute(ctx, httpClient, req)
 			if err != nil && resp == nil {
 				// Count retry attempts from the error context
 				metrics.RetryCount = retryConfig.MaxAttempts - 1
