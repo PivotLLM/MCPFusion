@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/fusion"
@@ -19,10 +20,12 @@ import (
 
 // HTTPClient manages an HTTP MCP client connection
 type HTTPClient struct {
-	config  *fusion.ServiceConfig
-	manager *MCPClientManager
-	backoff *ExponentialBackoff
-	logger  global.Logger
+	config       *fusion.ServiceConfig
+	manager      *MCPClientManager
+	backoff      *ExponentialBackoff
+	logger       global.Logger
+	disconnectCh chan struct{}
+	disconnectMu sync.Mutex
 }
 
 // NewHTTPClient creates a new HTTP client for the given service config
@@ -80,10 +83,23 @@ func (h *HTTPClient) Connect(ctx context.Context) error {
 	// Register notification handler before connecting
 	h.manager.RegisterNotificationHandler()
 
+	// Create a fresh disconnect channel for this connection
+	h.disconnectMu.Lock()
+	h.disconnectCh = make(chan struct{})
+	disconnectCh := h.disconnectCh
+	h.disconnectMu.Unlock()
+
 	// Register connection loss handler
 	c.OnConnectionLost(func(err error) {
 		h.logger.Errorf("Hub service '%s': connection lost: %v", h.config.ServiceKey, err)
 		h.manager.SetConnected(false)
+		// Signal waitForDisconnect
+		select {
+		case <-disconnectCh:
+			// Already closed
+		default:
+			close(disconnectCh)
+		}
 	})
 
 	// Initialize the MCP session
@@ -132,6 +148,14 @@ func (h *HTTPClient) buildAuthHeaders() map[string]string {
 // RunWithReconnect runs the client with automatic reconnection on failure.
 // This blocks until the context is cancelled.
 func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func(), onDisconnected func()) {
+	if h.logger != nil {
+		h.logger.Debugf("Hub service '%s': reconnect loop started", h.config.ServiceKey)
+	}
+	defer func() {
+		if h.logger != nil {
+			h.logger.Debugf("Hub service '%s': reconnect loop exiting", h.config.ServiceKey)
+		}
+	}()
 	for {
 		if ctx.Err() != nil {
 			return
@@ -180,18 +204,17 @@ func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func(), o
 
 // waitForDisconnect blocks until the client disconnects or context is cancelled
 func (h *HTTPClient) waitForDisconnect(ctx context.Context) {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	h.disconnectMu.Lock()
+	ch := h.disconnectCh
+	h.disconnectMu.Unlock()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if !h.manager.IsConnected() {
-				return
-			}
-		}
+	if ch == nil {
+		return
+	}
+
+	select {
+	case <-ctx.Done():
+	case <-ch:
 	}
 }
 

@@ -187,6 +187,13 @@ func convertProperties(properties map[string]any, required []string) []global.Pa
 			if enum, ok := propMap["enum"].([]interface{}); ok {
 				param.Enum = enum
 			}
+			if param.Type == "array" {
+				if itemsVal, ok := propMap["items"].(map[string]any); ok {
+					if itemType, ok := itemsVal["type"].(string); ok {
+						param.Items = itemType
+					}
+				}
+			}
 		}
 
 		params = append(params, param)

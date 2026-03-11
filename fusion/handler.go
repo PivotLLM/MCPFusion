@@ -515,7 +515,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 				}
 				httpClient = &http.Client{
 					Transport: transport,
-					Timeout:   timeout,
+					Timeout:   timeout + time.Minute,
 				}
 				if h.fusion.logger != nil {
 					h.fusion.logger.Debugf("Using custom timeout %v for request [%s]", timeout, correlationID)

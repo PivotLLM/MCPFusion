@@ -119,9 +119,6 @@ func (h *HubProvider) Start(ctx context.Context) {
 					}
 					h.mu.Unlock()
 
-					// Remove stale tools from previous connection before re-registering
-					h.removeServiceTools(key, client.Manager())
-
 					// Discover and register tools
 					h.discoverAndRegisterTools(key, client.Manager())
 
@@ -154,41 +151,18 @@ func (h *HubProvider) Start(ctx context.Context) {
 	}
 }
 
-// removeServiceTools removes all previously registered tools for a service from the MCP server.
-func (h *HubProvider) removeServiceTools(serviceKey string, manager *MCPClientManager) {
-	h.mu.RLock()
-	srv := h.mcpServer
-	h.mu.RUnlock()
-
-	if srv == nil {
-		return
-	}
-
-	cachedTools := manager.GetCachedTools()
-	if len(cachedTools) == 0 {
-		return
-	}
-
-	var names []string
-	for name := range cachedTools {
-		names = append(names, serviceKey+"_"+name)
-	}
-	srv.DeleteTools(names...)
-	h.logger.Debugf("Hub service '%s': removed %d stale tools before reconnect", serviceKey, len(names))
-}
-
 // discoverAndRegisterTools discovers tools from a downstream server and registers them.
 func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPClientManager) {
 	ctx, cancel := context.WithTimeout(h.ctx, 30*time.Second)
 	defer cancel()
 
-	tools, err := manager.ListTools(ctx)
+	h.logger.Debugf("Hub service '%s': discovering tools", serviceKey)
+
+	newTools, err := manager.ListTools(ctx)
 	if err != nil {
 		h.logger.Errorf("Hub service '%s': failed to discover tools: %v", serviceKey, err)
 		return
 	}
-
-	manager.SetCachedTools(tools)
 
 	h.mu.RLock()
 	srv := h.mcpServer
@@ -199,9 +173,14 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 		return
 	}
 
-	// Convert and register each tool
+	// Compute diff against currently cached tools to minimise the unavailability window.
+	// We add/replace all new tools first, then remove only those that disappeared.
+	oldTools := manager.GetCachedTools()
+	diff := DiffTools(oldTools, newTools)
+
+	// Register all discovered tools (overwrites stale handlers for unchanged names).
 	var serverTools []server.ServerTool
-	for _, tool := range tools {
+	for _, tool := range newTools {
 		toolDef := ConvertDownstreamTool(serviceKey, tool, manager.CallTool)
 		mcpTool, handler := h.convertToServerTool(toolDef, manager)
 		serverTools = append(serverTools, server.ServerTool{
@@ -209,11 +188,25 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 			Handler: handler,
 		})
 	}
-
 	if len(serverTools) > 0 {
 		srv.AddTools(serverTools...)
-		h.logger.Infof("Hub service '%s': registered %d tools", serviceKey, len(serverTools))
 	}
+
+	// Remove tools that no longer exist on the downstream server.
+	if len(diff.Removed) > 0 {
+		var prefixedRemoved []string
+		for _, name := range diff.Removed {
+			prefixedRemoved = append(prefixedRemoved, serviceKey+"_"+name)
+		}
+		srv.DeleteTools(prefixedRemoved...)
+		h.logger.Debugf("Hub service '%s': removed %d stale tools", serviceKey, len(diff.Removed))
+	}
+
+	manager.SetCachedTools(newTools)
+
+	h.logger.Infof("Hub service '%s': registered %d tools (%d added, %d removed, %d unchanged)",
+		serviceKey, len(newTools), len(diff.Added), len(diff.Removed),
+		len(newTools)-len(diff.Added))
 
 	// Register/update hub service in shared collector
 	if h.sharedCollector != nil {
@@ -230,7 +223,7 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 				transport = string(cfg.Transport)
 			}
 		}
-		toolCount := len(tools)
+		toolCount := len(newTools)
 		h.sharedCollector.RegisterService(serviceKey, transport, &toolCount)
 		h.sharedCollector.SetStatus(serviceKey, global.StatusOperational)
 	}
@@ -261,7 +254,17 @@ func (h *HubProvider) convertToServerTool(toolDef global.ToolDefinition, manager
 		case "boolean":
 			toolOption = mcp.WithBoolean(param.Name, options...)
 		case "array":
-			options = append(options, mcp.WithStringItems())
+			switch param.Items {
+			case "number", "integer":
+				options = append(options, mcp.WithNumberItems())
+			case "boolean":
+				options = append(options, mcp.WithBooleanItems())
+			case "object":
+				options = append(options, mcp.Items(map[string]any{"type": "object"}))
+			default:
+				// "string" or unspecified — default to string items
+				options = append(options, mcp.WithStringItems())
+			}
 			toolOption = mcp.WithArray(param.Name, options...)
 		case "object":
 			toolOption = mcp.WithObject(param.Name, options...)

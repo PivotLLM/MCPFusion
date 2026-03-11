@@ -1719,7 +1719,6 @@
         "backoffFactor": 2.0,
         "retryableErrors": [
           "network_error",
-          "timeout",
           "server_error"
         ]
       }

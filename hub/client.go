@@ -50,6 +50,9 @@ type MCPClientManager struct {
 	logger             global.Logger
 	onToolsChanged     func(serviceName string, added, removed []string)
 	progressForwarders sync.Map // downstream token string → *progressForwarder
+	cbMu               sync.Mutex
+	cbFailures         int
+	cbOpenUntil        time.Time
 }
 
 // NewMCPClientManager creates a new client manager for the named service.
@@ -103,6 +106,11 @@ func (m *MCPClientManager) Connect(ctx context.Context) error {
 	m.connected = true
 	m.mu.Unlock()
 
+	m.cbMu.Lock()
+	m.cbFailures = 0
+	m.cbOpenUntil = time.Time{}
+	m.cbMu.Unlock()
+
 	return nil
 }
 
@@ -132,6 +140,54 @@ func (m *MCPClientManager) SetConnected(connected bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.connected = connected
+}
+
+const (
+	cbFailureThreshold = 5
+	cbOpenDuration     = 30 * time.Second
+)
+
+func (m *MCPClientManager) isCircuitOpen() bool {
+	m.cbMu.Lock()
+	defer m.cbMu.Unlock()
+	if m.cbOpenUntil.IsZero() {
+		return false
+	}
+	if time.Now().After(m.cbOpenUntil) {
+		// Half-open: reset so next call is tried
+		m.cbOpenUntil = time.Time{}
+		m.cbFailures = 0
+		if m.logger != nil {
+			m.logger.Infof("Hub service '%s': circuit breaker half-open, allowing next call", m.serviceName)
+		}
+		return false
+	}
+	return true
+}
+
+func (m *MCPClientManager) recordCallFailure() {
+	m.cbMu.Lock()
+	defer m.cbMu.Unlock()
+	m.cbFailures++
+	if m.cbFailures >= cbFailureThreshold && m.cbOpenUntil.IsZero() {
+		m.cbOpenUntil = time.Now().Add(cbOpenDuration)
+		if m.logger != nil {
+			m.logger.Warningf("Hub service '%s': circuit breaker opened after %d consecutive failures (open until %s)",
+				m.serviceName, m.cbFailures, m.cbOpenUntil.Format(time.RFC3339))
+		}
+	}
+}
+
+func (m *MCPClientManager) recordCallSuccess() {
+	m.cbMu.Lock()
+	defer m.cbMu.Unlock()
+	if m.cbFailures > 0 {
+		m.cbFailures = 0
+		m.cbOpenUntil = time.Time{}
+		if m.logger != nil {
+			m.logger.Infof("Hub service '%s': circuit breaker reset after successful call", m.serviceName)
+		}
+	}
 }
 
 // waitForReconnect blocks until the manager is connected or the timeout
@@ -241,6 +297,11 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 			m.serviceName)
 	}
 
+	if m.isCircuitOpen() {
+		remaining := time.Until(m.cbOpenUntil).Round(time.Second)
+		return nil, fmt.Errorf("hub service '%s' circuit breaker is open (resets in %v)", m.serviceName, remaining)
+	}
+
 	callCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
@@ -249,9 +310,26 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	req.Params.Arguments = args
 	req.Params.Meta = meta
 
+	if m.logger != nil {
+		m.logger.Debugf("Hub service '%s': calling tool '%s' (timeout 60s) [ctx deadline: %v]",
+			m.serviceName, toolName, func() string {
+				if d, ok := callCtx.Deadline(); ok {
+					return d.Sub(time.Now()).Round(time.Second).String()
+				}
+				return "none"
+			}())
+	}
 	result, err := c.CallTool(callCtx, req)
+	if m.logger != nil {
+		if err != nil {
+			m.logger.Debugf("Hub service '%s': tool '%s' returned error: %v", m.serviceName, toolName, err)
+		} else {
+			m.logger.Debugf("Hub service '%s': tool '%s' completed successfully", m.serviceName, toolName)
+		}
+	}
 	if err != nil {
 		if callCtx.Err() == context.DeadlineExceeded {
+			m.recordCallFailure()
 			return nil, fmt.Errorf("tool call timed out after 60s")
 		}
 
@@ -264,7 +342,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 					m.serviceName, toolName, err)
 			}
 			m.SetConnected(false)
-			if m.waitForReconnect(ctx, 15*time.Second) {
+			if m.waitForReconnect(callCtx, 15*time.Second) {
 				m.mu.RLock()
 				c = m.client
 				m.mu.RUnlock()
@@ -276,6 +354,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 							m.logger.Infof("Hub service '%s': tool '%s' succeeded after reconnect",
 								m.serviceName, toolName)
 						}
+						m.recordCallSuccess()
 						return result, nil
 					}
 				}
@@ -286,9 +365,11 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 				}
 			}
 		}
+		m.recordCallFailure()
 		return nil, err
 	}
 
+	m.recordCallSuccess()
 	return result, nil
 }
 
