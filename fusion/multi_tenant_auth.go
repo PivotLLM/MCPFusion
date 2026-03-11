@@ -71,13 +71,25 @@ type MultiTenantAuthManager struct {
 
 // NewMultiTenantAuthManager creates a new multi-tenant authentication manager
 func NewMultiTenantAuthManager(database *db.DB, cache Cache, logger global.Logger) *MultiTenantAuthManager {
-	return &MultiTenantAuthManager{
+	mtam := &MultiTenantAuthManager{
 		db:         database,
 		strategies: make(map[AuthType]AuthStrategy),
 		cache:      cache,
 		logger:     logger,
 		// invalidationLocks is a sync.Map and doesn't need initialization
 	}
+	mtam.registerDefaultStrategies(http.DefaultClient)
+	return mtam
+}
+
+// registerDefaultStrategies registers the built-in authentication strategies so that
+// every auth manager is ready to handle all supported auth types out of the box.
+func (mtam *MultiTenantAuthManager) registerDefaultStrategies(httpClient *http.Client) {
+	mtam.RegisterStrategy(NewOAuth2DeviceFlowStrategy(httpClient, mtam.logger))
+	mtam.RegisterStrategy(NewBearerTokenStrategy(mtam.logger))
+	mtam.RegisterStrategy(NewAPIKeyStrategy(mtam.logger))
+	mtam.RegisterStrategy(NewBasicAuthStrategy(mtam.logger))
+	mtam.RegisterStrategy(NewSessionJWTStrategy(httpClient, mtam.logger))
 }
 
 // RegisterStrategy registers an authentication strategy

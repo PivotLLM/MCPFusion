@@ -328,6 +328,14 @@ func WithMaxResponseBytes(n int) Option {
 	}
 }
 
+// WithAllowDestructive enables destructive tools (e.g. DELETE operations) for this instance.
+// This option overrides the MCP_FUSION_ALLOW_DESTRUCTIVE environment variable.
+func WithAllowDestructive(allow bool) Option {
+	return func(f *Fusion) {
+		f.allowDestructive = allow
+	}
+}
+
 // New creates a new production-ready Fusion instance with the provided configuration options.
 // This is the primary constructor for the Fusion provider and initializes all components
 // required for API integration including multi-tenant authentication, database caching,

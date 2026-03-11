@@ -158,12 +158,22 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	result, err := handler.Handle(ctx, map[string]interface{}{})
 
-	// We expect success after retry (or specific error if multiTenantAuth is not set up)
-	// In this test without full multiTenantAuth setup, we'll get an auth error
-	if err == nil {
-		t.Error("Expected error due to missing multiTenantAuth setup")
+	// The token invalidation config triggers a retry on 401; the second call succeeds.
+	// With multi-tenant auth properly configured we expect the retry to succeed.
+	if err != nil {
+		t.Errorf("Expected success after retry on 401, got error: %v", err)
+	}
+
+	// Verify the server was called twice (initial 401 + retry that returned 200)
+	if callCount != 2 {
+		t.Errorf("Expected 2 server calls (1 for 401 + 1 for retry), got %d", callCount)
+	}
+
+	// Result should contain the success response
+	if result == "" {
+		t.Error("Expected non-empty result on successful retry")
 	}
 }
 

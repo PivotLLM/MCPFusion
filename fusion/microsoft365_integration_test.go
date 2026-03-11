@@ -90,7 +90,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Profile tool not found")
 		}
 
-		result, err := profileTool.Handler(map[string]interface{}{})
+		result, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
 		if err != nil {
 			t.Fatalf("Profile request failed: %v", err)
 		}
@@ -111,10 +111,10 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Calendar summary tool not found")
 		}
 
-		result, err := calendarSummaryTool.Handler(map[string]interface{}{
+		result, err := calendarSummaryTool.Handler(withTestContext(map[string]interface{}{
 			"startDate": "20250101",
 			"endDate":   "20250131",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Calendar summary request failed: %v", err)
 		}
@@ -136,10 +136,10 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Calendar details tool not found")
 		}
 
-		result, err := calendarDetailsTool.Handler(map[string]interface{}{
+		result, err := calendarDetailsTool.Handler(withTestContext(map[string]interface{}{
 			"startDate": "20250101",
 			"endDate":   "20250131",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Calendar details request failed: %v", err)
 		}
@@ -161,9 +161,9 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Mail tool not found")
 		}
 
-		result, err := mailTool.Handler(map[string]interface{}{
+		result, err := mailTool.Handler(withTestContext(map[string]interface{}{
 			"$top": 10,
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Inbox request failed: %v", err)
 		}
@@ -185,9 +185,9 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Contacts tool not found")
 		}
 
-		result, err := contactsTool.Handler(map[string]interface{}{
+		result, err := contactsTool.Handler(withTestContext(map[string]interface{}{
 			"$top": 25,
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Contacts request failed: %v", err)
 		}
@@ -215,7 +215,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 		// First request - should hit the server
 		start := time.Now()
-		result1, err := profileTool.Handler(map[string]interface{}{})
+		result1, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
 		if err != nil {
 			t.Fatalf("First profile request failed: %v", err)
 		}
@@ -223,7 +223,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 		// Second request - should be cached
 		start = time.Now()
-		result2, err := profileTool.Handler(map[string]interface{}{})
+		result2, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
 		if err != nil {
 			t.Fatalf("Second profile request failed: %v", err)
 		}
@@ -286,7 +286,7 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 
 		// This test simulates what happens when authentication is required
 		// The device code error should be returned with user instructions
-		result, err := profileTool.Handler(map[string]interface{}{})
+		result, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
 
 		// For a real device flow, this would return instructions for the user
 		// In our mock, we'll simulate a successful flow

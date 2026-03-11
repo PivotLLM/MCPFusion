@@ -79,6 +79,7 @@ func TestGoogleIntegration(t *testing.T) {
 	fusion := New(
 		WithJSONConfigData([]byte(config), "test-google-config.json"),
 		WithLogger(logger),
+		WithAllowDestructive(true),
 	)
 
 	// Get the tools
@@ -153,7 +154,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Profile tool not found")
 		}
 
-		result, err := profileTool.Handler(map[string]interface{}{})
+		result, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
 		if err != nil {
 			t.Fatalf("Profile request failed: %v", err)
 		}
@@ -174,10 +175,10 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar list tool not found")
 		}
 
-		result, err := calendarListTool.Handler(map[string]interface{}{
+		result, err := calendarListTool.Handler(withTestContext(map[string]interface{}{
 			"startDate": "20250101",
 			"endDate":   "20250131",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Calendar list request failed: %v", err)
 		}
@@ -198,13 +199,13 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar create tool not found")
 		}
 
-		result, err := calendarCreateTool.Handler(map[string]interface{}{
+		result, err := calendarCreateTool.Handler(withTestContext(map[string]interface{}{
 			"summary":       "Test Event",
 			"description":   "This is a test event",
 			"startDateTime": "2025-01-15T10:00:00Z",
 			"endDateTime":   "2025-01-15T11:00:00Z",
 			"location":      "Test Location",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Calendar create request failed: %v", err)
 		}
@@ -225,9 +226,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar get tool not found")
 		}
 
-		result, err := calendarGetTool.Handler(map[string]interface{}{
+		result, err := calendarGetTool.Handler(withTestContext(map[string]interface{}{
 			"eventId": "test-event-123",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Calendar get request failed: %v", err)
 		}
@@ -248,10 +249,10 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar update tool not found")
 		}
 
-		result, err := calendarUpdateTool.Handler(map[string]interface{}{
+		result, err := calendarUpdateTool.Handler(withTestContext(map[string]interface{}{
 			"eventId": "test-event-123",
 			"summary": "Updated Test Event",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Calendar update request failed: %v", err)
 		}
@@ -272,9 +273,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar delete tool not found")
 		}
 
-		result, err := calendarDeleteTool.Handler(map[string]interface{}{
+		result, err := calendarDeleteTool.Handler(withTestContext(map[string]interface{}{
 			"eventId": "test-event-123",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Calendar delete request failed: %v", err)
 		}
@@ -290,9 +291,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Gmail list tool not found")
 		}
 
-		result, err := gmailListTool.Handler(map[string]interface{}{
+		result, err := gmailListTool.Handler(withTestContext(map[string]interface{}{
 			"maxResults": 10,
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Gmail list request failed: %v", err)
 		}
@@ -313,9 +314,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Gmail get tool not found")
 		}
 
-		result, err := gmailGetTool.Handler(map[string]interface{}{
+		result, err := gmailGetTool.Handler(withTestContext(map[string]interface{}{
 			"messageId": "test-message-123",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Gmail get request failed: %v", err)
 		}
@@ -336,11 +337,11 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Gmail send tool not found")
 		}
 
-		result, err := gmailSendTool.Handler(map[string]interface{}{
+		result, err := gmailSendTool.Handler(withTestContext(map[string]interface{}{
 			"to":      "test@example.com",
 			"subject": "Test Email",
 			"body":    "This is a test email body",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Gmail send request failed: %v", err)
 		}
@@ -361,9 +362,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Gmail search tool not found")
 		}
 
-		result, err := gmailSearchTool.Handler(map[string]interface{}{
+		result, err := gmailSearchTool.Handler(withTestContext(map[string]interface{}{
 			"query": "from:test@example.com",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Gmail search request failed: %v", err)
 		}
@@ -384,9 +385,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive list tool not found")
 		}
 
-		result, err := driveListTool.Handler(map[string]interface{}{
+		result, err := driveListTool.Handler(withTestContext(map[string]interface{}{
 			"pageSize": 10,
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Drive list request failed: %v", err)
 		}
@@ -407,9 +408,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive get tool not found")
 		}
 
-		result, err := driveGetTool.Handler(map[string]interface{}{
+		result, err := driveGetTool.Handler(withTestContext(map[string]interface{}{
 			"fileId": "test-file-123",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Drive get request failed: %v", err)
 		}
@@ -430,9 +431,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive download tool not found")
 		}
 
-		result, err := driveDownloadTool.Handler(map[string]interface{}{
+		result, err := driveDownloadTool.Handler(withTestContext(map[string]interface{}{
 			"fileId": "test-file-123",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Drive download request failed: %v", err)
 		}
@@ -449,11 +450,11 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive create tool not found")
 		}
 
-		result, err := driveCreateTool.Handler(map[string]interface{}{
+		result, err := driveCreateTool.Handler(withTestContext(map[string]interface{}{
 			"name":        "test-file.txt",
 			"description": "This is a test file",
 			"mimeType":    "text/plain",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Drive create request failed: %v", err)
 		}
@@ -474,9 +475,9 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive delete tool not found")
 		}
 
-		result, err := driveDeleteTool.Handler(map[string]interface{}{
+		result, err := driveDeleteTool.Handler(withTestContext(map[string]interface{}{
 			"fileId": "test-file-123",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Drive delete request failed: %v", err)
 		}
@@ -492,12 +493,12 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive share tool not found")
 		}
 
-		result, err := driveShareTool.Handler(map[string]interface{}{
+		result, err := driveShareTool.Handler(withTestContext(map[string]interface{}{
 			"fileId":       "test-file-123",
 			"type":         "user",
 			"role":         "reader",
 			"emailAddress": "user@example.com",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Drive share request failed: %v", err)
 		}
@@ -520,7 +521,7 @@ func TestGoogleIntegration(t *testing.T) {
 
 		// First request - should hit the server
 		start := time.Now()
-		result1, err := profileTool.Handler(map[string]interface{}{})
+		result1, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
 		if err != nil {
 			t.Fatalf("First profile request failed: %v", err)
 		}
@@ -528,7 +529,7 @@ func TestGoogleIntegration(t *testing.T) {
 
 		// Second request - should be cached
 		start = time.Now()
-		result2, err := profileTool.Handler(map[string]interface{}{})
+		result2, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
 		if err != nil {
 			t.Fatalf("Second profile request failed: %v", err)
 		}
@@ -553,10 +554,10 @@ func TestGoogleIntegration(t *testing.T) {
 		}
 
 		// Test date transformation from YYYYMMDD to ISO format
-		result, err := calendarListTool.Handler(map[string]interface{}{
+		result, err := calendarListTool.Handler(withTestContext(map[string]interface{}{
 			"startDate": "20250115",
 			"endDate":   "20250116",
-		})
+		}))
 		if err != nil {
 			t.Fatalf("Parameter transformation test failed: %v", err)
 		}
@@ -617,7 +618,7 @@ func TestGoogleOAuth2DeviceFlow(t *testing.T) {
 
 		// This test simulates what happens when authentication is required
 		// The device code error should be returned with user instructions
-		result, err := profileTool.Handler(map[string]interface{}{})
+		result, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
 
 		// For a real device flow, this would return instructions for the user
 		// In our mock, we'll simulate a successful flow

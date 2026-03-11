@@ -667,9 +667,9 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("API error [%s]: status=%d, body=%s", correlationID, resp.StatusCode, string(body))
 		}
-		// Return the actual API error response instead of a generic message
-		// This allows LLMs to understand what went wrong and correct their requests
-		return string(body), nil
+		retryable := resp.StatusCode >= 500 || resp.StatusCode == 429
+		return "", NewAPIErrorWithCorrelation(h.service.Name, h.endpoint.ID,
+			resp.StatusCode, "API request failed", string(body), retryable, correlationID)
 	}
 
 	// Handle different response types
@@ -679,6 +679,22 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 		var data interface{}
 		if err := json.Unmarshal(body, &data); err != nil {
 			return "", fmt.Errorf("failed to parse JSON response: %w", err)
+		}
+
+		// For paginated responses without an explicit transform, extract the data array
+		// using the configured dataPath. When a transform is present it is expected to
+		// select the data itself, so we leave the full object intact for the transform.
+		if h.endpoint.Response.Paginated &&
+			h.endpoint.Response.PaginationConfig != nil &&
+			h.endpoint.Response.Transform == "" {
+			dataPath := h.endpoint.Response.PaginationConfig.DataPath
+			if dataPath != "" {
+				if obj, ok := data.(map[string]interface{}); ok {
+					if pageData, exists := obj[dataPath]; exists {
+						data = pageData
+					}
+				}
+			}
 		}
 
 		// Apply transformation if specified before enforcing the size limit,
