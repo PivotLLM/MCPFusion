@@ -467,21 +467,24 @@
               "description": "Detailed description",
               "type": "string",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "transforms": ["html_compact"]
             },
             {
               "name": "observation",
               "description": "Observation/evidence",
               "type": "string",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "transforms": ["html_compact"]
             },
             {
               "name": "remediation",
               "description": "Remediation steps",
               "type": "string",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "transforms": ["html_compact"]
             },
             {
               "name": "cvssv3",
@@ -516,7 +519,8 @@
               "description": "Proof of concept",
               "type": "string",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "transforms": ["html_compact"]
             },
             {
               "name": "scope",
@@ -586,21 +590,24 @@
               "description": "Detailed description",
               "type": "string",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "transforms": ["html_compact"]
             },
             {
               "name": "observation",
               "description": "Observation/evidence",
               "type": "string",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "transforms": ["html_compact"]
             },
             {
               "name": "remediation",
               "description": "Remediation steps",
               "type": "string",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "transforms": ["html_compact"]
             },
             {
               "name": "cvssv3",
@@ -635,7 +642,8 @@
               "description": "Proof of concept",
               "type": "string",
               "required": false,
-              "location": "body"
+              "location": "body",
+              "transforms": ["html_compact"]
             },
             {
               "name": "scope",
