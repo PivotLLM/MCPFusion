@@ -1,166 +1,178 @@
 # MCPFusion Tests
 
-This directory contains comprehensive test scripts for all Microsoft 365 MCP tools.
+This directory contains functional test scripts for all MCPFusion MCP tools. Tests use [MCPProbe](https://github.com/PivotLLM/MCPProbe) to invoke tools over a live MCP connection.
 
-## Test Scripts
+## Prerequisites
 
-### Core API Tests
-- `test_profile.sh` - Tests Microsoft 365 profile API functions
-- `test_calendar_summary.sh` - Tests calendar summary API functions
-- `test_calendar_details.sh` - Tests calendar details API functions
-- `test_mail.sh` - Tests mail/inbox API functions  
-- `test_contacts.sh` - Tests contacts API functions
+- MCPFusion server running (default: `http://localhost:8888`)
+- `probe` binary available in `$PATH` or at the path configured in each test's `.env`
+- A valid MCPFusion API token
 
-### Extended API Tests
-- `test_calendars_list.sh` - Tests calendar listing functionality
-- `test_calendar_events.sh` - Tests calendar-specific event retrieval
-- `test_mail_folders.sh` - Tests mail folder listing
-- `test_mail_folder_messages.sh` - Tests folder-specific message retrieval
-- `test_individual_items.sh` - Tests individual item retrieval (events, messages, contacts)
+## Authentication Setup
 
-### Search API Tests
-- `test_calendar_search.sh` - Tests calendar event search and filtering
-- `test_mail_search.sh` - Tests mail message search and filtering
-- `test_files_search.sh` - Tests OneDrive file search and listing
+All tests load credentials from a `.env` file in their respective directory.
 
-### Server Tools Tests
-- `test_health.sh` - Tests the health tool (server status, service operational state)
+```bash
+# Create the root-level .env for core tests
+cat > tests/.env <<EOF
+APIKEY=your-token-here
+SERVER_URL=http://localhost:8888
+EOF
 
-### Test Infrastructure
-- `run_all_tests.sh` - Master test runner that executes all tests
+# Create .env files for subdirectory test suites
+cp tests/.env tests/M365/.env
+cp tests/.env tests/Google/.env
+cp tests/.env tests/PwnDoc/.env
+```
+
+**Security Note**: `.env` files contain sensitive tokens. They are gitignored and must never be committed.
+
+## Test Structure
+
+```
+tests/
+├── run_all_tests.sh          # Runs all core tests
+├── test_health.sh            # health_status tool
+├── test_knowledge.sh         # knowledge_set / get / delete / search / rename
+├── test_knowledge_key.sh     # knowledge_get with key-based retrieval
+├── test_perf.sh              # perf_echo / delay / random_data / error / counter
+├── test_stdio.sh             # Stdio transport connectivity
+├── test_stress.sh            # Concurrent load / stress testing
+├── M365/
+│   ├── run_all_tests.sh      # Runs all M365 tests
+│   ├── test_profile.sh
+│   ├── test_calendar_summary.sh
+│   ├── test_calendar_details.sh
+│   ├── test_calendar_search.sh
+│   ├── test_calendars_list.sh
+│   ├── test_calendar_events.sh
+│   ├── test_mail.sh
+│   ├── test_mail_search.sh
+│   ├── test_mail_folders.sh
+│   ├── test_mail_folder_messages.sh
+│   ├── test_mail_draft_create.sh
+│   ├── test_mail_draft_list.sh
+│   ├── test_mail_draft_get.sh (via test_individual_items.sh)
+│   ├── test_mail_draft_update.sh
+│   ├── test_mail_draft_delete.sh
+│   ├── test_mail_draft_reply.sh
+│   ├── test_mail_draft_reply_all.sh
+│   ├── test_mail_draft_forward.sh
+│   ├── test_files_search.sh
+│   ├── test_files_enhanced.sh
+│   ├── test_files_content_download.sh
+│   ├── test_files_folder_navigation.sh
+│   ├── test_files_path_access.sh
+│   ├── test_files_id_navigation.sh
+│   ├── test_files_recent.sh
+│   ├── test_contacts.sh
+│   ├── test_individual_items.sh
+│   └── test_object_array_params.sh
+├── Google/
+│   ├── run_all_tests.sh      # Runs all Google tests
+│   ├── test_profile.sh
+│   ├── test_contacts_list.sh
+│   ├── test_contacts_get.sh
+│   ├── test_contacts_search.sh
+│   ├── test_gmail_draft_create.sh
+│   ├── test_gmail_draft_list.sh
+│   ├── test_gmail_draft_get.sh
+│   ├── test_gmail_draft_update.sh
+│   └── test_gmail_draft_delete.sh
+└── PwnDoc/
+    ├── run_all_tests.sh      # Runs all PwnDoc tests
+    ├── test_audits.sh
+    ├── test_findings.sh
+    ├── test_clients.sh
+    └── test_object_array_params.sh
+```
 
 ## Running Tests
 
-### Run All Tests
+### Core tests
+
 ```bash
 cd tests
-# Ensure .env file exists with APIKEY
 ./run_all_tests.sh
 ```
 
-### Run Individual Tests
+### Individual core tests
+
 ```bash
 cd tests
-# Ensure .env file exists with APIKEY
-./test_profile.sh > profile_output.log
-./test_calendar_summary.sh > calendar_summary_output.log
-./test_calendar_details.sh > calendar_details_output.log
-./test_mail.sh > mail_output.log
-./test_contacts.sh > contacts_output.log
-./test_calendar_search.sh > calendar_search_output.log
-./test_mail_search.sh > mail_search_output.log
-./test_files_search.sh > files_search_output.log
+./test_health.sh
+./test_knowledge.sh
+./test_perf.sh
+./test_stress.sh
+```
+
+### Microsoft 365 tests
+
+Requires valid M365 OAuth authentication (run `microsoft365_auth_setup` or equivalent first).
+
+```bash
+cd tests/M365
+./run_all_tests.sh
+
+# Or individually:
+./test_profile.sh
+./test_mail.sh
+```
+
+### Google tests
+
+Requires valid Google OAuth authentication (run `google_auth_setup` or equivalent first).
+
+```bash
+cd tests/Google
+./run_all_tests.sh
+```
+
+### PwnDoc tests
+
+Requires a running PwnDoc instance configured in `configs/`.
+
+```bash
+cd tests/PwnDoc
+./run_all_tests.sh
 ```
 
 ## Test Output
 
-- Each test run creates timestamped `.log` files with complete request/response data
-- Log files are automatically gitignored (`.log` pattern in `.gitignore`)
-- Log files include:
-  - Test metadata (timestamp, server URL, parameters)
-  - Full probe tool output with request details
-  - Complete JSON API responses
+Each test produces timestamped `.log` files in the test directory. Log files are gitignored (`.log` pattern).
 
-## Test Coverage
+## Core Test Coverage
 
-### Core API Tests (Original 5 endpoints)
+### `test_health.sh`
+- Server health status
+- Uptime and version fields
 
-**Profile Tests:**
-1. Basic profile retrieval with default fields
-2. Custom field selection
+### `test_knowledge.sh`
+- Store a value (`knowledge_set`)
+- Retrieve a value (`knowledge_get`)
+- Update a value
+- Delete a key and verify it is gone
+- Search by domain
+- Verify empty domain after cleanup
 
-**Calendar Summary Tests:**  
-1. Calendar summary for last 30 days
-2. Calendar summary for next 30 days
-3. Calendar summary for specific date range
+### `test_knowledge_key.sh`
+- Key-based retrieval with explicit domain/key
+- Search for specific domain entries
 
-**Calendar Details Tests:**
-1. Calendar details for last 30 days
-2. Calendar details with custom field selection
-3. Calendar details for next 30 days
-4. Calendar details with minimal field selection
+### `test_perf.sh`
+- Echo: round-trip with message payload
+- Delay: configurable sleep duration
+- Random data: generate N bytes of random base64 data
+- Error: tool that returns a controlled error response
+- Counter: atomic increment and value retrieval
 
-**Mail Tests:**
-1. Default inbox messages
-2. Limited message count (5 messages)
-3. Unread messages only
-4. Custom field selection
+> **Note**: Perf tools must be enabled on the server (`MCP_FUSION_PERF=true` or `--perf` flag). Tests gracefully skip if the tools are not available.
 
-**Contacts Tests:**
-1. Default contacts list
-2. Limited contact count (10 contacts)
-3. Custom field selection
+### `test_stress.sh`
+- Concurrent load test using MCPProbe's built-in stress mode
+- Phase 1–5: connectivity, echo, delay, random data, error injection
+- Phase 6: concurrent multi-tool stress across perf tools
+- Configurable concurrency and iteration count
 
-### Extended API Tests (New 11 endpoints)
-
-**Calendar Management Tests:**
-1. List all calendars with default fields
-2. List calendars with custom field selection
-3. Calendar-specific event retrieval (requires calendar ID)
-4. Individual calendar event retrieval (requires event ID)
-
-**Mail Folder Tests:**
-1. List all mail folders with default fields
-2. List folders with custom field selection
-3. Read messages from specific folders (inbox, sent, drafts)
-4. Filter messages by read status
-5. Individual message retrieval (requires message ID)
-
-**Individual Item Tests:**
-1. Specific calendar event by ID
-2. Specific email message by ID  
-3. Specific contact by ID
-4. Custom field selection for individual items
-
-**File Management Tests:**
-1. List all OneDrive files and folders
-2. List only files (excluding folders)
-3. List only folders (excluding files)
-4. Filter files by modification date
-
-**Search Capability Tests:**
-1. Calendar event search by subject, attendee, location
-2. Calendar search with date range and complex filters
-3. Mail search by subject, sender, recipient
-4. Mail full-text search with content keywords
-5. File search by name, type, and modification date
-6. Advanced filtering with OData expressions
-
-### Parameter Validation Tests
-All tests include validation of:
-- ✅ **Parameter types** (string, number, boolean)
-- ✅ **Default values** for optional parameters
-- ✅ **Enum constraints** for $top parameters
-- ✅ **Pattern validation** for date formats
-- ✅ **Enhanced descriptions** with constraint information
-
-## Prerequisites
-
-- MCPFusion server running on port 8888
-- MCPProbe tool available at `/Users/eric/source/MCPProbe/probe`
-- Valid MCPFusion API token configured in `.env` file
-- Valid Microsoft 365 OAuth authentication
-
-## Authentication Setup
-
-All tests require an MCPFusion API token for authentication:
-
-1. **Create API Token**:
-   ```bash
-   # From MCPFusion root directory
-   ./mcpfusion -token-add "Test environment"
-   ```
-
-2. **Create .env File**:
-   ```bash
-   # In the tests directory
-   cd tests
-   echo "APIKEY=your-generated-token-here" > .env
-   ```
-
-3. **Run Tests**:
-   ```bash
-   ./run_all_tests.sh
-   ```
-
-**Security Note**: The `.env` file contains sensitive authentication tokens. Never commit this file to version control.
+### `test_stdio.sh`
+- Verifies stdio transport connectivity
