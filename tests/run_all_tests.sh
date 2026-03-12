@@ -35,6 +35,7 @@ run_test() {
 run_test test_health.sh
 run_test test_knowledge.sh
 run_test test_knowledge_key.sh
+run_test test_perf.sh
 run_test test_stdio.sh
 
 echo ""

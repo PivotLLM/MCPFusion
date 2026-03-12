@@ -17,11 +17,20 @@
 # Configuration
 #===============================================================================
 
-# API key for authentication - set this before running
-APIKEY="SET_YOUR_API_KEY_HERE"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Server URL (MCPFusion must be running)
-SERVER_URL="http://127.0.0.1:9999/mcp"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+else
+    echo "Error: .env file not found in $SCRIPT_DIR"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
+    exit 1
+fi
+
+[ -z "$APIKEY" ]     && { echo "Error: APIKEY not set in .env";     exit 1; }
+[ -z "$SERVER_URL" ] && { echo "Error: SERVER_URL not set in .env"; exit 1; }
+
+SERVER_URL="${SERVER_URL}/mcp"
 TRANSPORT="http"
 
 # PROBE can be overridden via environment variable
@@ -48,14 +57,6 @@ echo "${BOLD}============================================${NC}"
 echo "${BOLD}   Health Tool Test Suite${NC}"
 echo "${BOLD}============================================${NC}"
 echo ""
-
-# Check if APIKEY has been set
-if [ "$APIKEY" = "SET_YOUR_API_KEY_HERE" ]; then
-    echo "${RED}ERROR: APIKEY has not been set${NC}"
-    echo "Edit this script and set the APIKEY variable to a valid API token."
-    echo "Generate a token with: ./mcpfusion -token-add \"test\""
-    exit 1
-fi
 
 # Check if PROBE exists
 if [ "${PROBE#/}" = "$PROBE" ]; then

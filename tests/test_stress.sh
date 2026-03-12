@@ -102,7 +102,7 @@ log ""
 log "Checking server connectivity..."
 if ! "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport http \
     -headers "Authorization:Bearer $APIKEY" \
-    -call mcp__fusion__health_status -params '{}' > /dev/null 2>&1; then
+    -call health_status -params '{}' > /dev/null 2>&1; then
     log "Error: Server not available at $FULL_SERVER_URL"
     exit 1
 fi
@@ -122,93 +122,93 @@ log ""
 # Phase 1: Warm-up — light load, health check only
 #-------------------------------------------------------------------------------
 run_phase "Warm-up" 10 5 \
-    "mcp__fusion__health_status" '{}'
+    "health_status" '{}'
 
 #-------------------------------------------------------------------------------
 # Phase 2: Light — health + knowledge write/read
 #-------------------------------------------------------------------------------
 run_phase "Light - health" 50 10 \
-    "mcp__fusion__health_status" '{}'
+    "health_status" '{}'
 
 run_phase "Light - knowledge write" 50 10 \
-    "mcp__fusion__knowledge_set" '{"key":"stress_test","value":"stress test value"}'
+    "knowledge_set" '{"key":"stress_test","value":"stress test value"}'
 
 run_phase "Light - knowledge read" 50 10 \
-    "mcp__fusion__knowledge_get" '{"key":"stress_test"}'
+    "knowledge_get" '{"key":"stress_test"}'
 
 #-------------------------------------------------------------------------------
 # Phase 3: Medium — sustained concurrent load
 #-------------------------------------------------------------------------------
 run_phase "Medium - health" 200 25 \
-    "mcp__fusion__health_status" '{}'
+    "health_status" '{}'
 
 run_phase "Medium - knowledge write" 200 25 \
-    "mcp__fusion__knowledge_set" '{"key":"stress_test","value":"stress test value medium phase"}'
+    "knowledge_set" '{"key":"stress_test","value":"stress test value medium phase"}'
 
 run_phase "Medium - knowledge read" 200 25 \
-    "mcp__fusion__knowledge_get" '{"key":"stress_test"}'
+    "knowledge_get" '{"key":"stress_test"}'
 
 #-------------------------------------------------------------------------------
 # Phase 4: Heavy — high concurrency
 #-------------------------------------------------------------------------------
 run_phase "Heavy - health" 500 50 \
-    "mcp__fusion__health_status" '{}'
+    "health_status" '{}'
 
 run_phase "Heavy - knowledge write" 500 50 \
-    "mcp__fusion__knowledge_set" '{"key":"stress_test","value":"heavy phase"}'
+    "knowledge_set" '{"key":"stress_test","value":"heavy phase"}'
 
 run_phase "Heavy - knowledge read" 500 50 \
-    "mcp__fusion__knowledge_get" '{"key":"stress_test"}'
+    "knowledge_get" '{"key":"stress_test"}'
 
 #-------------------------------------------------------------------------------
 # Phase 5: Maximum — 1000 repeat, 50 concurrent
 #-------------------------------------------------------------------------------
 run_phase "Maximum - health" 1000 50 \
-    "mcp__fusion__health_status" '{}'
+    "health_status" '{}'
 
 run_phase "Maximum - knowledge" 1000 50 \
-    "mcp__fusion__knowledge_get" '{"key":"stress_test"}'
+    "knowledge_get" '{"key":"stress_test"}'
 
 #-------------------------------------------------------------------------------
-# Phase 6: Echo provider (skip if not available)
+# Phase 6: Perf provider (skip if not available)
 #-------------------------------------------------------------------------------
 log ""
-log "=== Phase 6: Echo Provider (skipped if not available) ==="
+log "=== Phase 6: Perf Provider (skipped if not available) ==="
 
 if "$PROBE_PATH" -url "$FULL_SERVER_URL" -transport http \
     -headers "Authorization:Bearer $APIKEY" \
-    -call echo -params '{"message":"ping"}' > /dev/null 2>&1; then
+    -call perf_echo -params '{"message":"ping"}' > /dev/null 2>&1; then
 
-    run_phase "Echo - warm-up" 50 10 \
-        "echo" '{"message":"hello"}'
+    run_phase "Perf - echo warm-up" 50 10 \
+        "perf_echo" '{"message":"hello"}'
 
-    run_phase "Echo - medium" 200 25 \
-        "echo" '{"message":"stress test payload"}'
+    run_phase "Perf - echo medium" 200 25 \
+        "perf_echo" '{"message":"stress test payload"}'
 
-    run_phase "Echo - maximum" 1000 50 \
-        "echo" '{"message":"maximum load"}'
+    run_phase "Perf - echo maximum" 1000 50 \
+        "perf_echo" '{"message":"maximum load"}'
 
-    run_phase "Echo - delay (2s, light)" 10 5 \
-        "delay" '{"seconds":2}'
+    run_phase "Perf - delay (2s, light)" 10 5 \
+        "perf_delay" '{"seconds":2}'
 
-    run_phase "Echo - delay (5s, concurrent)" 20 10 \
-        "delay" '{"seconds":5}'
+    run_phase "Perf - delay (5s, concurrent)" 20 10 \
+        "perf_delay" '{"seconds":5}'
 
-    run_phase "Echo - large response (10KB)" 100 20 \
-        "random_data" '{"bytes":10240}'
+    run_phase "Perf - large response (10KB)" 100 20 \
+        "perf_random_data" '{"bytes":10240}'
 
-    run_phase "Echo - large response (100KB)" 50 10 \
-        "random_data" '{"bytes":102400}'
+    run_phase "Perf - large response (100KB)" 50 10 \
+        "perf_random_data" '{"bytes":102400}'
 
-    run_phase "Echo - error handling" 100 20 \
-        "error" '{"message":"test error"}'
+    run_phase "Perf - error handling" 100 20 \
+        "perf_error" '{"message":"test error"}'
 
-    run_phase "Echo - counter (race detection)" 1000 50 \
-        "counter" '{}'
+    run_phase "Perf - counter (race detection)" 1000 50 \
+        "perf_counter" '{}'
 
 else
-    log "Echo provider not available — skipping Phase 6"
-    log "(Deploy MCPFusion with echo provider enabled and re-run)"
+    log "Perf provider not available — skipping Phase 6"
+    log "(Deploy MCPFusion with MCP_FUSION_PERF=true and re-run)"
 fi
 
 #-------------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -186,6 +187,10 @@ func (p *Provider) randomDataTool() global.ToolDefinition {
 				n = v
 			case int64:
 				n = int(v)
+			case string:
+				if parsed, err := strconv.Atoi(v); err == nil {
+					n = parsed
+				}
 			}
 
 			if n > maxBytes {

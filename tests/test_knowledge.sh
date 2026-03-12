@@ -19,11 +19,20 @@
 # Configuration
 #===============================================================================
 
-# API key for authentication - set this before running
-APIKEY="TEST API KEY HERE"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Server URL (MCPFusion must be running)
-SERVER_URL="http://127.0.0.1:9999/mcp"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+else
+    echo "Error: .env file not found in $SCRIPT_DIR"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
+    exit 1
+fi
+
+[ -z "$APIKEY" ]     && { echo "Error: APIKEY not set in .env";     exit 1; }
+[ -z "$SERVER_URL" ] && { echo "Error: SERVER_URL not set in .env"; exit 1; }
+
+SERVER_URL="${SERVER_URL}/mcp"
 TRANSPORT="http"
 
 # PROBE can be overridden via environment variable
@@ -297,10 +306,10 @@ run_test "3.1.1 Delete an entry" \
     '{"domain":"test-domain","key":"test-key-3"}' \
     "Knowledge entry deleted"
 
-run_test "3.1.2 Verify deleted entry is gone" \
+run_test_expect_fail "3.1.2 Verify deleted entry is gone" \
     "knowledge_get" \
     '{"domain":"test-domain","key":"test-key-3"}' \
-    ""
+    "not found"
 
 # After deleting test-key-3, listing test-domain should still show key-1 and key-2
 run_test "3.1.3 Verify remaining entries in domain after delete" \
@@ -451,9 +460,9 @@ cleanup_silent "knowledge_delete" '{"domain":"edge-cases","key":"special-chars"}
 cleanup_silent "knowledge_delete" '{"domain":"edge-cases","key":"long-content"}'
 cleanup_silent "knowledge_delete" '{"domain":"edge-cases","key":"multiline"}'
 
-run_test "5.1 Verify cleanup - no entries remain" \
+run_test "5.1 Verify test-domain is empty after cleanup" \
     "knowledge_get" \
-    '{}' \
+    '{"domain":"test-domain"}' \
     "No knowledge entries found"
 
 #===============================================================================

@@ -40,6 +40,8 @@ func (s *MCPServer) AddTools() {
 				switch param.Type {
 				case "string":
 					toolOption = mcp.WithString(param.Name, options...)
+				case "integer":
+					toolOption = mcp.WithNumber(param.Name, options...)
 				case "number":
 					toolOption = mcp.WithNumber(param.Name, options...)
 				case "boolean":

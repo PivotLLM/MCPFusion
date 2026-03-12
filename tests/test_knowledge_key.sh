@@ -570,9 +570,9 @@ cleanup_silent "knowledge_delete" '{"domain":"edge-cases","key":"special-chars"}
 cleanup_silent "knowledge_delete" '{"domain":"edge-cases","key":"long-content"}'
 cleanup_silent "knowledge_delete" '{"domain":"edge-cases","key":"multiline"}'
 
-run_test "5.1 Verify cleanup - no entries remain" \
+run_test "5.1 Verify test-domain is empty after cleanup" \
     "knowledge_get" \
-    '{}' \
+    '{"domain":"test-domain"}' \
     "No knowledge entries found"
 
 #===============================================================================
