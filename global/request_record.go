@@ -5,8 +5,6 @@
 
 package global
 
-import "fmt"
-
 // RequestRecord is a mutable struct stored as a pointer in the request context.
 // SimpleMiddleware creates and populates it; MCP hooks fill in the MCP-layer fields.
 // SimpleMiddleware logs the combined line after the handler returns.
@@ -20,7 +18,7 @@ type RequestRecord struct {
 	ToolName  string // only for tools/call
 	Status    string // "ok" or "error"
 	Bytes     int    // response bytes (tools/call) or item count (list operations)
-	IsList    bool   // true for list operations — format Bytes as "N items"
+	IsList    bool   // true for list operations — Bytes is an item count, not a byte count
 }
 
 // requestRecordKeyType is the unexported context key type for *RequestRecord.
@@ -29,12 +27,18 @@ type requestRecordKeyType struct{}
 // RequestRecordKey is the context key for *RequestRecord.
 var RequestRecordKey = requestRecordKeyType{}
 
-// Format returns a single-line log string combining HTTP and MCP fields.
-func (r *RequestRecord) Format() string {
-	base := fmt.Sprintf("%s %s [%s] ip=%s tenant=%s",
-		r.Method, r.Path, r.RequestID, r.IP, r.Tenant)
+// Fields returns the record as alternating key-value pairs suitable for
+// structured logging (e.g. logger.InfoFields(record.Fields()...)).
+func (r *RequestRecord) Fields() []any {
+	fields := []any{
+		"method", r.Method,
+		"path", r.Path,
+		"request_id", r.RequestID,
+		"ip", r.IP,
+		"tenant", r.Tenant,
+	}
 	if r.MCPMethod == "" {
-		return base
+		return fields
 	}
 	op := r.MCPMethod
 	if r.ToolName != "" {
@@ -44,9 +48,11 @@ func (r *RequestRecord) Format() string {
 	if status == "" {
 		status = "ok"
 	}
-	unit := "bytes"
+	fields = append(fields, "op", op, "status", status)
 	if r.IsList {
-		unit = "items"
+		fields = append(fields, "items", r.Bytes)
+	} else {
+		fields = append(fields, "bytes", r.Bytes)
 	}
-	return fmt.Sprintf("%s %s %s %d %s", base, op, status, r.Bytes, unit)
+	return fields
 }

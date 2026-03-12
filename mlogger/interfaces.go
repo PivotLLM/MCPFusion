@@ -19,6 +19,12 @@ type Logger interface {
 	Warningf(string, ...any)
 	Errorf(string, ...any)
 	Fatalf(string, ...any)
+	DebugFields(...any)
+	InfoFields(...any)
+	NoticeFields(...any)
+	WarningFields(...any)
+	ErrorFields(...any)
+	FatalFields(...any)
 	FatalExit()
 	Close()
 }
