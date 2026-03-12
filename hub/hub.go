@@ -40,6 +40,7 @@ type HubProvider struct {
 	wg              sync.WaitGroup
 	tokenCounter    int64 // atomic counter for unique downstream progress tokens (int64 overflow is not a practical concern)
 	sharedCollector *metrics.Collector
+	downloadDir     string // directory for saving image/binary content from tool results; empty = disabled
 }
 
 // HubOption defines a functional option for configuring a HubProvider.
@@ -49,6 +50,14 @@ type HubOption func(*HubProvider)
 func WithSharedCollector(c *metrics.Collector) HubOption {
 	return func(h *HubProvider) {
 		h.sharedCollector = c
+	}
+}
+
+// WithDownloadDir sets the directory where image and binary content from hub
+// tool responses will be saved. An empty string disables image saving.
+func WithDownloadDir(dir string) HubOption {
+	return func(h *HubProvider) {
+		h.downloadDir = dir
 	}
 }
 
@@ -178,10 +187,14 @@ func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPCl
 	oldTools := manager.GetCachedTools()
 	diff := DiffTools(oldTools, newTools)
 
+	// Build a per-call FormatOptions factory that captures the hub's download dir
+	// and extracts the tenant hash from the request context at call time.
+	getOpts := h.makeGetOpts()
+
 	// Register all discovered tools (overwrites stale handlers for unchanged names).
 	var serverTools []server.ServerTool
 	for _, tool := range newTools {
-		toolDef := ConvertDownstreamTool(serviceKey, tool, manager.CallTool)
+		toolDef := ConvertDownstreamTool(serviceKey, tool, manager.CallTool, getOpts)
 		mcpTool, handler := h.convertToServerTool(toolDef, manager)
 		serverTools = append(serverTools, server.ServerTool{
 			Tool:    mcpTool,
@@ -371,10 +384,11 @@ func (h *HubProvider) onToolsChanged(serviceName string, added, removed []string
 	// Add new tools
 	if len(added) > 0 {
 		cachedTools := manager.GetCachedTools()
+		getOpts := h.makeGetOpts()
 		var serverTools []server.ServerTool
 		for _, name := range added {
 			if tool, ok := cachedTools[name]; ok {
-				toolDef := ConvertDownstreamTool(serviceName, tool, manager.CallTool)
+				toolDef := ConvertDownstreamTool(serviceName, tool, manager.CallTool, getOpts)
 				mcpTool, handler := h.convertToServerTool(toolDef, manager)
 				serverTools = append(serverTools, server.ServerTool{
 					Tool:    mcpTool,
@@ -409,6 +423,26 @@ func (h *HubProvider) periodicRefresh(refreshCtx context.Context, serviceKey str
 				h.logger.Debugf("Hub service '%s': periodic refresh failed: %v", serviceKey, err)
 			}
 			cancel()
+		}
+	}
+}
+
+// makeGetOpts returns a function that builds FormatOptions from a request context.
+// The returned function is safe to call concurrently and captures the hub's
+// downloadDir at the time makeGetOpts is called.
+func (h *HubProvider) makeGetOpts() func(ctx context.Context) *FormatOptions {
+	dir := h.downloadDir
+	if dir == "" {
+		return nil
+	}
+	return func(ctx context.Context) *FormatOptions {
+		var tenantHash string
+		if tc, ok := ctx.Value(global.TenantContextKey).(*fusion.TenantContext); ok && tc != nil {
+			tenantHash = tc.ShortHash()
+		}
+		return &FormatOptions{
+			DownloadDir: dir,
+			TenantHash:  tenantHash,
 		}
 	}
 }

@@ -481,7 +481,13 @@ func main() {
 	}
 	if len(hubConfigs) > 0 {
 		logger.Infof("Found %d hub service(s) to connect", len(hubConfigs))
-		hubProvider = hub.NewHubProvider(hubConfigs, logger, hub.WithSharedCollector(sharedCollector))
+		hubOpts := []hub.HubOption{
+			hub.WithSharedCollector(sharedCollector),
+		}
+		if dlDir := os.Getenv("MCP_FUSION_DL_DIR"); dlDir != "" {
+			hubOpts = append(hubOpts, hub.WithDownloadDir(dlDir))
+		}
+		hubProvider = hub.NewHubProvider(hubConfigs, logger, hubOpts...)
 		providers = append(providers, hubProvider)
 	}
 

@@ -7,10 +7,16 @@ package hub
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -23,14 +29,24 @@ type ToolDiff struct {
 	Removed []string
 }
 
+// FormatOptions controls optional post-processing of tool results.
+// A nil FormatOptions disables all post-processing (safe default).
+type FormatOptions struct {
+	DownloadDir string // directory to save binary/image content; empty = disable
+	TenantHash  string // subdirectory name within DownloadDir; empty = save directly in DownloadDir
+}
+
 // ConvertDownstreamTool converts a downstream MCP tool into a global.ToolDefinition
 // suitable for registration with the MCPFusion server. The tool name is prefixed
 // with the service name, and a handler closure is created that forwards calls to
 // the downstream service using the original unprefixed tool name.
+// getOpts is an optional function that builds FormatOptions from the call context;
+// pass nil to disable image saving.
 func ConvertDownstreamTool(
 	serviceName string,
 	tool mcp.Tool,
 	callFunc func(ctx context.Context, toolName string, args map[string]interface{}, meta *mcp.Meta) (*mcp.CallToolResult, error),
+	getOpts func(ctx context.Context) *FormatOptions,
 ) global.ToolDefinition {
 
 	prefixedName := fmt.Sprintf("%s_%s", serviceName, tool.Name)
@@ -68,7 +84,12 @@ func ConvertDownstreamTool(
 			return "", fmt.Errorf("downstream tool call failed: %w", err)
 		}
 
-		return FormatCallToolResult(result), nil
+		var opts *FormatOptions
+		if getOpts != nil {
+			opts = getOpts(ctx)
+		}
+
+		return FormatCallToolResult(result, opts), nil
 	}
 
 	return global.ToolDefinition{
@@ -83,8 +104,9 @@ func ConvertDownstreamTool(
 // FormatCallToolResult converts a CallToolResult into a string representation.
 // For single text results, the text is returned directly. For error results, the
 // output is prefixed with "Error: ". Multiple content items or non-text content
-// are serialized to JSON.
-func FormatCallToolResult(result *mcp.CallToolResult) string {
+// are serialized to JSON. When opts is non-nil and DownloadDir is set, image
+// content blocks are saved to disk instead of being serialized as base64 JSON.
+func FormatCallToolResult(result *mcp.CallToolResult, opts *FormatOptions) string {
 	if result == nil {
 		return ""
 	}
@@ -106,6 +128,16 @@ func FormatCallToolResult(result *mcp.CallToolResult) string {
 			if text, ok := raw["text"].(string); ok {
 				texts = append(texts, text)
 			}
+		} else if raw["type"] == "image" {
+			// If download is configured, save the image to disk and return the path.
+			if opts != nil && opts.DownloadDir != "" {
+				if saved, err := saveImageContent(raw, opts); err == nil {
+					texts = append(texts, saved)
+					continue
+				}
+			}
+			// Fall through to JSON serialization if saving fails or is not configured.
+			texts = append(texts, string(data))
 		} else {
 			// For non-text content, include the JSON representation
 			texts = append(texts, string(data))
@@ -117,6 +149,73 @@ func FormatCallToolResult(result *mcp.CallToolResult) string {
 		return "Error: " + output
 	}
 	return output
+}
+
+// saveImageContent saves an MCP image content block to disk and returns a
+// human-readable message containing the filename and path.
+// raw is the unmarshalled content block map (must have "type":"image").
+func saveImageContent(raw map[string]interface{}, opts *FormatOptions) (string, error) {
+	// Extract base64 data and MIME type from the content block.
+	// MCP image content: {"type":"image","data":"<base64>","mimeType":"image/png"}
+	dataStr, _ := raw["data"].(string)
+	mimeType, _ := raw["mimeType"].(string)
+	if dataStr == "" {
+		return "", fmt.Errorf("no image data")
+	}
+
+	imgBytes, err := base64.StdEncoding.DecodeString(dataStr)
+	if err != nil {
+		// Try URL encoding as fallback
+		imgBytes, err = base64.URLEncoding.DecodeString(dataStr)
+		if err != nil {
+			return "", fmt.Errorf("base64 decode: %w", err)
+		}
+	}
+
+	ext := extensionFromMimeType(mimeType)
+
+	// Build save directory: <DownloadDir>/<TenantHash> or just <DownloadDir>.
+	saveDir := opts.DownloadDir
+	if opts.TenantHash != "" {
+		saveDir = filepath.Join(opts.DownloadDir, opts.TenantHash)
+	}
+	if err := os.MkdirAll(saveDir, 0750); err != nil {
+		return "", fmt.Errorf("mkdir: %w", err)
+	}
+
+	// Collision-safe filename: screenshot_<timestamp>_<4hex><ext>
+	randBytes := make([]byte, 2)
+	_, _ = rand.Read(randBytes) //nolint:gosec
+	filename := fmt.Sprintf("screenshot_%s_%s%s",
+		time.Now().Format("20060102_150405"),
+		hex.EncodeToString(randBytes),
+		ext,
+	)
+	filePath := filepath.Join(saveDir, filename)
+
+	if err := os.WriteFile(filePath, imgBytes, 0640); err != nil {
+		return "", fmt.Errorf("write: %w", err)
+	}
+
+	return fmt.Sprintf("Image saved: %s (%d bytes) → %s", filename, len(imgBytes), filePath), nil
+}
+
+// extensionFromMimeType returns a file extension for common image MIME types.
+func extensionFromMimeType(mimeType string) string {
+	switch strings.ToLower(strings.TrimSpace(mimeType)) {
+	case "image/png":
+		return ".png"
+	case "image/jpeg", "image/jpg":
+		return ".jpg"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	case "image/svg+xml":
+		return ".svg"
+	default:
+		return ".bin"
+	}
 }
 
 // DiffTools compares two tool maps and returns which tools were added and removed.

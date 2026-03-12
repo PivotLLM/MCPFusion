@@ -26,7 +26,7 @@ func TestConvertDownstreamTool(t *testing.T) {
 		return mcp.NewToolResultText("ok"), nil
 	}
 
-	td := ConvertDownstreamTool("miniprint", tool, mockCallFunc)
+	td := ConvertDownstreamTool("miniprint", tool, mockCallFunc, nil)
 
 	assert.Equal(t, "miniprint_print_receipt", td.Name)
 	assert.Equal(t, "Prints a receipt", td.Description)
@@ -75,7 +75,7 @@ func TestConvertDownstreamTool_Handler(t *testing.T) {
 		mcp.WithString("msg", mcp.Required(), mcp.Description("The message")),
 	)
 
-	td := ConvertDownstreamTool("svc", tool, mockCallFunc)
+	td := ConvertDownstreamTool("svc", tool, mockCallFunc, nil)
 
 	result, err := td.Handler(map[string]any{
 		"__mcp_context": context.Background(),
@@ -104,7 +104,7 @@ func TestConvertDownstreamTool_NoHints(t *testing.T) {
 		return mcp.NewToolResultText("ok"), nil
 	}
 
-	td := ConvertDownstreamTool("svc", tool, mockCallFunc)
+	td := ConvertDownstreamTool("svc", tool, mockCallFunc, nil)
 
 	assert.Nil(t, td.Hints, "hints should be nil when no annotations are set")
 }
@@ -112,18 +112,18 @@ func TestConvertDownstreamTool_NoHints(t *testing.T) {
 func TestFormatCallToolResult(t *testing.T) {
 	t.Run("simple text result", func(t *testing.T) {
 		result := mcp.NewToolResultText("hello")
-		output := FormatCallToolResult(result)
+		output := FormatCallToolResult(result, nil)
 		assert.Equal(t, "hello", output)
 	})
 
 	t.Run("error result", func(t *testing.T) {
 		result := mcp.NewToolResultError("something went wrong")
-		output := FormatCallToolResult(result)
+		output := FormatCallToolResult(result, nil)
 		assert.Equal(t, "Error: something went wrong", output)
 	})
 
 	t.Run("nil result", func(t *testing.T) {
-		output := FormatCallToolResult(nil)
+		output := FormatCallToolResult(nil, nil)
 		assert.Equal(t, "", output)
 	})
 }
