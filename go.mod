@@ -7,7 +7,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/mark3labs/mcp-go v0.43.2
 	github.com/stretchr/testify v1.10.0
-	github.com/tenebris-tech/mlogger v0.0.3
+	github.com/tenebris-tech/mlogger v0.0.4
 	go.etcd.io/bbolt v1.4.3
 )
 
@@ -26,5 +26,3 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/tenebris-tech/mlogger => /home/eric/source/mlogger
