@@ -35,8 +35,8 @@ fi
 SERVER_URL="${SERVER_URL}/mcp"
 TRANSPORT="http"
 
-# PROBE can be overridden via environment variable
-: "${PROBE:=probe}"
+# PROBE_PATH can be overridden via environment variable
+: "${PROBE_PATH:=probe}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -68,26 +68,26 @@ if [ "$APIKEY" = "SET_YOUR_API_KEY_HERE" ]; then
     exit 1
 fi
 
-# Check if PROBE exists
-if [ "${PROBE#/}" = "$PROBE" ]; then
-    PROBE_FULL=$(command -v "$PROBE" 2>/dev/null)
+# Check if PROBE_PATH exists
+if [ "${PROBE_PATH#/}" = "$PROBE_PATH" ]; then
+    PROBE_FULL=$(command -v "$PROBE_PATH" 2>/dev/null)
     if [ -z "$PROBE_FULL" ]; then
         echo "${RED}ERROR: probe binary not found in PATH${NC}"
         exit 1
     fi
-    PROBE="$PROBE_FULL"
-elif [ ! -f "$PROBE" ]; then
-    echo "${RED}ERROR: probe not found at: $PROBE${NC}"
+    PROBE_PATH="$PROBE_FULL"
+elif [ ! -f "$PROBE_PATH" ]; then
+    echo "${RED}ERROR: probe not found at: $PROBE_PATH${NC}"
     exit 1
 fi
 
-if [ ! -x "$PROBE" ]; then
-    echo "${RED}ERROR: probe is not executable: $PROBE${NC}"
+if [ ! -x "$PROBE_PATH" ]; then
+    echo "${RED}ERROR: probe is not executable: $PROBE_PATH${NC}"
     exit 1
 fi
 
 echo "${GREEN}Pre-flight checks passed${NC}"
-echo "  Probe:  $PROBE"
+echo "  Probe:  $PROBE_PATH"
 echo "  Server: $SERVER_URL"
 echo ""
 
@@ -115,7 +115,7 @@ run_test() {
     local expected="$4"
 
     echo "  ${test_name}"
-    result=$($PROBE -url "$SERVER_URL" -transport "$TRANSPORT" -headers "Authorization:Bearer $APIKEY" -call "$tool" -params "$params" 2>&1)
+    result=$($PROBE_PATH -url "$SERVER_URL" -transport "$TRANSPORT" -headers "Authorization:Bearer $APIKEY" -call "$tool" -params "$params" 2>&1)
 
     if echo "$result" | grep -q "Tool call succeeded"; then
         if [ -n "$expected" ]; then
@@ -146,7 +146,7 @@ run_test_expect_fail() {
     local expected_error="$4"
 
     echo "  ${test_name}"
-    result=$($PROBE -url "$SERVER_URL" -transport "$TRANSPORT" -headers "Authorization:Bearer $APIKEY" -call "$tool" -params "$params" 2>&1)
+    result=$($PROBE_PATH -url "$SERVER_URL" -transport "$TRANSPORT" -headers "Authorization:Bearer $APIKEY" -call "$tool" -params "$params" 2>&1)
 
     if echo "$result" | grep -q "Tool call failed"; then
         if [ -n "$expected_error" ]; then
@@ -171,7 +171,7 @@ run_test_expect_fail() {
 
 # Silent cleanup (no output)
 cleanup_silent() {
-    $PROBE -url "$SERVER_URL" -transport "$TRANSPORT" -headers "Authorization:Bearer $APIKEY" -call "$1" -params "$2" > /dev/null 2>&1
+    $PROBE_PATH -url "$SERVER_URL" -transport "$TRANSPORT" -headers "Authorization:Bearer $APIKEY" -call "$1" -params "$2" > /dev/null 2>&1
 }
 
 #===============================================================================
