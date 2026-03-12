@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -543,11 +544,77 @@ func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
 				tenantContext.String(), r.Method, r.URL.Path)
 		}
 
-		// Add tenant context to request context without service resolution
+		// Build RequestRecord for combined access logging
+		record := &global.RequestRecord{
+			IP:        extractClientIP(r),
+			Method:    r.Method,
+			Path:      r.URL.Path,
+			Tenant:    tenantContext.ShortHash(),
+			RequestID: tenantContext.RequestID,
+		}
+
+		// Pre-populate MCPMethod so protocol messages (initialize, ping, etc.)
+		// that have no mcp-go hook still appear in the log. MCP hooks override
+		// this for tools/call and list operations with richer detail.
+		switch r.Method {
+		case http.MethodPost:
+			record.MCPMethod = peekJSONRPCMethod(r)
+		case http.MethodGet:
+			record.MCPMethod = "stream/open"
+		case http.MethodDelete:
+			record.MCPMethod = "session/close"
+		}
+
+		// Store both tenant context and request record in context
 		ctx := context.WithValue(r.Context(), global.TenantContextKey, tenantContext)
+		ctx = context.WithValue(ctx, global.RequestRecordKey, record)
 		r = r.WithContext(ctx)
 
-		// Continue to next handler - service validation will happen at MCP level
+		// Continue to next handler — MCP hooks will populate record fields
 		next.ServeHTTP(w, r)
+
+		// Log after handler returns so MCP hook fields are populated
+		if am.logger != nil {
+			am.logger.InfoFields(record.Fields()...)
+		}
 	})
+}
+
+// peekJSONRPCMethod reads the request body to extract the JSON-RPC "method" field,
+// then restores the body so the actual handler still sees it.
+// Returns an empty string if the body is absent, not JSON, or has no method field.
+func peekJSONRPCMethod(r *http.Request) string {
+	if r.Body == nil {
+		return ""
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil || len(body) == 0 {
+		return ""
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	var envelope struct {
+		Method string `json:"method"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return ""
+	}
+	return envelope.Method
+}
+
+// extractClientIP returns the client IP from the request, checking proxy headers first.
+func extractClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }

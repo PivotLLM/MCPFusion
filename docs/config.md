@@ -603,7 +603,28 @@ If validation fails, the request is rejected before it reaches the API with a de
 |------|-------------|
 | `json` | JSON response (default) |
 | `text` | Plain text response |
-| `binary` | Binary data response |
+| `binary` | Binary data response — saved to disk when `MCP_FUSION_DL_DIR` is configured |
+
+#### Binary Response Handling
+
+When `response_type` is `"binary"` and the `MCP_FUSION_DL_DIR` environment variable is set, MCPFusion saves the binary content to disk rather than returning it inline. This is essential for large files such as generated reports, exported documents, and archives.
+
+**Filename resolution** (in priority order):
+
+1. `Content-Disposition` response header — e.g. `Content-Disposition: attachment; filename="Report.docx"` → base name `Report.docx`
+2. `Content-Type` response header — e.g. `application/pdf` → `download.pdf`
+3. Fallback → `download.bin`
+
+**Tenant isolation**: Files are saved under `<MCP_FUSION_DL_DIR>/<tenantShortHash>/`, keeping each tenant's files separate.
+
+**Collision-safe naming**: A `_<timestamp>_<4hex>` suffix is always appended to prevent overwrites (e.g. `Report_20260312_023106_5b3e.docx`).
+
+**Tool response**: The tool result contains the saved file path and byte count, for example:
+```
+Report_20260312_023106_5b3e.docx (291369 bytes) saved to /opt/mcpfusion/downloads/fc566cff.../Report_20260312_023106_5b3e.docx
+```
+
+If `MCP_FUSION_DL_DIR` is not set, binary responses are returned as a base64-encoded string in the tool result.
 
 ### Pagination Configuration
 

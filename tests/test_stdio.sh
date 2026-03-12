@@ -25,18 +25,27 @@
 # Configuration
 #===============================================================================
 
-# API key for authentication - set this before running
-APIKEY="SET_YOUR_API_KEY_HERE"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Server URL (MCPFusion must be running)
-: "${SERVER_URL:=http://127.0.0.1:8888/mcp}"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+else
+    echo "Error: .env file not found in $SCRIPT_DIR"
+    echo "Please create a .env file with APIKEY=your-api-token and SERVER_URL=your-server-url"
+    exit 1
+fi
+
+[ -z "$APIKEY" ]     && { echo "Error: APIKEY not set in .env";     exit 1; }
+[ -z "$SERVER_URL" ] && { echo "Error: SERVER_URL not set in .env"; exit 1; }
+
+SERVER_URL="${SERVER_URL}/mcp"
 TRANSPORT="http"
 
 # Name of the stdio hub service to verify (overridable via environment variable)
 : "${STDIO_SERVICE_NAME:=maestro}"
 
-# PROBE can be overridden via environment variable
-: "${PROBE:=probe}"
+# PROBE_PATH can be overridden via environment variable
+: "${PROBE_PATH:=probe}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -60,34 +69,26 @@ echo "${BOLD}   Stdio Hub Service Test Suite${NC}"
 echo "${BOLD}============================================${NC}"
 echo ""
 
-# Check if APIKEY has been set
-if [ "$APIKEY" = "SET_YOUR_API_KEY_HERE" ]; then
-    echo "${RED}ERROR: APIKEY has not been set${NC}"
-    echo "Edit this script and set the APIKEY variable to a valid API token."
-    echo "Generate a token with: ./mcpfusion -token-add \"test\""
-    exit 1
-fi
-
-# Check if PROBE exists
-if [ "${PROBE#/}" = "$PROBE" ]; then
-    PROBE_FULL=$(command -v "$PROBE" 2>/dev/null)
+# Check if PROBE_PATH exists
+if [ "${PROBE_PATH#/}" = "$PROBE_PATH" ]; then
+    PROBE_FULL=$(command -v "$PROBE_PATH" 2>/dev/null)
     if [ -z "$PROBE_FULL" ]; then
         echo "${RED}ERROR: probe binary not found in PATH${NC}"
         exit 1
     fi
-    PROBE="$PROBE_FULL"
-elif [ ! -f "$PROBE" ]; then
-    echo "${RED}ERROR: probe not found at: $PROBE${NC}"
+    PROBE_PATH="$PROBE_FULL"
+elif [ ! -f "$PROBE_PATH" ]; then
+    echo "${RED}ERROR: probe not found at: $PROBE_PATH${NC}"
     exit 1
 fi
 
-if [ ! -x "$PROBE" ]; then
-    echo "${RED}ERROR: probe is not executable: $PROBE${NC}"
+if [ ! -x "$PROBE_PATH" ]; then
+    echo "${RED}ERROR: probe is not executable: $PROBE_PATH${NC}"
     exit 1
 fi
 
 echo "${GREEN}Pre-flight checks passed${NC}"
-echo "  Probe:        $PROBE"
+echo "  Probe:        $PROBE_PATH"
 echo "  Server:       $SERVER_URL"
 echo "  Service name: $STDIO_SERVICE_NAME"
 echo ""
@@ -116,7 +117,7 @@ run_test() {
     local expected="$4"
 
     echo "  ${test_name}"
-    result=$($PROBE -url "$SERVER_URL" -transport "$TRANSPORT" -headers "Authorization:Bearer $APIKEY" -call "$tool" -params "$params" 2>&1)
+    result=$($PROBE_PATH -url "$SERVER_URL" -transport "$TRANSPORT" -headers "Authorization:Bearer $APIKEY" -call "$tool" -params "$params" 2>&1)
 
     if echo "$result" | grep -q "Tool call succeeded"; then
         if [ -n "$expected" ]; then

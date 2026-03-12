@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/MCPFusion/mlogger"
+	"github.com/tenebris-tech/mlogger"
 )
 
 // testTenantContext returns a context containing a minimal TenantContext for use in tests.

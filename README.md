@@ -27,6 +27,10 @@ Users should carefully review their configuration to understand what access MCPF
 - **CLI Token Management**: Command-line token management
 - **User Management**: Stable user identity with UUID-based accounts, API key linking, and automatic migration of existing tokens
 - **Knowledge Store**: Per-user persistent knowledge storage with domain/key organization, exposed as native MCP tools
+- **Hub Mode**: Proxy and aggregate tools from downstream MCP servers (stdio, SSE, and Streamable HTTP)
+- **Binary Downloads**: Automatically saves binary tool responses (reports, files) to disk with tenant isolation and collision-safe filenames
+- **Image Saving**: Hub image content blocks (e.g. Playwright screenshots) are saved to disk instead of returning large base64 payloads in tool responses
+- **Performance & Test Tools**: Optional built-in perf tools (echo, delay, random data, error injection, counter) for testing and diagnostics
 
 ## To Do
 
@@ -63,16 +67,31 @@ The `--no-auth` flag disables authentication and is intended for testing, debugg
 ## Quick Start
 
 1. **Create an environment file**:
-/opt/mcpfusion/env is recommended. For example:
+`/opt/mcpfusion/env` is recommended. For example:
  ```
 MCP_FUSION_CONFIG=/opt/mcpfusion/microsoft365.json
 MCP_FUSION_LISTEN=127.0.0.1:8888
 MCP_FUSION_DB_DIR=/opt/mcpfusion/db
+MCP_FUSION_DL_DIR=/opt/mcpfusion/downloads
 
 # Example for Microsoft 365 Graph API registration
 MS365_CLIENT_ID=<application client ID>
 MS365_TENANT_ID=common
  ```
+
+**Environment Variables:**
+
+| Variable | Description |
+|----------|-------------|
+| `MCP_FUSION_CONFIG` | Path to a single JSON configuration file |
+| `MCP_FUSION_CONFIGS` | Comma-separated list of JSON configuration file paths |
+| `MCP_FUSION_LISTEN` | Listen address (default: `0.0.0.0:8888`) |
+| `MCP_FUSION_DB_DIR` | Database directory (default: `/opt/mcpfusion` or `~/.mcpfusion`) |
+| `MCP_FUSION_DL_DIR` | Directory for saving binary downloads and hub images (optional; see [Binary Downloads](#binary-downloads)) |
+| `MCP_FUSION_LOGFILE` | Log file path (optional; logs to stdout if unset) |
+| `MCP_FUSION_KNOWLEDGE` | Set to `false`, `0`, or `no` to disable the knowledge store provider |
+| `MCP_FUSION_PERF` | Set to `true`, `1`, or `yes` to enable perf/test tools (development only) |
+| `MCP_FUSION_EXTERNAL_URL` | Externally reachable URL used in OAuth callbacks |
 
 If parameters are provided via the environment, no command-line switches are required. MCPFusion will automatically load /opt/mcpfusion/env into the environment as long as it has permission to read the file.
 
@@ -164,6 +183,27 @@ On server startup, any API tokens not yet linked to a user are automatically ass
 
 The knowledge store provides persistent, per-user storage organized by domain and key. AI clients can store preferences, rules, and context that persists across sessions. See [User & Knowledge Management](docs/user_management.md) for full details.
 
+### Native Providers
+
+MCPFusion includes built-in tool providers that run natively within the server process (no external config file required):
+
+**Health Provider** (`providers/health`) — Always enabled. Exposes a `health_status` tool that returns server uptime, version, and the operational status of all connected services.
+
+**Knowledge Provider** (`providers/knowledge`) — Enabled by default. Exposes `knowledge_set`, `knowledge_get`, `knowledge_delete`, `knowledge_search`, and `knowledge_rename` tools for per-user persistent storage. Disable with `MCP_FUSION_KNOWLEDGE=false`.
+
+**Perf Provider** (`providers/perf`) — Disabled by default. Exposes `perf_echo`, `perf_delay`, `perf_random_data`, `perf_error`, and `perf_counter` tools for performance testing, benchmarking, and diagnostics. Enable with `MCP_FUSION_PERF=true` or the `--perf` command-line flag. **Do not enable in production.**
+
+### Binary Downloads
+
+When `MCP_FUSION_DL_DIR` is set, MCPFusion saves binary tool responses to disk instead of embedding them in the tool result:
+
+- **Tenant isolation**: Files are saved under `<dlDir>/<tenantShortHash>/` so each tenant's files are separated
+- **Filename**: Derived from the `Content-Disposition` header when present (e.g. `Report.docx`), otherwise from the `Content-Type` header (e.g. `download.pdf`)
+- **Collision-safe**: A `_<timestamp>_<4hex>` suffix is appended to prevent overwrites (e.g. `Report_20260312_023106_5b3e.docx`)
+- **Hub images**: Image content blocks returned by hub (proxied) MCP services (such as Playwright screenshots) are saved to disk in the same directory. The tool response contains the file path and size rather than a base64 payload, preventing token limit issues
+
+The tool response includes the saved file path and byte count so the AI client can inform the user of the file location.
+
 ### Typical Setup Workflow
 
 ```bash
@@ -201,11 +241,10 @@ The author acknoledges the use of Claude® Code to assist with assigned dvelopme
 - **[Configuration Guide](docs/config.md)** - Complete guide to creating JSON configurations for any API
 -  **[Command Execution Guide](docs/commands.md)** - Execute system commands and scripts with parameter control
 -  **[Client Integration](docs/clients.md)** - Connect Cline, Claude Desktop, and custom MCP clients
--  **[Token Management Guide](docs/TOKEN_MANAGEMENT.md)** - Multi-tenant authentication and CLI usage
 -  **[User & Knowledge Management](docs/user_management.md)** - User accounts, API key linking, and persistent knowledge store
+-  **[Authorization](docs/authorization.md)** - OAuth flows, token management, and multi-tenant authentication
 -  **[Microsoft 365 Setup](docs/Microsoft365.md)** - Microsoft 365 setup
 -  **[Google APIs Setup](docs/Google_Workspace.md)** - Google Workspace setup
--  **[HTTP Session Management](docs/HTTP_SESSION_MANAGEMENT.md)** - Connection pooling, timeouts, and reliability features
 
 ## Copyright and license
 

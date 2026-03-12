@@ -27,7 +27,10 @@ import (
 	"github.com/PivotLLM/MCPFusion/hub"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
 	"github.com/PivotLLM/MCPFusion/metrics"
-	"github.com/PivotLLM/MCPFusion/mlogger"
+	"github.com/tenebris-tech/mlogger"
+	"github.com/PivotLLM/MCPFusion/providers/health"
+	"github.com/PivotLLM/MCPFusion/providers/knowledge"
+	"github.com/PivotLLM/MCPFusion/providers/perf"
 )
 
 func main() {
@@ -60,6 +63,9 @@ func main() {
 	authCodeFlag := flag.String("auth-code", "", "Generate auth code for a service (e.g., google)")
 	authURLFlag := flag.String("auth-url", "", "External URL of this server (required with -auth-code)")
 	authTokenFlag := flag.String("auth-token", "", "API token prefix/hash to identify tenant (for multi-token setups)")
+
+	// Perf provider flag (never use in production)
+	perfFlag := flag.Bool("perf", false, "Enable perf/stress testing tools (never use in production)")
 
 	// Set custom usage message
 	flag.Usage = func() {
@@ -145,6 +151,7 @@ func main() {
 	debug := *debugFlag
 	noAuth := *noAuthFlag
 
+	// Determine whether the knowledge provider is enabled (default: enabled).
 	// Load environment variables from config files in priority order:
 	// 1. /opt/mcpfusion/env
 	// 2. ~/.mcpfusion
@@ -173,6 +180,21 @@ func main() {
 		}
 	}
 
+	// Set MCP_FUSION_KNOWLEDGE=false, 0, or no to disable.
+	// Checked after env file loading so /opt/mcpfusion/env values are visible.
+	knowledgeEnabled := true
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_FUSION_KNOWLEDGE"))); v == "false" || v == "0" || v == "no" {
+		knowledgeEnabled = false
+	}
+
+	// Determine whether the perf provider is enabled.
+	// Either --perf flag or MCP_FUSION_PERF=true/1/yes enables it.
+	// Checked after env file loading so /opt/mcpfusion/env values are visible.
+	perfEnabled := *perfFlag
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_FUSION_PERF"))); v == "true" || v == "1" || v == "yes" {
+		perfEnabled = true
+	}
+
 	// My default log in the current directory
 	logfile := "mcpfusion.log"
 
@@ -198,6 +220,18 @@ func main() {
 
 	// Log startup banner
 	logger.Infof("Starting %s v%s", global.AppName, global.AppVersion)
+
+	// Log knowledge and perf activation state
+	if knowledgeEnabled {
+		logger.Info("Knowledge provider: enabled")
+	} else {
+		logger.Info("Knowledge provider: disabled (MCP_FUSION_KNOWLEDGE=false)")
+	}
+	if perfEnabled {
+		logger.Warning("Perf provider: enabled (MCP_FUSION_PERF — DO NOT USE IN PRODUCTION)")
+	} else {
+		logger.Info("Perf provider: disabled")
+	}
 
 	// Log warning if no-auth mode is enabled
 	if noAuth {
@@ -388,6 +422,53 @@ func main() {
 		logger.Warning("No fusion provider created - no configurations loaded")
 	}
 
+	// Register native tool prefixes with the config manager so the auth middleware
+	// recognises health, knowledge, and perf as valid service names.
+	// health is always enabled; knowledge and perf are registered conditionally below.
+	configManager.RegisterNativeToolPrefix("health")
+
+	// Health provider (always enabled).
+	healthOpts := []health.Option{
+		health.WithLogger(logger),
+		health.WithCollector(sharedCollector),
+	}
+	if fusionProvider != nil {
+		healthOpts = append(healthOpts, health.WithCircuitBreakerSource(fusionProvider.GetCircuitBreakerSource()))
+	}
+	healthProvider := health.New(healthOpts...)
+	providers = append(providers, healthProvider)
+
+	// Knowledge provider (enabled unless MCP_FUSION_KNOWLEDGE=false/0/no).
+	if knowledgeEnabled {
+		configManager.RegisterNativeToolPrefix("knowledge")
+		knowledgeProvider := knowledge.New(
+			knowledge.WithLogger(logger),
+			knowledge.WithDatabase(database),
+			knowledge.WithCollector(sharedCollector),
+			knowledge.WithUserIDExtractor(func(ctx context.Context) (string, error) {
+				tc, ok := ctx.Value(global.TenantContextKey).(*fusion.TenantContext)
+				if !ok || tc == nil {
+					return "", fmt.Errorf("no tenant context available")
+				}
+				if tc.UserID == "" {
+					return "", fmt.Errorf("no user ID associated with this API key — link with: mcpfusion -user-link <user_id>:<key_hash>")
+				}
+				return tc.UserID, nil
+			}),
+		)
+		// Register knowledge service with the shared metrics collector.
+		knowledgeToolCount := knowledgeProvider.ToolCount()
+		sharedCollector.RegisterService("knowledge", global.TransportInternal, &knowledgeToolCount)
+		providers = append(providers, knowledgeProvider)
+	}
+
+	// Perf provider (only when explicitly enabled via --perf or MCP_FUSION_PERF).
+	if perfEnabled {
+		configManager.RegisterNativeToolPrefix("perf")
+		perfProvider := perf.New(perf.WithLogger(logger))
+		providers = append(providers, perfProvider)
+	}
+
 	// Identify hub services and create hub provider
 	var hubProvider *hub.HubProvider
 	hubConfigs := make(map[string]*fusion.ServiceConfig)
@@ -398,7 +479,13 @@ func main() {
 	}
 	if len(hubConfigs) > 0 {
 		logger.Infof("Found %d hub service(s) to connect", len(hubConfigs))
-		hubProvider = hub.NewHubProvider(hubConfigs, logger, hub.WithSharedCollector(sharedCollector))
+		hubOpts := []hub.HubOption{
+			hub.WithSharedCollector(sharedCollector),
+		}
+		if dlDir := os.Getenv("MCP_FUSION_DL_DIR"); dlDir != "" {
+			hubOpts = append(hubOpts, hub.WithDownloadDir(dlDir))
+		}
+		hubProvider = hub.NewHubProvider(hubConfigs, logger, hubOpts...)
 		providers = append(providers, hubProvider)
 	}
 

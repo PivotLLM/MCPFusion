@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/MCPFusion/mlogger"
+	"github.com/tenebris-tech/mlogger"
 )
 
 func TestNew(t *testing.T) {

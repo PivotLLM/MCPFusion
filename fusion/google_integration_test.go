@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/MCPFusion/mlogger"
+	"github.com/tenebris-tech/mlogger"
 )
 
 // TestGoogleIntegration tests the Google APIs integration

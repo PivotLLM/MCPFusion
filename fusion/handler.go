@@ -8,10 +8,13 @@ package fusion
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	crand "crypto/rand"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -387,7 +390,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Handle response
-	result, err := h.handleResponse(resp, correlationID, args)
+	result, err := h.handleResponse(ctx, resp, correlationID, args)
 	if err != nil {
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Response handling failed [%s]: %v", correlationID, err)
@@ -636,7 +639,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 }
 
 // handleResponse processes the HTTP response
-func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, args map[string]interface{}) (string, error) {
+func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, correlationID string, args map[string]interface{}) (string, error) {
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -737,22 +740,45 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 			return fmt.Sprintf("Tool call succeeded. Binary data received (%d bytes), but MCP_FUSION_DL_DIR is not configured so the data was discarded. Set MCP_FUSION_DL_DIR to enable saving binary downloads to disk.", len(body)), nil
 		}
 
-		// Ensure download directory exists
-		if err := os.MkdirAll(dlDir, 0750); err != nil {
-			return "", fmt.Errorf("failed to create download directory %s: %w", dlDir, err)
+		// Step A — Determine filename and extension.
+		// Prefer Content-Disposition filename; fall back to service+endpoint name.
+		var baseName, ext string
+		if cdFilename := filenameFromContentDisposition(resp.Header.Get("Content-Disposition")); cdFilename != "" {
+			baseName = sanitizeFilename(strings.TrimSuffix(cdFilename, filepath.Ext(cdFilename)))
+			ext = sanitizeFilename(filepath.Ext(cdFilename))
+		} else {
+			baseName = sanitizeFilename(h.service.Name) + "_" + sanitizeFilename(h.endpoint.ID)
+			ext = extensionFromContentType(resp.Header.Get("Content-Type"))
 		}
 
-		// Determine file extension from Content-Type
-		ext := extensionFromContentType(resp.Header.Get("Content-Type"))
-
-		// Build filename: <service>_<endpoint>_<timestamp><ext>
+		// Step B — Build final filename with timestamp + 4-char random hex suffix.
+		randBytes := make([]byte, 2)
+		_, _ = crand.Read(randBytes)
 		filename := fmt.Sprintf("%s_%s_%s%s",
-			sanitizeFilename(h.service.Name),
-			sanitizeFilename(h.endpoint.ID),
+			baseName,
 			time.Now().Format("20060102_150405"),
+			hex.EncodeToString(randBytes),
 			ext,
 		)
-		filePath := filepath.Join(dlDir, filename)
+
+		// Step C — Tenant subdirectory.
+		var subDir string
+		if tc, ok := ctx.Value(global.TenantContextKey).(*TenantContext); ok && tc != nil {
+			subDir = tc.ShortHash()
+		}
+
+		var saveDir string
+		if subDir != "" {
+			saveDir = filepath.Join(dlDir, subDir)
+		} else {
+			saveDir = dlDir
+		}
+
+		if err := os.MkdirAll(saveDir, 0750); err != nil {
+			return "", fmt.Errorf("failed to create download directory %s: %w", saveDir, err)
+		}
+
+		filePath := filepath.Join(saveDir, filename)
 
 		if err := os.WriteFile(filePath, body, 0640); err != nil {
 			return "", fmt.Errorf("failed to write download to %s: %w", filePath, err)
@@ -762,7 +788,8 @@ func (h *HTTPHandler) handleResponse(resp *http.Response, correlationID string, 
 			h.fusion.logger.Infof("Binary response saved: %s (%d bytes)", filePath, len(body))
 		}
 
-		return fmt.Sprintf("Tool call succeeded. Binary data saved to %s (%d bytes).", filePath, len(body)), nil
+		// Step D — Return message with filename prominently included.
+		return fmt.Sprintf("File saved: %s (%d bytes) → %s", filename, len(body), filePath), nil
 
 	default:
 		// Default to JSON
@@ -787,13 +814,53 @@ func extensionFromContentType(contentType string) string {
 		return ".pdf"
 	case "application/zip":
 		return ".zip"
+	case "application/octet-stream":
+		return ".bin"
+	case "application/msword":
+		return ".doc"
+	case "application/vnd.ms-excel":
+		return ".xls"
+	case "application/vnd.ms-powerpoint":
+		return ".ppt"
+	case "application/json":
+		return ".json"
 	case "text/plain":
 		return ".txt"
 	case "text/csv":
 		return ".csv"
+	case "text/html":
+		return ".html"
 	default:
 		return ".bin"
 	}
+}
+
+// filenameFromContentDisposition extracts the filename parameter from a
+// Content-Disposition header value, e.g.:
+//
+//	attachment; filename="report.docx"
+//	attachment; filename=report.docx
+//
+// Returns empty string if no filename is found.
+func filenameFromContentDisposition(header string) string {
+	if header == "" {
+		return ""
+	}
+	_, params, err := mime.ParseMediaType(header)
+	if err != nil {
+		return ""
+	}
+	name := params["filename"]
+	if name == "" {
+		return ""
+	}
+	// Strip any path components for safety.
+	name = filepath.Base(name)
+	// Reject names that are just a separator.
+	if name == "." || name == ".." || name == "/" || name == "\\" {
+		return ""
+	}
+	return name
 }
 
 // sanitizeFilename replaces characters that are unsafe in filenames with underscores.

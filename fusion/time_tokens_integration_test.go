@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/PivotLLM/MCPFusion/mlogger"
+	"github.com/tenebris-tech/mlogger"
 )
 
 func TestTimeTokenIntegration_MapperProcessing(t *testing.T) {
