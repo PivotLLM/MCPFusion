@@ -219,6 +219,18 @@ func main() {
 	// Log startup banner
 	logger.Infof("Starting %s v%s", global.AppName, global.AppVersion)
 
+	// Log knowledge and perf activation state
+	if knowledgeEnabled {
+		logger.Info("Knowledge provider: enabled")
+	} else {
+		logger.Info("Knowledge provider: disabled (MCP_FUSION_KNOWLEDGE=false)")
+	}
+	if perfEnabled {
+		logger.Warning("Perf provider: enabled (MCP_FUSION_PERF — DO NOT USE IN PRODUCTION)")
+	} else {
+		logger.Info("Perf provider: disabled")
+	}
+
 	// Log warning if no-auth mode is enabled
 	if noAuth {
 		logger.Warning("**************************************************************")
