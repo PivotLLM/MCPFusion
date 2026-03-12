@@ -86,7 +86,10 @@ func (s *MCPServer) hookAfterListTools(ctx context.Context, id any, request *mcp
 }
 
 //goland:noinspection GoUnusedParameter
-func (s *MCPServer) hookAfterCallTool(ctx context.Context, id any, request *mcp.CallToolRequest, result *mcp.CallToolResult) {
+func (s *MCPServer) hookAfterCallTool(ctx context.Context, id any, request *mcp.CallToolRequest, rawResult any) {
+	// Type-assert result — mcp-go v0.45.0 changed the hook signature to any
+	result, _ := rawResult.(*mcp.CallToolResult)
+
 	// Calculate response size
 	var responseSize int
 	if result != nil {
