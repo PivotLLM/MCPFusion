@@ -12,13 +12,23 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
+)
+
+// rng is a package-level random source shared across calls to avoid the
+// duplicate-sequence problem that arises when seeding per-call with
+// time.Now().UnixNano() under rapid concurrent invocations.
+var (
+	rng   = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
+	rngMu sync.Mutex
 )
 
 // Provider implements global.ToolProvider for the perf tools.
@@ -86,7 +96,6 @@ func (p *Provider) echoTool() global.ToolDefinition {
 			},
 		},
 		Handler: func(args map[string]interface{}) (string, error) {
-			_ = extractContext(args)
 			message, _ := args["message"].(string)
 
 			if p.logger != nil {
@@ -177,8 +186,6 @@ func (p *Provider) randomDataTool() global.ToolDefinition {
 			},
 		},
 		Handler: func(args map[string]interface{}) (string, error) {
-			_ = extractContext(args)
-
 			var n int
 			switch v := args["bytes"].(type) {
 			case float64:
@@ -202,8 +209,9 @@ func (p *Provider) randomDataTool() global.ToolDefinition {
 
 			buf := make([]byte, n)
 			// math/rand is acceptable here — no security requirement.
-			//nolint:gosec
-			_, _ = rand.New(rand.NewSource(time.Now().UnixNano())).Read(buf)
+			rngMu.Lock()
+			_, _ = rng.Read(buf)
+			rngMu.Unlock()
 
 			out, err := json.Marshal(map[string]interface{}{
 				"bytes": n,
@@ -237,13 +245,11 @@ func (p *Provider) errorTool() global.ToolDefinition {
 			},
 		},
 		Handler: func(args map[string]interface{}) (string, error) {
-			_ = extractContext(args)
-
 			message, _ := args["message"].(string)
 			if message == "" {
 				message = "perf provider error"
 			}
-			return "", fmt.Errorf("%s", message) //nolint:goerr113
+			return "", errors.New(message)
 		},
 		Hints: &global.ToolHints{
 			ReadOnly:    global.BoolPtr(true),
@@ -261,8 +267,6 @@ func (p *Provider) counterTool() global.ToolDefinition {
 		Description: "Atomically increments and returns a monotonically increasing counter. Useful for testing concurrency.",
 		Parameters:  []global.Parameter{},
 		Handler: func(args map[string]interface{}) (string, error) {
-			_ = extractContext(args)
-
 			n := p.counter.Add(1)
 			out, err := json.Marshal(map[string]int64{"count": n})
 			if err != nil {

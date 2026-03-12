@@ -66,6 +66,16 @@ func New(opts ...Option) *Provider {
 	return p
 }
 
+// ToolCount returns the number of tools this provider registers without
+// triggering any logging side effects.  Used to pre-register metrics before
+// the MCP server calls RegisterTools.
+func (p *Provider) ToolCount() int {
+	if p.database == nil {
+		return 0
+	}
+	return 5
+}
+
 // RegisterTools implements global.ToolProvider.  It returns nil (with a warning
 // log) when no database is configured.
 func (p *Provider) RegisterTools() []global.ToolDefinition {

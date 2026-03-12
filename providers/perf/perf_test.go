@@ -17,11 +17,6 @@ import (
 	"github.com/PivotLLM/MCPFusion/providers/perf"
 )
 
-func toolByName(t *testing.T, tools []interface{ GetName() string }, name string) interface{ GetName() string } {
-	t.Helper()
-	return nil
-}
-
 // helpers to find tools by name from RegisterTools output.
 func findTool(t *testing.T, p *perf.Provider, name string) func(map[string]interface{}) (string, error) {
 	t.Helper()

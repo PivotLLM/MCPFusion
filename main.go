@@ -424,9 +424,8 @@ func main() {
 
 	// Register native tool prefixes with the config manager so the auth middleware
 	// recognises health, knowledge, and perf as valid service names.
+	// health is always enabled; knowledge and perf are registered conditionally below.
 	configManager.RegisterNativeToolPrefix("health")
-	configManager.RegisterNativeToolPrefix("knowledge")
-	configManager.RegisterNativeToolPrefix("perf")
 
 	// Health provider (always enabled).
 	healthOpts := []health.Option{
@@ -441,7 +440,7 @@ func main() {
 
 	// Knowledge provider (enabled unless MCP_FUSION_KNOWLEDGE=false/0/no).
 	if knowledgeEnabled {
-		logger.Info("Knowledge provider enabled")
+		configManager.RegisterNativeToolPrefix("knowledge")
 		knowledgeProvider := knowledge.New(
 			knowledge.WithLogger(logger),
 			knowledge.WithDatabase(database),
@@ -457,17 +456,17 @@ func main() {
 				return tc.UserID, nil
 			}),
 		)
-		providers = append(providers, knowledgeProvider)
 		// Register knowledge service with the shared metrics collector.
-		knowledgeToolCount := 5
+		knowledgeToolCount := knowledgeProvider.ToolCount()
 		sharedCollector.RegisterService("knowledge", global.TransportInternal, &knowledgeToolCount)
+		providers = append(providers, knowledgeProvider)
 	} else {
 		logger.Info("Knowledge provider disabled (MCP_FUSION_KNOWLEDGE=false/0/no)")
 	}
 
 	// Perf provider (only when explicitly enabled via --perf or MCP_FUSION_PERF).
 	if perfEnabled {
-		logger.Warning("Perf provider enabled — DO NOT USE IN PRODUCTION")
+		configManager.RegisterNativeToolPrefix("perf")
 		perfProvider := perf.New(perf.WithLogger(logger))
 		providers = append(providers, perfProvider)
 	}
