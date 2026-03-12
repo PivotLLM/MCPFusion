@@ -14,38 +14,74 @@ import (
 
 //goland:noinspection GoUnusedParameter
 func (s *MCPServer) hookAfterListPrompts(ctx context.Context, id any, request *mcp.ListPromptsRequest, result *mcp.ListPromptsResult) {
-	if s.debug {
+	count := 0
+	if result != nil {
+		count = len(result.Prompts)
+	}
+	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
+		rec.MCPMethod = string(request.Request.Method)
+		rec.Bytes = count
+		rec.IsList = true
+		rec.Status = "ok"
+	} else if s.debug {
 		s.logger.Debugf("%s: %v", request.Request.Method, result.Prompts)
 	} else {
-		s.logger.Infof("%s: %d items returned", request.Request.Method, len(result.Prompts))
+		s.logger.Infof("%s: %d items returned", request.Request.Method, count)
 	}
 }
 
 //goland:noinspection GoUnusedParameter
 func (s *MCPServer) hookAfterListResources(ctx context.Context, id any, request *mcp.ListResourcesRequest, result *mcp.ListResourcesResult) {
-	if s.debug {
+	count := 0
+	if result != nil {
+		count = len(result.Resources)
+	}
+	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
+		rec.MCPMethod = string(request.Request.Method)
+		rec.Bytes = count
+		rec.IsList = true
+		rec.Status = "ok"
+	} else if s.debug {
 		s.logger.Debugf("%s: %v", request.Request.Method, result.Resources)
 	} else {
-		s.logger.Infof("%s: %d items returned", request.Request.Method, len(result.Resources))
+		s.logger.Infof("%s: %d items returned", request.Request.Method, count)
 	}
 }
 
 //goland:noinspection GoUnusedParameter
 func (s *MCPServer) hookAfterListResourceTemplates(ctx context.Context, id any, request *mcp.ListResourceTemplatesRequest, result *mcp.ListResourceTemplatesResult) {
-	if s.debug {
+	count := 0
+	if result != nil {
+		count = len(result.ResourceTemplates)
+	}
+	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
+		rec.MCPMethod = string(request.Request.Method)
+		rec.Bytes = count
+		rec.IsList = true
+		rec.Status = "ok"
+	} else if s.debug {
 		s.logger.Debugf("%s: %v", request.Request.Method, result.ResourceTemplates)
 	} else {
-		s.logger.Infof("%s: %d items returned", request.Request.Method, len(result.ResourceTemplates))
+		s.logger.Infof("%s: %d items returned", request.Request.Method, count)
 	}
 }
 
 //goland:noinspection GoUnusedParameter
 func (s *MCPServer) hookAfterListTools(ctx context.Context, id any, request *mcp.ListToolsRequest, result *mcp.ListToolsResult) {
-	if //goland:noinspection GoBoolExpressions
+	count := 0
+	if result != nil {
+		count = len(result.Tools)
+	}
+	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
+		rec.MCPMethod = string(request.Request.Method)
+		rec.Bytes = count
+		rec.IsList = true
+		rec.Status = "ok"
+	} else if //goland:noinspection GoBoolExpressions
 	global.DumpTools && s.debug {
 		s.logger.Debugf("%s: %v", request.Request.Method, result.Tools)
 	} else {
-		s.logger.Infof("%s: %d tools returned", request.Request.Method, len(result.Tools))
+		s.logger.Infof("%s: %d tools returned", request.Request.Method, count)
 	}
 }
 
@@ -81,9 +117,17 @@ func (s *MCPServer) hookAfterCallTool(ctx context.Context, id any, request *mcp.
 	}
 
 	toolName := request.Params.Name
-	if s.debug {
-		s.logger.Debugf("tools/call: %s completed, response size: %d bytes", toolName, responseSize)
+	status := "ok"
+	if result != nil && result.IsError {
+		status = "error"
+	}
+
+	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
+		rec.MCPMethod = "tools/call"
+		rec.ToolName = toolName
+		rec.Status = status
+		rec.Bytes = responseSize
 	} else {
-		s.logger.Infof("tools/call: %s completed (%d bytes)", toolName, responseSize)
+		s.logger.Infof("tools/call: %s %s (%d bytes)", toolName, status, responseSize)
 	}
 }

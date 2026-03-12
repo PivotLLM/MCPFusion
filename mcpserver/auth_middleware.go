@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -543,11 +544,44 @@ func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
 				tenantContext.String(), r.Method, r.URL.Path)
 		}
 
-		// Add tenant context to request context without service resolution
+		// Build RequestRecord for combined access logging
+		record := &global.RequestRecord{
+			IP:        extractClientIP(r),
+			Method:    r.Method,
+			Path:      r.URL.Path,
+			Tenant:    tenantContext.ShortHash(),
+			RequestID: tenantContext.RequestID,
+		}
+
+		// Store both tenant context and request record in context
 		ctx := context.WithValue(r.Context(), global.TenantContextKey, tenantContext)
+		ctx = context.WithValue(ctx, global.RequestRecordKey, record)
 		r = r.WithContext(ctx)
 
-		// Continue to next handler - service validation will happen at MCP level
+		// Continue to next handler — MCP hooks will populate record fields
 		next.ServeHTTP(w, r)
+
+		// Log after handler returns so MCP hook fields are populated
+		if am.logger != nil {
+			am.logger.Infof("%s", record.Format())
+		}
 	})
+}
+
+// extractClientIP returns the client IP from the request, checking proxy headers first.
+func extractClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
