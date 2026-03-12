@@ -460,8 +460,6 @@ func main() {
 		knowledgeToolCount := knowledgeProvider.ToolCount()
 		sharedCollector.RegisterService("knowledge", global.TransportInternal, &knowledgeToolCount)
 		providers = append(providers, knowledgeProvider)
-	} else {
-		logger.Info("Knowledge provider disabled (MCP_FUSION_KNOWLEDGE=false/0/no)")
 	}
 
 	// Perf provider (only when explicitly enabled via --perf or MCP_FUSION_PERF).

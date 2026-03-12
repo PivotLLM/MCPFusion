@@ -66,6 +66,10 @@ func New(opts ...Option) *Provider {
 	return p
 }
 
+// knowledgeToolCount is the number of tools registered by RegisterTools.
+// Update this constant whenever a tool is added or removed.
+const knowledgeToolCount = 5
+
 // ToolCount returns the number of tools this provider registers without
 // triggering any logging side effects.  Used to pre-register metrics before
 // the MCP server calls RegisterTools.
@@ -73,7 +77,7 @@ func (p *Provider) ToolCount() int {
 	if p.database == nil {
 		return 0
 	}
-	return 5
+	return knowledgeToolCount
 }
 
 // RegisterTools implements global.ToolProvider.  It returns nil (with a warning

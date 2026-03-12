@@ -13,7 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	crand "crypto/rand"
 	"mime"
 	"net"
 	"net/http"
@@ -745,7 +745,7 @@ func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, c
 		var baseName, ext string
 		if cdFilename := filenameFromContentDisposition(resp.Header.Get("Content-Disposition")); cdFilename != "" {
 			baseName = sanitizeFilename(strings.TrimSuffix(cdFilename, filepath.Ext(cdFilename)))
-			ext = filepath.Ext(cdFilename)
+			ext = sanitizeFilename(filepath.Ext(cdFilename))
 		} else {
 			baseName = sanitizeFilename(h.service.Name) + "_" + sanitizeFilename(h.endpoint.ID)
 			ext = extensionFromContentType(resp.Header.Get("Content-Type"))
@@ -753,7 +753,7 @@ func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, c
 
 		// Step B — Build final filename with timestamp + 4-char random hex suffix.
 		randBytes := make([]byte, 2)
-		_, _ = rand.Read(randBytes) //nolint:gosec // non-crypto randomness is fine for filename collision avoidance
+		_, _ = crand.Read(randBytes)
 		filename := fmt.Sprintf("%s_%s_%s%s",
 			baseName,
 			time.Now().Format("20060102_150405"),
@@ -857,7 +857,7 @@ func filenameFromContentDisposition(header string) string {
 	// Strip any path components for safety.
 	name = filepath.Base(name)
 	// Reject names that are just a separator.
-	if name == "." || name == "/" || name == "\\" {
+	if name == "." || name == ".." || name == "/" || name == "\\" {
 		return ""
 	}
 	return name

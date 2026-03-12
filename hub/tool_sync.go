@@ -185,7 +185,7 @@ func saveImageContent(raw map[string]interface{}, opts *FormatOptions) (string, 
 
 	// Collision-safe filename: screenshot_<timestamp>_<4hex><ext>
 	randBytes := make([]byte, 2)
-	_, _ = rand.Read(randBytes) //nolint:gosec
+	_, _ = rand.Read(randBytes)
 	filename := fmt.Sprintf("screenshot_%s_%s%s",
 		time.Now().Format("20060102_150405"),
 		hex.EncodeToString(randBytes),
