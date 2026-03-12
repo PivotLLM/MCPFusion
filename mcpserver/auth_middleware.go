@@ -553,6 +553,18 @@ func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
 			RequestID: tenantContext.RequestID,
 		}
 
+		// Pre-populate MCPMethod so protocol messages (initialize, ping, etc.)
+		// that have no mcp-go hook still appear in the log. MCP hooks override
+		// this for tools/call and list operations with richer detail.
+		switch r.Method {
+		case http.MethodPost:
+			record.MCPMethod = peekJSONRPCMethod(r)
+		case http.MethodGet:
+			record.MCPMethod = "stream/open"
+		case http.MethodDelete:
+			record.MCPMethod = "session/close"
+		}
+
 		// Store both tenant context and request record in context
 		ctx := context.WithValue(r.Context(), global.TenantContextKey, tenantContext)
 		ctx = context.WithValue(ctx, global.RequestRecordKey, record)
@@ -566,6 +578,27 @@ func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
 			am.logger.InfoFields(record.Fields()...)
 		}
 	})
+}
+
+// peekJSONRPCMethod reads the request body to extract the JSON-RPC "method" field,
+// then restores the body so the actual handler still sees it.
+// Returns an empty string if the body is absent, not JSON, or has no method field.
+func peekJSONRPCMethod(r *http.Request) string {
+	if r.Body == nil {
+		return ""
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil || len(body) == 0 {
+		return ""
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	var envelope struct {
+		Method string `json:"method"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return ""
+	}
+	return envelope.Method
 }
 
 // extractClientIP returns the client IP from the request, checking proxy headers first.
