@@ -14,7 +14,7 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/MCPFusion/mlogger/testlogger"
+	"github.com/tenebris-tech/mlogger/testlogger"
 )
 
 // newTestLogger returns a Logger backed by t for use across hub package tests.
