@@ -152,19 +152,6 @@ func main() {
 	noAuth := *noAuthFlag
 
 	// Determine whether the knowledge provider is enabled (default: enabled).
-	// Set MCP_FUSION_KNOWLEDGE=false, 0, or no to disable.
-	knowledgeEnabled := true
-	if v := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_FUSION_KNOWLEDGE"))); v == "false" || v == "0" || v == "no" {
-		knowledgeEnabled = false
-	}
-
-	// Determine whether the perf provider is enabled.
-	// Either --perf flag or MCP_FUSION_PERF=true/1/yes enables it.
-	perfEnabled := *perfFlag
-	if v := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_FUSION_PERF"))); v == "true" || v == "1" || v == "yes" {
-		perfEnabled = true
-	}
-
 	// Load environment variables from config files in priority order:
 	// 1. /opt/mcpfusion/env
 	// 2. ~/.mcpfusion
@@ -191,6 +178,21 @@ func main() {
 				break
 			}
 		}
+	}
+
+	// Set MCP_FUSION_KNOWLEDGE=false, 0, or no to disable.
+	// Checked after env file loading so /opt/mcpfusion/env values are visible.
+	knowledgeEnabled := true
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_FUSION_KNOWLEDGE"))); v == "false" || v == "0" || v == "no" {
+		knowledgeEnabled = false
+	}
+
+	// Determine whether the perf provider is enabled.
+	// Either --perf flag or MCP_FUSION_PERF=true/1/yes enables it.
+	// Checked after env file loading so /opt/mcpfusion/env values are visible.
+	perfEnabled := *perfFlag
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_FUSION_PERF"))); v == "true" || v == "1" || v == "yes" {
+		perfEnabled = true
 	}
 
 	// My default log in the current directory
