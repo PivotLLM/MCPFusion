@@ -8,6 +8,7 @@ This guide explains how to configure various MCP clients to connect to MCPFusion
 - [Claude Desktop](#claude-desktop)
 - [Cline](#cline)
 - [Gemini CLI](#gemini-cli)
+- [PicoClaw](#picoclaw)
 - [Visual Studio Code with GitHub Copilot](#visual-studio-code-with-github-copilot)
 
 ## Overview
@@ -186,6 +187,30 @@ To allow Gemini CLI access to all tools without prompting for permission, add `"
   }
 }
 ```
+
+## PicoClaw
+
+Edit `~/.picoclaw/config.json` and add an `mcp` section (or merge it into an existing one):
+
+```json
+{
+  "mcp": {
+    "enabled": true,
+    "servers": {
+      "fusion": {
+        "enabled": true,
+        "type": "http",
+        "url": "http://127.0.0.1:8888/mcp",
+        "headers": {
+          "Authorization": "Bearer <token>"
+        }
+      }
+    }
+  }
+}
+```
+
+Replace `<token>` with your MCPFusion API token and `127.0.0.1:8888` with your server address if different.
 
 ## Visual Studio Code with GitHub Copilot
 
