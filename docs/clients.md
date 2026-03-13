@@ -212,6 +212,8 @@ Edit `~/.picoclaw/config.json` and add an `mcp` section (or merge it into an exi
 
 Replace `<token>` with your MCPFusion API token and `127.0.0.1:8888` with your server address if different.
 
+**NOTE:** If PicoClaw is configured to use Claude Code or another CLI, PicoClaw will convert MCP tool information to text, which is less efficient and more error prone than standard tool calling. For this use case we recommend configuring the CLI to use MCPFusion directly and *not* configuring it has an MCP server in PicoClaw.
+
 ## Visual Studio Code with GitHub Copilot
 
 There is more than one way to configure VS Code with Copilot. Opening the command palette and searching for @mcp should find "MCP: Open User Configuration."
