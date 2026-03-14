@@ -562,7 +562,7 @@
         {
           "id": "update_finding",
           "name": "Update Finding",
-          "description": "Update an existing finding",
+          "description": "Update an existing finding. IMPORTANT: PwnDoc uses PUT (full replacement) — omitting optional fields will clear existing data. Always read the finding first using pwndoc_get_finding and pass all fields back in the update, modifying only the fields you intend to change.",
           "method": "PUT",
           "path": "/api/audits/{audit_id}/findings/{finding_id}",
           "parameters": [
