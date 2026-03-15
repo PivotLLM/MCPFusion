@@ -2,6 +2,12 @@
 
 ---
 
+News:
+
+A draft Tutorial to connect MCPFusion and Maestro to Claude Code, Codex, and Gemini CLI, and optonally use PicoClaw is here: https://github.com/PivotLLM/Tutorials
+
+---
+
 **This is a work in progress. It has been released as Open Source to obtain community feedback and to help those who require a trustworthy network-based MCP server. Please open a GitHub issue if you encounter any problems.**
 
 **Kali Linux™ users: This project implements a standards-based network MCP server with bearer token authentication that can be installed on a Kali host or VM to facilitate the use of command line utilities by MCP clients.**
