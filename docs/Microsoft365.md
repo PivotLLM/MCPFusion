@@ -79,14 +79,10 @@ This prevents users from needing to individually consent to permissions.
 
 ### 2.1 Create Configuration File
 
-Create a `.mcp` file in your home directory:
+Add your credentials to `/opt/mcpfusion/env`. MCPFusion automatically loads this file on startup:
 
 ```bash
-# Linux/Mac
-nano ~/.mcp
-
-# Windows
-notepad %USERPROFILE%\.mcp
+nano /opt/mcpfusion/env
 ```
 
 ### 2.2 Add Your Configuration
@@ -111,10 +107,10 @@ MS365_CLIENT_ID=a1b2c3d4-e5f6-7890-abcd-ef1234567890
 MS365_TENANT_ID=12345678-90ab-cdef-1234-567890abcdef
 ```
 
-### 2.3 Secure the File (Linux/Mac)
+### 2.3 Secure the File
 
 ```bash
-chmod 600 ~/.mcp
+chmod 600 /opt/mcpfusion/env
 ```
 
 ## Step 3: Run MCPFusion with Microsoft 365
@@ -701,10 +697,10 @@ Any MCP-compatible client can connect to `http://localhost:8888` and use the Mic
 **Problem**: "MS365_CLIENT_ID environment variable not found"
 
 **Solutions**:
-1. Verify `.mcp` file exists in home directory
-2. Check file permissions (should be readable)
+1. Verify `/opt/mcpfusion/env` exists and contains the correct variable names
+2. Check file permissions (`chmod 600 /opt/mcpfusion/env`)
 3. Ensure no typos in environment variable names
-4. Restart MCPFusion after changing `.mcp` file
+4. Restart MCPFusion after changing `/opt/mcpfusion/env`
 
 ### Debug Mode
 
@@ -716,8 +712,8 @@ Enable debug logging for troubleshooting:
 ## Step 8: Security Best Practices
 
 ### 8.1 Environment Variables
-- Never commit `.mcp` file to version control
-- Use `.gitignore` to exclude sensitive files
+- Never commit `/opt/mcpfusion/env` or any file containing credentials to version control
+- Restrict file permissions: `chmod 600 /opt/mcpfusion/env`
 - Consider using a secrets management system in production
 
 ### 8.2 Permissions
@@ -748,65 +744,6 @@ Modify `fusion/configs/microsoft365.json` to add custom scopes:
 ]
 ```
 
-### 9.2 Proxy Configuration
-
-For corporate proxies, set environment variables:
-```bash
-export HTTP_PROXY=http://proxy.company.com:8080
-export HTTPS_PROXY=http://proxy.company.com:8080
-```
-
-### 9.3 Custom Endpoints
-
-Add new Microsoft Graph endpoints to the configuration:
-```json
-{
-  "id": "tasks_list",
-  "name": "List Tasks",
-  "method": "GET",
-  "path": "/me/todo/lists/{listId}/tasks",
-  "parameters": [...]
-}
-```
-
-## Step 10: Production Deployment
-
-### 10.1 Docker Deployment
-
-Create a Dockerfile:
-```dockerfile
-FROM golang:1.21-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN go build -o mcpfusion .
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/mcpfusion .
-COPY fusion/configs fusion/configs
-CMD ["./mcpfusion", "-fusion-config", "fusion/configs/microsoft365.json"]
-```
-
-### 10.2 Kubernetes Deployment
-
-Use ConfigMaps for configuration:
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mcp-config
-data:
-  MS365_CLIENT_ID: "your-client-id"
-  MS365_TENANT_ID: "your-tenant-id"
-```
-
-### 10.3 Health Checks
-
-MCPFusion includes health check endpoints:
-- `/health` - Basic health check
-- `/ready` - Readiness probe
-
 ## Additional Resources
 
 - [Microsoft Graph API Documentation](https://docs.microsoft.com/graph/overview)
@@ -824,4 +761,5 @@ For issues specific to:
 
 ---
 
-*Last updated: January 2025*
+Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
+

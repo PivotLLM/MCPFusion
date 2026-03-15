@@ -950,7 +950,7 @@ Monitor these logs to identify endpoints that may benefit from connection config
 }
 ```
 
-**Set environment variables in `~/.mcp` file:**
+**Set environment variables in `/opt/mcpfusion/env`:**
 ```bash
 CLIENT_ID=your-client-id
 CLIENT_SECRET=your-client-secret
@@ -1527,7 +1527,7 @@ Create a minimal config with just one endpoint to test authentication in isolati
 
 ## Environment Variable Reference
 
-Create a `~/.mcp` file with your API credentials:
+Add your API credentials to `/opt/mcpfusion/env` (MCPFusion auto-loads this file on startup):
 
 ```bash
 # Microsoft 365
@@ -1563,3 +1563,6 @@ MCPFusion validates configurations on startup. Common validation errors:
 | `invalid parameter type` | Invalid `type` value | Use string, number, boolean, array, object |
 
 Always test your configuration with the provided test scripts before deploying to production.
+
+Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
+
