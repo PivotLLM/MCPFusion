@@ -1,12 +1,13 @@
 # MCPFusion Client Configuration Guide
 
-This guide explains how to configure various MCP clients to connect to MCPFusion servers.
+This guide explains how to configure various MCP clients to connect to MCPFusion.
 
 ## Supported Clients
 
 - [Claude Code](#claude-code)
 - [Claude Desktop](#claude-desktop)
 - [Cline](#cline)
+- [Codex](#codex)
 - [Gemini CLI](#gemini-cli)
 - [PicoClaw](#picoclaw)
 - [Visual Studio Code with GitHub Copilot](#visual-studio-code-with-github-copilot)
@@ -35,7 +36,7 @@ For clients unable or unwilling to support MCP over HTTP, it may be preferable t
 ## Claude Code
 MCP servers can be added to Claude code via the command line. To add an MCP server scoped to the user (all projects):
 
-`claude mcp add --transport http fusion --scope user http://127.0.0.1:8888/mcp --header "Authorization: Bearer <token>"`
+`claude mcp add --transport http fusion --scope user http://127.0.0.1:8888/mcp --header "Authorization: Bearer YOUR_TOKEN"`
 
 To list configured MCP servers:
 
@@ -63,7 +64,7 @@ Example:
         "-url",
         "http://127.0.0.1:8888/sse",
         "-headers",
-        "{\"Authorization\":\"Bearer <token>\"}",
+        "{\"Authorization\":\"Bearer YOUR_TOKEN\"}",
         "-log",
         "/opt/mcprelay/relay-fusion.log",
         "-debug"
@@ -110,7 +111,7 @@ Create or edit the Cline configuration file:
     "fusion": {
       "url": "http://127.0.0.1:8888/sse",
       "headers": {
-				"Authorization": "Bearer <token>"
+				"Authorization": "Bearer YOUR_TOKEN"
 			},
       "disabled": false,
       "timeout": 3600,
@@ -131,6 +132,20 @@ Create or edit the Cline configuration file:
 
 For more information please refer to https://docs.cline.bot/mcp/configuring-mcp-servers
 
+## Codex
+
+[Codex] supports mcp servers from the command line using the `codex mcp` command, but specifying a bearer token on the command line has proven unreliable. We recommend adding the configuration manually:
+
+```bash
+vi ~/.codex/config.toml
+```
+
+```bash
+[mcp_servers.fusion]
+url = "http://127.0.0.1:8888/mcp"
+http_headers = {Authorization="Bearer YOUR_TOKEN"}
+```
+
 ## Gemini CLI
 
 [Gemini CLI](https://github.com/google-gemini/gemini-cli) supports MCP servers via the `gemini mcp add` command or by editing `~/.gemini/settings.json` directly.
@@ -140,7 +155,7 @@ For more information please refer to https://docs.cline.bot/mcp/configuring-mcp-
 To add MCPFusion scoped to the user (all projects):
 
 ```bash
-gemini mcp add fusion http://127.0.0.1:8888/mcp --scope user --transport http --header "Authorization: Bearer <token>"
+gemini mcp add fusion http://127.0.0.1:8888/mcp --scope user --transport http --header "Authorization: Bearer YOUR_TOKEN"
 ```
 
 Omit `--scope user` to configure MCPFusion at the project level instead.
@@ -150,7 +165,7 @@ Omit `--scope user` to configure MCPFusion at the project level instead.
 To grant access to all tools without prompting (use with caution — see warning above):
 
 ```bash
-gemini mcp add fusion http://127.0.0.1:8888/mcp --scope user --transport http --header "Authorization: Bearer <token>" --trust
+gemini mcp add fusion http://127.0.0.1:8888/mcp --scope user --transport http --header "Authorization: Bearer YOUR_TOKEN" --trust
 ```
 
 ### Manual Configuration
@@ -164,7 +179,7 @@ Alternatively, add the following to `~/.gemini/settings.json`:
       "url": "http://127.0.0.1:8888/mcp",
       "type": "http",
       "headers": {
-        "Authorization": "Bearer <token>"
+        "Authorization": "Bearer YOUR_TOKEN"
       }
     }
   }
@@ -181,7 +196,7 @@ To allow Gemini CLI access to all tools without prompting for permission, add `"
       "type": "http",
       "trust": true,
       "headers": {
-        "Authorization": "Bearer <token>"
+        "Authorization": "Bearer YOUR_TOKEN"
       }
     }
   }
@@ -202,7 +217,7 @@ Edit `~/.picoclaw/config.json` and add an `mcp` section (or merge it into an exi
         "type": "http",
         "url": "http://127.0.0.1:8888/mcp",
         "headers": {
-          "Authorization": "Bearer <token>"
+          "Authorization": "Bearer YOUR_TOKEN"
         }
       }
     }
@@ -210,7 +225,7 @@ Edit `~/.picoclaw/config.json` and add an `mcp` section (or merge it into an exi
 }
 ```
 
-Replace `<token>` with your MCPFusion API token and `127.0.0.1:8888` with your server address if different.
+Replace `YOUR_TOKEN` with your MCPFusion API token and `127.0.0.1:8888` with your server address if different.
 
 **NOTE:** If PicoClaw is configured to use Claude Code or another CLI, PicoClaw will convert MCP tool information to text, which is less efficient and more error prone than standard tool calling. For this use case we recommend configuring the CLI to use MCPFusion directly and *not* configuring it has an MCP server in PicoClaw.
 
@@ -227,7 +242,7 @@ VS Code appears to prefer the more modern streaming HTTP. The following configur
       "type": "http",
       "url": "http://127.0.0.1:8888/mcp",
       "headers": {
-        "Authorization": "Bearer <token>"
+        "Authorization": "Bearer YOUR_TOKEN"
       }
     }
   },
@@ -235,5 +250,5 @@ VS Code appears to prefer the more modern streaming HTTP. The following configur
 }
 ```
 
-Copyright (c) 2025 Tenebris Technologies Inc. All rights reserved.
+Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
 

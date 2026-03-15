@@ -226,3 +226,6 @@ PwnDoc's token refresh endpoint (`/api/users/refreshtoken`) accepts only GET req
 ### 6. Retry Configuration
 
 PwnDoc endpoints use a conservative retry configuration. Only `network_error` and `server_error` conditions trigger retries. Transport-level timeouts (`timeout`) do **not** trigger retries for PwnDoc, because retrying a timed-out report generation or write operation could result in duplicate data.
+
+Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
+

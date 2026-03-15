@@ -207,3 +207,6 @@ Once authenticated, the following MCP tools become available:
 Google restricts OAuth2 device flow scopes, so MCPFusion uses the `fusion-auth` helper for browser-based authorization code flow with PKCE instead. The helper starts a temporary local HTTP server to receive the OAuth callback, exchanges the authorization code for tokens, and pushes them to the MCPFusion server's token storage API.
 
 The Google People API (Contacts) uses a different base URL (`people.googleapis.com`) than other Google APIs (`www.googleapis.com`). This is handled via per-endpoint `baseURL` overrides in the configuration file.
+
+Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
+

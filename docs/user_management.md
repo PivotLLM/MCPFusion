@@ -179,3 +179,6 @@ Each entry stores the following fields:
 | `updated_at` | Timestamp of the most recent update |
 
 When an entry is updated via `knowledge_set`, the `created_at` timestamp is preserved and only `updated_at` is refreshed. When an entry is deleted and its domain bucket becomes empty, the empty bucket is automatically cleaned up.
+
+Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
+

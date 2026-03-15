@@ -704,3 +704,6 @@ Complete working examples are available in:
 - [Token Management](TOKEN_MANAGEMENT.md) - Authentication setup
 - [Testing Guide](../tests/README.md) - Testing your commands
 - [Architecture](../fusion/README.md) - System design overview
+
+Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
+

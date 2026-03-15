@@ -100,3 +100,6 @@ The `ToolRequest` struct provides:
 | `ToolName`    | Full MCP tool name                             | `google_calendar_events_list`        |
 
 The `context.Context` parameter carries the full request context, including the `TenantContext` (accessible via `global.TenantContextKey`) if additional tenant metadata is needed.
+
+Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
+
