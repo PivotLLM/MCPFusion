@@ -22,14 +22,18 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
-// drainAndClose drains resp.Body to EOF and then closes it so the underlying
-// TCP connection can be returned to the pool.  Calling close without first
-// reading the body causes the connection to be abandoned rather than recycled.
+// drainAndClose drains resp.Body and then closes it so the underlying TCP
+// connection can be returned to the pool.  Calling close without first reading
+// the body causes the connection to be abandoned rather than recycled.
+//
+// The drain is capped at MaxResponseBodyReadBytes to prevent a slow or
+// adversarial upstream from blocking the goroutine indefinitely.  Any
+// remaining bytes are discarded when Close is called.
 func drainAndClose(resp *http.Response) {
 	if resp == nil || resp.Body == nil {
 		return
 	}
-	_, _ = io.Copy(io.Discard, resp.Body)
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, global.MaxResponseBodyReadBytes))
 	_ = resp.Body.Close()
 }
 
