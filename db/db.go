@@ -275,8 +275,8 @@ func (d *DB) Close() error {
 	d.logger.Info("Closing database connection")
 
 	// Stop the last-used worker and wait for it to flush remaining updates
-	// before closing the bbolt database. The mutex is already held so no
-	// new hashes can arrive on lastUsedCh while we wait.
+	// before closing the bbolt database. New calls to updateTokenLastUsed
+	// are rejected by checkClosed() once d.closed is set below.
 	close(d.stopLastUsed)
 	d.lastUsedWg.Wait()
 

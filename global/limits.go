@@ -39,7 +39,7 @@ const (
 // WithMaxResponseBytes().
 const (
 	MaxResponseBodyReadBytes = 50 * 1024 * 1024 // 50 MB — upstream body read cap
-	DefaultMaxResponseBytes  = 10 * 1024 * 1024 // 10 MB — final output cap
+	DefaultMaxResponseBytes  = 1 * 1024 * 1024  // 1 MB  — final output cap
 )
 
 // Knowledge store limits.
