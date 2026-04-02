@@ -455,3 +455,55 @@ func TestMapper_TransformResponse_DriveFiles(t *testing.T) {
 	assert.Nil(t, f1["starred"], "starred should not be in output")
 	assert.Nil(t, f1["owners"], "owners should not be in output")
 }
+
+// TestTransformResponse_InvalidJQExpression verifies that a syntactically invalid
+// JQ expression returns an error rather than panicking (P1-4).
+func TestTransformResponse_InvalidJQExpression(t *testing.T) {
+	mapper := NewMapper(nil)
+
+	result, err := mapper.TransformResponse(
+		map[string]interface{}{"id": "1"},
+		"this is not valid jq !!!",
+		nil,
+	)
+
+	require.Error(t, err, "expected an error for invalid JQ expression, got none")
+	assert.Nil(t, result, "result should be nil when JQ parse fails")
+}
+
+// TestTransformResponse_UndefinedVariable verifies that a JQ expression referencing
+// an undefined variable ($targetId) returns an error rather than panicking (P1-5).
+func TestTransformResponse_UndefinedVariable(t *testing.T) {
+	mapper := NewMapper(nil)
+
+	// args is empty — $targetId is not provided, so the expression should fail
+	// at execution time because gojq will encounter an undefined variable.
+	result, err := mapper.TransformResponse(
+		map[string]interface{}{
+			"items": []interface{}{
+				map[string]interface{}{"id": "a"},
+				map[string]interface{}{"id": "b"},
+			},
+		},
+		`.items[] | select(.id == $targetId)`,
+		map[string]interface{}{}, // no $targetId variable
+	)
+
+	require.Error(t, err, "expected an error for undefined JQ variable, got none")
+	assert.Nil(t, result, "result should be nil when JQ variable is undefined")
+}
+
+// TestTransformResponse_ValidTransform_PositiveCase verifies that valid JQ
+// transforms continue to work correctly alongside the error-path tests.
+func TestTransformResponse_ValidTransform_PositiveCase(t *testing.T) {
+	mapper := NewMapper(nil)
+
+	result, err := mapper.TransformResponse(
+		map[string]interface{}{"name": "hello"},
+		".name",
+		nil,
+	)
+
+	require.NoError(t, err, "valid JQ expression should not produce an error")
+	assert.Equal(t, "hello", result)
+}

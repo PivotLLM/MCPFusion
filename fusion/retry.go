@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"math/rand"
 	"net"
@@ -20,6 +21,21 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/global"
 )
+
+// drainAndClose drains resp.Body and then closes it so the underlying TCP
+// connection can be returned to the pool.  Calling close without first reading
+// the body causes the connection to be abandoned rather than recycled.
+//
+// The drain is capped at MaxResponseBodyReadBytes to prevent a slow or
+// adversarial upstream from blocking the goroutine indefinitely.  Any
+// remaining bytes are discarded when Close is called.
+func drainAndClose(resp *http.Response) {
+	if resp == nil || resp.Body == nil {
+		return
+	}
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, global.MaxResponseBodyReadBytes))
+	_ = resp.Body.Close()
+}
 
 // RetryExecutor handles retry logic for HTTP requests
 type RetryExecutor struct {
@@ -35,7 +51,11 @@ func NewRetryExecutor(config *RetryConfig, logger global.Logger) *RetryExecutor 
 	}
 }
 
-// Execute executes an HTTP request with retry logic
+// Execute executes an HTTP request with retry logic.
+// On error the returned *http.Response is always nil — response bodies from
+// failed attempts are drained and closed before returning so that the
+// underlying TCP connection is returned to the pool.  Callers must not
+// dereference the response when err != nil.
 func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *http.Request) (*http.Response, error) {
 	if !r.config.Enabled {
 		// No retry, execute once
@@ -98,9 +118,7 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 
 		// Store the last error and response for potential return
 		lastErr = err
-		if lastResp != nil {
-			_ = lastResp.Body.Close()
-		}
+		drainAndClose(lastResp)
 		lastResp = resp
 
 		// Log failure and retry reason
@@ -121,9 +139,7 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 			case <-time.After(delay):
 				// Continue to next attempt
 			case <-ctx.Done():
-				if resp != nil {
-					_ = resp.Body.Close()
-				}
+				drainAndClose(resp)
 				if r.logger != nil {
 					r.logger.Errorf("Context cancelled during retry delay after attempt %d/%d: %v",
 						attempt+1, r.config.MaxAttempts, ctx.Err())
@@ -139,8 +155,10 @@ func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *h
 			r.config.MaxAttempts, req.Method, req.URL.String(), lastErr)
 	}
 
-	// Return the last response and error
-	return lastResp, lastErr
+	// Drain the last response body so the connection is returned to the pool,
+	// then discard the response — the caller only uses the error at this point.
+	drainAndClose(lastResp)
+	return nil, lastErr
 }
 
 // shouldRetry determines if a request should be retried

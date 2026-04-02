@@ -78,11 +78,14 @@ type Database interface {
 
 // DB implements the Database interface using BoltDB
 type DB struct {
-	db      *bbolt.DB
-	logger  global.Logger
-	dataDir string
-	mutex   sync.RWMutex
-	closed  bool
+	db           *bbolt.DB
+	logger       global.Logger
+	dataDir      string
+	mutex        sync.RWMutex
+	closed       bool
+	lastUsedCh   chan string     // buffered channel; token hashes queued for last-used update
+	stopLastUsed chan struct{}   // closed by Close() to signal the worker to flush and exit
+	lastUsedWg   sync.WaitGroup // tracks the single lastUsedWorker goroutine
 }
 
 // Config holds configuration options for the database
@@ -150,6 +153,13 @@ func New(opts ...Option) (Database, error) {
 	}
 
 	d.logger.Infof("Database initialized at %s", filepath.Join(d.dataDir, "mcpfusion.db"))
+
+	// Start background worker that batches token last-used timestamp writes.
+	d.lastUsedCh = make(chan string, internal.LastUsedChannelSize)
+	d.stopLastUsed = make(chan struct{})
+	d.lastUsedWg.Add(1)
+	go d.lastUsedWorker()
+
 	return d, nil
 }
 
@@ -263,6 +273,14 @@ func (d *DB) Close() error {
 	}
 
 	d.logger.Info("Closing database connection")
+
+	// Stop the last-used worker and wait for it to flush all pending
+	// last-used updates before closing bbolt. Any hashes that arrive on
+	// lastUsedCh after the worker exits are silently dropped — the
+	// LastUsed timestamp is best-effort and does not affect correctness.
+	close(d.stopLastUsed)
+	d.lastUsedWg.Wait()
+
 	err := d.db.Close()
 	d.closed = true
 
@@ -309,12 +327,12 @@ func (d *DB) generatePrefix(token string) string {
 
 // generateSecureToken generates a cryptographically secure random token
 func (d *DB) generateSecureToken() (string, error) {
-	bytes := make([]byte, 32) // 256 bits
-	if _, err := rand.Read(bytes); err != nil {
+	buf := make([]byte, 32) // 256 bits
+	if _, err := rand.Read(buf); err != nil {
 		return "", NewDatabaseError("generate_token",
 			fmt.Errorf("failed to generate random bytes: %w", err))
 	}
-	return hex.EncodeToString(bytes), nil
+	return hex.EncodeToString(buf), nil
 }
 
 // checkClosed verifies the database is not closed

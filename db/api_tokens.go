@@ -14,6 +14,15 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+// safeHashPrefix returns up to the first 12 characters of hash for log
+// messages.  It avoids a panic if hash is somehow shorter than expected.
+func safeHashPrefix(hash string) string {
+	if len(hash) > 12 {
+		return hash[:12]
+	}
+	return hash
+}
+
 // AddAPIToken creates a new API token with metadata
 func (d *DB) AddAPIToken(description string) (string, string, error) {
 	if err := d.checkClosed(); err != nil {
@@ -101,7 +110,7 @@ func (d *DB) AddAPIToken(description string) (string, string, error) {
 		return "", "", err
 	}
 
-	d.logger.Infof("Created API token with hash %s (prefix: %s)", hash[:12], prefix)
+	d.logger.Infof("Created API token with hash %s (prefix: %s)", safeHashPrefix(hash), prefix)
 	return token, hash, nil
 }
 
@@ -176,44 +185,20 @@ func (d *DB) ValidateAPIToken(token string) (bool, string, error) {
 		return false, "", nil
 	}
 
-	d.logger.Debugf("Valid API token validated: %s", hash[:12])
+	d.logger.Debugf("Valid API token validated: %s", safeHashPrefix(hash))
 	return true, hash, nil
 }
 
-// updateTokenLastUsed updates the last used timestamp for a token (async operation)
+// updateTokenLastUsed enqueues hash for a batched last-used timestamp write.
+// The update is performed by the single background lastUsedWorker goroutine.
+// If the worker's input channel is full the update is silently dropped —
+// the LastUsed timestamp is best-effort and not mission-critical.
 func (d *DB) updateTokenLastUsed(hash string) {
-	go func() {
-		err := d.db.Update(func(tx *bbolt.Tx) error {
-			tokensBucket := tx.Bucket([]byte(internal.BucketAPITokens))
-			if tokensBucket == nil {
-				return fmt.Errorf("tokens bucket not found")
-			}
-
-			metadataBytes := tokensBucket.Get([]byte(hash))
-			if metadataBytes == nil {
-				return fmt.Errorf("token not found")
-			}
-
-			var metadata APITokenMetadata
-			if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
-				return fmt.Errorf("failed to unmarshal metadata: %w", err)
-			}
-
-			// Update last used timestamp
-			metadata.LastUsed = time.Now()
-
-			updatedBytes, err := json.Marshal(&metadata)
-			if err != nil {
-				return fmt.Errorf("failed to marshal updated metadata: %w", err)
-			}
-
-			return tokensBucket.Put([]byte(hash), updatedBytes)
-		})
-
-		if err != nil {
-			d.logger.Warningf("Failed to update token last used timestamp: %v", err)
-		}
-	}()
+	select {
+	case d.lastUsedCh <- hash:
+	default:
+		d.logger.Debugf("lastUsed update dropped for token %s (worker channel full)", safeHashPrefix(hash))
+	}
 }
 
 // DeleteAPIToken removes an API token by hash
@@ -277,7 +262,7 @@ func (d *DB) DeleteAPIToken(hash string) error {
 		return err
 	}
 
-	d.logger.Infof("Deleted API token with hash %s", hash[:12])
+	d.logger.Infof("Deleted API token with hash %s", safeHashPrefix(hash))
 	return nil
 }
 
@@ -351,7 +336,7 @@ func (d *DB) GetAPITokenMetadata(hash string) (*APITokenMetadata, error) {
 		return nil, err
 	}
 
-	d.logger.Debugf("Retrieved API token metadata for hash %s", hash[:12])
+	d.logger.Debugf("Retrieved API token metadata for hash %s", safeHashPrefix(hash))
 	return metadata, nil
 }
 

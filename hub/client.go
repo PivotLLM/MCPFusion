@@ -53,6 +53,7 @@ type MCPClientManager struct {
 	cbMu               sync.Mutex
 	cbFailures         int
 	cbOpenUntil        time.Time
+	cbHalfOpen         bool // true while exactly one probe call is in flight
 }
 
 // NewMCPClientManager creates a new client manager for the named service.
@@ -151,14 +152,19 @@ func (m *MCPClientManager) isCircuitOpen() bool {
 	m.cbMu.Lock()
 	defer m.cbMu.Unlock()
 	if m.cbOpenUntil.IsZero() {
-		return false
+		// Closed or a probe call is already in flight (half-open).
+		// If half-open, block additional callers until the probe resolves.
+		return m.cbHalfOpen
 	}
 	if time.Now().After(m.cbOpenUntil) {
-		// Half-open: reset so next call is tried
+		// Timer just expired: transition to half-open and let exactly one
+		// probe call through.  Subsequent callers see cbHalfOpen=true and
+		// are blocked until recordCallSuccess/Failure resets the state.
 		m.cbOpenUntil = time.Time{}
 		m.cbFailures = 0
+		m.cbHalfOpen = true
 		if m.logger != nil {
-			m.logger.Infof("Hub service '%s': circuit breaker half-open, allowing next call", m.serviceName)
+			m.logger.Infof("Hub service '%s': circuit breaker half-open, allowing probe call", m.serviceName)
 		}
 		return false
 	}
@@ -168,6 +174,7 @@ func (m *MCPClientManager) isCircuitOpen() bool {
 func (m *MCPClientManager) recordCallFailure() {
 	m.cbMu.Lock()
 	defer m.cbMu.Unlock()
+	m.cbHalfOpen = false // probe call finished; allow re-evaluation
 	m.cbFailures++
 	if m.cbFailures >= cbFailureThreshold && m.cbOpenUntil.IsZero() {
 		m.cbOpenUntil = time.Now().Add(cbOpenDuration)
@@ -181,6 +188,7 @@ func (m *MCPClientManager) recordCallFailure() {
 func (m *MCPClientManager) recordCallSuccess() {
 	m.cbMu.Lock()
 	defer m.cbMu.Unlock()
+	m.cbHalfOpen = false
 	if m.cbFailures > 0 {
 		m.cbFailures = 0
 		m.cbOpenUntil = time.Time{}

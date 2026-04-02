@@ -487,6 +487,73 @@ func TestRetryConfigDefaults(t *testing.T) {
 	}
 }
 
+// TestCircuitBreaker_HalfOpenFailureReopens verifies that a failure during the
+// HALF_OPEN state causes the circuit breaker to return to OPEN, and that
+// subsequent calls are rejected immediately (P1-8).
+func TestCircuitBreaker_HalfOpenFailureReopens(t *testing.T) {
+	logger, _ := mlogger.New()
+
+	config := &CircuitBreakerConfig{
+		Enabled:          true,
+		FailureThreshold: 2,
+		SuccessThreshold: 2,
+		Timeout:          30 * time.Second,
+		HalfOpenMaxCalls: 2,
+		ResetTimeout:     20 * time.Millisecond, // short timeout to trigger HALF_OPEN quickly
+	}
+
+	cb := NewCircuitBreaker(config, logger)
+	ctx := context.Background()
+
+	// Open the circuit breaker by recording enough failures.
+	for i := 0; i < config.FailureThreshold; i++ {
+		_ = cb.Execute(ctx, func() error {
+			return errors.New("forced failure")
+		})
+	}
+
+	if cb.GetState() != CircuitBreakerOpen {
+		t.Fatalf("expected OPEN state after %d failures, got %v", config.FailureThreshold, cb.GetState())
+	}
+
+	// Verify calls are rejected while OPEN.
+	rejectedErr := cb.Execute(ctx, func() error { return nil })
+	if rejectedErr == nil {
+		t.Fatal("expected call to be rejected while circuit breaker is OPEN")
+	}
+	if !strings.Contains(rejectedErr.Error(), "circuit breaker is OPEN") {
+		t.Errorf("unexpected rejection error: %v", rejectedErr)
+	}
+
+	// Wait for the reset timeout so the next call transitions to HALF_OPEN.
+	time.Sleep(30 * time.Millisecond)
+
+	// Send a failing request during HALF_OPEN — circuit breaker should reopen.
+	err := cb.Execute(ctx, func() error {
+		return errors.New("failure in half-open")
+	})
+
+	// The error should be the one returned by the function (not a rejection error)
+	// because beforeCall allows the call in HALF_OPEN state.
+	if err == nil {
+		t.Fatal("expected an error from the failing function in HALF_OPEN state")
+	}
+
+	// Circuit breaker must be OPEN again after a failure in HALF_OPEN.
+	if cb.GetState() != CircuitBreakerOpen {
+		t.Errorf("expected OPEN state after HALF_OPEN failure, got %v", cb.GetState())
+	}
+
+	// Subsequent requests must be rejected immediately (circuit is OPEN again).
+	subsequentErr := cb.Execute(ctx, func() error { return nil })
+	if subsequentErr == nil {
+		t.Fatal("expected call to be rejected after circuit breaker returned to OPEN")
+	}
+	if !strings.Contains(subsequentErr.Error(), "circuit breaker is OPEN") {
+		t.Errorf("unexpected rejection error after reopen: %v", subsequentErr)
+	}
+}
+
 func TestCircuitBreakerConfigDefaults(t *testing.T) {
 	configJSON := `{
 		"enabled": true
