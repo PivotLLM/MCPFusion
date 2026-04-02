@@ -47,7 +47,11 @@ func NewRetryExecutor(config *RetryConfig, logger global.Logger) *RetryExecutor 
 	}
 }
 
-// Execute executes an HTTP request with retry logic
+// Execute executes an HTTP request with retry logic.
+// On error the returned *http.Response is always nil — response bodies from
+// failed attempts are drained and closed before returning so that the
+// underlying TCP connection is returned to the pool.  Callers must not
+// dereference the response when err != nil.
 func (r *RetryExecutor) Execute(ctx context.Context, client *http.Client, req *http.Request) (*http.Response, error) {
 	if !r.config.Enabled {
 		// No retry, execute once

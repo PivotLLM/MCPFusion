@@ -529,7 +529,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 				// http.Client.Timeout is an independent safety net.
 				httpClient = &http.Client{
 					Transport: httpClient.Transport,
-					Timeout:   timeout + time.Minute,
+					Timeout:   timeout + global.HTTPClientTimeoutPadding,
 				}
 				if h.fusion.logger != nil {
 					h.fusion.logger.Debugf("Using custom timeout %v for request [%s]", timeout, correlationID)

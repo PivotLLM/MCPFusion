@@ -25,6 +25,12 @@ const (
 	HTTPTLSHandshakeTimeout       = 10 * time.Second
 	HTTPResponseHeaderTimeout     = 30 * time.Second
 	HTTPExpectContinueTimeout     = 1 * time.Second
+
+	// HTTPClientTimeoutPadding is added to a per-endpoint context deadline when
+	// constructing a short-lived http.Client for that request.  The context
+	// already enforces the real deadline; this provides an independent safety
+	// net so the http.Client does not time out before the context does.
+	HTTPClientTimeoutPadding = time.Minute
 )
 
 // Response size limits.

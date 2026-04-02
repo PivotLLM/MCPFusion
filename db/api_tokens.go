@@ -14,6 +14,15 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+// safeHashPrefix returns up to the first 12 characters of hash for log
+// messages.  It avoids a panic if hash is somehow shorter than expected.
+func safeHashPrefix(hash string) string {
+	if len(hash) > 12 {
+		return hash[:12]
+	}
+	return hash
+}
+
 // AddAPIToken creates a new API token with metadata
 func (d *DB) AddAPIToken(description string) (string, string, error) {
 	if err := d.checkClosed(); err != nil {
@@ -101,7 +110,7 @@ func (d *DB) AddAPIToken(description string) (string, string, error) {
 		return "", "", err
 	}
 
-	d.logger.Infof("Created API token with hash %s (prefix: %s)", hash[:12], prefix)
+	d.logger.Infof("Created API token with hash %s (prefix: %s)", safeHashPrefix(hash), prefix)
 	return token, hash, nil
 }
 
@@ -176,7 +185,7 @@ func (d *DB) ValidateAPIToken(token string) (bool, string, error) {
 		return false, "", nil
 	}
 
-	d.logger.Debugf("Valid API token validated: %s", hash[:12])
+	d.logger.Debugf("Valid API token validated: %s", safeHashPrefix(hash))
 	return true, hash, nil
 }
 
@@ -188,7 +197,7 @@ func (d *DB) updateTokenLastUsed(hash string) {
 	select {
 	case d.lastUsedCh <- hash:
 	default:
-		d.logger.Debugf("lastUsed update dropped for token %s (worker channel full)", hash[:12])
+		d.logger.Debugf("lastUsed update dropped for token %s (worker channel full)", safeHashPrefix(hash))
 	}
 }
 
@@ -253,7 +262,7 @@ func (d *DB) DeleteAPIToken(hash string) error {
 		return err
 	}
 
-	d.logger.Infof("Deleted API token with hash %s", hash[:12])
+	d.logger.Infof("Deleted API token with hash %s", safeHashPrefix(hash))
 	return nil
 }
 
@@ -327,7 +336,7 @@ func (d *DB) GetAPITokenMetadata(hash string) (*APITokenMetadata, error) {
 		return nil, err
 	}
 
-	d.logger.Debugf("Retrieved API token metadata for hash %s", hash[:12])
+	d.logger.Debugf("Retrieved API token metadata for hash %s", safeHashPrefix(hash))
 	return metadata, nil
 }
 

@@ -322,7 +322,7 @@ func WithSharedCollector(c *metrics.Collector) Option {
 
 // WithMaxResponseBytes sets a limit on the size of responses returned to callers.
 // Responses exceeding this limit are replaced with an informational message.
-// A value of 0 disables the limit. Default is global.DefaultMaxResponseBytes (10 MB).
+// A value of 0 disables the limit. Default is global.DefaultMaxResponseBytes (1 MB).
 func WithMaxResponseBytes(n int) Option {
 	return func(f *Fusion) {
 		f.maxResponseBytes = n
