@@ -77,6 +77,11 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 		correlationID = h.fusion.correlationIDGenerator.Generate()
 	}
 
+	// Fail fast if the caller has already cancelled or timed out.
+	if err := ctx.Err(); err != nil {
+		return "", fmt.Errorf("request cancelled before processing: %w", err)
+	}
+
 	if h.fusion.logger != nil {
 		h.fusion.logger.Infof("Handling request for %s.%s [%s]", h.service.Name, h.endpoint.ID, correlationID)
 	}
@@ -506,6 +511,9 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 				Transport: transport,
 				Timeout:   h.fusion.httpClient.Timeout,
 			}
+			// Ensure the ephemeral transport releases resources when the
+			// enclosing executeRequest call returns.
+			defer transport.CloseIdleConnections()
 			if h.fusion.logger != nil {
 				h.fusion.logger.Debugf("Forcing new connection for request [%s]", correlationID)
 			}
@@ -514,15 +522,13 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 		if h.endpoint.Connection.Timeout != "" {
 			// Parse custom timeout for this endpoint
 			if timeout, err := time.ParseDuration(h.endpoint.Connection.Timeout); err == nil {
-				// Create a custom client with the specified timeout
-				transport := httpClient.Transport
-				if h.endpoint.Connection.ForceNewConnection {
-					// Already cloned above
-				} else {
-					transport = h.fusion.httpClient.Transport.(*http.Transport).Clone()
-				}
+				// Reuse the transport that was already chosen above (global or
+				// ForceNewConnection clone) — do NOT clone again.  Creating a new
+				// *http.Transport per request fragments the connection pool.
+				// The outboundCtx already enforces the same deadline; this
+				// http.Client.Timeout is an independent safety net.
 				httpClient = &http.Client{
-					Transport: transport,
+					Transport: httpClient.Transport,
 					Timeout:   timeout + time.Minute,
 				}
 				if h.fusion.logger != nil {
@@ -640,8 +646,9 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 
 // handleResponse processes the HTTP response
 func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, correlationID string, args map[string]interface{}) (string, error) {
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
+	// Read response body, capped at MaxResponseBodyReadBytes to prevent a
+	// misbehaving upstream from exhausting server memory.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, global.MaxResponseBodyReadBytes))
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %w", err)
 	}

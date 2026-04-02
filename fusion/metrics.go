@@ -181,9 +181,9 @@ func (mc *MetricsCollector) RecordRequest(req RequestMetrics) {
 		endpointStats.AvgLatency = endpointStats.TotalLatency / time.Duration(endpointStats.RequestCount)
 	}
 
-	// Log metrics periodically
+	// Log metrics periodically (lock is already held by RecordRequest)
 	if mc.logger != nil && mc.requestCount%100 == 0 {
-		mc.logMetricsSummary()
+		mc.logMetricsSummaryLocked()
 	}
 }
 
@@ -312,26 +312,43 @@ func (mc *MetricsCollector) Reset() {
 	}
 }
 
-// logMetricsSummary logs a summary of current metrics
-func (mc *MetricsCollector) logMetricsSummary() {
+// logMetricsSummaryLocked logs a summary of current metrics.
+// The caller MUST already hold mc.mu (read or write).
+func (mc *MetricsCollector) logMetricsSummaryLocked() {
 	if mc.logger == nil {
 		return
 	}
 
-	globalMetrics := mc.GetGlobalMetrics()
-	mc.logger.Infof("Metrics Summary - Requests: %d, Errors: %d, Success Rate: %.1f%%, Services: %d, Uptime: %v",
-		globalMetrics.RequestCount, globalMetrics.ErrorCount, globalMetrics.SuccessRate, globalMetrics.ServiceCount, globalMetrics.Uptime)
+	uptime := time.Since(mc.startTime)
+	var successRate float64
+	if mc.requestCount > 0 {
+		successRate = float64(mc.requestCount-mc.errorCount) / float64(mc.requestCount) * 100
+	}
 
-	// Log top error-prone services
+	mc.logger.Infof("Metrics Summary - Requests: %d, Errors: %d, Success Rate: %.1f%%, Services: %d, Uptime: %v",
+		mc.requestCount, mc.errorCount, successRate, len(mc.metrics), uptime)
+
+	// Log error-prone services (>5% error rate)
 	for serviceName, metrics := range mc.metrics {
 		if metrics.ErrorCount > 0 {
 			errorRate := float64(metrics.ErrorCount) / float64(metrics.RequestCount) * 100
-			if errorRate > 5.0 { // Log services with >5% error rate
+			if errorRate > 5.0 {
 				mc.logger.Warningf("Service '%s': %d requests, %d errors (%.1f%%), avg latency: %v",
 					serviceName, metrics.RequestCount, metrics.ErrorCount, errorRate, metrics.AvgLatency)
 			}
 		}
 	}
+}
+
+// logMetricsSummary logs a summary of current metrics, acquiring the read lock.
+// Do NOT call this while mc.mu is already held; use logMetricsSummaryLocked instead.
+func (mc *MetricsCollector) logMetricsSummary() {
+	if mc.logger == nil {
+		return
+	}
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	mc.logMetricsSummaryLocked()
 }
 
 // StartPeriodicLogging starts periodic logging of metrics

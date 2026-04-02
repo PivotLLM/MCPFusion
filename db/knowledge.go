@@ -466,6 +466,11 @@ func (d *DB) SearchKnowledge(userID, query string) ([]KnowledgeEntry, error) {
 		return nil, NewValidationError("query", query, "query cannot be empty")
 	}
 
+	if len(query) > internal.MaxKnowledgeQueryLength {
+		return nil, NewValidationError("query", query,
+			fmt.Sprintf("query exceeds maximum length of %d characters", internal.MaxKnowledgeQueryLength))
+	}
+
 	lowerQuery := strings.ToLower(query)
 	var entries []KnowledgeEntry
 

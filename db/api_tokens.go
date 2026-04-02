@@ -180,40 +180,16 @@ func (d *DB) ValidateAPIToken(token string) (bool, string, error) {
 	return true, hash, nil
 }
 
-// updateTokenLastUsed updates the last used timestamp for a token (async operation)
+// updateTokenLastUsed enqueues hash for a batched last-used timestamp write.
+// The update is performed by the single background lastUsedWorker goroutine.
+// If the worker's input channel is full the update is silently dropped —
+// the LastUsed timestamp is best-effort and not mission-critical.
 func (d *DB) updateTokenLastUsed(hash string) {
-	go func() {
-		err := d.db.Update(func(tx *bbolt.Tx) error {
-			tokensBucket := tx.Bucket([]byte(internal.BucketAPITokens))
-			if tokensBucket == nil {
-				return fmt.Errorf("tokens bucket not found")
-			}
-
-			metadataBytes := tokensBucket.Get([]byte(hash))
-			if metadataBytes == nil {
-				return fmt.Errorf("token not found")
-			}
-
-			var metadata APITokenMetadata
-			if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
-				return fmt.Errorf("failed to unmarshal metadata: %w", err)
-			}
-
-			// Update last used timestamp
-			metadata.LastUsed = time.Now()
-
-			updatedBytes, err := json.Marshal(&metadata)
-			if err != nil {
-				return fmt.Errorf("failed to marshal updated metadata: %w", err)
-			}
-
-			return tokensBucket.Put([]byte(hash), updatedBytes)
-		})
-
-		if err != nil {
-			d.logger.Warningf("Failed to update token last used timestamp: %v", err)
-		}
-	}()
+	select {
+	case d.lastUsedCh <- hash:
+	default:
+		d.logger.Debugf("lastUsed update dropped for token %s (worker channel full)", hash[:12])
+	}
 }
 
 // DeleteAPIToken removes an API token by hash

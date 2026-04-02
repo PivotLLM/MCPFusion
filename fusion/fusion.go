@@ -322,7 +322,7 @@ func WithSharedCollector(c *metrics.Collector) Option {
 
 // WithMaxResponseBytes sets a limit on the size of responses returned to callers.
 // Responses exceeding this limit are replaced with an informational message.
-// A value of 0 disables the limit. Default is 51200 (50KB).
+// A value of 0 disables the limit. Default is global.DefaultMaxResponseBytes (10 MB).
 func WithMaxResponseBytes(n int) Option {
 	return func(f *Fusion) {
 		f.maxResponseBytes = n
@@ -383,38 +383,38 @@ func New(options ...Option) *Fusion {
 	// Create custom HTTP transport with optimized connection pooling
 	transport := &http.Transport{
 		// Connection pooling settings
-		MaxIdleConns:        100,              // Maximum total idle connections
-		MaxIdleConnsPerHost: 10,               // Maximum idle connections per host
-		IdleConnTimeout:     30 * time.Second, // How long idle connections are kept
+		MaxIdleConns:        global.HTTPMaxIdleConns,
+		MaxIdleConnsPerHost: global.HTTPMaxIdleConnsPerHost,
+		IdleConnTimeout:     global.HTTPIdleConnTimeout,
 
 		// Keep-alive settings
-		DisableKeepAlives: false, // Enable keep-alive
+		DisableKeepAlives: false,
 
 		// Timeouts for connection establishment
 		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second, // Connection timeout
-			KeepAlive: 30 * time.Second, // Keep-alive probe interval
+			Timeout:   global.HTTPDialTimeout,
+			KeepAlive: global.HTTPKeepAliveInterval,
 		}).DialContext,
 
 		// Response timeouts
-		TLSHandshakeTimeout:   10 * time.Second, // TLS handshake timeout
-		ResponseHeaderTimeout: 30 * time.Second, // Time to receive response headers
-		ExpectContinueTimeout: 1 * time.Second,  // Time to wait for 100-continue
+		TLSHandshakeTimeout:   global.HTTPTLSHandshakeTimeout,
+		ResponseHeaderTimeout: global.HTTPResponseHeaderTimeout,
+		ExpectContinueTimeout: global.HTTPExpectContinueTimeout,
 
 		// Connection limits
-		MaxConnsPerHost: 50, // Maximum connections per host
+		MaxConnsPerHost: global.HTTPMaxConnsPerHost,
 	}
 
 	fusion := &Fusion{
 		httpClient: &http.Client{
 			Transport: transport,
-			Timeout:   60 * time.Second, // Overall request timeout (increased from 30s)
+			Timeout:   global.HTTPDefaultClientTimeout,
 		},
 		cache:                  nil,                            // Cache will be set by multi-tenant auth manager
 		metricsCollector:       NewMetricsCollector(nil, true), // Enable metrics by default
 		correlationIDGenerator: NewCorrelationIDGenerator(),
 		circuitBreakers:        make(map[string]*CircuitBreaker),
-		maxResponseBytes:       51200, // 50KB default
+		maxResponseBytes:       global.DefaultMaxResponseBytes,
 	}
 
 	// Apply all options

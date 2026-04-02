@@ -166,8 +166,12 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 		pollTimeout = 10 * time.Minute
 	}
 
-	go s.backgroundTokenPolling(context.Background(), tokenEndpoint, clientID, deviceCodeResp.DeviceCode,
-		deviceCodeResp.Interval, pollTimeout, pollingCtx)
+	pollCtx, pollCancel := context.WithTimeout(context.Background(), pollTimeout)
+	go func() {
+		defer pollCancel()
+		s.backgroundTokenPolling(pollCtx, tokenEndpoint, clientID, deviceCodeResp.DeviceCode,
+			deviceCodeResp.Interval, pollTimeout, pollingCtx)
+	}()
 
 	// Return a DeviceCodeError to signal that user authentication is required
 	deviceCodeError := &DeviceCodeError{
@@ -265,8 +269,8 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 		return nil, fmt.Errorf("failed to send token refresh request: %w", err)
 	}
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
+		if err := Body.Close(); err != nil && s.logger != nil {
+			s.logger.Debugf("Failed to close token refresh response body: %v", err)
 		}
 	}(resp.Body)
 
@@ -497,9 +501,7 @@ func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, device
 		return nil, fmt.Errorf("failed to send device code request: %w", err)
 	}
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-		}
+		_ = Body.Close()
 	}(resp.Body)
 
 	if s.logger != nil {
@@ -605,9 +607,7 @@ func (s *OAuth2DeviceFlowStrategy) requestToken(ctx context.Context, tokenEndpoi
 		return nil, fmt.Errorf("failed to send token request: %w", err)
 	}
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-		}
+		_ = Body.Close()
 	}(resp.Body)
 
 	// Read response body

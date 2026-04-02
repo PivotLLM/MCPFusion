@@ -1,0 +1,118 @@
+{
+  "services": {
+    "httpbin": {
+      "name": "HTTPBin",
+      "serviceKey": "httpbin",
+      "baseURL": "https://httpbin.org",
+      "auth": {
+        "type": "none"
+      },
+      "endpoints": [
+        {
+          "id": "get",
+          "name": "HTTP GET",
+          "description": "Returns the GET request's query parameters and headers as JSON. Useful for verifying outbound request construction.",
+          "method": "GET",
+          "path": "/get",
+          "parameters": [
+            {
+              "name": "foo",
+              "description": "An optional test query parameter",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "post",
+          "name": "HTTP POST",
+          "description": "Accepts a JSON body and echoes it back. Useful for verifying outbound request body construction.",
+          "method": "POST",
+          "path": "/post",
+          "parameters": [
+            {
+              "name": "message",
+              "description": "A test message to echo",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "status",
+          "name": "Return Status Code",
+          "description": "Returns a response with the specified HTTP status code. Useful for testing error handling and retry logic.",
+          "method": "GET",
+          "path": "/status/{code}",
+          "parameters": [
+            {
+              "name": "code",
+              "description": "HTTP status code to return (e.g. 200, 404, 500, 429)",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "text"
+          },
+          "retry": {
+            "enabled": false
+          }
+        },
+        {
+          "id": "delay",
+          "name": "Delayed Response",
+          "description": "Waits the specified number of seconds before responding. Useful for testing timeout handling.",
+          "method": "GET",
+          "path": "/delay/{seconds}",
+          "parameters": [
+            {
+              "name": "seconds",
+              "description": "Number of seconds to delay (1-10)",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "enum": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "anything",
+          "name": "Anything",
+          "description": "Returns the full request (method, headers, body, query params) as JSON. Works with any HTTP method.",
+          "method": "GET",
+          "path": "/anything",
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "uuid",
+          "name": "Generate UUID",
+          "description": "Returns a randomly generated UUID v4.",
+          "method": "GET",
+          "path": "/uuid",
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        }
+      ]
+    }
+  }
+}
