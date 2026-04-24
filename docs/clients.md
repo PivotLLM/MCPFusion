@@ -134,7 +134,13 @@ For more information please refer to https://docs.cline.bot/mcp/configuring-mcp-
 
 ## Codex
 
-[Codex] supports mcp servers from the command line using the `codex mcp` command, but specifying a bearer token on the command line has proven unreliable. We recommend adding the configuration manually:
+[Codex] supports mcp servers from the command line using the `codex mcp` command:
+
+```
+codex mcp add fusion --url http://127.0.0.1:8888/mcp --bearer-token-env-var YOUR_TOKEN
+```
+
+You may also configure it manually manually:
 
 ```bash
 vi ~/.codex/config.toml
@@ -252,3 +258,4 @@ VS Code appears to prefer the more modern streaming HTTP. The following configur
 
 Copyright (c) 2025-2026 Tenebris Technologies Inc. See LICENSE for details.
 
+2
