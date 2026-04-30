@@ -3,7 +3,7 @@
     "maestro": {
       "name": "Maestro",
       "transport": "mcp_stdio",
-      "command": "/home/eric/bin/maestro",
+      "command": "/usr/local/bin/maestro",
       "toolRefreshInterval": "5m"
     }
   }

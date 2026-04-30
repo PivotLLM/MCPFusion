@@ -73,6 +73,8 @@ const (
 	ParameterLocationEnvironment ParameterLocation = "environment" // Environment variable
 	ParameterLocationStdin       ParameterLocation = "stdin"       // Standard input
 	ParameterLocationControl     ParameterLocation = "control"     // Execution control
+	ParameterLocationFile        ParameterLocation = "file"        // Multipart file upload (inline content)
+	ParameterLocationFilePath    ParameterLocation = "filepath"    // Multipart file upload (read from disk path)
 )
 
 // ResponseType represents the type of response expected
@@ -269,8 +271,9 @@ type ParameterConfig struct {
 	Validation  *ValidationConfig `json:"validation,omitempty"`
 	Transform   *TransformConfig  `json:"transform,omitempty"`
 	Transforms  []string          `json:"transforms,omitempty"` // Named value transforms to apply (e.g. "html_compact")
-	Quoted      bool              `json:"quoted,omitempty"` // Whether to quote the parameter value
-	Static      bool              `json:"static,omitempty"` // Whether this is a static parameter (not exposed to MCP, always uses default)
+	Quoted        bool              `json:"quoted,omitempty"` // Whether to quote the parameter value
+	Static        bool              `json:"static,omitempty"` // Whether this is a static parameter (not exposed to MCP, always uses default)
+	FileNameParam string            `json:"fileNameParam,omitempty"` // For file-location params: name of another param that provides the Content-Disposition filename
 }
 
 // ValidationConfig represents validation rules for a parameter
@@ -1105,10 +1108,12 @@ func (p *ParameterConfig) ValidateWithLogger(serviceName, endpointID string, log
 	}
 
 	validLocations := map[ParameterLocation]bool{
-		ParameterLocationPath:   true,
-		ParameterLocationQuery:  true,
-		ParameterLocationBody:   true,
-		ParameterLocationHeader: true,
+		ParameterLocationPath:     true,
+		ParameterLocationQuery:    true,
+		ParameterLocationBody:     true,
+		ParameterLocationHeader:   true,
+		ParameterLocationFile:     true,
+		ParameterLocationFilePath: true,
 	}
 
 	if !validLocations[p.Location] {

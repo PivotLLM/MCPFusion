@@ -15,6 +15,7 @@ import (
 	"io"
 	crand "crypto/rand"
 	"mime"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
@@ -411,6 +412,100 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	return result, nil
 }
 
+// hasFileParams returns true if any parameter with location "file" or "filepath" has a value in args.
+func hasFileParams(params []ParameterConfig, args map[string]interface{}) bool {
+	for _, p := range params {
+		if p.Location == ParameterLocationFile || p.Location == ParameterLocationFilePath {
+			if _, ok := args[p.Name]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// buildMultipartBody constructs a multipart/form-data body from file and body parameters.
+// File parameters (location: "file") become file parts; body parameters become form fields.
+// Returns the body reader, the Content-Type header value (including boundary), and any error.
+func buildMultipartBody(params []ParameterConfig, args map[string]interface{}) (io.Reader, string, error) {
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+
+	for _, param := range params {
+		val, ok := args[param.Name]
+		if !ok || val == nil {
+			continue
+		}
+
+		switch param.Location {
+		case ParameterLocationFile:
+			fieldName := param.Name
+			if param.Transform != nil && param.Transform.TargetName != "" {
+				fieldName = param.Transform.TargetName
+			}
+
+			fileName := "attachment.txt"
+			if param.FileNameParam != "" {
+				if fnVal, ok := args[param.FileNameParam]; ok && fnVal != nil {
+					fileName = fmt.Sprintf("%v", fnVal)
+				}
+			}
+
+			part, err := writer.CreateFormFile(fieldName, fileName)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to create form file field %q: %w", fieldName, err)
+			}
+			if _, err := io.WriteString(part, fmt.Sprintf("%v", val)); err != nil {
+				return nil, "", fmt.Errorf("failed to write file content for field %q: %w", fieldName, err)
+			}
+
+		case ParameterLocationFilePath:
+			fieldName := param.Name
+			if param.Transform != nil && param.Transform.TargetName != "" {
+				fieldName = param.Transform.TargetName
+			}
+
+			filePath := fmt.Sprintf("%v", val)
+
+			// Determine display filename: prefer FileNameParam arg, then basename of path
+			fileName := filepath.Base(filePath)
+			if param.FileNameParam != "" {
+				if fnVal, ok := args[param.FileNameParam]; ok && fnVal != nil {
+					fileName = fmt.Sprintf("%v", fnVal)
+				}
+			}
+
+			fileBytes, err := os.ReadFile(filePath)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to read file %q: %w", filePath, err)
+			}
+
+			part, err := writer.CreateFormFile(fieldName, fileName)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to create form file field %q: %w", fieldName, err)
+			}
+			if _, err := part.Write(fileBytes); err != nil {
+				return nil, "", fmt.Errorf("failed to write file bytes for field %q: %w", fieldName, err)
+			}
+
+		case ParameterLocationBody:
+			fieldName := param.Name
+			if param.Transform != nil && param.Transform.TargetName != "" {
+				fieldName = param.Transform.TargetName
+			}
+			if err := writer.WriteField(fieldName, fmt.Sprintf("%v", val)); err != nil {
+				return nil, "", fmt.Errorf("failed to write form field %q: %w", fieldName, err)
+			}
+		}
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, "", fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	return bytes.NewReader(buf.Bytes()), writer.FormDataContentType(), nil
+}
+
 // buildRequest constructs an HTTP request based on the endpoint configuration
 func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interface{}) (*http.Request, error) {
 	mapper := NewMapper(h.fusion.logger)
@@ -427,17 +522,28 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 
 	// Build request body
 	var body io.Reader
+	var bodyContentType string
 	if h.endpoint.Method == "POST" || h.endpoint.Method == "PUT" || h.endpoint.Method == "PATCH" {
-		bodyData, err := mapper.BuildRequestBody(h.endpoint.Parameters, args, h.endpoint.RequestBody)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build request body: %w", err)
-		}
-		if bodyData != nil {
-			bodyBytes, err := json.Marshal(bodyData)
+		if hasFileParams(h.endpoint.Parameters, args) {
+			multipartBody, ct, err := buildMultipartBody(h.endpoint.Parameters, args)
 			if err != nil {
-				return nil, fmt.Errorf("failed to marshal request body: %w", err)
+				return nil, fmt.Errorf("failed to build multipart body: %w", err)
 			}
-			body = bytes.NewReader(bodyBytes)
+			body = multipartBody
+			bodyContentType = ct
+		} else {
+			bodyData, err := mapper.BuildRequestBody(h.endpoint.Parameters, args, h.endpoint.RequestBody)
+			if err != nil {
+				return nil, fmt.Errorf("failed to build request body: %w", err)
+			}
+			if bodyData != nil {
+				bodyBytes, err := json.Marshal(bodyData)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal request body: %w", err)
+				}
+				body = bytes.NewReader(bodyBytes)
+				bodyContentType = "application/json"
+			}
 		}
 	}
 
@@ -449,7 +555,7 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 
 	// Add headers
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", bodyContentType)
 	}
 	req.Header.Set("Accept", "application/json")
 

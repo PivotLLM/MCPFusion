@@ -946,6 +946,152 @@
             }
           ],
           "response": { "type": "json" }
+        },
+        {
+          "id": "list_card_attachments",
+          "name": "List Card Attachments",
+          "description": "Get all attachments on a card",
+          "method": "GET",
+          "path": "/cards/{cardId}/attachments",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "get_card_attachment",
+          "name": "Get Card Attachment",
+          "description": "Get details of a specific attachment on a card",
+          "method": "GET",
+          "path": "/cards/{cardId}/attachments/{attachmentId}",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "attachmentId",
+              "description": "The ID of the attachment",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "delete_card_attachment",
+          "name": "Delete Card Attachment",
+          "description": "Delete an attachment from a card. This cannot be undone.",
+          "method": "DELETE",
+          "path": "/cards/{cardId}/attachments/{attachmentId}",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "attachmentId",
+              "description": "The ID of the attachment to delete",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "add_card_attachment_url",
+          "name": "Add URL Attachment to Card",
+          "description": "Attach a URL link to a card",
+          "method": "POST",
+          "path": "/cards/{cardId}/attachments",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "url",
+              "description": "The URL to attach",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "name",
+              "description": "Display name for the attachment",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
+        },
+        {
+          "id": "add_card_attachment_file",
+          "name": "Add File Attachment to Card",
+          "description": "Upload a file as an attachment to a card. Use file_path to upload any file type (text or binary) by providing its path on the server filesystem — the filename is taken from the path automatically. Use file_content to upload text content generated directly (e.g. Markdown, CSV, JSON). Exactly one of file_path or file_content must be provided.",
+          "method": "POST",
+          "path": "/cards/{cardId}/attachments",
+          "parameters": [
+            {
+              "name": "cardId",
+              "description": "The ID of the card",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "file_path",
+              "description": "Absolute path to a file on the server filesystem to upload. Supports any file type (docx, xlsx, pdf, png, txt, etc.). The filename is derived from the path unless overridden by file_name.",
+              "type": "string",
+              "required": false,
+              "location": "filepath",
+              "transform": { "targetName": "file" },
+              "fileNameParam": "file_name"
+            },
+            {
+              "name": "file_content",
+              "description": "Text content to upload as a file. Use for files an AI can generate directly (Markdown, plain text, CSV, JSON, code, etc.). Requires file_name.",
+              "type": "string",
+              "required": false,
+              "location": "file",
+              "transform": { "targetName": "file" },
+              "fileNameParam": "file_name"
+            },
+            {
+              "name": "file_name",
+              "description": "Display filename for the attachment including extension (e.g. 'report.md', 'data.csv'). Required when using file_content. When using file_path, defaults to the filename from the path.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "transform": { "targetName": "name" }
+            },
+            {
+              "name": "mimeType",
+              "description": "MIME type of the file (e.g. 'text/plain', 'text/markdown', 'application/pdf'). Optional.",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": { "type": "json" }
         }
       ]
     }

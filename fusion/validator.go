@@ -334,10 +334,12 @@ func (v *Validator) validateParameterConfig(param ParameterConfig) error {
 	}
 
 	validLocations := map[string]bool{
-		"path":   true,
-		"query":  true,
-		"body":   true,
-		"header": true,
+		"path":     true,
+		"query":    true,
+		"body":     true,
+		"header":   true,
+		"file":     true,
+		"filepath": true,
 	}
 
 	if !validLocations[string(param.Location)] {

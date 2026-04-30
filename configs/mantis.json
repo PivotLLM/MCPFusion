@@ -1,9 +1,0 @@
-{
-  "services": {
-    "mantis": {
-      "name": "Mantis",
-      "transport": "mcp_sse",
-      "baseURL": "http://127.0.0.1:9901/sse"
-    }
-  }
-}
