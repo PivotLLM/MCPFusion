@@ -107,6 +107,8 @@ type ServiceConfig struct {
 	Env                    map[string]string     `json:"env,omitempty"`
 	ToolRefreshInterval    time.Duration         `json:"-"`
 	ToolRefreshIntervalStr string                `json:"toolRefreshInterval,omitempty"`
+	CallTimeout            time.Duration         `json:"-"`
+	CallTimeoutSeconds     int                   `json:"callTimeout,omitempty"`
 	Auth                   AuthConfig            `json:"auth"`
 	Endpoints              []EndpointConfig      `json:"endpoints,omitempty"`
 	Retry                  *RetryConfig          `json:"retry,omitempty"`
@@ -139,6 +141,12 @@ func (s *ServiceConfig) UnmarshalJSON(data []byte) error {
 		}
 		s.ToolRefreshInterval = duration
 	}
+
+	// callTimeout is a plain number of seconds
+	if s.CallTimeoutSeconds < 0 {
+		return fmt.Errorf("invalid callTimeout '%d': must not be negative", s.CallTimeoutSeconds)
+	}
+	s.CallTimeout = time.Duration(s.CallTimeoutSeconds) * time.Second
 
 	return nil
 }

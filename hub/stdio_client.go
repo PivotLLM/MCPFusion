@@ -54,9 +54,12 @@ func NewStdioClient(config *fusion.ServiceConfig, logger global.Logger) *StdioCl
 		logger.Debugf("MCP_FUSION_ADD_PATH: %s", addPath)
 	}
 
+	manager := NewMCPClientManager(config.ServiceKey, logger)
+	manager.SetCallTimeout(config.CallTimeout)
+
 	return &StdioClient{
 		config:  config,
-		manager: NewMCPClientManager(config.ServiceKey, logger),
+		manager: manager,
 		backoff: NewExponentialBackoff(baseDelay, maxDelay, factor),
 		logger:  logger,
 		addPath: addPath,

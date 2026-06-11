@@ -33,6 +33,16 @@ const (
 	HTTPClientTimeoutPadding = time.Minute
 )
 
+// Hub (downstream MCP server) timeouts.
+//
+// HubDefaultCallTimeout bounds how long a single tool call to a downstream
+// MCP server (stdio, Streamable HTTP, or SSE) may run before it is cancelled.
+// Operators can override this per service with the "callTimeout" field in the
+// service's JSON configuration.
+const (
+	HubDefaultCallTimeout = 300 * time.Second
+)
+
 // Response size limits.
 //
 // MaxResponseBodyReadBytes caps the number of bytes read from an upstream

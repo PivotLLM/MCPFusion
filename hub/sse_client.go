@@ -43,9 +43,12 @@ func NewSSEClient(config *fusion.ServiceConfig, logger global.Logger) *SSEClient
 		}
 	}
 
+	manager := NewMCPClientManager(config.ServiceKey, logger)
+	manager.SetCallTimeout(config.CallTimeout)
+
 	return &SSEClient{
 		config:  config,
-		manager: NewMCPClientManager(config.ServiceKey, logger),
+		manager: manager,
 		backoff: NewExponentialBackoff(baseDelay, maxDelay, factor),
 		logger:  logger,
 	}

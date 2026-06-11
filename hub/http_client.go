@@ -46,9 +46,12 @@ func NewHTTPClient(config *fusion.ServiceConfig, logger global.Logger) *HTTPClie
 		}
 	}
 
+	manager := NewMCPClientManager(config.ServiceKey, logger)
+	manager.SetCallTimeout(config.CallTimeout)
+
 	return &HTTPClient{
 		config:  config,
-		manager: NewMCPClientManager(config.ServiceKey, logger),
+		manager: manager,
 		backoff: NewExponentialBackoff(baseDelay, maxDelay, factor),
 		logger:  logger,
 	}

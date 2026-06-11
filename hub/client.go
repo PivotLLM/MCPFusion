@@ -49,6 +49,7 @@ type MCPClientManager struct {
 	tools              map[string]mcp.Tool // cached tools keyed by name
 	logger             global.Logger
 	onToolsChanged     func(serviceName string, added, removed []string)
+	callTimeout        time.Duration // per-tool-call timeout for this service
 	progressForwarders sync.Map // downstream token string → *progressForwarder
 	cbMu               sync.Mutex
 	cbFailures         int
@@ -62,7 +63,19 @@ func NewMCPClientManager(serviceName string, logger global.Logger) *MCPClientMan
 		serviceName: serviceName,
 		tools:       make(map[string]mcp.Tool),
 		logger:      logger,
+		callTimeout: global.HubDefaultCallTimeout,
 	}
+}
+
+// SetCallTimeout overrides the per-tool-call timeout for this service.
+// Non-positive values are ignored, leaving the default in place.
+func (m *MCPClientManager) SetCallTimeout(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.callTimeout = d
 }
 
 // SetClient sets the underlying mcp-go client.
@@ -287,7 +300,8 @@ func (m *MCPClientManager) SetCachedTools(tools map[string]mcp.Tool) {
 	m.tools = tools
 }
 
-// CallTool invokes a tool on the downstream server with a 60-second timeout.
+// CallTool invokes a tool on the downstream server, bounded by the service's
+// configured call timeout (global.HubDefaultCallTimeout unless overridden).
 // If meta is non-nil, it is forwarded as _meta in the downstream request
 // (typically carrying a progress token).
 //
@@ -298,6 +312,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	m.mu.RLock()
 	c := m.client
 	connected := m.connected
+	callTimeout := m.callTimeout
 	m.mu.RUnlock()
 
 	if !connected || c == nil {
@@ -310,7 +325,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 		return nil, fmt.Errorf("hub service '%s' circuit breaker is open (resets in %v)", m.serviceName, remaining)
 	}
 
-	callCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	callCtx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
 
 	req := mcp.CallToolRequest{}
@@ -319,8 +334,8 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	req.Params.Meta = meta
 
 	if m.logger != nil {
-		m.logger.Debugf("Hub service '%s': calling tool '%s' (timeout 60s) [ctx deadline: %v]",
-			m.serviceName, toolName, func() string {
+		m.logger.Debugf("Hub service '%s': calling tool '%s' (timeout %v) [ctx deadline: %v]",
+			m.serviceName, toolName, callTimeout, func() string {
 				if d, ok := callCtx.Deadline(); ok {
 					return d.Sub(time.Now()).Round(time.Second).String()
 				}
@@ -338,7 +353,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	if err != nil {
 		if callCtx.Err() == context.DeadlineExceeded {
 			m.recordCallFailure()
-			return nil, fmt.Errorf("tool call timed out after 60s")
+			return nil, fmt.Errorf("tool call timed out after %v", callTimeout)
 		}
 
 		// Transport errors (e.g. "Invalid session ID" after an upstream restart
@@ -355,7 +370,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 				c = m.client
 				m.mu.RUnlock()
 				if c != nil {
-					retryCtx, retryCancel := context.WithTimeout(ctx, 60*time.Second)
+					retryCtx, retryCancel := context.WithTimeout(ctx, callTimeout)
 					defer retryCancel()
 					if result, err = c.CallTool(retryCtx, req); err == nil {
 						if m.logger != nil {
