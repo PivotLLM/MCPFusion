@@ -1,0 +1,648 @@
+{
+  "services": {
+    "wxus": {
+      "name": "US National Weather Service",
+      "baseURL": "https://api.weather.gov",
+      "auth": {
+        "type": "none",
+        "config": {}
+      },
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "10s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": [
+          "network_error",
+          "timeout",
+          "server_error",
+          "rate_limited"
+        ]
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 5,
+        "successThreshold": 2,
+        "timeout": "30s",
+        "halfOpenMaxCalls": 2,
+        "resetTimeout": "60s"
+      },
+      "endpoints": [
+        {
+          "id": "geocode",
+          "name": "Find US Coordinates for a Place Name",
+          "description": "Step 0 of the US weather workflow, for when you only have a place name or address rather than coordinates. Convert a US location (e.g. 'Stowe, VT', 'Denver, Colorado', or a street address) into latitude/longitude, then pass the result to points. Returns up to a few candidate matches, each with a descriptive name and coordinates already rounded to 4 decimal places (ready for points). Pick the match whose name best fits what the user meant. US locations only.",
+          "method": "GET",
+          "baseURL": "https://nominatim.openstreetmap.org",
+          "path": "/search",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "q",
+              "description": "US place name or address to look up, e.g. 'Stowe, VT', 'Denver, Colorado', or '1600 Pennsylvania Ave, Washington, DC'.",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "examples": [
+                "Stowe, VT",
+                "Denver, Colorado",
+                "Key West, FL"
+              ]
+            },
+            {
+              "name": "limit",
+              "description": "Maximum number of candidate matches to return.",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "default": 5,
+              "validation": {
+                "minimum": 1,
+                "maximum": 10
+              }
+            },
+            {
+              "name": "format",
+              "description": "Response format.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "json",
+              "static": true
+            },
+            {
+              "name": "countrycodes",
+              "description": "Restrict results to the United States.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "us",
+              "static": true
+            },
+            {
+              "name": "User-Agent",
+              "description": "Nominatim requires a User-Agent identifying the client.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "tenebris-claw",
+              "static": true
+            },
+            {
+              "name": "Accept",
+              "description": "Request JSON output.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "application/json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "{results: [.[] | {name: .display_name, latitude: ((.lat | tonumber) * 10000 | round / 10000), longitude: ((.lon | tonumber) * 10000 | round / 10000)}]}",
+            "caching": {
+              "enabled": true,
+              "ttl": "24h",
+              "key": "weather-us:geocode:{q}:{limit}"
+            }
+          }
+        },
+        {
+          "id": "points",
+          "name": "Resolve US Coordinates to a Forecast Grid",
+          "description": "Step 1 of the US weather workflow. Convert a US latitude/longitude into the National Weather Service grid that covers it. If you only have a place name, call geocode first to obtain coordinates. Returns the office (gridId), gridX, and gridY needed by the forecast and forecast_hourly tools, plus the nearest city/state, time zone, radar station, and forecast zone. Only points within the United States and its territories are covered. Coordinates must have at most 4 decimal places.",
+          "method": "GET",
+          "path": "/points/{latitude},{longitude}",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "latitude",
+              "description": "Latitude in decimal degrees, at most 4 decimal places (e.g. 38.8894 for Washington, DC).",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "pattern": "^-?\\d{1,2}(\\.\\d{1,4})?$"
+              },
+              "examples": [
+                "38.8894",
+                "40.7128",
+                "47.6062"
+              ]
+            },
+            {
+              "name": "longitude",
+              "description": "Longitude in decimal degrees, at most 4 decimal places (e.g. -77.0352 for Washington, DC).",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "pattern": "^-?\\d{1,3}(\\.\\d{1,4})?$"
+              },
+              "examples": [
+                "-77.0352",
+                "-74.0060",
+                "-122.3321"
+              ]
+            },
+            {
+              "name": "User-Agent",
+              "description": "NWS requires a User-Agent identifying the client.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "tenebris-claw",
+              "static": true
+            },
+            {
+              "name": "Accept",
+              "description": "Request GeoJSON output.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "application/geo+json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "{gridId: .properties.gridId, gridX: .properties.gridX, gridY: .properties.gridY, city: .properties.relativeLocation.properties.city, state: .properties.relativeLocation.properties.state, timeZone: .properties.timeZone, radarStation: .properties.radarStation, forecastZone: .properties.forecastZone, county: .properties.county, fireWeatherZone: .properties.fireWeatherZone}",
+            "caching": {
+              "enabled": true,
+              "ttl": "24h",
+              "key": "weather-us:points:{latitude}:{longitude}"
+            }
+          }
+        },
+        {
+          "id": "forecast",
+          "name": "Get US 7-Day Forecast",
+          "description": "Get the official US 7-day forecast (daytime and overnight periods) for a forecast grid cell. Requires office, gridX, and gridY from the points tool. Each period includes its name (e.g. Tonight, Tuesday), temperature, wind speed/direction, chance of precipitation, and a short and detailed forecast. Use forecast_hourly for an hour-by-hour outlook.",
+          "method": "GET",
+          "path": "/gridpoints/{office}/{gridX},{gridY}/forecast",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "office",
+              "description": "NWS forecast office / grid ID from the points tool (gridId), e.g. LWX, OKX, TOP.",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "pattern": "^[A-Za-z]{3,4}$"
+              },
+              "examples": [
+                "LWX",
+                "OKX",
+                "TOP"
+              ]
+            },
+            {
+              "name": "gridX",
+              "description": "Grid X coordinate from the points tool.",
+              "type": "number",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "gridY",
+              "description": "Grid Y coordinate from the points tool.",
+              "type": "number",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "units",
+              "description": "Unit system, fixed to SI so temperatures are in Celsius and consistent with current_conditions.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "si",
+              "static": true
+            },
+            {
+              "name": "User-Agent",
+              "description": "NWS requires a User-Agent identifying the client.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "tenebris-claw",
+              "static": true
+            },
+            {
+              "name": "Accept",
+              "description": "Request GeoJSON output.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "application/geo+json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "{updated: .properties.updateTime, periods: [.properties.periods[] | {name, startTime, endTime, isDaytime, temperature, temperatureUnit, windSpeed, windDirection, precipProbability: .probabilityOfPrecipitation.value, shortForecast, detailedForecast}]}",
+            "caching": {
+              "enabled": true,
+              "ttl": "30m",
+              "key": "weather-us:forecast:{office}:{gridX}:{gridY}"
+            }
+          }
+        },
+        {
+          "id": "forecast_hourly",
+          "name": "Get US Hourly Forecast",
+          "description": "Get the US hour-by-hour forecast for the NEXT 24 HOURS only for a forecast grid cell. This is the compact default; prefer it. Requires office, gridX, and gridY from the points tool. Each hour includes its start time, temperature, wind speed/direction, chance of precipitation, and a short forecast. Use forecast for the 7-day day/night outlook, or forecast_hourly_full only if you specifically need beyond 24 hours.",
+          "method": "GET",
+          "path": "/gridpoints/{office}/{gridX},{gridY}/forecast/hourly",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "office",
+              "description": "NWS forecast office / grid ID from the points tool (gridId), e.g. LWX, OKX, TOP.",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "pattern": "^[A-Za-z]{3,4}$"
+              },
+              "examples": [
+                "LWX",
+                "OKX",
+                "TOP"
+              ]
+            },
+            {
+              "name": "gridX",
+              "description": "Grid X coordinate from the points tool.",
+              "type": "number",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "gridY",
+              "description": "Grid Y coordinate from the points tool.",
+              "type": "number",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "units",
+              "description": "Unit system, fixed to SI so temperatures are in Celsius and consistent with current_conditions.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "si",
+              "static": true
+            },
+            {
+              "name": "User-Agent",
+              "description": "NWS requires a User-Agent identifying the client.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "tenebris-claw",
+              "static": true
+            },
+            {
+              "name": "Accept",
+              "description": "Request GeoJSON output.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "application/geo+json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "{updated: .properties.updateTime, periods: [.properties.periods[] | {startTime, temperature, temperatureUnit, windSpeed, windDirection, precipProbability: .probabilityOfPrecipitation.value, shortForecast}][0:24]}",
+            "caching": {
+              "enabled": true,
+              "ttl": "30m",
+              "key": "weather-us:hourly:{office}:{gridX}:{gridY}"
+            }
+          }
+        },
+        {
+          "id": "forecast_hourly_full",
+          "name": "Get US Full Hourly Forecast (Large)",
+          "description": "Get the COMPLETE US hour-by-hour forecast (roughly 156 hours / 7 days) for a forecast grid cell. WARNING: this returns a large response and consumes significant context — call it only when you specifically need hourly detail beyond the next 24 hours. For the usual case use forecast_hourly (next 24 hours) or forecast (7-day day/night outlook). Requires office, gridX, and gridY from the points tool. Each hour includes its start time, temperature, wind speed/direction, chance of precipitation, and a short forecast.",
+          "method": "GET",
+          "path": "/gridpoints/{office}/{gridX},{gridY}/forecast/hourly",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "office",
+              "description": "NWS forecast office / grid ID from the points tool (gridId), e.g. LWX, OKX, TOP.",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "pattern": "^[A-Za-z]{3,4}$"
+              },
+              "examples": [
+                "LWX",
+                "OKX",
+                "TOP"
+              ]
+            },
+            {
+              "name": "gridX",
+              "description": "Grid X coordinate from the points tool.",
+              "type": "number",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "gridY",
+              "description": "Grid Y coordinate from the points tool.",
+              "type": "number",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "units",
+              "description": "Unit system, fixed to SI so temperatures are in Celsius and consistent with current_conditions.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "si",
+              "static": true
+            },
+            {
+              "name": "User-Agent",
+              "description": "NWS requires a User-Agent identifying the client.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "tenebris-claw",
+              "static": true
+            },
+            {
+              "name": "Accept",
+              "description": "Request GeoJSON output.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "application/geo+json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "{updated: .properties.updateTime, periods: [.properties.periods[] | {startTime, temperature, temperatureUnit, windSpeed, windDirection, precipProbability: .probabilityOfPrecipitation.value, shortForecast}]}",
+            "caching": {
+              "enabled": true,
+              "ttl": "30m",
+              "key": "weather-us:hourly-full:{office}:{gridX}:{gridY}"
+            }
+          }
+        },
+        {
+          "id": "stations",
+          "name": "List US Observation Stations for a Grid",
+          "description": "List National Weather Service observation stations for a forecast grid cell, nearest first. Requires office, gridX, and gridY from the points tool. Returns each station's identifier and name; pass a station identifier to current_conditions to read its latest observation.",
+          "method": "GET",
+          "path": "/gridpoints/{office}/{gridX},{gridY}/stations",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "office",
+              "description": "NWS forecast office / grid ID from the points tool (gridId), e.g. LWX, OKX, TOP.",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "pattern": "^[A-Za-z]{3,4}$"
+              },
+              "examples": [
+                "LWX",
+                "OKX",
+                "TOP"
+              ]
+            },
+            {
+              "name": "gridX",
+              "description": "Grid X coordinate from the points tool.",
+              "type": "number",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "gridY",
+              "description": "Grid Y coordinate from the points tool.",
+              "type": "number",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "minimum": 0
+              }
+            },
+            {
+              "name": "User-Agent",
+              "description": "NWS requires a User-Agent identifying the client.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "tenebris-claw",
+              "static": true
+            },
+            {
+              "name": "Accept",
+              "description": "Request GeoJSON output.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "application/geo+json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "{stations: [.features[] | {id: .properties.stationIdentifier, name: .properties.name}][0:20]}",
+            "caching": {
+              "enabled": true,
+              "ttl": "24h",
+              "key": "weather-us:stations:{office}:{gridX}:{gridY}"
+            }
+          }
+        },
+        {
+          "id": "current_conditions",
+          "name": "Get US Current Conditions",
+          "description": "Get the latest observed weather conditions from a National Weather Service station (use the stations tool to find a station identifier near a location). Returns observation time, a text description, temperature, dewpoint, relative humidity, wind direction/speed/gust, barometric pressure, visibility, and heat index / wind chill when present. Observation values are reported in SI units (degrees Celsius, metres per second, pascals, percent).",
+          "method": "GET",
+          "path": "/stations/{stationId}/observations/latest",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "stationId",
+              "description": "NWS station identifier from the stations tool, e.g. KDCA, KOKC, KSEA.",
+              "type": "string",
+              "required": true,
+              "location": "path",
+              "validation": {
+                "pattern": "^[A-Za-z0-9]{3,12}$"
+              },
+              "examples": [
+                "KDCA",
+                "KOKC",
+                "KSEA"
+              ]
+            },
+            {
+              "name": "User-Agent",
+              "description": "NWS requires a User-Agent identifying the client.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "tenebris-claw",
+              "static": true
+            },
+            {
+              "name": "Accept",
+              "description": "Request GeoJSON output.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "application/geo+json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "{timestamp: .properties.timestamp, description: .properties.textDescription, temperature: .properties.temperature, dewpoint: .properties.dewpoint, relativeHumidity: .properties.relativeHumidity, windDirection: .properties.windDirection, windSpeed: .properties.windSpeed, windGust: .properties.windGust, barometricPressure: .properties.barometricPressure, visibility: .properties.visibility, heatIndex: .properties.heatIndex, windChill: .properties.windChill}",
+            "caching": {
+              "enabled": true,
+              "ttl": "10m",
+              "key": "weather-us:current:{stationId}"
+            }
+          }
+        },
+        {
+          "id": "alerts_active",
+          "name": "Get Active US Weather Alerts",
+          "description": "Get active National Weather Service watches, warnings, and advisories. Narrow results with a two-letter US state code (area, e.g. KS) or a point as 'latitude,longitude'. With no filter this returns all active alerts across the United States, which can be large. Each alert is summarized to its event type, severity, urgency, affected area, headline, and expiry time (up to 50 alerts); the headline conveys the key details.",
+          "method": "GET",
+          "path": "/alerts/active",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "area",
+              "description": "Two-letter US state or territory code to filter alerts, e.g. KS, CA, TX, PR.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^[A-Za-z]{2}$"
+              },
+              "examples": [
+                "KS",
+                "CA",
+                "TX"
+              ]
+            },
+            {
+              "name": "point",
+              "description": "Filter alerts to those covering a single point, given as 'latitude,longitude' (at most 4 decimal places each), e.g. 38.8894,-77.0352.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^-?\\d{1,2}(\\.\\d{1,4})?,-?\\d{1,3}(\\.\\d{1,4})?$"
+              },
+              "examples": [
+                "38.8894,-77.0352"
+              ]
+            },
+            {
+              "name": "severity",
+              "description": "Optional severity filter.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "enum": [
+                  "Extreme",
+                  "Severe",
+                  "Moderate",
+                  "Minor",
+                  "Unknown"
+                ]
+              }
+            },
+            {
+              "name": "User-Agent",
+              "description": "NWS requires a User-Agent identifying the client.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "tenebris-claw",
+              "static": true
+            },
+            {
+              "name": "Accept",
+              "description": "Request GeoJSON output.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "application/geo+json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "{count: (.features | length), alerts: [.features[] | {event: .properties.event, severity: .properties.severity, urgency: .properties.urgency, areaDesc: .properties.areaDesc, headline: .properties.headline, expires: .properties.expires}][0:50]}",
+            "caching": {
+              "enabled": true,
+              "ttl": "2m",
+              "key": "weather-us:alerts:{area}:{point}:{severity}"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
