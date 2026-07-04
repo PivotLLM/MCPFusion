@@ -3,6 +3,7 @@ module github.com/PivotLLM/MCPFusion
 go 1.26.0
 
 require (
+	github.com/PivotLLM/toolspec v0.2.0
 	github.com/itchyny/gojq v0.12.19
 	github.com/joho/godotenv v1.5.1
 	github.com/mark3labs/mcp-go v0.52.0

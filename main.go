@@ -312,10 +312,10 @@ func main() {
 	}
 
 	// Initialize database-backed cache
-	dbCache := fusion.NewDatabaseCache(database.(*db.DB), logger)
+	dbCache := fusion.NewDatabaseCache(database, logger)
 
 	// Create multi-tenant authentication manager
-	multiTenantAuth := fusion.NewMultiTenantAuthManager(database.(*db.DB), dbCache, logger)
+	multiTenantAuth := fusion.NewMultiTenantAuthManager(database, dbCache, logger)
 
 	// Register authentication strategies
 	oauthStrategy := fusion.NewOAuth2DeviceFlowStrategy(

@@ -17,7 +17,7 @@ import (
 
 // DatabaseCache implements the Cache interface using the database for persistent storage
 type DatabaseCache struct {
-	db         *db.DB
+	db         TokenStore
 	logger     global.Logger
 	defaultTTL time.Duration
 }
@@ -39,12 +39,12 @@ func (ci *CacheItem) IsExpired() bool {
 }
 
 // NewDatabaseCache creates a new database-backed cache
-func NewDatabaseCache(database *db.DB, logger global.Logger) *DatabaseCache {
+func NewDatabaseCache(database TokenStore, logger global.Logger) *DatabaseCache {
 	return NewDatabaseCacheWithDefaultTTL(database, logger, 24*time.Hour)
 }
 
 // NewDatabaseCacheWithDefaultTTL creates a new database-backed cache with a custom default TTL
-func NewDatabaseCacheWithDefaultTTL(database *db.DB, logger global.Logger, defaultTTL time.Duration) *DatabaseCache {
+func NewDatabaseCacheWithDefaultTTL(database TokenStore, logger global.Logger, defaultTTL time.Duration) *DatabaseCache {
 	cache := &DatabaseCache{
 		db:         database,
 		logger:     logger,
