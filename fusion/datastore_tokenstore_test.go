@@ -161,21 +161,22 @@ func TestDataStoreTokenStore_CredentialsRoundTrip(t *testing.T) {
 	assert.Empty(t, list)
 }
 
-func TestDataStoreTokenStore_AuthCodeCreateValidateSingleUse(t *testing.T) {
+func TestDataStoreTokenStore_AuthCodeValidReusableUntilTTL(t *testing.T) {
 	store, _ := newTestTokenStore(t)
 
 	code, err := store.CreateAuthCode("tenant-a", "google", 15*time.Minute)
 	require.NoError(t, err)
 	require.NotEmpty(t, code)
 
-	tenant, service, err := store.ValidateAuthCode(code)
-	require.NoError(t, err)
-	assert.Equal(t, "tenant-a", tenant)
-	assert.Equal(t, "google", service)
-
-	// Single-use: a second validation must fail (code consumed on success).
-	_, _, err = store.ValidateAuthCode(code)
-	assert.Error(t, err, "auth code should be single-use")
+	// The auth utility re-presents the same code across several calls (ping,
+	// service config, token store), so a valid code must keep validating until it
+	// expires — not be consumed on first use (matches the standalone bbolt store).
+	for i := 0; i < 3; i++ {
+		tenant, service, err := store.ValidateAuthCode(code)
+		require.NoError(t, err, "validation %d should succeed within TTL", i)
+		assert.Equal(t, "tenant-a", tenant)
+		assert.Equal(t, "google", service)
+	}
 }
 
 func TestDataStoreTokenStore_AuthCodeExpiry(t *testing.T) {

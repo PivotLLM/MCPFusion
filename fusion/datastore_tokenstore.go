@@ -210,9 +210,14 @@ func (a *dataStoreTokenStore) CreateAuthCode(tenantHash, service string, ttl tim
 	return code, nil
 }
 
-// ValidateAuthCode looks up a single-use code, enforces expiry on read, and
-// deletes it (success or expired) so it cannot be replayed. Expiry is enforced
-// here rather than by the store, which is why CleanupExpiredAuthCodes is a no-op.
+// ValidateAuthCode looks up an auth code and enforces expiry on read. It does NOT
+// consume the code on success: the auth utility (fusion-auth / claw-auth) completes
+// a multi-request flow — ping, then GET the service config, then POST the token —
+// each call re-presenting the same code as its bearer. Deleting on first validation
+// would 401 every call after the first (the observed embedded-host failure). The
+// code stays valid until its TTL expires, matching the standalone bbolt store
+// (db.ValidateAuthCode). Expired codes are best-effort deleted here, which is why
+// CleanupExpiredAuthCodes is a no-op.
 func (a *dataStoreTokenStore) ValidateAuthCode(code string) (string, string, error) {
 	if code == "" {
 		return "", "", fmt.Errorf("auth code cannot be empty")
@@ -232,9 +237,6 @@ func (a *dataStoreTokenStore) ValidateAuthCode(code string) (string, string, err
 		// Best-effort cleanup of the expired code; report expiry regardless.
 		_ = a.ds.Delete(context.Background(), dsCollectionAuthCodes, code)
 		return "", "", fmt.Errorf("auth code expired")
-	}
-	if err := a.ds.Delete(context.Background(), dsCollectionAuthCodes, code); err != nil {
-		return "", "", fmt.Errorf("consume auth code: %w", err)
 	}
 	return data.TenantHash, data.Service, nil
 }
