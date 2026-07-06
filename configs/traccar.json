@@ -1,0 +1,212 @@
+{
+  "services": {
+    "traccar": {
+      "name": "Traccar GPS Tracking",
+      "baseURL": "${TRACCAR_BASE}",
+      "auth": {
+        "type": "bearer",
+        "config": {
+          "token": "${TRACCAR_TOKEN}"
+        }
+      },
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "10s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": [
+          "network_error",
+          "timeout",
+          "server_error",
+          "rate_limited"
+        ]
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 5,
+        "successThreshold": 2,
+        "timeout": "30s",
+        "halfOpenMaxCalls": 2,
+        "resetTimeout": "60s"
+      },
+      "endpoints": [
+        {
+          "id": "devices_list",
+          "name": "List Traccar Trackers",
+          "description": "List the GPS trackers (devices) visible to this account. Returns each tracker's numeric id, name, uniqueId (hardware identifier), online status, last update time, category, model, and whether it is disabled. Use a tracker's id with positions_latest or positions_history to retrieve its location. Optionally filter by uniqueId.",
+          "method": "GET",
+          "path": "/devices",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "uniqueId",
+              "description": "Optional hardware unique identifier to filter to a single tracker (e.g. UCFLVT1Y).",
+              "type": "string",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "[.[] | {id, name, uniqueId, status, lastUpdate, category, model, disabled, groupId, phone, contact, positionId}]",
+            "caching": {
+              "enabled": true,
+              "ttl": "5m",
+              "key": "traccar:devices:{uniqueId}"
+            }
+          }
+        },
+        {
+          "id": "positions_latest",
+          "name": "Get Latest Tracker Locations",
+          "description": "Get the most recent known location for trackers. With no arguments it returns the latest position of every tracker; pass deviceId to get just one tracker's latest fix. Each position includes latitude, longitude, fix time, a reverse-geocoded address (when available), speed (knots), course (degrees), altitude (metres), GPS validity, and telemetry such as battery, ignition, motion, and any active alarm. Get deviceId from devices_list.",
+          "method": "GET",
+          "path": "/positions",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "deviceId",
+              "description": "Optional tracker id (from devices_list) to return only that tracker's latest position. Omit to return the latest position of all trackers.",
+              "type": "number",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "minimum": 1
+              }
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": "[.[] | {deviceId, fixTime, serverTime, latitude, longitude, speed, course, altitude, valid, accuracy, address, protocol, battery: .attributes.battery, batteryLevel: .attributes.batteryLevel, charge: .attributes.charge, ignition: .attributes.ignition, motion: .attributes.motion, alarm: .attributes.alarm, totalDistance: .attributes.totalDistance}]",
+            "caching": {
+              "enabled": true,
+              "ttl": "30s",
+              "key": "traccar:positions-latest:{deviceId}"
+            }
+          }
+        },
+        {
+          "id": "positions_history",
+          "name": "Get Tracker Location History",
+          "description": "Get the historical track for one tracker over a time range. Requires deviceId (from devices_list) and an ISO-8601 from and to timestamp. Returns count (total fixes in the range) and up to 120 track points, each with time, latitude, longitude, speed (knots), and course (degrees). If the range contains more than 120 fixes the track is evenly downsampled (sampled=true) so the overall path is preserved; narrow the from/to window for full per-fix resolution.",
+          "method": "GET",
+          "path": "/positions",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "deviceId",
+              "description": "Tracker id from devices_list.",
+              "type": "number",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "minimum": 1
+              }
+            },
+            {
+              "name": "from",
+              "description": "Start of the time range, ISO-8601 with timezone, e.g. 2026-07-01T00:00:00Z.",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "examples": [
+                "2026-07-01T00:00:00Z"
+              ]
+            },
+            {
+              "name": "to",
+              "description": "End of the time range, ISO-8601 with timezone, e.g. 2026-07-02T00:00:00Z.",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "examples": [
+                "2026-07-02T00:00:00Z"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": ". as $a | ($a | length) as $n | (if $n <= 120 then $a else [range(0; 120) | $a[(. * $n / 120 | floor)]] end) as $s | {deviceId: ($a[0].deviceId // null), count: $n, returned: ($s | length), sampled: ($n > 120), positions: [$s[] | {fixTime, latitude, longitude, speed, course}]}",
+            "caching": {
+              "enabled": true,
+              "ttl": "5m",
+              "key": "traccar:positions-history:{deviceId}:{from}:{to}"
+            }
+          }
+        },
+        {
+          "id": "events",
+          "name": "Get Tracker Events",
+          "description": "List the discrete events Traccar generated for one tracker over a time range — the state-change records, not raw fixes. Requires deviceId (from devices_list) and an ISO-8601 from and to. Optionally filter to a single event type; use type=deviceMoving to detect exactly when the tracker started moving (and deviceStopped for when it stopped) without polling positions. Omit type to return all events. Each event has its eventTime, type, and the positionId of the fix that triggered it. Returns up to the 200 most recent events; count is the true total in the range.",
+          "method": "GET",
+          "path": "/reports/events",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "deviceId",
+              "description": "Tracker id from devices_list.",
+              "type": "number",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "minimum": 1
+              }
+            },
+            {
+              "name": "from",
+              "description": "Start of the time range, ISO-8601 with timezone, e.g. 2026-07-01T00:00:00Z.",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "examples": [
+                "2026-07-01T00:00:00Z"
+              ]
+            },
+            {
+              "name": "to",
+              "description": "End of the time range, ISO-8601 with timezone, e.g. 2026-07-02T00:00:00Z.",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "examples": [
+                "2026-07-02T00:00:00Z"
+              ]
+            },
+            {
+              "name": "type",
+              "description": "Optional event type filter. Common values: deviceMoving, deviceStopped, ignitionOn, ignitionOff, geofenceEnter, geofenceExit, deviceOverspeed, alarm. Omit to return all event types.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "deviceMoving",
+                "deviceStopped",
+                "ignitionOn"
+              ]
+            }
+          ],
+          "response": {
+            "type": "json",
+            "transform": ". as $a | ($a[-200:]) as $s | {count: ($a | length), returned: ($s | length), truncated: (($a | length) > 200), events: [$s[] | {eventTime, type, deviceId, positionId, attributes}]}",
+            "caching": {
+              "enabled": true,
+              "ttl": "1m",
+              "key": "traccar:events:{deviceId}:{from}:{to}:{type}"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

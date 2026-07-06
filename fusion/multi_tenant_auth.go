@@ -59,9 +59,20 @@ func (tc *TenantContext) String() string {
 		tc.ShortHash(), tc.ServiceName, tc.RequestID)
 }
 
+// apiTokenResolver is the API-token / user lookup surface used only by
+// ExtractTenantFromToken (standalone bearer-token auth in mcpserver). It is kept
+// off TokenStore because embedded hosts authenticate their own users and never
+// call it; the full db.Database supplies it, a bare TokenStore does not.
+type apiTokenResolver interface {
+	ValidateAPIToken(token string) (bool, string, error)
+	GetAPITokenMetadata(hash string) (*db.APITokenMetadata, error)
+	GetUserByAPIKey(keyHash string) (string, error)
+}
+
 // MultiTenantAuthManager manages authentication for multiple tenants
 type MultiTenantAuthManager struct {
-	db                *db.DB
+	db                TokenStore       // token/credential/auth-code persistence (nil ⇒ stateless)
+	apiTokens         apiTokenResolver // standalone bearer-token lookups; nil for embedded hosts
 	strategies        map[AuthType]AuthStrategy
 	cache             Cache
 	logger            global.Logger
@@ -69,14 +80,21 @@ type MultiTenantAuthManager struct {
 	invalidationLocks sync.Map // Per-tenant token invalidation locks (key: string, value: *sync.Mutex)
 }
 
-// NewMultiTenantAuthManager creates a new multi-tenant authentication manager
-func NewMultiTenantAuthManager(database *db.DB, cache Cache, logger global.Logger) *MultiTenantAuthManager {
+// NewMultiTenantAuthManager creates a new multi-tenant authentication manager.
+// database provides token/credential/auth-code persistence; nil yields a
+// stateless manager. When database also implements apiTokenResolver (the full
+// *db.DB does), standalone bearer-token resolution via ExtractTenantFromToken is
+// enabled; a bare TokenStore leaves it on the development-mode fallback.
+func NewMultiTenantAuthManager(database TokenStore, cache Cache, logger global.Logger) *MultiTenantAuthManager {
 	mtam := &MultiTenantAuthManager{
 		db:         database,
 		strategies: make(map[AuthType]AuthStrategy),
 		cache:      cache,
 		logger:     logger,
 		// invalidationLocks is a sync.Map and doesn't need initialization
+	}
+	if resolver, ok := database.(apiTokenResolver); ok {
+		mtam.apiTokens = resolver
 	}
 	mtam.registerDefaultStrategies(http.DefaultClient)
 	return mtam
@@ -675,8 +693,8 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 	}
 
 	// Validate the token against the database
-	if mtam.db != nil {
-		valid, hash, err := mtam.db.ValidateAPIToken(token)
+	if mtam.apiTokens != nil {
+		valid, hash, err := mtam.apiTokens.ValidateAPIToken(token)
 		if err != nil {
 			if mtam.logger != nil {
 				mtam.logger.Errorf("Token validation error: %v", err)
@@ -692,7 +710,7 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 		}
 
 		// Get token metadata for additional context
-		metadata, err := mtam.db.GetAPITokenMetadata(hash)
+		metadata, err := mtam.apiTokens.GetAPITokenMetadata(hash)
 		if err != nil {
 			if mtam.logger != nil {
 				mtam.logger.Warningf("Failed to get token metadata: %v", err)
@@ -701,7 +719,7 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 
 		// Look up user ID from the key hash
 		var userID string
-		if resolvedUserID, err := mtam.db.GetUserByAPIKey(hash); err == nil {
+		if resolvedUserID, err := mtam.apiTokens.GetUserByAPIKey(hash); err == nil {
 			userID = resolvedUserID
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Resolved user ID %s for API key %s", userID, hash[:12])
@@ -785,6 +803,17 @@ func (mtam *MultiTenantAuthManager) CreateAuthCode(tenantHash, service string, t
 		return "", fmt.Errorf("database not available")
 	}
 	return mtam.db.CreateAuthCode(tenantHash, service, ttl)
+}
+
+// StoreOAuthToken persists an OAuth token for the given tenant and service via the
+// underlying token store. Used by the OAuth HTTP API when the auth utility posts
+// freshly obtained tokens. Delegating here keeps callers (including embedded hosts
+// that only hold the engine) off the concrete token store.
+func (mtam *MultiTenantAuthManager) StoreOAuthToken(tenantHash, serviceName string, tokenData *db.OAuthTokenData) error {
+	if mtam.db == nil {
+		return fmt.Errorf("token store not available")
+	}
+	return mtam.db.StoreOAuthToken(tenantHash, serviceName, tokenData)
 }
 
 // ValidateTenantAccess validates that a tenant has access to a specific service

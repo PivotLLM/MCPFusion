@@ -39,8 +39,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -50,6 +52,8 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/metrics"
 	"github.com/PivotLLM/MCPFusion/providers/health"
+	"github.com/PivotLLM/toolspec"
+	"github.com/joho/godotenv"
 )
 
 // Ensure Fusion implements the required interfaces
@@ -117,6 +121,11 @@ type Fusion struct {
 	// downloadDir is the directory where binary responses are saved.
 	// If empty, binary responses return an informational message only.
 	downloadDir string
+
+	// authCommandName is the CLI command name shown in auth setup instructions
+	// (default "fusion-auth"). Embedding hosts (e.g. ClawEh) override it via
+	// WithAuthCommandName so the utility name matches their distribution.
+	authCommandName string
 }
 
 // NativeToolPrefixRegistrar allows registering prefixes for native (non-config-driven)
@@ -312,6 +321,104 @@ func WithDatabase(database db.Database) Option {
 	}
 }
 
+// WithDataStore wires stateful multi-tenant auth on top of a generic
+// toolspec.DataStore, for embedded hosts (e.g. ClawEh) that provide only the
+// 3-method DataStore KV rather than a full *db.DB. It builds a DataStore-backed
+// TokenStore, a database cache, and a multi-tenant auth manager from it, so
+// embedded callers get persistent OAuth tokens and auth codes without importing
+// the bbolt database. A nil ds is ignored (behavior unchanged: New auto-creates a
+// stateless manager). Place after WithLogger so the manager and cache share the
+// configured logger.
+func WithDataStore(ds toolspec.DataStore) Option {
+	return func(f *Fusion) {
+		if ds == nil {
+			return
+		}
+		store := NewDataStoreTokenStore(ds, f.logger)
+		dbCache := NewDatabaseCache(store, f.logger)
+		f.multiTenantAuth = NewMultiTenantAuthManager(store, dbCache, f.logger)
+		if f.logger != nil {
+			f.logger.Info("Configured multi-tenant auth from DataStore-backed TokenStore")
+		}
+	}
+}
+
+// WithConfigDir loads configuration from a host-provided directory: it first
+// loads "<dir>/env" via godotenv (so ${VAR} references in the JSON resolve), then
+// loads and merges every "<dir>/*.json" file using the same loader as
+// WithConfigFiles. Service and command definitions from all files are merged into
+// a single Config. Later files overwrite earlier ones on name collision, matching
+// the standalone config manager. Place after WithLogger for load logging.
+func WithConfigDir(dir string) Option {
+	return func(f *Fusion) {
+		if dir == "" {
+			return
+		}
+
+		// Load environment variables before any ${VAR} expansion in the JSON.
+		envPath := filepath.Join(dir, "env")
+		if _, err := os.Stat(envPath); err == nil {
+			if err := godotenv.Load(envPath); err != nil {
+				if f.logger != nil {
+					f.logger.Warningf("Failed to load env file %s: %v", envPath, err)
+				}
+			} else if f.logger != nil {
+				f.logger.Infof("Loaded environment from %s", envPath)
+			}
+		}
+
+		matches, err := filepath.Glob(filepath.Join(dir, "*.json"))
+		if err != nil {
+			if f.logger != nil {
+				f.logger.Errorf("Failed to scan config dir %s: %v", dir, err)
+			}
+			return
+		}
+		sort.Strings(matches) // deterministic merge order
+
+		merged := &Config{
+			Services: make(map[string]*ServiceConfig),
+			Commands: make(map[string]*CommandGroupConfig),
+		}
+		loaded := 0
+		for _, path := range matches {
+			cfg, err := LoadConfigFromFile(path)
+			if err != nil {
+				if f.logger != nil {
+					f.logger.Errorf("Failed to load config %s: %v", path, err)
+				}
+				continue
+			}
+			for name, svc := range cfg.Services {
+				if _, exists := merged.Services[name]; exists && f.logger != nil {
+					f.logger.Warningf("Service '%s' from %s overwrites previous definition", name, path)
+				}
+				merged.Services[name] = svc
+			}
+			for name, grp := range cfg.Commands {
+				if _, exists := merged.Commands[name]; exists && f.logger != nil {
+					f.logger.Warningf("Command group '%s' from %s overwrites previous definition", name, path)
+				}
+				merged.Commands[name] = grp
+			}
+			loaded++
+		}
+
+		if loaded == 0 {
+			if f.logger != nil {
+				f.logger.Warningf("No configuration files loaded from %s", dir)
+			}
+			return
+		}
+
+		f.config = merged
+		if f.logger != nil {
+			f.logger.Infof("Loaded %d services and %d command groups from %s",
+				len(merged.Services), len(merged.Commands), dir)
+		}
+	}
+}
+
 // WithSharedCollector sets the cross-package metrics collector used by the health tool
 // to report request/error counts for all services (API, hub, knowledge, etc.).
 func WithSharedCollector(c *metrics.Collector) Option {
@@ -334,6 +441,17 @@ func WithMaxResponseBytes(n int) Option {
 func WithAllowDestructive(allow bool) Option {
 	return func(f *Fusion) {
 		f.allowDestructive = allow
+	}
+}
+
+// WithAuthCommandName sets the CLI command name shown in auth setup instructions
+// (default "fusion-auth"). Embedding hosts override it, e.g. "claw-auth", so the
+// generated command matches the utility they ship. An empty name is ignored.
+func WithAuthCommandName(name string) Option {
+	return func(f *Fusion) {
+		if name != "" {
+			f.authCommandName = name
+		}
 	}
 }
 
@@ -415,6 +533,7 @@ func New(options ...Option) *Fusion {
 		correlationIDGenerator: NewCorrelationIDGenerator(),
 		circuitBreakers:        make(map[string]*CircuitBreaker),
 		maxResponseBytes:       global.DefaultMaxResponseBytes,
+		authCommandName:        "fusion-auth",
 	}
 
 	// Apply all options

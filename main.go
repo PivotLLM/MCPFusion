@@ -312,10 +312,10 @@ func main() {
 	}
 
 	// Initialize database-backed cache
-	dbCache := fusion.NewDatabaseCache(database.(*db.DB), logger)
+	dbCache := fusion.NewDatabaseCache(database, logger)
 
 	// Create multi-tenant authentication manager
-	multiTenantAuth := fusion.NewMultiTenantAuthManager(database.(*db.DB), dbCache, logger)
+	multiTenantAuth := fusion.NewMultiTenantAuthManager(database, dbCache, logger)
 
 	// Register authentication strategies
 	oauthStrategy := fusion.NewOAuth2DeviceFlowStrategy(
@@ -514,6 +514,12 @@ func main() {
 	mcpOpts = append(mcpOpts, mcpserver.WithDatabase(database.(*db.DB)))
 	mcpOpts = append(mcpOpts, mcpserver.WithAuthManager(multiTenantAuth))
 	mcpOpts = append(mcpOpts, mcpserver.WithConfigManager(configManager))
+
+	// The fusion engine serves the OAuth token-management HTTP API routes.
+	// Only registered when a fusion provider was created (services/commands loaded).
+	if fusionProvider != nil {
+		mcpOpts = append(mcpOpts, mcpserver.WithOAuthEngine(fusionProvider))
+	}
 
 	// Add multi-tenant authentication middleware
 	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, configManager,
