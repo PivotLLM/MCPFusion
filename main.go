@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -314,34 +313,10 @@ func main() {
 	// Initialize database-backed cache
 	dbCache := fusion.NewDatabaseCache(database, logger)
 
-	// Create multi-tenant authentication manager
+	// Create multi-tenant authentication manager. It registers the full canonical
+	// set of auth strategies (see fusion.defaultStrategies), so no manual
+	// per-strategy registration is needed here.
 	multiTenantAuth := fusion.NewMultiTenantAuthManager(database, dbCache, logger)
-
-	// Register authentication strategies
-	oauthStrategy := fusion.NewOAuth2DeviceFlowStrategy(
-		&http.Client{Timeout: 30 * time.Second}, logger)
-	multiTenantAuth.RegisterStrategy(oauthStrategy)
-
-	// Register other auth strategies
-	bearerStrategy := fusion.NewBearerTokenStrategy(logger)
-	multiTenantAuth.RegisterStrategy(bearerStrategy)
-
-	apiKeyStrategy := fusion.NewAPIKeyStrategy(logger)
-	multiTenantAuth.RegisterStrategy(apiKeyStrategy)
-
-	basicStrategy := fusion.NewBasicAuthStrategy(logger)
-	multiTenantAuth.RegisterStrategy(basicStrategy)
-
-	sessionJWTStrategy := fusion.NewSessionJWTStrategy(
-		&http.Client{Timeout: 30 * time.Second}, logger)
-	multiTenantAuth.RegisterStrategy(sessionJWTStrategy)
-
-	oauth2ExternalStrategy := fusion.NewOAuth2ExternalStrategy(
-		&http.Client{Timeout: 30 * time.Second}, logger)
-	multiTenantAuth.RegisterStrategy(oauth2ExternalStrategy)
-
-	userCredentialsStrategy := fusion.NewUserCredentialsStrategy(logger)
-	multiTenantAuth.RegisterStrategy(userCredentialsStrategy)
 
 	// Initialize config manager with all configuration files
 	configManager := config.New(

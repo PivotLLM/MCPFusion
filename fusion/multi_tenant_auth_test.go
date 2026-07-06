@@ -470,3 +470,33 @@ func TestInvalidateToken_NilTenantContext(t *testing.T) {
 	// Must not panic
 	manager.InvalidateToken(nil)
 }
+
+// TestNewMultiTenantAuthManager_RegistersAllDefaultStrategies guards against the
+// regression where user_credentials and oauth2_external were registered only in
+// the standalone binary, so embedded hosts (e.g. ClawEh) rejected services using
+// them with "unsupported authentication type". The embedded manager must expose
+// the full canonical strategy set.
+func TestNewMultiTenantAuthManager_RegistersAllDefaultStrategies(t *testing.T) {
+	manager := NewMultiTenantAuthManager(nil, nil, nil)
+
+	want := []AuthType{
+		AuthTypeOAuth2Device,
+		AuthTypeBearer,
+		AuthTypeAPIKey,
+		AuthTypeBasic,
+		AuthTypeSessionJWT,
+		AuthTypeOAuth2External,
+		AuthTypeUserCredentials,
+	}
+
+	got := make(map[AuthType]bool)
+	for _, at := range manager.GetRegisteredStrategies() {
+		got[at] = true
+	}
+
+	for _, at := range want {
+		if !got[at] {
+			t.Errorf("default auth strategies missing %q; embedded hosts would reject services using it", at)
+		}
+	}
+}

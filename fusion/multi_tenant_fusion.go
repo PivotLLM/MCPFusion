@@ -252,26 +252,11 @@ func (mtf *MultiTenantFusion) createTenantFusion(tenantContext *TenantContext) (
 }
 
 // registerDefaultAuthStrategies registers the default authentication strategies
+// from the shared canonical set (see defaultStrategies).
 func (mtf *MultiTenantFusion) registerDefaultAuthStrategies() {
-	// Register OAuth2 device flow strategy
-	oauth2Strategy := NewOAuth2DeviceFlowStrategy(mtf.httpClient, mtf.logger)
-	mtf.authManager.RegisterStrategy(oauth2Strategy)
-
-	// Register bearer token strategy
-	bearerStrategy := NewBearerTokenStrategy(mtf.logger)
-	mtf.authManager.RegisterStrategy(bearerStrategy)
-
-	// Register API key strategy
-	apiKeyStrategy := NewAPIKeyStrategy(mtf.logger)
-	mtf.authManager.RegisterStrategy(apiKeyStrategy)
-
-	// Register basic auth strategy
-	basicAuthStrategy := NewBasicAuthStrategy(mtf.logger)
-	mtf.authManager.RegisterStrategy(basicAuthStrategy)
-
-	// Register session JWT strategy
-	sessionJWTStrategy := NewSessionJWTStrategy(mtf.httpClient, mtf.logger)
-	mtf.authManager.RegisterStrategy(sessionJWTStrategy)
+	for _, strategy := range defaultStrategies(mtf.httpClient, mtf.logger) {
+		mtf.authManager.RegisterStrategy(strategy)
+	}
 
 	if mtf.logger != nil {
 		strategies := mtf.authManager.GetRegisteredStrategies()

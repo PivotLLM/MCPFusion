@@ -96,18 +96,42 @@ func NewMultiTenantAuthManager(database TokenStore, cache Cache, logger global.L
 	if resolver, ok := database.(apiTokenResolver); ok {
 		mtam.apiTokens = resolver
 	}
-	mtam.registerDefaultStrategies(http.DefaultClient)
+	mtam.registerDefaultStrategies(defaultAuthHTTPClient())
 	return mtam
+}
+
+// defaultAuthHTTPClient is the HTTP client used by the built-in auth strategies
+// that make network calls (device flow, session JWT, external OAuth2). It carries
+// a request timeout so a hung auth endpoint can't stall a caller indefinitely.
+func defaultAuthHTTPClient() *http.Client {
+	return &http.Client{Timeout: 30 * time.Second}
+}
+
+// defaultStrategies returns every built-in authentication strategy. This is the
+// single source of truth for the default set: standalone (main.go), the embedded
+// manager (NewMultiTenantAuthManager), and the multi-tenant fusion path all draw
+// from it, so an embedded host gets exactly the same auth types as the binary.
+// Previously user_credentials and oauth2_external were registered only in main.go,
+// so embedders (e.g. ClawEh) rejected services using them with "unsupported
+// authentication type".
+func defaultStrategies(httpClient *http.Client, logger global.Logger) []AuthStrategy {
+	return []AuthStrategy{
+		NewOAuth2DeviceFlowStrategy(httpClient, logger),
+		NewBearerTokenStrategy(logger),
+		NewAPIKeyStrategy(logger),
+		NewBasicAuthStrategy(logger),
+		NewSessionJWTStrategy(httpClient, logger),
+		NewOAuth2ExternalStrategy(httpClient, logger),
+		NewUserCredentialsStrategy(logger),
+	}
 }
 
 // registerDefaultStrategies registers the built-in authentication strategies so that
 // every auth manager is ready to handle all supported auth types out of the box.
 func (mtam *MultiTenantAuthManager) registerDefaultStrategies(httpClient *http.Client) {
-	mtam.RegisterStrategy(NewOAuth2DeviceFlowStrategy(httpClient, mtam.logger))
-	mtam.RegisterStrategy(NewBearerTokenStrategy(mtam.logger))
-	mtam.RegisterStrategy(NewAPIKeyStrategy(mtam.logger))
-	mtam.RegisterStrategy(NewBasicAuthStrategy(mtam.logger))
-	mtam.RegisterStrategy(NewSessionJWTStrategy(httpClient, mtam.logger))
+	for _, strategy := range defaultStrategies(httpClient, mtam.logger) {
+		mtam.RegisterStrategy(strategy)
+	}
 }
 
 // RegisterStrategy registers an authentication strategy
