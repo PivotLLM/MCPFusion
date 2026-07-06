@@ -9,10 +9,15 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/PivotLLM/MCPFusion/db"
-	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
 )
+
+// OAuthRouteProvider registers the OAuth token-management HTTP API routes onto a
+// mux. It is implemented by *fusion.Fusion, letting the transport mount the exact
+// endpoints the fusion-auth utility calls without owning the handler logic.
+type OAuthRouteProvider interface {
+	RegisterOAuthRoutes(mux *http.ServeMux)
+}
 
 // ExtendedTransport wraps multiple MCP transports and adds custom API endpoints
 type ExtendedTransport struct {
@@ -20,23 +25,19 @@ type ExtendedTransport struct {
 	httpTransport MCPServerTransport
 	server        *http.Server
 	logger        global.Logger
-	oauthHandler  *OAuthAPIHandler
 }
 
 // NewExtendedTransport creates a transport that combines both MCP transports with custom API endpoints
-func NewExtendedTransport(sseTransport, httpTransport MCPServerTransport, database *db.DB,
-	authManager *fusion.MultiTenantAuthManager, configManager ServiceProvider,
+func NewExtendedTransport(sseTransport, httpTransport MCPServerTransport, oauthEngine OAuthRouteProvider,
 	authMiddleware func(http.Handler) http.Handler, logger global.Logger) *ExtendedTransport {
-
-	// Create OAuth API handler
-	oauthHandler := NewOAuthAPIHandler(database, authManager, configManager, logger)
 
 	// Create a new ServeMux for routing
 	mux := http.NewServeMux()
 
-	// Register OAuth API routes with authentication middleware (if available)
+	// Register OAuth API routes (from the fusion engine) with authentication
+	// middleware (if available)
 	tempMux := http.NewServeMux()
-	oauthHandler.RegisterRoutes(tempMux)
+	oauthEngine.RegisterOAuthRoutes(tempMux)
 	if authMiddleware != nil {
 		mux.Handle("/api/", authMiddleware(tempMux))
 		mux.Handle("/ping", authMiddleware(tempMux))
@@ -68,7 +69,6 @@ func NewExtendedTransport(sseTransport, httpTransport MCPServerTransport, databa
 		sseTransport:  sseTransport,
 		httpTransport: httpTransport,
 		logger:        logger,
-		oauthHandler:  oauthHandler,
 		server: &http.Server{
 			Handler: mux,
 		},

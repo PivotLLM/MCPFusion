@@ -121,6 +121,11 @@ type Fusion struct {
 	// downloadDir is the directory where binary responses are saved.
 	// If empty, binary responses return an informational message only.
 	downloadDir string
+
+	// authCommandName is the CLI command name shown in auth setup instructions
+	// (default "fusion-auth"). Embedding hosts (e.g. ClawEh) override it via
+	// WithAuthCommandName so the utility name matches their distribution.
+	authCommandName string
 }
 
 // NativeToolPrefixRegistrar allows registering prefixes for native (non-config-driven)
@@ -439,6 +444,17 @@ func WithAllowDestructive(allow bool) Option {
 	}
 }
 
+// WithAuthCommandName sets the CLI command name shown in auth setup instructions
+// (default "fusion-auth"). Embedding hosts override it, e.g. "claw-auth", so the
+// generated command matches the utility they ship. An empty name is ignored.
+func WithAuthCommandName(name string) Option {
+	return func(f *Fusion) {
+		if name != "" {
+			f.authCommandName = name
+		}
+	}
+}
+
 // New creates a new production-ready Fusion instance with the provided configuration options.
 // This is the primary constructor for the Fusion provider and initializes all components
 // required for API integration including multi-tenant authentication, database caching,
@@ -517,6 +533,7 @@ func New(options ...Option) *Fusion {
 		correlationIDGenerator: NewCorrelationIDGenerator(),
 		circuitBreakers:        make(map[string]*CircuitBreaker),
 		maxResponseBytes:       global.DefaultMaxResponseBytes,
+		authCommandName:        "fusion-auth",
 	}
 
 	// Apply all options

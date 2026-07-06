@@ -130,6 +130,13 @@ func (f *Fusion) createAuthSetupHandler(serviceName string, authType AuthType) g
 				tenantContext.ShortHash(), serviceName)
 		}
 
+		// Resolve the CLI command name shown to the user. Falls back to the
+		// standalone default when the engine was constructed without an override.
+		authCommand := f.authCommandName
+		if authCommand == "" {
+			authCommand = "fusion-auth"
+		}
+
 		var message string
 		switch authType {
 		case AuthTypeUserCredentials:
@@ -139,15 +146,15 @@ func (f *Fusion) createAuthSetupHandler(serviceName string, authType AuthType) g
 				instructionsBlock = "\n\n" + instructions + "\n"
 			}
 			message = fmt.Sprintf(
-				"Credentials are required for %s.%s\n\nPlease run the following command. IMPORTANT: Present this command in a markdown code block so the user can copy it without line breaks.\n\n```\nfusion-auth %s\n```\n\n"+
+				"Credentials are required for %s.%s\n\nPlease run the following command. IMPORTANT: Present this command in a markdown code block so the user can copy it without line breaks.\n\n```\n%s %s\n```\n\n"+
 					"This auth code expires in 15 minutes. After authenticating, retry your previous request.",
-				service.Name, instructionsBlock, encoded,
+				service.Name, instructionsBlock, authCommand, encoded,
 			)
 		default:
 			message = fmt.Sprintf(
-				"Authentication is required for %s. Please run the following command on a machine with a web browser. IMPORTANT: Present this command in a markdown code block so the user can copy it without line breaks.\n\n```\nfusion-auth %s\n```\n\n"+
+				"Authentication is required for %s. Please run the following command on a machine with a web browser. IMPORTANT: Present this command in a markdown code block so the user can copy it without line breaks.\n\n```\n%s %s\n```\n\n"+
 					"This auth code expires in 15 minutes. After authenticating, retry your previous request.",
-				service.Name, encoded,
+				service.Name, authCommand, encoded,
 			)
 		}
 

@@ -515,6 +515,12 @@ func main() {
 	mcpOpts = append(mcpOpts, mcpserver.WithAuthManager(multiTenantAuth))
 	mcpOpts = append(mcpOpts, mcpserver.WithConfigManager(configManager))
 
+	// The fusion engine serves the OAuth token-management HTTP API routes.
+	// Only registered when a fusion provider was created (services/commands loaded).
+	if fusionProvider != nil {
+		mcpOpts = append(mcpOpts, mcpserver.WithOAuthEngine(fusionProvider))
+	}
+
 	// Add multi-tenant authentication middleware
 	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, configManager,
 		mcpserver.WithAuthLogger(logger),

@@ -805,6 +805,17 @@ func (mtam *MultiTenantAuthManager) CreateAuthCode(tenantHash, service string, t
 	return mtam.db.CreateAuthCode(tenantHash, service, ttl)
 }
 
+// StoreOAuthToken persists an OAuth token for the given tenant and service via the
+// underlying token store. Used by the OAuth HTTP API when the auth utility posts
+// freshly obtained tokens. Delegating here keeps callers (including embedded hosts
+// that only hold the engine) off the concrete token store.
+func (mtam *MultiTenantAuthManager) StoreOAuthToken(tenantHash, serviceName string, tokenData *db.OAuthTokenData) error {
+	if mtam.db == nil {
+		return fmt.Errorf("token store not available")
+	}
+	return mtam.db.StoreOAuthToken(tenantHash, serviceName, tokenData)
+}
+
 // ValidateTenantAccess validates that a tenant has access to a specific service
 func (mtam *MultiTenantAuthManager) ValidateTenantAccess(tenantContext *TenantContext, serviceName string) error {
 	if tenantContext == nil {

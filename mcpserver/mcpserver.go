@@ -113,6 +113,7 @@ type MCPServer struct {
 	database          *db.DB
 	authManager       *fusion.MultiTenantAuthManager
 	configManager     ServiceProvider
+	oauthEngine       OAuthRouteProvider
 	authorizer        global.Authorizer
 }
 
@@ -185,6 +186,14 @@ func WithAuthManager(authManager *fusion.MultiTenantAuthManager) Option {
 func WithConfigManager(configManager ServiceProvider) Option {
 	return func(m *MCPServer) {
 		m.configManager = configManager
+	}
+}
+
+// WithOAuthEngine sets the fusion engine that serves the OAuth token-management
+// HTTP API routes. Required to enable the OAuth API endpoints on the extended transport.
+func WithOAuthEngine(engine OAuthRouteProvider) Option {
+	return func(m *MCPServer) {
+		m.oauthEngine = engine
 	}
 }
 
@@ -323,7 +332,7 @@ func (s *MCPServer) Start() error {
 		}
 
 		// Check if OAuth API functionality should be enabled
-		if s.database != nil && s.authManager != nil && s.configManager != nil {
+		if s.database != nil && s.authManager != nil && s.configManager != nil && s.oauthEngine != nil {
 			s.logger.Info("Enabling OAuth API endpoints with extended transport")
 			// Build auth middleware for OAuth API routes (/ping, /api/*)
 			var oauthAuthMiddleware func(http.Handler) http.Handler
@@ -331,8 +340,8 @@ func (s *MCPServer) Start() error {
 				oauthAuthMiddleware = s.authMiddleware.SimpleMiddleware
 			}
 			// Wrap both transports with ExtendedTransport to add OAuth API endpoints
-			s.transport = NewExtendedTransport(authenticatedSSE, authenticatedHTTP, s.database, s.authManager,
-				s.configManager, oauthAuthMiddleware, s.logger)
+			s.transport = NewExtendedTransport(authenticatedSSE, authenticatedHTTP, s.oauthEngine,
+				oauthAuthMiddleware, s.logger)
 			if s.transport == nil {
 				s.logger.Error("Failed to create extended transport, falling back to SSE transport only")
 				s.transport = authenticatedSSE
