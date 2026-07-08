@@ -113,6 +113,11 @@ type ServiceConfig struct {
 	Endpoints              []EndpointConfig      `json:"endpoints,omitempty"`
 	Retry                  *RetryConfig          `json:"retry,omitempty"`
 	CircuitBreaker         *CircuitBreakerConfig `json:"circuitBreaker,omitempty"`
+	// RevealTogether asks a discovery-aware embedded host (e.g. ClawEh) to reveal
+	// all of this service's tools as soon as one is discovered, so a small cohesive
+	// service is unlocked in a single search. Surfaced on each tool's
+	// toolspec.ToolDefinition. Hosts without progressive discovery ignore it.
+	RevealTogether bool `json:"reveal_together,omitempty"`
 }
 
 // IsHubService returns true if this service uses a hub transport (stdio or mcp_http)

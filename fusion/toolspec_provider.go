@@ -35,6 +35,10 @@ func (f *Fusion) ToolSpecDefinitions(tenant string) []toolspec.ToolDefinition {
 	for i := range tools {
 		td := tools[i]
 		service := serviceForToolName(td.Name, serviceNames)
+		revealTogether := false
+		if svc := f.GetService(service); svc != nil {
+			revealTogether = svc.RevealTogether
+		}
 		params := convertParameters(td.Parameters)
 		out = append(out, toolspec.ToolDefinition{
 			Name:        td.Name,
@@ -45,6 +49,11 @@ func (f *Fusion) ToolSpecDefinitions(tenant string) []toolspec.ToolDefinition {
 			RawSchema: toolspec.ParametersToSchema(params),
 			Hints:     convertHints(td.Hints),
 			Handler:   f.wrapToolHandler(td.Handler, tenant, service),
+			// Group + RevealTogether let a discovery-aware host unlock all of a
+			// service's tools in one search. Group is the resolved service name;
+			// RevealTogether comes from the service's reveal_together config.
+			Group:          service,
+			RevealTogether: revealTogether,
 		})
 	}
 	return out
