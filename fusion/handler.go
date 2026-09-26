@@ -55,19 +55,7 @@ func NewHTTPHandler(fusion *Fusion, service *ServiceConfig, endpoint *EndpointCo
 
 // prepareAuthConfig creates a copy of the auth config with baseURL injected
 func (h *HTTPHandler) prepareAuthConfig() AuthConfig {
-	authConfig := h.service.Auth
-	if authConfig.Config == nil {
-		authConfig.Config = make(map[string]interface{})
-	} else {
-		// Make a copy of the config map to avoid modifying the original
-		configCopy := make(map[string]interface{})
-		for k, v := range authConfig.Config {
-			configCopy[k] = v
-		}
-		authConfig.Config = configCopy
-	}
-	authConfig.Config["baseURL"] = h.service.BaseURL
-	return authConfig
+	return h.service.AuthConfigForRequest()
 }
 
 // Handle processes an HTTP request based on the endpoint configuration

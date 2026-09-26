@@ -13,7 +13,7 @@
 
 Each administrator authenticates as themselves. The first time a tool is called without credentials, MCPFusion returns a `fusion-auth` command. Running it prompts for the administrator's UnifyEM username and password, which MCPFusion stores against that administrator's MCPFusion API token. MCPFusion then logs in to UnifyEM's `/api/v1/login`, keeps the access token, and logs in again when it expires or when UnifyEM returns 401. UnifyEM's audit log therefore shows the real administrator for every action.
 
-This requires the per-user `session_jwt` credentials feature described in `docs/proposal-per-user-session-jwt.md`. Until it ships, the `credentials` block in the auth config is ignored and the login body placeholders are sent literally, so authentication fails.
+This uses the per-user `credentials` block of `session_jwt`, documented under "Per-User Credentials" in `docs/config.md`. The bundled config uses `store: "credentials"`, so MCPFusion keeps the username and password and re-logs-in unattended. If UnifyEM later issues long-lived tokens, switch to `store: "token"` and no password is stored.
 
 ## Namespace
 

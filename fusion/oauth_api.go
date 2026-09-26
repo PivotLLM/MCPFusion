@@ -218,6 +218,15 @@ func (h *oauthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// session_jwt services with a credentials block receive field values, not
+	// a token: either persist them, or exchange them for a token right now.
+	if service := h.engine.GetService(req.Service); service != nil {
+		if sc, ok := service.Auth.SessionCredentials(); ok {
+			h.storeSessionCredentials(w, r, tenantContext, req.Service, service, sc, req.Metadata)
+			return
+		}
+	}
+
 	// Create OAuth token data
 	tokenData := &db.OAuthTokenData{
 		AccessToken:  req.AccessToken,
@@ -257,6 +266,69 @@ func (h *oauthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 	}
 
 	h.writeJSONResponse(w, http.StatusCreated, response)
+}
+
+// storeSessionCredentials handles the token storage request for a session_jwt
+// service that declares a credentials block. In credentials mode the field
+// values are persisted for later logins; in token mode they are exchanged for
+// a token immediately and discarded.
+func (h *oauthAPIHandler) storeSessionCredentials(w http.ResponseWriter, r *http.Request,
+	tenantContext *TenantContext, serviceName string, service *ServiceConfig,
+	sc *SessionCredentialsConfig, values map[string]string) {
+
+	filtered := make(map[string]string, len(sc.Fields))
+	for _, field := range sc.Fields {
+		value := strings.TrimSpace(values[field.Name])
+		if value == "" {
+			h.writeErrorResponse(w, http.StatusBadRequest,
+				fmt.Sprintf("Missing value for credential field '%s'", field.Name))
+			return
+		}
+		filtered[field.Name] = value
+	}
+
+	serviceContext := &TenantContext{
+		TenantHash:  tenantContext.TenantHash,
+		ServiceName: serviceName,
+	}
+
+	if sc.Store == CredentialStoreToken {
+		if _, err := h.engine.multiTenantAuth.AuthenticateWithCredentials(r.Context(), serviceContext,
+			service.AuthConfigForRequest(), filtered); err != nil {
+			h.writeErrorResponse(w, http.StatusBadGateway,
+				fmt.Sprintf("Login to %s failed: %v", service.Name, err))
+			return
+		}
+		if h.logger != nil {
+			h.logger.Infof("Exchanged credentials for a token for tenant %s service %s",
+				tenantContext.ShortHash(), serviceName)
+		}
+		h.writeJSONResponse(w, http.StatusCreated, tokenResponse{
+			Success: true,
+			Message: "Credentials exchanged for a token and stored successfully",
+			TokenID: fmt.Sprintf("%s_%s", tenantContext.ShortHash(), serviceName),
+		})
+		return
+	}
+
+	if err := h.engine.multiTenantAuth.StoreUserCredentials(tenantContext.TenantHash, serviceName, filtered); err != nil {
+		if h.logger != nil {
+			h.logger.Errorf("Failed to store credentials for tenant %s service %s: %v",
+				tenantContext.ShortHash(), serviceName, err)
+		}
+		h.writeErrorResponse(w, http.StatusInternalServerError, "Failed to store credentials")
+		return
+	}
+	// Any token obtained with previous credentials must not outlive them.
+	h.engine.multiTenantAuth.InvalidateToken(serviceContext)
+	if h.logger != nil {
+		h.logger.Infof("Stored credentials for tenant %s service %s", tenantContext.ShortHash(), serviceName)
+	}
+	h.writeJSONResponse(w, http.StatusCreated, tokenResponse{
+		Success: true,
+		Message: "Credentials stored successfully",
+		TokenID: fmt.Sprintf("%s_%s", tenantContext.ShortHash(), serviceName),
+	})
 }
 
 // handleAuthVerify handles GET /api/v1/auth/verify
@@ -339,13 +411,11 @@ func (h *oauthAPIHandler) handleServiceConfig(w http.ResponseWriter, r *http.Req
 
 	// Add auth type and user_credentials config details from the service auth config
 	oauthConfig["auth_type"] = string(service.Auth.Type)
-	if service.Auth.Config != nil {
-		if instructions, ok := service.Auth.Config["instructions"].(string); ok {
-			oauthConfig["instructions"] = instructions
-		}
-		if fields, ok := service.Auth.Config["fields"]; ok {
-			oauthConfig["fields"] = fields
-		}
+	if instructions := service.Auth.SetupInstructions(); instructions != "" {
+		oauthConfig["instructions"] = instructions
+	}
+	if fields := service.Auth.SetupFields(); fields != nil {
+		oauthConfig["fields"] = fields
 	}
 
 	// Add standard endpoint info

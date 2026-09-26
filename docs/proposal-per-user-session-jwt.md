@@ -1,6 +1,6 @@
 # Proposal: per-user credentials for `session_jwt`
 
-Status: proposal, not implemented. Needed by `configs/unifyem.json`.
+Status: implemented (see "Per-User Credentials" in `docs/config.md`). Kept as the design record for `configs/unifyem.json`.
 
 ## Problem
 
@@ -81,8 +81,9 @@ Switching UnifyEM to a future long-lived token needs only `"store": "token"`, wh
 
 ### `fusion/multi_tenant_auth.go`
 
-- New storage for per-tenant credentials, separate from the session token, so invalidating the token never discards the credentials. Suggested: store them through the existing token store under the service name plus a fixed suffix (for example `unifyem#credentials`), or add `StoreCredentials` / `GetCredentials` / `DeleteCredentials` to the datastore interface keyed by tenant hash and service. Values are `map[string]string`. Only used when `store` is `"credentials"`.
-- `GetToken`, `store: "credentials"`: when no valid cached token exists, load the tenant's stored credentials before calling `Authenticate`. If none exist, return the credentials-required error that `user_credentials` uses today. Pass the credentials to the strategy through a reserved key in a copy of the config map (`__credentials`), which avoids changing the `AuthStrategy` interface for every strategy.
+- Per-tenant credentials are stored through the `StoreCredentials` / `GetCredentials` / `DeleteCredentials` methods that `TokenStore` already declares and that both the bbolt (`db.DB`) and DataStore (`dataStoreTokenStore`) backends already implement, using `db.ServiceCredentials` with type `custom` and the field values in `Data`. Nothing in `fusion` used these methods before. The record is separate from the OAuth token record, so the existing `InvalidateToken` (which only deletes the token record) leaves credentials intact. Only used when `store` is `"credentials"`.
+- The `DatabaseCache` that `GetToken` consults is itself backed by the same token store, so "cache the token" and "persist the token" are one operation (`CacheToken`).
+- `GetToken`, `store: "credentials"`: when no valid cached token exists, load the tenant's stored credentials before calling `Authenticate`. If none exist, return an `AuthenticationError` whose message names the `<service>_auth_setup` tool, mirroring the `user_credentials` behaviour. Pass the credentials to the strategy through a reserved key in a copy of the config map (`__credentials`); `HTTPHandler.prepareAuthConfig` already copies the map per request to inject `baseURL`, so this follows an existing pattern and avoids changing the `AuthStrategy` interface for every strategy. The copy holding credentials exists only for the `Authenticate` call.
 - `GetToken`, `store: "token"`: no change to the existing path. The cached token is the stored token; when it is expired and refresh fails or is not configured, return the credentials-required error.
 - `InvalidateToken`: continues to clear only the cached session token. Add `InvalidateCredentials` for use by `auth_setup`, which clears both so a fresh `fusion-auth` run replaces the stored values.
 
@@ -103,8 +104,8 @@ Switching UnifyEM to a future long-lived token needs only `"store": "token"`, wh
 
 ### `cmd/auth` (`fusion-auth`)
 
-- Run the credentials prompt flow whenever the service config carries `fields`, regardless of `auth_type`, and post the values with the sentinel access token the server expects for credentials. `fusion-auth` does not need to know which `store` mode is in effect; the server decides.
-- Mask input for fields with `secret: true` using `golang.org/x/term.ReadPassword` (new dependency).
+- Today `executeOAuthFlow` routes to the credentials prompt only when `auth_type` is `user_credentials`; any other type falls through to the local OAuth provider registry and fails for `session_jwt`. Run the credentials prompt flow whenever the service config carries `fields`, regardless of `auth_type`, and post the values with the sentinel access token the server expects for credentials. `fusion-auth` does not need to know which `store` mode is in effect; the server decides.
+- Mask input for fields with `secret: true` using `golang.org/x/term.ReadPassword` (new dependency of the `cmd/auth` module, which is a separate Go module).
 - Surface a failed exchange (token mode) as an error at the prompt.
 
 ### Optional: `refreshBody` for `session_jwt`

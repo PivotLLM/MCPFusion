@@ -255,6 +255,97 @@ Authorization: Basic dXNlckBleGFtcGxlLmNvbTphYmMxMjM=
 
 **Security Note:** Credentials sent as query parameters (individual mode) may be logged by proxies or intermediate servers. This is determined by the target API's design, not MCPFusion. When possible, prefer `basic_auth` mode or header-based credentials.
 
+### Session JWT
+
+For APIs where a login request (username and password, or similar) returns a token that is then sent on every request. MCPFusion performs the login, extracts the token from the response, applies it as a header, cookie or query parameter, and re-authenticates when the token expires or the API returns a status listed in `tokenInvalidation.statusCodes`.
+
+```json
+{
+  "type": "session_jwt",
+  "config": {
+    "loginURL": "/api/users/token",
+    "loginMethod": "POST",
+    "loginContentType": "application/json",
+    "loginBody": { "username": "${SERVICE_USERNAME}", "password": "${SERVICE_PASSWORD}" },
+    "tokenPath": "datas.token",
+    "tokenType": "Bearer",
+    "tokenLocation": "header",
+    "headerName": "Authorization",
+    "headerFormat": "Bearer {token}",
+    "expiresIn": 3600
+  },
+  "tokenInvalidation": { "statusCodes": [401], "retryOnInvalidation": true }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `loginURL` | string | Yes | Login endpoint. Relative to the service `baseURL` unless absolute. |
+| `loginMethod` | string | No | HTTP method, default `POST`. |
+| `loginContentType` | string | No | Content type of the login body, default `application/json`. |
+| `loginBody` | object | No | JSON body sent to the login endpoint. |
+| `loginFormBody` | object | No | Form-encoded body, used instead of `loginBody`. |
+| `loginHeaders` | object | No | Extra headers on the login request; values must be strings. |
+| `tokenPath` | string | Yes | Dot path to the token in the login response. |
+| `tokenType` | string | No | Token type used in `{tokenType}`, default `Bearer`. |
+| `tokenLocation` | string | Yes | `header`, `cookie` or `query`. |
+| `headerName` / `headerFormat` | string | No | For `header`: header name (default `Authorization`) and format (default `{tokenType} {token}`). |
+| `cookieName` / `cookieFormat` | string | cookie only | Cookie name and format. |
+| `queryParam` | string | query only | Query parameter name. |
+| `expiresIn` | number | No | Token lifetime in seconds. |
+| `expiresInPath` | string | No | Dot path to a lifetime in seconds in the login response; overrides `expiresIn`. |
+| `refreshURL`, `refreshMethod`, `refreshTokenPath`, `refreshTokenLocation`, `refreshTokenCookieName` | | No | Optional refresh endpoint; see `configs/pwndoc.json` for an example. |
+| `credentials` | object | No | Per-user credentials; see below. |
+
+#### Per-User Credentials
+
+By default the login body comes from environment variables, so every MCPFusion tenant shares one upstream identity. Add a `credentials` block to make each tenant log in as themselves. The block declares the values `fusion-auth` prompts for, and the login template references them with `{{credentials.<name>}}` placeholders in `loginURL`, `loginHeaders`, `loginBody` or `loginFormBody`.
+
+```json
+{
+  "type": "session_jwt",
+  "config": {
+    "loginURL": "/api/v1/login",
+    "loginBody": { "username": "{{credentials.username}}", "password": "{{credentials.password}}" },
+    "tokenPath": "access_token",
+    "tokenLocation": "header",
+    "headerFormat": "Bearer {token}",
+    "expiresIn": 3600,
+    "credentials": {
+      "store": "credentials",
+      "instructions": "Enter the username and password you use with the service's CLI.",
+      "fields": [
+        { "name": "username", "label": "Username" },
+        { "name": "password", "label": "Password", "secret": true }
+      ]
+    }
+  },
+  "tokenInvalidation": { "statusCodes": [401], "retryOnInvalidation": true }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `store` | string | No | `credentials` (default) or `token`; see below. |
+| `instructions` | string | No | Shown by `fusion-auth` before prompting. |
+| `fields` | array | Yes | Values to prompt for. Each has `name` (required), `label`, `description` and `secret` (boolean; input is not echoed). Every placeholder must name a declared field, and at least one placeholder must be used. |
+
+**Storage modes:**
+
+| `store` | What is kept per tenant | On expiry or invalidation | Use when |
+|---|---|---|---|
+| `credentials` | The prompted values. | MCPFusion logs in again automatically. | The API only issues short-lived tokens. |
+| `token` | Only the token from a login performed once when the values are submitted; the values are discarded. | MCPFusion refreshes if a refresh endpoint is configured, otherwise the user is asked to run `fusion-auth` again. | The API can issue a long-lived token at login and passwords must not be stored. |
+
+**How it works:**
+
+1. A tool call for a tenant with nothing stored fails with a message naming the `<service>_auth_setup` tool.
+2. That tool returns a time-limited `fusion-auth` command. The user runs it and is prompted for each field; `secret` fields are not echoed.
+3. `fusion-auth` posts the values to MCPFusion. In `credentials` mode they are stored for the tenant and any earlier token is discarded. In `token` mode MCPFusion logs in immediately, stores the token, discards the values, and reports a login failure at the prompt.
+4. Tool calls use the tenant's token. When it expires or the API returns an invalidation status, `credentials` mode logs in again with the stored values; `token` mode falls back to step 1.
+
+Placeholders use `{{...}}` so the `${ENV}` expansion applied at config load leaves them alone. Credential values are substituted into a copy of the template for the login request only; they are never written to the token record or to logs. In `credentials` mode the values are stored in MCPFusion's database alongside OAuth refresh tokens and have the same protection.
+
 ## Endpoint Configuration
 
 ### Basic Endpoint Structure
