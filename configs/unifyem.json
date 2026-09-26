@@ -1,0 +1,1825 @@
+{
+  "services": {
+    "unifyem": {
+      "name": "UnifyEM",
+      "baseURL": "${UNIFYEM_URL}",
+      "auth": {
+        "type": "session_jwt",
+        "config": {
+          "loginURL": "/api/v1/login",
+          "loginMethod": "POST",
+          "loginContentType": "application/json",
+          "loginBody": {
+            "username": "{{credentials.username}}",
+            "password": "{{credentials.password}}"
+          },
+          "tokenPath": "access_token",
+          "tokenType": "Bearer",
+          "tokenLocation": "header",
+          "headerName": "Authorization",
+          "headerFormat": "Bearer {token}",
+          "expiresIn": 3600,
+          "credentials": {
+            "instructions": "UnifyEM needs your administrator username and password. MCPFusion logs in to UnifyEM as you and keeps the session token; UnifyEM sees the requests as your account. Enter the same credentials you use with uem-cli (UEM_USER / UEM_PASS).",
+            "fields": [
+              {
+                "name": "username",
+                "label": "UnifyEM username",
+                "description": "Your UnifyEM administrator username"
+              },
+              {
+                "name": "password",
+                "label": "UnifyEM password",
+                "description": "Your UnifyEM administrator password",
+                "secret": true
+              }
+            ]
+          }
+        },
+        "tokenInvalidation": {
+          "statusCodes": [
+            401
+          ],
+          "retryOnInvalidation": true
+        }
+      },
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "10s",
+        "retryableErrors": [
+          "network_error",
+          "timeout",
+          "server_error"
+        ]
+      },
+      "endpoints": [
+        {
+          "id": "ping",
+          "name": "Ping Server",
+          "description": "Check that the UnifyEM server is reachable and that your credentials are valid.",
+          "method": "GET",
+          "path": "/api/v1/ping",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_list",
+          "name": "List Agents",
+          "description": "List every registered agent with metadata: agent_id, friendly_name, active, first_seen, last_seen, last_ip, version, build, triggers (lost/uninstall/wipe), tags, users and the last reported status. Start here to find an agent_id. Related: unifyem_agent_get, unifyem_agent_list_by_tag.",
+          "method": "GET",
+          "path": "/api/v1/agent",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_get",
+          "name": "Get Agent",
+          "description": "Get metadata and last reported status for one agent.",
+          "method": "GET",
+          "path": "/api/v1/agent/{agent_id}",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_list_by_tag",
+          "name": "List Agents By Tag",
+          "description": "List agents that carry a given tag. Use this to fan a command out to a group: call it, then issue the unifyem_cmd_* tool once per agent_id.",
+          "method": "GET",
+          "path": "/api/v1/agent/by-tag/{tag}",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "tag",
+              "description": "Tag to match exactly.",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_rename",
+          "name": "Rename Agent",
+          "description": "Set the friendly name shown for an agent.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "friendly_name",
+              "description": "New human-readable name for the agent.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_delete",
+          "name": "Delete Agent",
+          "description": "Delete an agent record from the server. The agent software is not touched; use unifyem_agent_trigger_uninstall to remove software first.",
+          "method": "DELETE",
+          "path": "/api/v1/agent/{agent_id}",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_trigger_lost",
+          "name": "Trigger Lost Mode",
+          "description": "Mark an agent as lost. On its next sync the agent enters lost mode, which affects the device's user. Clear with unifyem_agent_trigger_reset.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}",
+          "hints": {
+            "openWorld": true,
+            "destructive": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "triggers.lost",
+              "alias": "static_triggers_lost",
+              "description": "Fixed value",
+              "type": "boolean",
+              "required": false,
+              "location": "body",
+              "default": true,
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_trigger_uninstall",
+          "name": "Trigger Uninstall",
+          "description": "Instruct the agent to uninstall itself on its next sync. Clear before it syncs with unifyem_agent_trigger_reset.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}",
+          "hints": {
+            "openWorld": true,
+            "destructive": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "triggers.uninstall",
+              "alias": "static_triggers_uninstall",
+              "description": "Fixed value",
+              "type": "boolean",
+              "required": false,
+              "location": "body",
+              "default": true,
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_trigger_wipe",
+          "name": "Trigger Wipe",
+          "description": "Instruct the agent to wipe the endpoint's disk on its next sync. Irreversible once the agent syncs. Clear before it syncs with unifyem_agent_trigger_reset.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}",
+          "hints": {
+            "openWorld": true,
+            "destructive": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "triggers.wipe",
+              "alias": "static_triggers_wipe",
+              "description": "Fixed value",
+              "type": "boolean",
+              "required": false,
+              "location": "body",
+              "default": true,
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_trigger_reset",
+          "name": "Reset Agent Triggers",
+          "description": "Clear the lost, uninstall and wipe triggers on an agent.",
+          "method": "PUT",
+          "path": "/api/v1/reset/{agent_id}",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_tags_list",
+          "name": "List Agent Tags",
+          "description": "List the tags attached to an agent.",
+          "method": "GET",
+          "path": "/api/v1/agent/{agent_id}/tags",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_tags_add",
+          "name": "Add Agent Tags",
+          "description": "Attach one or more tags to an agent. Existing tags are kept.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}/tags/add",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "tags",
+              "description": "Tags to add.",
+              "type": "array",
+              "items": "string",
+              "required": true,
+              "location": "body",
+              "examples": [
+                [
+                  "laptop",
+                  "finance"
+                ]
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_tags_remove",
+          "name": "Remove Agent Tags",
+          "description": "Detach one or more tags from an agent.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}/tags/remove",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "tags",
+              "description": "Tags to remove.",
+              "type": "array",
+              "items": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_users_add",
+          "name": "Add Agent Users",
+          "description": "Associate UnifyEM user records with an agent (the people who use the device). Users must already exist; see unifyem_user_list and unifyem_user_add. This does not create OS accounts; use unifyem_cmd_user_add for that.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}/users/add",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "users",
+              "description": "UnifyEM user IDs to associate.",
+              "type": "array",
+              "items": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_users_remove",
+          "name": "Remove Agent Users",
+          "description": "Remove the association between UnifyEM user records and an agent.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}/users/remove",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            },
+            {
+              "name": "users",
+              "description": "UnifyEM user IDs to disassociate.",
+              "type": "array",
+              "items": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_requests_list",
+          "name": "List Agent Requests",
+          "description": "List command requests for one agent with status (new, pending, complete, failed, invalid, cancelled), response text and response data. Passwords in parameters are masked.",
+          "method": "GET",
+          "path": "/api/v1/agent/{agent_id}/requests",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_requests_cancel",
+          "name": "Cancel Agent Requests",
+          "description": "Cancel every pending request queued for an agent.",
+          "method": "POST",
+          "path": "/api/v1/agent/{agent_id}/cancel-requests",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "agent_recovery_get",
+          "name": "Get Agent Recovery Info",
+          "description": "Return the agent's encrypted recovery blob (service account and BitLocker info) or an empty result if none has been reported. The blob is encrypted to the recovery public key and must be decrypted locally with the private key (uem-cli recovery get).",
+          "method": "GET",
+          "path": "/api/v1/agent/{agent_id}/recovery",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "event_list",
+          "name": "List Agent Events",
+          "description": "List events (messages, alerts, status reports) reported by one agent, optionally filtered by type and time range. Dates are YYYYMMDD; times are Unix seconds.",
+          "method": "GET",
+          "path": "/api/v1/events",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "query"
+            },
+            {
+              "name": "type",
+              "description": "Event type filter.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "enum": [
+                  "message",
+                  "alert",
+                  "status"
+                ]
+              }
+            },
+            {
+              "name": "start",
+              "description": "Start date, YYYYMMDD, inclusive.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "examples": [
+                "20260101"
+              ],
+              "validation": {
+                "pattern": "^\\d{8}$"
+              }
+            },
+            {
+              "name": "end",
+              "description": "End date, YYYYMMDD, inclusive.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "validation": {
+                "pattern": "^\\d{8}$"
+              }
+            },
+            {
+              "name": "start_time",
+              "description": "Start time as Unix seconds. Overrides start.",
+              "type": "number",
+              "required": false,
+              "location": "query"
+            },
+            {
+              "name": "end_time",
+              "description": "End time as Unix seconds. Overrides end.",
+              "type": "number",
+              "required": false,
+              "location": "query"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_ping",
+          "name": "Command: Ping Agent",
+          "description": "Ask an agent to acknowledge a ping. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "ping",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_status",
+          "name": "Command: Request Status",
+          "description": "Ask an agent to send a fresh status report. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "status",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_execute",
+          "name": "Command: Execute",
+          "description": "Run a program or shell command on the endpoint. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "execute",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.cmd",
+              "alias": "cmd",
+              "description": "Program or command to run on the endpoint.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.arg1",
+              "alias": "arg1",
+              "description": "Optional argument 1 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg2",
+              "alias": "arg2",
+              "description": "Optional argument 2 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg3",
+              "alias": "arg3",
+              "description": "Optional argument 3 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg4",
+              "alias": "arg4",
+              "description": "Optional argument 4 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg5",
+              "alias": "arg5",
+              "description": "Optional argument 5 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg6",
+              "alias": "arg6",
+              "description": "Optional argument 6 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg7",
+              "alias": "arg7",
+              "description": "Optional argument 7 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg8",
+              "alias": "arg8",
+              "description": "Optional argument 8 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg9",
+              "alias": "arg9",
+              "description": "Optional argument 9 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg10",
+              "alias": "arg10",
+              "description": "Optional argument 10 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg11",
+              "alias": "arg11",
+              "description": "Optional argument 11 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg12",
+              "alias": "arg12",
+              "description": "Optional argument 12 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.ssh",
+              "alias": "ssh",
+              "description": "Set to \"true\" to run the command via SSH-style shell handling.",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "validation": {
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_download_execute",
+          "name": "Command: Download And Execute",
+          "description": "Download a file from a URL to the endpoint and execute it. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "download_execute",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.url",
+              "alias": "url",
+              "description": "URL to download from.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.hash",
+              "alias": "hash",
+              "description": "Expected SHA256 hash of the download, base64 encoded. Verified before execution.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg1",
+              "alias": "arg1",
+              "description": "Optional argument 1 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg2",
+              "alias": "arg2",
+              "description": "Optional argument 2 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg3",
+              "alias": "arg3",
+              "description": "Optional argument 3 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg4",
+              "alias": "arg4",
+              "description": "Optional argument 4 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg5",
+              "alias": "arg5",
+              "description": "Optional argument 5 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg6",
+              "alias": "arg6",
+              "description": "Optional argument 6 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg7",
+              "alias": "arg7",
+              "description": "Optional argument 7 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg8",
+              "alias": "arg8",
+              "description": "Optional argument 8 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg9",
+              "alias": "arg9",
+              "description": "Optional argument 9 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg10",
+              "alias": "arg10",
+              "description": "Optional argument 10 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg11",
+              "alias": "arg11",
+              "description": "Optional argument 11 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            },
+            {
+              "name": "args.arg12",
+              "alias": "arg12",
+              "description": "Optional argument 12 passed to the command.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_upgrade",
+          "name": "Command: Upgrade Agent",
+          "description": "Instruct the agent to download and install the latest agent build from the server. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "upgrade",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_refresh_service_account",
+          "name": "Command: Refresh Service Account",
+          "description": "Instruct the agent to generate a new service account password and report it to the server. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "refresh_service_account",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_reboot",
+          "name": "Command: Reboot",
+          "description": "Reboot the endpoint. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "reboot",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_shutdown",
+          "name": "Command: Shutdown",
+          "description": "Shut the endpoint down. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "shutdown",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_user_list",
+          "name": "Command: List OS Users",
+          "description": "List local OS accounts on the endpoint (domain, name, disabled, administrator). The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "user_list",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_user_add",
+          "name": "Command: Add OS User",
+          "description": "Create a local OS account on the endpoint. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "user_add",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.user",
+              "alias": "user",
+              "description": "Local OS account name on the endpoint.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.password",
+              "alias": "password",
+              "description": "Password for the local OS account.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.admin",
+              "alias": "admin",
+              "description": "Set to \"true\" to make the account a local administrator.",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "validation": {
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_user_delete",
+          "name": "Command: Delete OS User",
+          "description": "Delete a local OS account from the endpoint. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true,
+            "destructive": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "user_delete",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.user",
+              "alias": "user",
+              "description": "Local OS account name on the endpoint.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.shutdown",
+              "alias": "shutdown",
+              "description": "Set to \"true\" to shut the endpoint down after the operation.",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "validation": {
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_user_admin",
+          "name": "Command: Set OS User Admin",
+          "description": "Grant or revoke local administrator rights for an OS account. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "user_admin",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.user",
+              "alias": "user",
+              "description": "Local OS account name on the endpoint.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.admin",
+              "alias": "admin",
+              "description": "\"true\" to grant administrator rights, \"false\" to revoke.",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "validation": {
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_user_password",
+          "name": "Command: Set OS User Password",
+          "description": "Change the password of a local OS account. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "user_password",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.user",
+              "alias": "user",
+              "description": "Local OS account name on the endpoint.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.password",
+              "alias": "password",
+              "description": "Password for the local OS account.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_user_lock",
+          "name": "Command: Lock OS User",
+          "description": "Lock (disable) a local OS account. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "user_lock",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.user",
+              "alias": "user",
+              "description": "Local OS account name on the endpoint.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.shutdown",
+              "alias": "shutdown",
+              "description": "Set to \"true\" to shut the endpoint down after the operation.",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "validation": {
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "cmd_user_unlock",
+          "name": "Command: Unlock OS User",
+          "description": "Unlock (enable) a local OS account and set its password. The command is queued and delivered on the agent's next sync. Returns a request_id; poll unifyem_request_get with it to see the result.",
+          "method": "POST",
+          "path": "/api/v1/cmd",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "cmd",
+              "alias": "static_cmd",
+              "description": "Fixed value",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "user_unlock",
+              "static": true
+            },
+            {
+              "name": "args.agent_id",
+              "alias": "agent_id",
+              "description": "Agent ID as returned by unifyem_agent_list (format A-xxxxxxxx-...).",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.user",
+              "alias": "user",
+              "description": "Local OS account name on the endpoint.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "args.password",
+              "alias": "password",
+              "description": "Password for the local OS account.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "request_list",
+          "name": "List Requests",
+          "description": "List every command request on the server across all agents, with status and results. Passwords in parameters are masked.",
+          "method": "GET",
+          "path": "/api/v1/request",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "request_get",
+          "name": "Get Request",
+          "description": "Get one command request by request_id: status (new, pending, complete, failed, invalid, cancelled), response text and any response data. Use this to wait for a unifyem_cmd_* result.",
+          "method": "GET",
+          "path": "/api/v1/request/{request_id}",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "request_id",
+              "description": "Request ID returned by a unifyem_cmd_* tool (format R-...).",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "request_cancel",
+          "name": "Cancel Request",
+          "description": "Cancel a pending request so it is not delivered to the agent.",
+          "method": "POST",
+          "path": "/api/v1/request/{request_id}/cancel",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "request_id",
+              "description": "Request ID to cancel.",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "request_delete",
+          "name": "Delete Request",
+          "description": "Delete a request record from the server.",
+          "method": "DELETE",
+          "path": "/api/v1/request/{request_id}",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "request_id",
+              "description": "Request ID to delete.",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "report_get",
+          "name": "Get Report",
+          "description": "Generate a server-side report. Currently only the \"agents\" report exists.",
+          "method": "POST",
+          "path": "/api/v1/report",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "report",
+              "description": "Report name.",
+              "type": "string",
+              "required": true,
+              "location": "body",
+              "validation": {
+                "enum": [
+                  "agents"
+                ]
+              }
+            },
+            {
+              "name": "args.format",
+              "alias": "format",
+              "description": "Output format.",
+              "type": "string",
+              "required": false,
+              "location": "body",
+              "default": "json",
+              "validation": {
+                "enum": [
+                  "json",
+                  "string"
+                ]
+              }
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "user_list",
+          "name": "List Users",
+          "description": "List UnifyEM user records (people who use managed devices, not server administrators).",
+          "method": "GET",
+          "path": "/api/v1/user",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "user_get",
+          "name": "Get User",
+          "description": "Get one UnifyEM user record.",
+          "method": "GET",
+          "path": "/api/v1/user/{user_id}",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [
+            {
+              "name": "user_id",
+              "description": "User ID as returned by unifyem_user_list.",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "user_add",
+          "name": "Add User",
+          "description": "Create a UnifyEM user record. Associate it with devices using unifyem_agent_users_add.",
+          "method": "POST",
+          "path": "/api/v1/user",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "user",
+              "description": "Username / user ID.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "email",
+              "description": "Email address.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            },
+            {
+              "name": "display_name",
+              "description": "Display name.",
+              "type": "string",
+              "required": false,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "user_delete",
+          "name": "Delete User",
+          "description": "Delete a UnifyEM user record.",
+          "method": "DELETE",
+          "path": "/api/v1/user/{user_id}",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "user_id",
+              "description": "User ID to delete.",
+              "type": "string",
+              "required": true,
+              "location": "path"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "config_agents_get",
+          "name": "Get Agent Config",
+          "description": "Get the global configuration pushed to all agents (sync intervals, logging, CA pinning, verification, recovery info).",
+          "method": "GET",
+          "path": "/api/v1/config/agent",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "config_agents_set",
+          "name": "Set Agent Config",
+          "description": "Update one or more global agent configuration values. Keys must already exist: sync_interval, sync_pending, sync_retry, sync_lost, status_interval, log_retention, log_stdout, log_windows_disk, log_windows_events, log_macos_disk, log_linux_disk, log_debug, pin_ca, verification, recovery_info. Read current values with unifyem_config_agents_get first.",
+          "method": "PUT",
+          "path": "/api/v1/config/agent",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "parameters",
+              "description": "Object of key to string value, e.g. {\"sync_interval\": \"300\"}.",
+              "type": "object",
+              "required": true,
+              "location": "body",
+              "examples": [
+                {
+                  "sync_interval": "300"
+                }
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "config_server_get",
+          "name": "Get Server Config",
+          "description": "Get the UnifyEM server configuration (listen address, external URL, paths, timeouts, token lifetimes, retention, authorized admin IPs).",
+          "method": "GET",
+          "path": "/api/v1/config/server",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "config_server_set",
+          "name": "Set Server Config",
+          "description": "Update one or more server configuration values. Keys must already exist: log_file, log_stdout, log_retention, listen, external_url, data_path, files_path, db_path, http_timeout, http_idle_timeout, max_concurrent, penalty_box_min, penalty_box_max, handler_timeout, access_token_life, refresh_token_life_users, authorized_admin_ips, request_retries, request_retry_delay, agent_retention_days, event_retention_days, request_retention_days, recovery_public_key. Some values only take effect after a server restart. Read current values with unifyem_config_server_get first.",
+          "method": "PUT",
+          "path": "/api/v1/config/server",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "parameters",
+              "description": "Object of key to string value, e.g. {\"event_retention_days\": \"90\"}.",
+              "type": "object",
+              "required": true,
+              "location": "body",
+              "examples": [
+                {
+                  "event_retention_days": "90"
+                }
+              ]
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "regtoken_get",
+          "name": "Get Registration Token",
+          "description": "Get the current agent installation token (base64 of server URL plus registration token) used with \"uem-agent install <token>\".",
+          "method": "GET",
+          "path": "/api/v1/regtoken",
+          "hints": {
+            "openWorld": true,
+            "readOnly": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "regtoken_new",
+          "name": "New Registration Token",
+          "description": "Generate a new registration token and return the new installation token. The previous token stops working for new installs; already-registered agents are unaffected.",
+          "method": "POST",
+          "path": "/api/v1/regtoken",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "recovery_key_set",
+          "name": "Set Recovery Public Key",
+          "description": "Upload the recovery public key (PEM) that agents use to encrypt recovery info. Generate the keypair locally with \"uem-cli recovery keygen\" and keep the private key offline.",
+          "method": "POST",
+          "path": "/api/v1/recovery/key",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [
+            {
+              "name": "public_key",
+              "description": "PEM-encoded public key.",
+              "type": "string",
+              "required": true,
+              "location": "body"
+            }
+          ],
+          "response": {
+            "type": "json"
+          }
+        },
+        {
+          "id": "deployfile_create",
+          "name": "Create Deploy File",
+          "description": "Regenerate deploy.json with SHA256 hashes of the uem-* files in the server's files directory. Run after copying new agent binaries there so agents can verify upgrades.",
+          "method": "POST",
+          "path": "/api/v1/deployfile",
+          "hints": {
+            "openWorld": true
+          },
+          "parameters": [],
+          "response": {
+            "type": "json"
+          }
+        }
+      ]
+    }
+  }
+}
