@@ -306,6 +306,7 @@ type CredentialField struct {
 	Description string `json:"description,omitempty"`
 	Location    string `json:"location"`
 	ParamName   string `json:"paramName,omitempty"`
+	Secret      bool   `json:"secret,omitempty"` // prompt without echo
 }
 
 // AuthType returns the auth type and whether it was present
