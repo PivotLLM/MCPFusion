@@ -253,10 +253,14 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 			log.Printf("Warning: could not fetch service config from server: %v (using local defaults)", err)
 		}
 	} else if serverConfig != nil && serverConfig.Config != nil {
-		// Check if the server has a user_credentials auth config for this service
-		if authType, ok := serverConfig.Config.AuthType(); ok && authType == "user_credentials" {
+		// Services that prompt for values rather than running an OAuth flow:
+		// user_credentials, and session_jwt with a credentials block. Both
+		// advertise the fields to collect.
+		if promptsForCredentials(serverConfig.Config) {
 			if flags.verbose {
-				log.Printf("Service '%s' uses user_credentials authentication", cfg.Service)
+				authType, _ := serverConfig.Config.AuthType()
+				log.Printf("Service '%s' uses %s authentication with %d prompted field(s)",
+					cfg.Service, authType, len(serverConfig.Config.Fields))
 			}
 			return executeUserCredentialsFlow(ctx, cfg, mcpClient, serverConfig.Config, flags.verbose)
 		}
@@ -332,31 +336,15 @@ func executeUserCredentialsFlow(ctx context.Context, cfg *config.Config, mcpClie
 		fmt.Printf("\n%s\n\n", configData.Instructions)
 	}
 
+	if len(configData.Fields) == 0 {
+		return fmt.Errorf("service '%s' declares no credential fields to prompt for", cfg.Service)
+	}
+
 	// Collect credential values from the user
-	metadata := make(map[string]string)
 	reader := bufio.NewReader(os.Stdin)
-
-	for _, field := range configData.Fields {
-		label := field.Label
-		if label == "" {
-			label = field.Name
-		}
-
-		if field.Description != "" {
-			fmt.Printf("%s: %s\n", label, field.Description)
-		}
-		fmt.Printf("Enter %s: ", label)
-
-		value, err := reader.ReadString('\n')
-		if err != nil {
-			return fmt.Errorf("failed to read input for '%s': %w", field.Name, err)
-		}
-		value = strings.TrimSpace(value)
-		if value == "" {
-			return fmt.Errorf("value for '%s' cannot be empty", field.Name)
-		}
-
-		metadata[field.Name] = value
+	metadata, err := promptCredentialFields(configData.Fields, reader, os.Stdout, terminalSecretReader(reader))
+	if err != nil {
+		return err
 	}
 
 	if verbose {
@@ -366,13 +354,19 @@ func executeUserCredentialsFlow(ctx context.Context, cfg *config.Config, mcpClie
 	// Store credentials via the API.
 	// The access token "user_credentials:<service>" is a sentinel value that triggers
 	// the server to look up stored credential metadata from the database instead of
-	// using the token directly for API authentication.
-	_, err := mcpClient.StoreTokens(ctx, cfg.Service, "user_credentials:"+cfg.Service, "", 0, metadata)
+	// using the token directly for API authentication. For session_jwt services the
+	// server either keeps the values or exchanges them for a token immediately, and
+	// reports which in its message.
+	resp, err := mcpClient.StoreTokens(ctx, cfg.Service, "user_credentials:"+cfg.Service, "", 0, metadata)
 	if err != nil {
 		return fmt.Errorf("failed to store credentials in MCPFusion: %w", err)
 	}
 
-	fmt.Printf("\nCredentials stored successfully for service '%s'\n", cfg.Service)
+	message := "Credentials stored successfully"
+	if resp != nil && resp.Message != "" {
+		message = resp.Message
+	}
+	fmt.Printf("\n%s for service '%s'\n", message, cfg.Service)
 	return nil
 }
 

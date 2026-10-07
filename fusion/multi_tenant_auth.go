@@ -258,7 +258,12 @@ func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext 
 			tenantContext.ShortHash(), tenantContext.ServiceName, authConfig.Type)
 	}
 
-	tokenInfo, err := strategy.Authenticate(ctx, authConfig.Config)
+	loginConfig, err := mtam.loginConfigForTenant(tenantContext, authConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenInfo, err := strategy.Authenticate(ctx, loginConfig)
 	if err != nil {
 		// Check if it's a DeviceCodeError - don't wrap it
 		if _, ok := AsDeviceCodeError(err); ok {

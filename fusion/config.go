@@ -883,6 +883,12 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 			}
 			// "header" doesn't require additional fields - defaults to Authorization header
 		}
+		if err := validateSessionCredentials(a.Config); err != nil {
+			if logger != nil {
+				logger.Errorf("Service %s: %v", serviceName, err)
+			}
+			return err
+		}
 		if logger != nil {
 			logger.Debugf("Service %s: session_jwt auth configuration validated", serviceName)
 		}

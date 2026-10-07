@@ -825,10 +825,28 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 	}
 
 	// Extract configuration
-	loginURL, _ := config["loginURL"].(string)
-	if loginURL == "" {
+	loginURLTemplate, _ := config["loginURL"].(string)
+	if loginURLTemplate == "" {
 		return nil, fmt.Errorf("loginURL is required for session_jwt auth")
 	}
+
+	// Per-tenant credentials, when the service declares a credentials block,
+	// arrive under a reserved key and are substituted into the login template.
+	// Substitution copies the template values; the shared config is never mutated.
+	creds, _ := config[sessionCredentialsRuntimeKey].(map[string]string)
+	resolved := make(map[string]interface{}, len(loginTemplateKeys))
+	for _, key := range loginTemplateKeys {
+		value, ok := config[key]
+		if !ok {
+			continue
+		}
+		substituted, err := substituteCredentialPlaceholders(value, creds)
+		if err != nil {
+			return nil, err
+		}
+		resolved[key] = substituted
+	}
+	loginURL := resolved["loginURL"].(string)
 
 	baseURL, _ := config["baseURL"].(string)
 	if baseURL != "" {
@@ -855,7 +873,7 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 
 	// Build request body
 	var bodyReader io.Reader
-	if loginBody, ok := config["loginBody"].(map[string]interface{}); ok {
+	if loginBody, ok := resolved["loginBody"].(map[string]interface{}); ok {
 		bodyBytes, err := json.Marshal(loginBody)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal login body: %w", err)
@@ -864,7 +882,7 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 		if s.logger != nil {
 			s.logger.Debugf("Login request body prepared (JSON)")
 		}
-	} else if formBody, ok := config["loginFormBody"].(map[string]interface{}); ok {
+	} else if formBody, ok := resolved["loginFormBody"].(map[string]interface{}); ok {
 		formData := url.Values{}
 		for k, v := range formBody {
 			formData.Set(k, fmt.Sprintf("%v", v))
@@ -877,7 +895,8 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 	}
 
 	if s.logger != nil {
-		s.logger.Debugf("Session JWT login: %s %s", loginMethod, loginURL)
+		// Log the template, not the resolved URL, which may embed credentials.
+		s.logger.Debugf("Session JWT login: %s %s", loginMethod, loginURLTemplate)
 	}
 
 	// Create request
@@ -888,6 +907,13 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Accept", "application/json")
+	if loginHeaders, ok := resolved["loginHeaders"].(map[string]interface{}); ok {
+		for name, value := range loginHeaders {
+			if str, ok := value.(string); ok {
+				req.Header.Set(name, str)
+			}
+		}
+	}
 
 	// Execute request
 	resp, err := s.httpClient.Do(req)

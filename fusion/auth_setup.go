@@ -30,8 +30,8 @@ func (f *Fusion) createAuthSetupToolDefinition(serviceName string, service *Serv
 	authType := service.Auth.Type
 
 	var description string
-	switch authType {
-	case AuthTypeUserCredentials:
+	switch {
+	case service.Auth.PromptsForCredentials():
 		description = fmt.Sprintf(
 			"Generates authentication instructions for %s when API calls fail due to missing credentials. "+
 				"Returns a fusion-auth command the user can run to provide required credentials.",
@@ -104,6 +104,10 @@ func (f *Fusion) createAuthSetupHandler(serviceName string, authType AuthType) g
 			ServiceName: serviceName,
 		}
 		f.multiTenantAuth.InvalidateToken(serviceContext)
+		if _, hasCredentials := service.Auth.SessionCredentials(); hasCredentials {
+			// The user is about to enter new values; the old ones must not be reused.
+			f.multiTenantAuth.InvalidateCredentials(serviceContext)
+		}
 
 		if f.logger != nil {
 			f.logger.Infof("Invalidated existing token for tenant %s service %s before re-auth",
@@ -138,11 +142,11 @@ func (f *Fusion) createAuthSetupHandler(serviceName string, authType AuthType) g
 		}
 
 		var message string
-		switch authType {
-		case AuthTypeUserCredentials:
+		switch {
+		case service.Auth.PromptsForCredentials():
 			// Check for optional setup instructions in the service auth config
 			var instructionsBlock string
-			if instructions, ok := service.Auth.Config["instructions"].(string); ok && instructions != "" {
+			if instructions := service.Auth.SetupInstructions(); instructions != "" {
 				instructionsBlock = "\n\n" + instructions + "\n"
 			}
 			message = fmt.Sprintf(

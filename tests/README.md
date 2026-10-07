@@ -85,6 +85,10 @@ tests/
     ├── test_findings.sh
     ├── test_clients.sh
     └── test_object_array_params.sh
+└── UnifyEM/
+    ├── run_all_tests.sh      # Runs all UnifyEM tests
+    ├── test_ping.sh          # unifyem_ping, unifyem_auth_setup
+    └── test_agents.sh        # unifyem_agent_list, unifyem_agent_list_by_tag, unifyem_request_list
 ```
 
 ## Running Tests
@@ -125,6 +129,15 @@ Requires valid Google OAuth authentication (run `google_auth_setup` or equivalen
 
 ```bash
 cd tests/Google
+./run_all_tests.sh
+```
+
+### UnifyEM tests
+
+Requires a running UnifyEM server (`UNIFYEM_URL` set for MCPFusion) and per-user credentials stored for the API token: call `unifyem_auth_setup` and run the `fusion-auth` command it returns, entering your UnifyEM administrator username and password. Set `UEM_TEST_TAG` in `.env` to a tag that exists on at least one agent.
+
+```bash
+cd tests/UnifyEM
 ./run_all_tests.sh
 ```
 
