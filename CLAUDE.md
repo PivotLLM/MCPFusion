@@ -37,14 +37,17 @@ go build -o mcpfusion
 
 ### Testing
 ```bash
-# Run all Go unit tests
-go test ./...
+# Full regression suite (both modules, race detector) — the one gate
+make test
+
+# Test, then build mcpfusion and cmd/auth/fusion-oauth
+make
 
 # Run tests with coverage
 go test -cover ./...
 
-# Run MCP function tests (requires running server)
-cd tests && ./run_all_tests.sh
+# Run MCP function tests (requires running server, APIKEY and probe)
+make test-integration
 
 # Run individual MCP function tests
 cd tests && ./test_profile.sh > profile_output.log
