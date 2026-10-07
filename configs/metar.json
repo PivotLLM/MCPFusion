@@ -1,0 +1,81 @@
+{
+  "services": {
+    "metar": {
+      "name": "Aviation Weather METAR",
+      "baseURL": "https://aviationweather.gov",
+      "auth": {
+        "type": "none",
+        "config": {}
+      },
+      "retry": {
+        "enabled": true,
+        "maxAttempts": 3,
+        "strategy": "exponential",
+        "baseDelay": "1s",
+        "maxDelay": "10s",
+        "jitter": true,
+        "backoffFactor": 2.0,
+        "retryableErrors": [
+          "network_error",
+          "timeout",
+          "server_error",
+          "rate_limited"
+        ]
+      },
+      "circuitBreaker": {
+        "enabled": true,
+        "failureThreshold": 5,
+        "successThreshold": 2,
+        "timeout": "30s",
+        "halfOpenMaxCalls": 2,
+        "resetTimeout": "60s"
+      },
+      "endpoints": [
+        {
+          "id": "get",
+          "name": "Get METAR Observation",
+          "description": "Get the latest METAR aviation weather observation for an airport or weather station identified by its ICAO code (e.g. CYOW for Ottawa, KJFK for New York JFK, EGLL for London Heathrow). Returns the raw and decoded observation as JSON, including temperature, dewpoint, wind, visibility, cloud layers, altimeter, and report time.",
+          "method": "GET",
+          "path": "/api/data/metar",
+          "connection": {
+            "timeout": "30s"
+          },
+          "parameters": [
+            {
+              "name": "ids",
+              "description": "ICAO code for the aerodrome or weather station, e.g. CYOW, KJFK, EGLL. Must be a valid ICAO identifier.",
+              "type": "string",
+              "required": true,
+              "location": "query",
+              "validation": {
+                "pattern": "^[A-Za-z0-9]{3,4}$"
+              },
+              "examples": [
+                "CYOW",
+                "KJFK",
+                "EGLL"
+              ]
+            },
+            {
+              "name": "format",
+              "description": "Response format.",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "default": "json",
+              "static": true
+            }
+          ],
+          "response": {
+            "type": "json",
+            "caching": {
+              "enabled": true,
+              "ttl": "5m",
+              "key": "metar:get:{ids}"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
