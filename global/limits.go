@@ -18,13 +18,13 @@ const (
 
 // HTTP client and outbound request timeouts.
 const (
-	HTTPDefaultClientTimeout      = 60 * time.Second
-	HTTPDefaultOutboundTimeout    = 60 * time.Second
-	HTTPDialTimeout               = 10 * time.Second
-	HTTPKeepAliveInterval         = 30 * time.Second
-	HTTPTLSHandshakeTimeout       = 10 * time.Second
-	HTTPResponseHeaderTimeout     = 30 * time.Second
-	HTTPExpectContinueTimeout     = 1 * time.Second
+	HTTPDefaultClientTimeout   = 60 * time.Second
+	HTTPDefaultOutboundTimeout = 60 * time.Second
+	HTTPDialTimeout            = 10 * time.Second
+	HTTPKeepAliveInterval      = 30 * time.Second
+	HTTPTLSHandshakeTimeout    = 10 * time.Second
+	HTTPResponseHeaderTimeout  = 30 * time.Second
+	HTTPExpectContinueTimeout  = 1 * time.Second
 
 	// HTTPClientTimeoutPadding is added to a per-endpoint context deadline when
 	// constructing a short-lived http.Client for that request.  The context

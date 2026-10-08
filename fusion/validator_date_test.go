@@ -8,9 +8,9 @@ package fusion
 import (
 	"testing"
 
-	"github.com/tenebris-tech/mlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tenebris-tech/mlogger"
 )
 
 func TestValidator_AutoConvertISOToYYYYMMDD(t *testing.T) {

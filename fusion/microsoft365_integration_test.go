@@ -863,4 +863,3 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 	configBytes, _ := json.Marshal(config)
 	return string(configBytes)
 }
-

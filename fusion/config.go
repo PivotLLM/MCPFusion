@@ -271,21 +271,21 @@ type HintsConfig struct {
 
 // ParameterConfig represents configuration for a parameter
 type ParameterConfig struct {
-	Name        string            `json:"name"`
-	Alias       string            `json:"alias,omitempty"`  // MCP-compliant name alias
-	Prefix      string            `json:"prefix,omitempty"` // Prefix for argument location (e.g., "-p", "--port")
-	Description string            `json:"description"`
-	Type        ParameterType     `json:"type"`
-	Items       ParameterType     `json:"items,omitempty"`  // Item type for array parameters: "string" or "object"
-	Required    bool              `json:"required"`
-	Location    ParameterLocation `json:"location"`
-	Default     interface{}       `json:"default,omitempty"`
-	Examples    []interface{}     `json:"examples,omitempty"`
-	Validation  *ValidationConfig `json:"validation,omitempty"`
-	Transform   *TransformConfig  `json:"transform,omitempty"`
-	Transforms  []string          `json:"transforms,omitempty"` // Named value transforms to apply (e.g. "html_compact")
-	Quoted        bool              `json:"quoted,omitempty"` // Whether to quote the parameter value
-	Static        bool              `json:"static,omitempty"` // Whether this is a static parameter (not exposed to MCP, always uses default)
+	Name          string            `json:"name"`
+	Alias         string            `json:"alias,omitempty"`  // MCP-compliant name alias
+	Prefix        string            `json:"prefix,omitempty"` // Prefix for argument location (e.g., "-p", "--port")
+	Description   string            `json:"description"`
+	Type          ParameterType     `json:"type"`
+	Items         ParameterType     `json:"items,omitempty"` // Item type for array parameters: "string" or "object"
+	Required      bool              `json:"required"`
+	Location      ParameterLocation `json:"location"`
+	Default       interface{}       `json:"default,omitempty"`
+	Examples      []interface{}     `json:"examples,omitempty"`
+	Validation    *ValidationConfig `json:"validation,omitempty"`
+	Transform     *TransformConfig  `json:"transform,omitempty"`
+	Transforms    []string          `json:"transforms,omitempty"`    // Named value transforms to apply (e.g. "html_compact")
+	Quoted        bool              `json:"quoted,omitempty"`        // Whether to quote the parameter value
+	Static        bool              `json:"static,omitempty"`        // Whether this is a static parameter (not exposed to MCP, always uses default)
 	FileNameParam string            `json:"fileNameParam,omitempty"` // For file-location params: name of another param that provides the Content-Disposition filename
 }
 

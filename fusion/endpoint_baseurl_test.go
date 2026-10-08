@@ -12,10 +12,10 @@ import (
 
 func TestEndpointConfig_BaseURL_JSONSerialization(t *testing.T) {
 	tests := []struct {
-		name           string
-		endpoint       EndpointConfig
-		expectInJSON   bool   // whether "baseURL" should appear in the serialized JSON
-		expectedURL    string // expected BaseURL value after round-trip
+		name         string
+		endpoint     EndpointConfig
+		expectInJSON bool   // whether "baseURL" should appear in the serialized JSON
+		expectedURL  string // expected BaseURL value after round-trip
 	}{
 		{
 			name: "without baseURL omits field from JSON",
@@ -202,11 +202,11 @@ func TestMapper_BuildURL_EndpointBaseURLOverride(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:    "different baseURLs produce different URLs for same path",
-			baseURL: "https://people.googleapis.com",
-			path:    "/v1/people/me/connections",
-			params:  nil,
-			args:    nil,
+			name:        "different baseURLs produce different URLs for same path",
+			baseURL:     "https://people.googleapis.com",
+			path:        "/v1/people/me/connections",
+			params:      nil,
+			args:        nil,
 			expectedURL: "https://people.googleapis.com/v1/people/me/connections",
 			expectError: false,
 		},

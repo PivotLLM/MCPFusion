@@ -95,7 +95,7 @@ func liveGoroutineCount() int {
 //  2. The goroutine count has not grown unboundedly.
 //  3. A fresh request made after the load run still succeeds (pool healthy).
 func TestConnectionPool_SequentialLoad(t *testing.T) {
-	const total = 200 // total requests to send
+	const total = 200    // total requests to send
 	const errorEvery = 7 // inject a 5xx every N-th request
 
 	var requestCount atomic.Int64

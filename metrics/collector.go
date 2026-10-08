@@ -28,8 +28,8 @@ type Collector struct {
 type ServiceStats struct {
 	Name      string `json:"name"`
 	Transport string `json:"transport"`       // "api", "mcp_stdio", "mcp_sse", "mcp_http", "internal"
-	Status    string `json:"status"`           // "operational", "degraded", "disconnected"
-	Tools     *int   `json:"tools,omitempty"`  // nil for non-tool services
+	Status    string `json:"status"`          // "operational", "degraded", "disconnected"
+	Tools     *int   `json:"tools,omitempty"` // nil for non-tool services
 	Requests  int64  `json:"requests"`
 	Errors    int64  `json:"errors"`
 }

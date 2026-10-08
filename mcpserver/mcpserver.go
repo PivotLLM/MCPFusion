@@ -249,8 +249,8 @@ func New(options ...Option) (*MCPServer, error) {
 	serverOptions := []server.ServerOption{
 		server.WithLogging(),
 		server.WithRecovery(),
-		WithRequestLogging(m.logger),              // Our custom request logging middleware
-		server.WithToolCapabilities(true),          // Enable dynamic tool list change notifications
+		WithRequestLogging(m.logger),      // Our custom request logging middleware
+		server.WithToolCapabilities(true), // Enable dynamic tool list change notifications
 	}
 
 	// Add MCP authentication middleware if configured

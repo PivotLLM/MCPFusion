@@ -17,7 +17,7 @@ import (
 type Manager struct {
 	configFiles    []string                              // List of config files to load
 	services       map[string]*fusion.ServiceConfig      // Merged services from all files
-	commands       map[string]*fusion.CommandGroupConfig  // Merged commands from all files
+	commands       map[string]*fusion.CommandGroupConfig // Merged commands from all files
 	nativePrefixes map[string]bool                       // Prefixes for native (non-config) tools
 	logger         global.Logger
 	mu             sync.RWMutex

@@ -24,9 +24,9 @@ import (
 //   - HeapAlloc growth is less than soakMaxHeapGrowthMB (100 MB).
 //   - Goroutine delta is no more than soakMaxGoroutineDelta (15).
 const (
-	soakRequests             = 2000
-	soakMaxHeapGrowthMB      = 100
-	soakMaxGoroutineDelta    = 15
+	soakRequests          = 2000
+	soakMaxHeapGrowthMB   = 100
+	soakMaxGoroutineDelta = 15
 )
 
 func TestSoak_MemoryAndGoroutines(t *testing.T) {

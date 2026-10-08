@@ -40,7 +40,7 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 			name: "query params - two fields",
 			tokenInfo: &TokenInfo{
 				Metadata: map[string]string{
-					"api_key":  "key123",
+					"api_key":   "key123",
 					"api_token": "tok456",
 				},
 			},
@@ -119,7 +119,7 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 			name: "mixed locations - query and header",
 			tokenInfo: &TokenInfo{
 				Metadata: map[string]string{
-					"api_key":   "qkey111",
+					"api_key":    "qkey111",
 					"auth_token": "hval222",
 				},
 			},

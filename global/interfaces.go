@@ -15,18 +15,18 @@ type Parameter struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	Required    bool                   `json:"required"`
-	Type        string                 `json:"type"`      // "string", "number", "boolean", "array", "object"
-	Items       string                 `json:"items,omitempty"`   // Item type for arrays: "string" or "object"
-	Default     interface{}            `json:"default"`   // Default value
-	Enum        []interface{}          `json:"enum"`      // Valid values
-	Pattern     string                 `json:"pattern"`   // Validation pattern
-	Minimum     *float64               `json:"minimum"`   // Min value (numbers)
-	Maximum     *float64               `json:"maximum"`   // Max value (numbers)
-	MinLength   *int                   `json:"minLength"` // Min length (strings/arrays)
-	MaxLength   *int                   `json:"maxLength"` // Max length (strings/arrays)
-	Format      string                 `json:"format"`    // "date", "email", "uri", etc.
-	Examples    []interface{}          `json:"examples"`  // Example values
-	Metadata    map[string]interface{} `json:"metadata"`  // Extensible for future needs
+	Type        string                 `json:"type"`            // "string", "number", "boolean", "array", "object"
+	Items       string                 `json:"items,omitempty"` // Item type for arrays: "string" or "object"
+	Default     interface{}            `json:"default"`         // Default value
+	Enum        []interface{}          `json:"enum"`            // Valid values
+	Pattern     string                 `json:"pattern"`         // Validation pattern
+	Minimum     *float64               `json:"minimum"`         // Min value (numbers)
+	Maximum     *float64               `json:"maximum"`         // Max value (numbers)
+	MinLength   *int                   `json:"minLength"`       // Min length (strings/arrays)
+	MaxLength   *int                   `json:"maxLength"`       // Max length (strings/arrays)
+	Format      string                 `json:"format"`          // "date", "email", "uri", etc.
+	Examples    []interface{}          `json:"examples"`        // Example values
+	Metadata    map[string]interface{} `json:"metadata"`        // Extensible for future needs
 }
 
 // EnhancedDescription generates a rich description with constraint information

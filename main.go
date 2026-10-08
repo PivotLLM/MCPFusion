@@ -26,10 +26,10 @@ import (
 	"github.com/PivotLLM/MCPFusion/hub"
 	"github.com/PivotLLM/MCPFusion/mcpserver"
 	"github.com/PivotLLM/MCPFusion/metrics"
-	"github.com/tenebris-tech/mlogger"
 	"github.com/PivotLLM/MCPFusion/providers/health"
 	"github.com/PivotLLM/MCPFusion/providers/knowledge"
 	"github.com/PivotLLM/MCPFusion/providers/perf"
+	"github.com/tenebris-tech/mlogger"
 )
 
 func main() {

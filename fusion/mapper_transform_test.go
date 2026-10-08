@@ -193,13 +193,13 @@ func TestMapper_TransformResponse_GmailMessage(t *testing.T) {
 	transform := `{id: .id, threadId: .threadId, labelIds: .labelIds, snippet: .snippet, internalDate: .internalDate, sizeEstimate: .sizeEstimate, headers: [.payload.headers[] | select(.name | test("^(Subject|From|To|Date|Cc)$"; "i"))]}`
 
 	data := map[string]interface{}{
-		"id":             "18f1a2b3c4d5e6f7",
-		"threadId":       "18f1a2b3c4d5e6f7",
-		"labelIds":       []interface{}{"INBOX", "UNREAD"},
-		"snippet":        "Hey, just wanted to follow up on our meeting notes from yesterday...",
-		"internalDate":   "1719835200000",
-		"sizeEstimate":   float64(4521),
-		"historyId":      "987654",
+		"id":                 "18f1a2b3c4d5e6f7",
+		"threadId":           "18f1a2b3c4d5e6f7",
+		"labelIds":           []interface{}{"INBOX", "UNREAD"},
+		"snippet":            "Hey, just wanted to follow up on our meeting notes from yesterday...",
+		"internalDate":       "1719835200000",
+		"sizeEstimate":       float64(4521),
+		"historyId":          "987654",
 		"resultSizeEstimate": float64(1),
 		"payload": map[string]interface{}{
 			"mimeType": "multipart/alternative",
@@ -308,7 +308,7 @@ func TestMapper_TransformResponse_CalendarEvents(t *testing.T) {
 				"end": map[string]interface{}{
 					"date": "2025-07-05",
 				},
-				"status":  "confirmed",
+				"status":   "confirmed",
 				"htmlLink": "https://calendar.google.com/event?id=evt_002",
 			},
 			// Event with no location or description

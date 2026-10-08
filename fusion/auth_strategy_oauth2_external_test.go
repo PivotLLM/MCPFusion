@@ -112,19 +112,19 @@ func TestOAuth2ExternalStrategy_ApplyAuth(t *testing.T) {
 
 func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 	tests := []struct {
-		name           string
-		tokenInfo      *TokenInfo
-		config         map[string]interface{}
-		serverHandler  http.HandlerFunc
-		wantError      bool
-		errorMsg       string
-		wantToken      string
-		wantRefresh    string
-		wantExpiry     bool
-		checkSecret    bool
-		checkScope     bool
-		wantScope      string
-		wantSecretVal  string
+		name          string
+		tokenInfo     *TokenInfo
+		config        map[string]interface{}
+		serverHandler http.HandlerFunc
+		wantError     bool
+		errorMsg      string
+		wantToken     string
+		wantRefresh   string
+		wantExpiry    bool
+		checkSecret   bool
+		checkScope    bool
+		wantScope     string
+		wantSecretVal string
 	}{
 		{
 			name: "successful refresh",
@@ -217,8 +217,8 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				RefreshToken: "refresh_token_123",
 			},
 			config: map[string]interface{}{
-				"client_id":     "test-client-id",
-				"client_secret": "test-secret-snake",
+				"client_id":      "test-client-id",
+				"client_secret":  "test-secret-snake",
 				"token_endpoint": "", // will be replaced with server URL
 			},
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {

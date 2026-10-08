@@ -8,12 +8,12 @@ package fusion
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	crand "crypto/rand"
 	"mime"
 	"mime/multipart"
 	"net"
@@ -1212,4 +1212,3 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 	message := err.Error()
 	return NewNetworkError(req.URL.String(), req.Method, message, err, timeout, retryable)
 }
-

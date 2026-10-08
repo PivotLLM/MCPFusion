@@ -50,7 +50,7 @@ type MCPClientManager struct {
 	logger             global.Logger
 	onToolsChanged     func(serviceName string, added, removed []string)
 	callTimeout        time.Duration // per-tool-call timeout for this service
-	progressForwarders sync.Map // downstream token string → *progressForwarder
+	progressForwarders sync.Map      // downstream token string → *progressForwarder
 	cbMu               sync.Mutex
 	cbFailures         int
 	cbOpenUntil        time.Time

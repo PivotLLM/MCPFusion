@@ -83,8 +83,8 @@ type DB struct {
 	dataDir      string
 	mutex        sync.RWMutex
 	closed       bool
-	lastUsedCh   chan string     // buffered channel; token hashes queued for last-used update
-	stopLastUsed chan struct{}   // closed by Close() to signal the worker to flush and exit
+	lastUsedCh   chan string    // buffered channel; token hashes queued for last-used update
+	stopLastUsed chan struct{}  // closed by Close() to signal the worker to flush and exit
 	lastUsedWg   sync.WaitGroup // tracks the single lastUsedWorker goroutine
 }
 
