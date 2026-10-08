@@ -3,7 +3,7 @@
 # Please see LICENSE file for details.                                         #
 ################################################################################
 
-.PHONY: all test test-integration build clean
+.PHONY: all test test-integration build clean fmt
 
 all: test
 	$(MAKE) build
@@ -22,3 +22,7 @@ build:
 clean:
 	rm -f mcpfusion cmd/auth/fusion-oauth
 	go clean -testcache
+
+fmt:
+	golangci-lint fmt
+	cd cmd/auth && golangci-lint fmt

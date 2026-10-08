@@ -22,7 +22,7 @@
 #   1   One or more tests failed
 #
 # Test phases:
-#   0.x  Pre-flight: build and vet
+#   0.x  Pre-flight: build, vet, format and lint
 #   1.x  Unit tests (go test -race -count=1 ./...)
 
 set -euo pipefail
@@ -129,6 +129,12 @@ if ! command -v go &>/dev/null; then
 fi
 GO_VERSION=$(go version)
 echo "  ${GO_VERSION}"
+
+if ! command -v golangci-lint &>/dev/null; then
+    echo "${RED}ERROR: 'golangci-lint' not found in PATH (https://golangci-lint.run)${NC}"
+    exit 1
+fi
+echo "  $(golangci-lint version 2>&1 | head -1)"
 echo ""
 
 for mod in "${MODULES[@]}"; do
@@ -148,6 +154,22 @@ for mod in "${MODULES[@]}"; do
         pass "go vet clean: $mod"
     else
         fail "go vet reported issues: $mod"
+    fi
+
+    echo ""
+    echo "  0.3  Format check: $mod (golangci-lint fmt --diff)"
+    if (cd "$mod" && golangci-lint fmt --diff) 2>&1; then
+        pass "Formatting clean: $mod"
+    else
+        fail "Formatting differs (run make fmt): $mod"
+    fi
+
+    echo ""
+    echo "  0.4  Lint: $mod (golangci-lint run ./...)"
+    if (cd "$mod" && golangci-lint run ./...) 2>&1; then
+        pass "Lint clean: $mod"
+    else
+        fail "Lint reported issues: $mod"
     fi
     echo ""
 done
