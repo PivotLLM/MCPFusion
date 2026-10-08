@@ -34,7 +34,7 @@ func parseFlags() options {
 	var o options
 
 	// Define command line flags
-	flag.BoolVar(&o.debug, "debug", true, "Enable debug mode")
+	flag.BoolVar(&o.debug, "debug", false, "Enable debug mode")
 	flag.IntVar(&o.port, "port", 8888, "Port to listen on")
 	flag.BoolVar(&o.noAuth, "no-auth", false, "Disable authentication (INSECURE - testing only)")
 	flag.StringVar(&o.config, "config", "", "Comma-separated list of configuration files (optional)")
@@ -88,7 +88,7 @@ func usage() {
 	fmt.Printf("        Comma-separated list of configuration files (optional)\n")
 	fmt.Printf("        Can also use MCP_FUSION_CONFIGS environment variable\n")
 	fmt.Printf("  -debug\n")
-	fmt.Printf("        Enable debug mode (default true)\n")
+	fmt.Printf("        Enable debug mode\n")
 	fmt.Printf("  -help\n")
 	fmt.Printf("        Show help information\n")
 	fmt.Printf("  -no-auth\n")
