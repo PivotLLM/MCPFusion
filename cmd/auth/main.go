@@ -46,6 +46,17 @@ const (
 	version        = "1.0.0"
 )
 
+// guidanceError is an error with advice for the person running the command.
+// The CLI prints the guidance after the error; the error string stays plain.
+type guidanceError struct {
+	err      error
+	guidance string
+}
+
+func (e *guidanceError) Error() string { return e.err.Error() }
+
+func (e *guidanceError) Unwrap() error { return e.err }
+
 type cliFlags struct {
 	service   string
 	fusionURL string
@@ -96,7 +107,13 @@ func main() {
 	defer cancel()
 
 	if err := executeOAuthFlow(ctx, cfg, &flags, registry); err != nil {
-		log.Fatalf("OAuth flow failed: %v", err)
+		cancel()
+		log.Printf("OAuth flow failed: %v", err)
+		var ge *guidanceError
+		if errors.As(err, &ge) {
+			_, _ = fmt.Fprintf(os.Stderr, "\n%s\n", ge.guidance)
+		}
+		os.Exit(1)
 	}
 }
 
@@ -239,7 +256,11 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 
 	pingResp, err := mcpClient.Ping(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to connect to MCPFusion server: %w\n\nPlease verify:\n1. The MCPFusion server URL is correct: %s\n2. The API token is valid\n3. The server is running and accessible", err, cfg.FusionURL)
+		return &guidanceError{
+			err: fmt.Errorf("failed to connect to MCPFusion server: %w", err),
+			guidance: fmt.Sprintf("Please verify:\n1. The MCPFusion server URL is correct: %s\n"+
+				"2. The API token is valid\n3. The server is running and accessible", cfg.FusionURL),
+		}
 	}
 
 	if flags.verbose {
@@ -302,7 +323,11 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 		Scopes:       strings.Join(provider.GetRequiredScopes(), " "),
 	}
 	if err := provider.ValidateConfiguration(serviceConfig); err != nil {
-		return fmt.Errorf("configuration validation failed: %w\n\nThe server may not have OAuth credentials configured.\nCheck GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables on the server", err)
+		return &guidanceError{
+			err: fmt.Errorf("configuration validation failed: %w", err),
+			guidance: "The server may not have OAuth credentials configured.\n" +
+				"Check GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables on the server",
+		}
 	}
 
 	if flags.verbose {

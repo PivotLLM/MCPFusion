@@ -158,7 +158,8 @@ func userDelete(database db.Database, userID string) error {
 func userLink(database db.Database, linkSpec string) error {
 	parts := strings.SplitN(linkSpec, ":", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return fmt.Errorf("invalid format. Use: -user-link user_id:key_hash")
+		fmt.Printf("Use: -user-link user_id:key_hash\n")
+		return fmt.Errorf("invalid -user-link format")
 	}
 
 	userID := parts[0]

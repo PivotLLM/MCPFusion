@@ -145,7 +145,8 @@ func tokenDelete(database db.Database, identifier string) error {
 	for _, token := range tokens {
 		if token.Hash == identifier || strings.HasPrefix(token.Hash, identifier) {
 			if matchedToken != nil {
-				return fmt.Errorf("multiple tokens match '%s'. Please use a longer prefix", identifier)
+				fmt.Printf("Please use a longer prefix.\n")
+				return fmt.Errorf("multiple tokens match '%s'", identifier)
 			}
 			matchedToken = &token
 		}
