@@ -6,222 +6,60 @@
 package main
 
 import (
-	"context"
-	"encoding/base64"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
 
-	"github.com/joho/godotenv"
+	"github.com/tenebris-tech/mlogger"
 
 	"github.com/PivotLLM/MCPFusion/app"
-	"github.com/PivotLLM/MCPFusion/config"
 	"github.com/PivotLLM/MCPFusion/db"
-	"github.com/PivotLLM/MCPFusion/fusion"
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/MCPFusion/hub"
-	"github.com/PivotLLM/MCPFusion/mcpserver"
-	"github.com/PivotLLM/MCPFusion/metrics"
-	"github.com/PivotLLM/MCPFusion/providers/health"
-	"github.com/PivotLLM/MCPFusion/providers/knowledge"
-	"github.com/PivotLLM/MCPFusion/providers/perf"
-	"github.com/tenebris-tech/mlogger"
+	"github.com/PivotLLM/MCPFusion/internal/env"
 )
 
 func main() {
-	var err error
-	var listen string
-
-	// Define command line flags
-	debugFlag := flag.Bool("debug", true, "Enable debug mode")
-	portFlag := flag.Int("port", 8888, "Port to listen on")
-	noAuthFlag := flag.Bool("no-auth", false, "Disable authentication (INSECURE - testing only)")
-	configFlag := flag.String("config", "", "Comma-separated list of configuration files (optional)")
-	helpFlag := flag.Bool("help", false, "Show help information")
-	versionFlag := flag.Bool("version", false, "Show version information")
-
-	// Token management subcommands
-	tokenAddFlag := flag.String("token-add", "", "Add new API token with description")
-	tokenListFlag := flag.Bool("token-list", false, "List all API tokens")
-	tokenDeleteFlag := flag.String("token-del", "", "Delete API token by prefix or hash")
-	tokenUserFlag := flag.String("token-user", "", "User ID to link token to (use with -token-add)")
-
-	// User management subcommands
-	userAddFlag := flag.String("user-add", "", "Add new user with description")
-	userTokenFlag := flag.String("user-token", "", "Also create an API token with this description (use with -user-add)")
-	userListFlag := flag.Bool("user-list", false, "List all users")
-	userDeleteFlag := flag.String("user-delete", "", "Delete user by ID")
-	userLinkFlag := flag.String("user-link", "", "Link API key to user (format: user_id:key_hash)")
-	userUnlinkFlag := flag.String("user-unlink", "", "Unlink API key from user by key hash")
-
-	// Auth code generation
-	authCodeFlag := flag.String("auth-code", "", "Generate auth code for a service (e.g., google)")
-	authURLFlag := flag.String("auth-url", "", "External URL of this server (required with -auth-code)")
-	authTokenFlag := flag.String("auth-token", "", "API token prefix/hash to identify tenant (for multi-token setups)")
-
-	// Perf provider flag (never use in production)
-	perfFlag := flag.Bool("perf", false, "Enable perf/stress testing tools (never use in production)")
-
-	// Set custom usage message
-	flag.Usage = func() {
-		fmt.Printf("%s - Multi-Tenant Model Context Protocol Server\n\n", app.Name())
-		fmt.Printf("Usage:\n")
-		fmt.Printf("  %s [options]\n\n", os.Args[0])
-		fmt.Printf("Server Options:\n")
-		fmt.Printf("  -config string\n")
-		fmt.Printf("        Comma-separated list of configuration files (optional)\n")
-		fmt.Printf("        Can also use MCP_FUSION_CONFIGS environment variable\n")
-		fmt.Printf("  -debug\n")
-		fmt.Printf("        Enable debug mode (default true)\n")
-		fmt.Printf("  -help\n")
-		fmt.Printf("        Show help information\n")
-		fmt.Printf("  -no-auth\n")
-		fmt.Printf("        Disable authentication (INSECURE - testing only)\n")
-		fmt.Printf("  -port int\n")
-		fmt.Printf("        Port to listen on (default 8888)\n")
-		fmt.Printf("  -version\n")
-		fmt.Printf("        Show version information\n\n")
-		fmt.Printf("Token Management Commands:\n")
-		fmt.Printf("  -token-add string\n")
-		fmt.Printf("        Add new API token with description\n")
-		fmt.Printf("  -token-user string\n")
-		fmt.Printf("        User ID to link token to (use with -token-add)\n")
-		fmt.Printf("  -token-list\n")
-		fmt.Printf("        List all API tokens\n")
-		fmt.Printf("  -token-del string\n")
-		fmt.Printf("        Delete API token by prefix or hash\n\n")
-		fmt.Printf("User Management Commands:\n")
-		fmt.Printf("  -user-add string\n")
-		fmt.Printf("        Add new user with description\n")
-		fmt.Printf("  -user-token string\n")
-		fmt.Printf("        Also create an API token with this description (use with -user-add)\n")
-		fmt.Printf("  -user-list\n")
-		fmt.Printf("        List all users and their linked API keys\n")
-		fmt.Printf("  -user-delete string\n")
-		fmt.Printf("        Delete user by ID\n")
-		fmt.Printf("  -user-link string\n")
-		fmt.Printf("        Link API key to user (format: user_id:key_hash)\n")
-		fmt.Printf("  -user-unlink string\n")
-		fmt.Printf("        Unlink API key from user by key hash\n\n")
-		fmt.Printf("Auth Code Commands:\n")
-		fmt.Printf("  -auth-code string\n")
-		fmt.Printf("        Generate auth code for a service (e.g., google)\n")
-		fmt.Printf("  -auth-url string\n")
-		fmt.Printf("        External URL of this server (required with -auth-code)\n")
-		fmt.Printf("  -auth-token string\n")
-		fmt.Printf("        API token prefix/hash to identify tenant (for multi-token setups)\n\n")
-		fmt.Printf("Environment Variables:\n")
-		fmt.Printf("  MCP_FUSION_DB_DIR   Custom database directory (default: /opt/mcpfusion or ~/.mcpfusion)\n")
-		fmt.Printf("  MCP_FUSION_DL_DIR   Directory for saving binary downloads (e.g. generated reports)\n\n")
-		fmt.Printf("Examples:\n")
-		fmt.Printf("  # Start server with configuration\n")
-		fmt.Printf("  %s -config configs/microsoft365.json -port 8888\n\n", os.Args[0])
-		fmt.Printf("  # Token management examples\n")
-		fmt.Printf("  %s -token-add \"Production token\"\n", os.Args[0])
-		fmt.Printf("  %s -token-add \"Production token\" -token-user <user-uuid>\n", os.Args[0])
-		fmt.Printf("  %s -token-list\n", os.Args[0])
-		fmt.Printf("  %s -token-del abc12345\n\n", os.Args[0])
-		fmt.Printf("  # Create user with API token in one step\n")
-		fmt.Printf("  %s -user-add \"Alice\" -user-token \"Alice laptop\"\n\n", os.Args[0])
-		fmt.Printf("  # Generate auth code for fusion-auth\n")
-		fmt.Printf("  %s -auth-code google -auth-url http://10.0.0.1:8888\n\n", os.Args[0])
-	}
-
-	// Parse command line flags
-	flag.Parse()
+	opts := parseFlags()
 
 	// Show help and exit if requested
-	if *helpFlag {
+	if opts.help {
 		flag.Usage()
-		os.Exit(0)
+		return
 	}
 
 	// Show version and exit if requested
-	if *versionFlag {
-		fmt.Printf("%s %s\n%s\n%s\n", app.Name(), app.Version(), app.TagLine(), app.Copyright())
-		buildTime, goVersion := app.BuildInfo()
-		if buildTime != "" {
-			fmt.Printf("Built: %s\n", buildTime)
-		}
-		fmt.Printf("Go:    %s\n", goVersion)
-		os.Exit(0)
+	if opts.version {
+		printVersion()
+		return
 	}
 
-	// Use the flag values
-	debug := *debugFlag
-	noAuth := *noAuthFlag
-
-	// Determine whether the knowledge provider is enabled (default: enabled).
-	// Load environment variables from config files in priority order:
-	// 1. /opt/mcpfusion/env
-	// 2. ~/.mcpfusion
-	envFiles := []string{
-		"/opt/mcpfusion/env",
-	}
-
-	// Add user-specific config files if home directory is available
-	homeDir, err := os.UserHomeDir()
-	if err == nil {
-		envFiles = append(envFiles, homeDir+string(os.PathSeparator)+".mcpfusion")
-	}
-
-	// Track which environment file was loaded
-	var loadedEnvFile string
-
-	// Try to load each config file in order
-	for _, envFile := range envFiles {
-		if _, err := os.Stat(envFile); err == nil {
-			err = godotenv.Load(envFile)
-			if err == nil {
-				// Stop after loading the first successful file. Note that logger is not configured yet.
-				loadedEnvFile = envFile
-				break
-			}
-		}
-	}
-
-	// Set MCP_FUSION_KNOWLEDGE=false, 0, or no to disable.
-	// Checked after env file loading so /opt/mcpfusion/env values are visible.
-	knowledgeEnabled := true
-	if v := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_FUSION_KNOWLEDGE"))); v == "false" || v == "0" || v == "no" {
-		knowledgeEnabled = false
-	}
-
-	// Determine whether the perf provider is enabled.
-	// Either --perf flag or MCP_FUSION_PERF=true/1/yes enables it.
-	// Checked after env file loading so /opt/mcpfusion/env values are visible.
-	perfEnabled := *perfFlag
-	if v := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_FUSION_PERF"))); v == "true" || v == "1" || v == "yes" {
-		perfEnabled = true
-	}
-
-	// My default log in the current directory
-	logfile := "mcpfusion.log"
-
-	// If MCP_FUSION_LOGFILE is set, use it instead
-	value, exists := os.LookupEnv("MCP_FUSION_LOGFILE")
-	if exists {
-		// Environment variable is set (could be empty)
-		logfile = value
-	}
+	// Load the environment file first: it can set the log file location.
+	loadedEnvFile := env.Load()
 
 	// Create the logger
 	logger, err := mlogger.New(
 		mlogger.WithPrefix(app.Name()),
 		mlogger.WithDateFormat("2006-01-02 15:04:05"),
-		mlogger.WithLogFile(logfile),
+		mlogger.WithLogFile(env.LogFile()),
 		mlogger.WithLogStdout(true),
-		mlogger.WithDebug(debug),
+		mlogger.WithDebug(opts.debug),
 	)
 	if err != nil {
 		fmt.Printf("Unable to create logger: %v", err)
 		os.Exit(1)
 	}
+
+	// Fatalf closes the log and exits with status 1.
+	if err := run(opts, logger, loadedEnvFile); err != nil {
+		logger.Fatalf("%v", err)
+	}
+}
+
+// run executes the requested administration command, or runs the server until
+// it is signalled to stop. The database is closed before it returns.
+func run(opts options, logger global.Logger, loadedEnvFile string) error {
+	knowledgeEnabled := env.KnowledgeEnabled()
+	perfEnabled := env.PerfEnabled(opts.perf)
 
 	// Log startup banner
 	logger.Infof("%s %s", app.Name(), app.Version())
@@ -240,7 +78,7 @@ func main() {
 	}
 
 	// Log warning if no-auth mode is enabled
-	if noAuth {
+	if opts.noAuth {
 		logger.Warning("**************************************************************")
 		logger.Warning("* SECURITY WARNING: Authentication is DISABLED              *")
 		logger.Warning("* This mode is INSECURE and should ONLY be used for testing *")
@@ -256,743 +94,70 @@ func main() {
 	}
 
 	// Now that env files are loaded, check for fusion configs
-	configFiles := getConfigFiles(*configFlag, logger)
+	configFiles := env.ConfigFiles(opts.config, logger)
 
 	// Determine listen address from environment or flag
-	if envListen := os.Getenv("MCP_FUSION_LISTEN"); envListen != "" {
-		listen = envListen
-		logger.Infof("Using listen address from MCP_FUSION_LISTEN: %s", envListen)
-	} else if *portFlag > 0 && *portFlag < 65536 {
-		listen = fmt.Sprintf("localhost:%d", *portFlag)
-	} else {
-		listen = "localhost:8888"
+	listen, fromEnv := env.Listen(opts.port)
+	if fromEnv {
+		logger.Infof("Using listen address from MCP_FUSION_LISTEN: %s", listen)
 	}
 
 	// Initialize database
 	logger.Info("Initializing database")
 
 	// Database configuration
-	dbDataDir := os.Getenv("MCP_FUSION_DB_DIR")
 	dbOpts := []db.Option{
 		db.WithLogger(logger),
 	}
-	if dbDataDir != "" {
+	if dbDataDir := os.Getenv("MCP_FUSION_DB_DIR"); dbDataDir != "" {
 		dbOpts = append(dbOpts, db.WithDataDir(dbDataDir))
 	}
 
 	// Initialize database (required)
 	database, err := db.New(dbOpts...)
 	if err != nil {
-		logger.Fatalf("Failed to initialize database: %v", err)
+		return fmt.Errorf("failed to initialize database: %w", err)
 	}
-	logger.Info("Database initialized successfully")
-
-	// Handle token management commands if specified
-	if *tokenAddFlag != "" || *tokenListFlag || *tokenDeleteFlag != "" {
-		if err := handleTokenCommands(database, *tokenAddFlag, *tokenListFlag, *tokenDeleteFlag, *tokenUserFlag, logger); err != nil {
-			logger.Fatalf("Token management failed: %v", err)
-		}
-		// Exit after token management - don't start server
-		os.Exit(0)
-	}
-
-	// Handle user management commands if specified
-	if *userAddFlag != "" || *userListFlag || *userDeleteFlag != "" || *userLinkFlag != "" || *userUnlinkFlag != "" {
-		if err := handleUserCommands(database, *userAddFlag, *userTokenFlag, *userListFlag, *userDeleteFlag, *userLinkFlag, *userUnlinkFlag, logger); err != nil {
-			logger.Fatalf("User management failed: %v", err)
-		}
-		os.Exit(0)
-	}
-
-	// Handle auth code generation if specified
-	if *authCodeFlag != "" {
-		if err := handleAuthCode(database, *authCodeFlag, *authURLFlag, *authTokenFlag, logger); err != nil {
-			logger.Fatalf("Auth code generation failed: %v", err)
-		}
-		os.Exit(0)
-	}
-
-	// Auto-migrate unlinked API keys to user accounts on startup
-	if err := database.AutoMigrateKeys(); err != nil {
-		logger.Warningf("API key auto-migration had issues: %v", err)
-	}
-
-	// Initialize database-backed cache
-	dbCache := fusion.NewDatabaseCache(database, logger)
-
-	// Create multi-tenant authentication manager. It registers the full canonical
-	// set of auth strategies (see fusion.defaultStrategies), so no manual
-	// per-strategy registration is needed here.
-	multiTenantAuth := fusion.NewMultiTenantAuthManager(database, dbCache, logger)
-
-	// Initialize config manager with all configuration files
-	configManager := config.New(
-		config.WithLogger(logger),
-		config.WithConfigFiles(configFiles...),
-	)
-
-	// Load all configurations
-	if err := configManager.LoadConfigs(); err != nil {
-		logger.Errorf("Failed to load configurations: %v", err)
-		// Continue anyway - server can run without configs
-	}
-
-	// Log what was loaded
-	serviceCount := configManager.ServiceCount()
-	commandCount := configManager.CommandCount()
-
-	if serviceCount > 0 || commandCount > 0 {
-		if serviceCount > 0 && commandCount > 0 {
-			logger.Infof("Loaded %d services and %d command groups from configuration files",
-				serviceCount, commandCount)
-		} else if serviceCount > 0 {
-			logger.Infof("Loaded %d services from configuration files", serviceCount)
-		} else {
-			logger.Infof("Loaded %d command groups from configuration files", commandCount)
-		}
-	} else {
-		logger.Warning("No services or commands loaded from configuration files")
-	}
-
-	logger.Info("Multi-tenant authentication system initialized")
-
-	// Create shared metrics collector for cross-package health reporting
-	sharedCollector := metrics.New()
-
-	// Create a slice (list) of tool providers
-	var providers []global.ToolProvider
-
-	// Add fusion provider if configurations were loaded
-	var fusionProvider *fusion.Fusion
-	if serviceCount > 0 || commandCount > 0 {
-		logger.Infof("Creating fusion provider with %d services and %d command groups",
-			serviceCount, commandCount)
-
-		// Configure fusion provider with config manager
-		fusionOpts := []fusion.Option{
-			fusion.WithLogger(logger),
-			fusion.WithConfigManager(configManager),
-			fusion.WithSharedCollector(sharedCollector),
-		}
-
-		// Set external URL for auth setup tools
-		if externalURL := os.Getenv("MCP_FUSION_EXTERNAL_URL"); externalURL != "" {
-			fusionOpts = append(fusionOpts, fusion.WithExternalURL(externalURL))
-			logger.Infof("External URL for auth setup: %s", externalURL)
-		} else {
-			fusionOpts = append(fusionOpts, fusion.WithExternalURL("http://"+listen))
-			logger.Warningf("MCP_FUSION_EXTERNAL_URL not set, using http://%s (may not be reachable externally)", listen)
-		}
-
-		// Set download directory for binary responses
-		if dlDir := os.Getenv("MCP_FUSION_DL_DIR"); dlDir != "" {
-			fusionOpts = append(fusionOpts, fusion.WithDownloadDir(dlDir))
-			logger.Infof("Download directory: %s", dlDir)
-		}
-
-		// Add multi-tenant support if available
-		if multiTenantAuth != nil {
-			fusionOpts = append(fusionOpts, fusion.WithMultiTenantAuth(multiTenantAuth))
-		}
-
-		// Provide database for native tools (e.g., knowledge store)
-		fusionOpts = append(fusionOpts, fusion.WithDatabase(database))
-
-		fusionProvider = fusion.New(fusionOpts...)
-		providers = append(providers, fusionProvider)
-	} else {
-		logger.Warning("No fusion provider created - no configurations loaded")
-	}
-
-	// Register native tool prefixes with the config manager so the auth middleware
-	// recognises health, knowledge, and perf as valid service names.
-	// health is always enabled; knowledge and perf are registered conditionally below.
-	configManager.RegisterNativeToolPrefix("health")
-
-	// Health provider (always enabled).
-	healthOpts := []health.Option{
-		health.WithLogger(logger),
-		health.WithCollector(sharedCollector),
-	}
-	if fusionProvider != nil {
-		healthOpts = append(healthOpts, health.WithCircuitBreakerSource(fusionProvider.GetCircuitBreakerSource()))
-	}
-	healthProvider := health.New(healthOpts...)
-	providers = append(providers, healthProvider)
-
-	// Knowledge provider (enabled unless MCP_FUSION_KNOWLEDGE=false/0/no).
-	if knowledgeEnabled {
-		configManager.RegisterNativeToolPrefix("knowledge")
-		knowledgeProvider := knowledge.New(
-			knowledge.WithLogger(logger),
-			knowledge.WithDatabase(database),
-			knowledge.WithCollector(sharedCollector),
-			knowledge.WithUserIDExtractor(func(ctx context.Context) (string, error) {
-				tc, ok := ctx.Value(global.TenantContextKey).(*fusion.TenantContext)
-				if !ok || tc == nil {
-					return "", fmt.Errorf("no tenant context available")
-				}
-				if tc.UserID == "" {
-					return "", fmt.Errorf("no user ID associated with this API key — link with: mcpfusion -user-link <user_id>:<key_hash>")
-				}
-				return tc.UserID, nil
-			}),
-		)
-		// Register knowledge service with the shared metrics collector.
-		knowledgeToolCount := knowledgeProvider.ToolCount()
-		sharedCollector.RegisterService("knowledge", global.TransportInternal, &knowledgeToolCount)
-		providers = append(providers, knowledgeProvider)
-	}
-
-	// Perf provider (only when explicitly enabled via --perf or MCP_FUSION_PERF).
-	if perfEnabled {
-		configManager.RegisterNativeToolPrefix("perf")
-		perfProvider := perf.New(perf.WithLogger(logger))
-		providers = append(providers, perfProvider)
-	}
-
-	// Identify hub services and create hub provider
-	var hubProvider *hub.HubProvider
-	hubConfigs := make(map[string]*fusion.ServiceConfig)
-	for name, svc := range configManager.GetAllServices() {
-		if svc.IsHubService() {
-			hubConfigs[name] = svc
-		}
-	}
-	if len(hubConfigs) > 0 {
-		logger.Infof("Found %d hub service(s) to connect", len(hubConfigs))
-		hubOpts := []hub.HubOption{
-			hub.WithSharedCollector(sharedCollector),
-		}
-		if dlDir := os.Getenv("MCP_FUSION_DL_DIR"); dlDir != "" {
-			hubOpts = append(hubOpts, hub.WithDownloadDir(dlDir))
-		}
-		hubProvider = hub.NewHubProvider(hubConfigs, logger, hubOpts...)
-		providers = append(providers, hubProvider)
-	}
-
-	// Create MCP server, passing in the logger and tool providers
-	// as well as setting other options
-	mcpOpts := []mcpserver.Option{
-		mcpserver.WithListen(listen),
-		mcpserver.WithDebug(debug),
-		mcpserver.WithLogger(logger),
-		mcpserver.WithName(app.Name()),
-		mcpserver.WithVersion(app.SemVer()),
-
-		// Pass in the tool providers
-		mcpserver.WithToolProviders(providers),
-	}
-
-	// Setup resource and prompt providers (only if fusionProvider is initialized)
-	if fusionProvider != nil {
-		mcpOpts = append(mcpOpts,
-			mcpserver.WithResourceProviders([]global.ResourceProvider{fusionProvider}),
-			mcpserver.WithPromptProviders([]global.PromptProvider{fusionProvider}),
-		)
-	}
-
-	// Add OAuth API support components
-	mcpOpts = append(mcpOpts, mcpserver.WithDatabase(database.(*db.DB)))
-	mcpOpts = append(mcpOpts, mcpserver.WithAuthManager(multiTenantAuth))
-	mcpOpts = append(mcpOpts, mcpserver.WithConfigManager(configManager))
-
-	// The fusion engine serves the OAuth token-management HTTP API routes.
-	// Only registered when a fusion provider was created (services/commands loaded).
-	if fusionProvider != nil {
-		mcpOpts = append(mcpOpts, mcpserver.WithOAuthEngine(fusionProvider))
-	}
-
-	// Add multi-tenant authentication middleware
-	authMiddleware := mcpserver.NewAuthMiddleware(multiTenantAuth, configManager,
-		mcpserver.WithAuthLogger(logger),
-		mcpserver.WithRequireAuth(!noAuth),
-		mcpserver.WithSkipPaths("/health", "/metrics", "/status", "/capabilities"),
-	)
-	mcpOpts = append(mcpOpts, mcpserver.WithAuthMiddleware(authMiddleware))
-	if noAuth {
-		logger.Warning("Multi-tenant authentication middleware in NO-AUTH mode (insecure)")
-	} else {
-		logger.Info("Multi-tenant authentication middleware enabled")
-	}
-	logger.Info("OAuth API endpoints will be available at /api/v1/oauth/*")
-
-	mcp, err := mcpserver.New(mcpOpts...)
-	if err != nil {
-		logger.Fatalf("Unable to create MCP server: %v", err)
-		os.Exit(1)
-	}
-
-	// Start hub provider after MCP server is created
-	if hubProvider != nil {
-		hubProvider.SetMCPServer(mcp.GetMCPServer())
-		hubProvider.Start(context.Background())
-	}
-
-	// Start MCP server
-	if err = mcp.Start(); err != nil {
-		logger.Fatalf("MCP server failed to start: %v", err)
-	}
-
-	// Set up signal handling for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Wait for termination signal
-	<-sigChan
-	logger.Infof("Shutting down...")
-
-	// Stop the MCP server
-	if err = mcp.Stop(); err != nil {
-		logger.Errorf("Error stopping MCP server: %s", err.Error())
-		os.Exit(1)
-	}
-
-	// Shutdown hub provider if initialized
-	if hubProvider != nil {
-		hubProvider.Shutdown()
-	}
-
-	// Shutdown Fusion provider if initialized
-	if fusionProvider != nil {
-		fusionProvider.Shutdown()
-	}
-
-	// Close database connection if initialized
-	if database != nil {
+	// Close is idempotent: the server closes the database and reports it during
+	// shutdown, so this only acts on the command and error paths.
+	defer func() {
 		if err := database.Close(); err != nil {
 			logger.Errorf("Error closing database: %v", err)
-		} else {
-			logger.Info("Database connection closed successfully")
 		}
-	}
+	}()
+	logger.Info("Database initialized successfully")
 
-	logger.Infof("MCP server stopped successfully")
-
-	// Exit with success
-	os.Exit(0)
-}
-
-// handleTokenCommands processes token management commands
-func handleTokenCommands(database db.Database, tokenAdd string, tokenList bool, tokenDelete string, tokenUser string, logger global.Logger) error {
-	if tokenAdd != "" {
-		return handleTokenAdd(database, tokenAdd, tokenUser, logger)
-	}
-
-	if tokenList {
-		return handleTokenList(database, logger)
-	}
-
-	if tokenDelete != "" {
-		return handleTokenDelete(database, tokenDelete, logger)
-	}
-
-	return nil
-}
-
-// handleTokenAdd creates a new API token
-func handleTokenAdd(database db.Database, description string, userID string, _ global.Logger) error {
-	if description == "" {
-		description = "API Token"
-	}
-
-	// Validate description length
-	if len(description) > 255 {
-		return fmt.Errorf("description too long (max 255 characters)")
-	}
-
-	fmt.Printf("Generating new API token...\n")
-
-	token, hash, err := database.AddAPIToken(description)
-	if err != nil {
-		return fmt.Errorf("failed to create API token: %w", err)
-	}
-
-	// Show the token only once with security warning
-	fmt.Printf("\n")
-	fmt.Printf("API Token created successfully\n")
-	fmt.Printf("\n")
-	fmt.Printf("SECURITY WARNING: This token will only be displayed once!\n")
-	fmt.Printf("   Copy it now and store it securely.\n")
-	fmt.Printf("\n")
-	fmt.Printf("Token:       %s\n", token)
-	fmt.Printf("Hash:        %s\n", hash[:12])
-	fmt.Printf("Description: %s\n", description)
-	fmt.Printf("\n")
-	fmt.Printf("Use this token in the Authorization header:\n")
-	fmt.Printf("  Authorization: Bearer %s\n", token)
-	fmt.Printf("\n")
-
-	// Link token to user if specified
-	if userID != "" {
-		if err := database.LinkAPIKey(userID, hash); err != nil {
-			fmt.Printf("WARNING: Token created but failed to link to user %s: %v\n", userID, err)
-		} else {
-			fmt.Printf("Token linked to user %s\n", userID)
+	// Administration commands run instead of the server.
+	if opts.token.Requested() {
+		if err := opts.token.Run(database); err != nil {
+			return fmt.Errorf("token management failed: %w", err)
 		}
-	}
-
-	return nil
-}
-
-// handleTokenList displays all API tokens
-func handleTokenList(database db.Database, _ global.Logger) error {
-	tokens, err := database.ListAPITokens()
-	if err != nil {
-		return fmt.Errorf("failed to list API tokens: %w", err)
-	}
-
-	if len(tokens) == 0 {
-		fmt.Printf("No API tokens found.\n")
-		fmt.Printf("Create one with: %s -token-add \"Description\"\n", os.Args[0])
 		return nil
 	}
 
-	fmt.Printf("API Tokens:\n")
-	fmt.Printf("%-10s %-20s %-20s %-20s %s\n", "PREFIX", "HASH", "CREATED", "LAST USED", "DESCRIPTION")
-	fmt.Printf("%-10s %-20s %-20s %-20s %s\n", "------", "----", "-------", "---------", "-----------")
-
-	for _, token := range tokens {
-		prefix := token.Hash[:8]
-		shortHash := token.Hash[:12]
-
-		createdAt := token.CreatedAt.Format("2006-01-02 15:04:05")
-
-		lastUsed := "Never used"
-		if !token.LastUsed.IsZero() {
-			lastUsed = token.LastUsed.Format("2006-01-02 15:04:05")
+	if opts.user.Requested() {
+		if err := opts.user.Run(database); err != nil {
+			return fmt.Errorf("user management failed: %w", err)
 		}
-
-		description := token.Description
-		if len(description) > 30 {
-			description = description[:27] + "..."
-		}
-
-		fmt.Printf("%-10s %-20s %-20s %-20s %s\n", prefix, shortHash, createdAt, lastUsed, description)
-	}
-
-	fmt.Printf("\nTotal: %d tokens\n", len(tokens))
-	return nil
-}
-
-// handleTokenDelete removes an API token
-func handleTokenDelete(database db.Database, identifier string, _ global.Logger) error {
-	if identifier == "" {
-		return fmt.Errorf("token identifier is required")
-	}
-
-	// List tokens to find matching one
-	tokens, err := database.ListAPITokens()
-	if err != nil {
-		return fmt.Errorf("failed to list API tokens: %w", err)
-	}
-
-	var matchedToken *db.APITokenMetadata
-	for _, token := range tokens {
-		if token.Hash == identifier || strings.HasPrefix(token.Hash, identifier) {
-			if matchedToken != nil {
-				return fmt.Errorf("multiple tokens match '%s'. Please use a longer prefix", identifier)
-			}
-			matchedToken = &token
-		}
-	}
-
-	if matchedToken == nil {
-		return fmt.Errorf("no API token found matching '%s'", identifier)
-	}
-
-	// Show token details and confirm deletion
-	fmt.Printf("Token Details:\n")
-	fmt.Printf("  Hash: %s\n", matchedToken.Hash[:12])
-	fmt.Printf("  Description: %s\n", matchedToken.Description)
-	fmt.Printf("  Created: %s\n", matchedToken.CreatedAt.Format("2006-01-02 15:04:05"))
-
-	fmt.Printf("Are you sure you want to delete this token? (y/N): ")
-	var response string
-	_, err = fmt.Scanln(&response)
-	if err != nil {
-		return err
-	}
-
-	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
-		fmt.Printf("Token deletion cancelled.\n")
 		return nil
 	}
 
-	if err := database.DeleteAPIToken(matchedToken.Hash); err != nil {
-		return fmt.Errorf("failed to delete API token: %w", err)
-	}
-
-	fmt.Printf("Token deleted successfully.\n")
-	return nil
-}
-
-// handleAuthCode generates an auth code for use with fusion-auth
-func handleAuthCode(database db.Database, service, authURL, authToken string, logger global.Logger) error {
-	if authURL == "" {
-		return fmt.Errorf("-auth-url is required with -auth-code")
-	}
-
-	// Resolve the tenant hash from API tokens
-	tokens, err := database.ListAPITokens()
-	if err != nil {
-		return fmt.Errorf("failed to list API tokens: %w", err)
-	}
-
-	if len(tokens) == 0 {
-		return fmt.Errorf("no API tokens found. Create one with: %s -token-add \"Description\"", os.Args[0])
-	}
-
-	var tenantHash string
-	if len(tokens) == 1 {
-		tenantHash = tokens[0].Hash
-	} else {
-		// Multiple tokens — require -auth-token to disambiguate
-		if authToken == "" {
-			return fmt.Errorf("multiple API tokens found. Use -auth-token to specify which token's tenant to use")
+	if opts.authCode.Requested() {
+		if err := opts.authCode.Run(database, logger); err != nil {
+			return fmt.Errorf("auth code generation failed: %w", err)
 		}
-		resolvedHash, err := database.ResolveAPIToken(authToken)
-		if err != nil {
-			return fmt.Errorf("failed to resolve API token '%s': %w", authToken, err)
-		}
-		tenantHash = resolvedHash
-	}
-
-	// Create the auth code with 15-minute TTL
-	code, err := database.CreateAuthCode(tenantHash, service, 15*time.Minute)
-	if err != nil {
-		return fmt.Errorf("failed to create auth code: %w", err)
-	}
-
-	// Build the blob
-	blob := fusion.AuthCodeBlob{
-		URL:     authURL,
-		Code:    code,
-		Service: service,
-	}
-
-	blobJSON, err := json.Marshal(blob)
-	if err != nil {
-		return fmt.Errorf("failed to marshal auth code blob: %w", err)
-	}
-
-	encoded := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(blobJSON)
-
-	fmt.Printf("\nAuth code generated successfully\n")
-	fmt.Printf("\n")
-	fmt.Printf("Service:  %s\n", service)
-	fmt.Printf("Server:   %s\n", authURL)
-	fmt.Printf("Expires:  15 minutes\n")
-	fmt.Printf("\n")
-	fmt.Printf("Run fusion-auth with:\n")
-	fmt.Printf("  ./fusion-auth %s\n", encoded)
-	fmt.Printf("\n")
-
-	logger.Infof("Generated auth code for service %s (tenant %s)", service, tenantHash[:12])
-	return nil
-}
-
-// handleUserCommands processes user management commands
-func handleUserCommands(database db.Database, userAdd string, userToken string, userList bool, userDelete string, userLink string, userUnlink string, logger global.Logger) error {
-	if userAdd != "" {
-		return handleUserAdd(database, userAdd, userToken, logger)
-	}
-	if userList {
-		return handleUserList(database, logger)
-	}
-	if userDelete != "" {
-		return handleUserDelete(database, userDelete, logger)
-	}
-	if userLink != "" {
-		return handleUserLink(database, userLink, logger)
-	}
-	if userUnlink != "" {
-		return handleUserUnlink(database, userUnlink, logger)
-	}
-	return nil
-}
-
-// handleUserAdd creates a new user
-func handleUserAdd(database db.Database, description string, tokenDesc string, _ global.Logger) error {
-	user, err := database.CreateUser(description)
-	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
-	}
-
-	fmt.Printf("\nUser created successfully\n\n")
-	fmt.Printf("User ID:     %s\n", user.UserID)
-	fmt.Printf("Description: %s\n", user.Description)
-	fmt.Printf("Created:     %s\n\n", user.CreatedAt.Format("2006-01-02 15:04:05"))
-
-	// Create and link API token if requested
-	if tokenDesc != "" {
-		token, hash, err := database.AddAPIToken(tokenDesc)
-		if err != nil {
-			fmt.Printf("WARNING: User created but failed to create API token: %v\n", err)
-			return nil
-		}
-
-		if err := database.LinkAPIKey(user.UserID, hash); err != nil {
-			fmt.Printf("WARNING: Token created but failed to link to user: %v\n", err)
-		}
-
-		fmt.Printf("SECURITY WARNING: This token will only be displayed once!\n")
-		fmt.Printf("   Copy it now and store it securely.\n")
-		fmt.Printf("\n")
-		fmt.Printf("Token:       %s\n", token)
-		fmt.Printf("Hash:        %s\n", hash[:12])
-		fmt.Printf("\n")
-		fmt.Printf("Use this token in the Authorization header:\n")
-		fmt.Printf("  Authorization: Bearer %s\n", token)
-		fmt.Printf("\n")
-	}
-
-	return nil
-}
-
-// handleUserList displays all users
-func handleUserList(database db.Database, _ global.Logger) error {
-	users, err := database.ListUsers()
-	if err != nil {
-		return fmt.Errorf("failed to list users: %w", err)
-	}
-
-	if len(users) == 0 {
-		fmt.Printf("No users found.\n")
-		fmt.Printf("Create one with: %s -user-add \"Description\"\n", os.Args[0])
 		return nil
 	}
 
-	fmt.Printf("Users:\n")
-	fmt.Printf("%-38s %-20s %-20s %s\n", "USER ID", "CREATED", "UPDATED", "DESCRIPTION")
-	fmt.Printf("%-38s %-20s %-20s %s\n", "-------", "-------", "-------", "-----------")
-
-	for _, user := range users {
-		description := user.Description
-		if len(description) > 40 {
-			description = description[:37] + "..."
-		}
-
-		fmt.Printf("%-38s %-20s %-20s %s\n",
-			user.UserID,
-			user.CreatedAt.Format("2006-01-02 15:04:05"),
-			user.UpdatedAt.Format("2006-01-02 15:04:05"),
-			description)
+	srv := server{
+		logger:           logger,
+		database:         database,
+		listen:           listen,
+		configFiles:      configFiles,
+		debug:            opts.debug,
+		noAuth:           opts.noAuth,
+		knowledgeEnabled: knowledgeEnabled,
+		perfEnabled:      perfEnabled,
 	}
-
-	fmt.Printf("\nTotal: %d users\n", len(users))
-	return nil
-}
-
-// handleUserDelete removes a user
-func handleUserDelete(database db.Database, userID string, _ global.Logger) error {
-	// Verify user exists
-	user, err := database.GetUser(userID)
-	if err != nil {
-		return fmt.Errorf("user not found: %w", err)
-	}
-
-	fmt.Printf("User Details:\n")
-	fmt.Printf("  ID:          %s\n", user.UserID)
-	fmt.Printf("  Description: %s\n", user.Description)
-	fmt.Printf("  Created:     %s\n", user.CreatedAt.Format("2006-01-02 15:04:05"))
-
-	fmt.Printf("\nAre you sure you want to delete this user and all associated data? (y/N): ")
-	var response string
-	_, err = fmt.Scanln(&response)
-	if err != nil {
-		return err
-	}
-
-	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
-		fmt.Printf("User deletion cancelled.\n")
-		return nil
-	}
-
-	if err := database.DeleteUser(userID); err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
-	}
-
-	fmt.Printf("User deleted successfully.\n")
-	return nil
-}
-
-// handleUserLink links an API key to a user
-func handleUserLink(database db.Database, linkSpec string, _ global.Logger) error {
-	parts := strings.SplitN(linkSpec, ":", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return fmt.Errorf("invalid format. Use: -user-link user_id:key_hash")
-	}
-
-	userID := parts[0]
-	keyHash := parts[1]
-
-	if err := database.LinkAPIKey(userID, keyHash); err != nil {
-		return fmt.Errorf("failed to link API key: %w", err)
-	}
-
-	displayHash := keyHash
-	if len(displayHash) > 12 {
-		displayHash = displayHash[:12]
-	}
-	fmt.Printf("API key %s linked to user %s\n", displayHash, userID)
-	return nil
-}
-
-// handleUserUnlink unlinks an API key from its user
-func handleUserUnlink(database db.Database, keyHash string, _ global.Logger) error {
-	if err := database.UnlinkAPIKey(keyHash); err != nil {
-		return fmt.Errorf("failed to unlink API key: %w", err)
-	}
-
-	displayHash := keyHash
-	if len(displayHash) > 12 {
-		displayHash = displayHash[:12]
-	}
-	fmt.Printf("API key %s unlinked from user\n", displayHash)
-	return nil
-}
-
-// getConfigFiles parses comma-separated config files from command line or environment
-func getConfigFiles(configFlag string, logger global.Logger) []string {
-	configPaths := configFlag
-
-	// If not provided via command line, check environment variables
-	if configPaths == "" {
-		// Check new environment variable first
-		configPaths = os.Getenv("MCP_FUSION_CONFIGS")
-		if configPaths != "" && logger != nil {
-			logger.Infof("Using config files from MCP_FUSION_CONFIGS: %s", configPaths)
-		}
-	}
-
-	// Fall back to old single config environment variable for backward compatibility
-	if configPaths == "" {
-		configPaths = os.Getenv("MCP_FUSION_CONFIG")
-		if configPaths != "" && logger != nil {
-			logger.Infof("Using config file from MCP_FUSION_CONFIG: %s", configPaths)
-		}
-	}
-
-	// If still empty, return empty list (no configs)
-	if configPaths == "" {
-		return []string{}
-	}
-
-	// Split comma-separated list and trim whitespace
-	files := strings.Split(configPaths, ",")
-	cleanFiles := make([]string, 0, len(files))
-
-	for _, file := range files {
-		trimmed := strings.TrimSpace(file)
-		if trimmed != "" {
-			cleanFiles = append(cleanFiles, trimmed)
-		}
-	}
-
-	if logger != nil && len(cleanFiles) > 0 {
-		logger.Infof("Found %d configuration file(s) to load", len(cleanFiles))
-	}
-
-	return cleanFiles
+	return srv.run()
 }
