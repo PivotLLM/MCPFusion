@@ -19,6 +19,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/PivotLLM/MCPFusion/app"
 	"github.com/PivotLLM/MCPFusion/config"
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/fusion"
@@ -68,7 +69,7 @@ func main() {
 
 	// Set custom usage message
 	flag.Usage = func() {
-		fmt.Printf("MCPFusion - Multi-Tenant Model Context Protocol Server\n\n")
+		fmt.Printf("%s - Multi-Tenant Model Context Protocol Server\n\n", app.Name())
 		fmt.Printf("Usage:\n")
 		fmt.Printf("  %s [options]\n\n", os.Args[0])
 		fmt.Printf("Server Options:\n")
@@ -142,7 +143,12 @@ func main() {
 
 	// Show version and exit if requested
 	if *versionFlag {
-		fmt.Printf("%s version %s\n", global.AppName, global.AppVersion)
+		fmt.Printf("%s %s\n%s\n%s\n", app.Name(), app.Version(), app.TagLine(), app.Copyright())
+		buildTime, goVersion := app.BuildInfo()
+		if buildTime != "" {
+			fmt.Printf("Built: %s\n", buildTime)
+		}
+		fmt.Printf("Go:    %s\n", goVersion)
 		os.Exit(0)
 	}
 
@@ -206,7 +212,7 @@ func main() {
 
 	// Create the logger
 	logger, err := mlogger.New(
-		mlogger.WithPrefix("MCPFusion"),
+		mlogger.WithPrefix(app.Name()),
 		mlogger.WithDateFormat("2006-01-02 15:04:05"),
 		mlogger.WithLogFile(logfile),
 		mlogger.WithLogStdout(true),
@@ -218,7 +224,8 @@ func main() {
 	}
 
 	// Log startup banner
-	logger.Infof("Starting %s v%s", global.AppName, global.AppVersion)
+	logger.Infof("%s %s", app.Name(), app.Version())
+	logger.Info(app.Copyright())
 
 	// Log knowledge and perf activation state
 	if knowledgeEnabled {
@@ -470,8 +477,8 @@ func main() {
 		mcpserver.WithListen(listen),
 		mcpserver.WithDebug(debug),
 		mcpserver.WithLogger(logger),
-		mcpserver.WithName(global.AppName),
-		mcpserver.WithVersion(global.AppVersion),
+		mcpserver.WithName(app.Name()),
+		mcpserver.WithVersion(app.SemVer()),
 
 		// Pass in the tool providers
 		mcpserver.WithToolProviders(providers),

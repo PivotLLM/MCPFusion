@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PivotLLM/MCPFusion/app"
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/metrics"
 )
@@ -118,8 +119,8 @@ func (p *Provider) handleHealth(_ map[string]interface{}) (string, error) {
 		// No collector — return minimal response.
 		resp := healthResponse{
 			Server: healthServer{
-				Name:    global.AppName,
-				Version: global.AppVersion,
+				Name:    app.Name(),
+				Version: app.Version(),
 				Status:  global.StatusHealthy,
 				Uptime:  "0s",
 			},
@@ -177,8 +178,8 @@ func (p *Provider) handleHealth(_ map[string]interface{}) (string, error) {
 
 	resp := healthResponse{
 		Server: healthServer{
-			Name:    global.AppName,
-			Version: global.AppVersion,
+			Name:    app.Name(),
+			Version: app.Version(),
 			Status:  overallStatus,
 			Uptime:  formatDuration(uptime),
 		},
