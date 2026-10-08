@@ -6,6 +6,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/PivotLLM/MCPFusion/app"
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/internal/admin"
 	"github.com/PivotLLM/MCPFusion/internal/env"
 )
 
@@ -51,6 +53,10 @@ func main() {
 
 	// Fatalf closes the log and exits with status 1.
 	if err := run(opts, logger, loadedEnvFile); err != nil {
+		var ge *admin.GuidanceError
+		if errors.As(err, &ge) {
+			logger.Fatalf("%v. %s", err, ge.Guidance)
+		}
 		logger.Fatalf("%v", err)
 	}
 }

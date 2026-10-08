@@ -42,8 +42,10 @@ func (c AuthCodeCommand) Run(database db.Database, logger global.Logger) error {
 	}
 
 	if len(tokens) == 0 {
-		fmt.Printf("Create one with: %s -token-add \"Description\"\n", os.Args[0])
-		return fmt.Errorf("no API tokens found")
+		return &GuidanceError{
+			Err:      fmt.Errorf("no API tokens found"),
+			Guidance: fmt.Sprintf("Create one with: %s -token-add \"Description\"", os.Args[0]),
+		}
 	}
 
 	var tenantHash string
@@ -52,8 +54,10 @@ func (c AuthCodeCommand) Run(database db.Database, logger global.Logger) error {
 	} else {
 		// Multiple tokens — require -auth-token to disambiguate
 		if c.Token == "" {
-			fmt.Printf("Use -auth-token to specify which token's tenant to use.\n")
-			return fmt.Errorf("multiple API tokens found")
+			return &GuidanceError{
+				Err:      fmt.Errorf("multiple API tokens found"),
+				Guidance: "Use -auth-token to specify which token's tenant to use",
+			}
 		}
 		resolvedHash, err := database.ResolveAPIToken(c.Token)
 		if err != nil {
