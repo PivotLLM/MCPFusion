@@ -635,16 +635,6 @@ func (mtam *MultiTenantAuthManager) buildCacheKey(tenantContext *TenantContext) 
 	return fmt.Sprintf("tenant:%s:token:%s", tenantContext.TenantHash, tenantContext.ServiceName)
 }
 
-// parseCacheKey parses a cache key to extract tenant hash and service name
-// Returns tenantHash, serviceName, error
-func (mtam *MultiTenantAuthManager) parseCacheKey(cacheKey string) (string, string, error) {
-	parts := strings.Split(cacheKey, ":")
-	if len(parts) != 4 || parts[0] != "tenant" || parts[2] != "token" {
-		return "", "", fmt.Errorf("invalid cache key format: %s", cacheKey)
-	}
-	return parts[1], parts[3], nil
-}
-
 // convertTokenInfoToOAuthTokenData converts TokenInfo to OAuthTokenData
 func (mtam *MultiTenantAuthManager) convertTokenInfoToOAuthTokenData(tokenInfo *TokenInfo) *db.OAuthTokenData {
 	if tokenInfo == nil {

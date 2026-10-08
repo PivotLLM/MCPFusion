@@ -6,10 +6,7 @@
 package fusion
 
 import (
-	"sync"
 	"time"
-
-	"github.com/PivotLLM/MCPFusion/global"
 )
 
 // Cache defines the interface for caching operations
@@ -30,22 +27,7 @@ type Cache interface {
 	Has(key string) bool
 }
 
-// cacheItem represents an item stored in the cache
-type cacheItem struct {
-	value     interface{}
-	expiresAt time.Time
-}
-
-// isExpired checks if the cache item has expired
-func (ci *cacheItem) isExpired() bool {
-	return time.Now().After(ci.expiresAt)
-}
-
 // InMemoryCache implements a simple in-memory cache
 // DEPRECATED: Use DatabaseCache with multi-tenant authentication instead.
 // This cache implementation is only kept for compatibility and will be removed.
-type InMemoryCache struct {
-	items  map[string]*cacheItem
-	mu     sync.RWMutex
-	logger global.Logger
-}
+type InMemoryCache struct{}

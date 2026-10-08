@@ -997,23 +997,6 @@ func (h *contextAwareHandler) CallWithContext(ctx context.Context, options map[s
 	return result, nil
 }
 
-// extractTenantContextFromOptions attempts to extract tenant context for multi-tenant operations
-// This is a placeholder for proper tenant context extraction once the MCP interface supports context passing
-func (f *Fusion) extractTenantContextFromOptions(serviceName string, _ map[string]any) *TenantContext {
-	// In a proper implementation, this would extract the tenant context from the HTTP request context
-	// For now, we'll create a basic tenant context that can be used for authentication
-
-	// TODO: This is a temporary workaround. The proper solution is to modify the MCP server
-	// to pass the HTTP request context through to tool handlers.
-
-	return &TenantContext{
-		TenantHash:  "unknown", // Will be resolved by auth middleware
-		ServiceName: serviceName,
-		RequestID:   f.correlationIDGenerator.Generate(),
-		CreatedAt:   time.Now(),
-	}
-}
-
 // RegisterResources implements the global.ResourceProvider interface
 func (f *Fusion) RegisterResources() []global.ResourceDefinition {
 	// Fusion doesn't provide static resources by default
@@ -1723,60 +1706,6 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 	}
 
 	return current, nil
-}
-
-// sanitizeHeaders removes or masks sensitive information from HTTP headers for logging
-func (f *Fusion) sanitizeHeaders(headers http.Header) map[string]string {
-	sensitiveHeaders := map[string]bool{
-		"authorization":  true,
-		"x-api-key":      true,
-		"api-key":        true,
-		"apikey":         true,
-		"token":          true,
-		"bearer":         true,
-		"x-auth-token":   true,
-		"x-access-token": true,
-		"cookie":         true,
-		"set-cookie":     true,
-	}
-
-	sanitized := make(map[string]string)
-	for key, values := range headers {
-		lowerKey := strings.ToLower(key)
-		if sensitiveHeaders[lowerKey] {
-			sanitized[key] = "[REDACTED]"
-		} else {
-			sanitized[key] = strings.Join(values, ", ")
-		}
-	}
-	return sanitized
-}
-
-// sanitizeQueryParams removes or masks sensitive information from query parameters for logging
-func (f *Fusion) sanitizeQueryParams(params url.Values) map[string]string {
-	sensitiveParams := map[string]bool{
-		"token":         true,
-		"access_token":  true,
-		"api_key":       true,
-		"apikey":        true,
-		"key":           true,
-		"secret":        true,
-		"password":      true,
-		"pwd":           true,
-		"auth":          true,
-		"authorization": true,
-	}
-
-	sanitized := make(map[string]string)
-	for key, values := range params {
-		lowerKey := strings.ToLower(key)
-		if sensitiveParams[lowerKey] {
-			sanitized[key] = "[REDACTED]"
-		} else {
-			sanitized[key] = strings.Join(values, ", ")
-		}
-	}
-	return sanitized
 }
 
 // sanitizeRequestBody removes or masks sensitive information from request body for logging

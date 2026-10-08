@@ -538,52 +538,6 @@ func (s *OAuth2DeviceFlowStrategy) requestDeviceCode(ctx context.Context, device
 	return &deviceCodeResp, nil
 }
 
-// pollForToken polls the token endpoint until the user completes authentication
-func (s *OAuth2DeviceFlowStrategy) pollForToken(ctx context.Context, tokenEndpoint, clientID, deviceCode string, interval int) (*TokenInfo, error) {
-	if s.logger != nil {
-		s.logger.Debugf("Starting token polling with interval %d seconds", interval)
-	}
-
-	ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-ticker.C:
-			if s.logger != nil {
-				s.logger.Debugf("Polling for token...")
-			}
-
-			tokenInfo, err := s.requestToken(ctx, tokenEndpoint, clientID, deviceCode)
-			if err != nil {
-				// Check if it's a pending authorization error
-				if strings.Contains(err.Error(), "authorization_pending") {
-					if s.logger != nil {
-						s.logger.Debugf("Authorization still pending, continuing to poll...")
-					}
-					continue
-				}
-				if strings.Contains(err.Error(), "slow_down") {
-					if s.logger != nil {
-						s.logger.Debugf("Rate limited, increasing polling interval...")
-					}
-					// Increase polling interval
-					ticker.Reset(time.Duration(interval+5) * time.Second)
-					continue
-				}
-				return nil, err
-			}
-
-			if s.logger != nil {
-				s.logger.Infof("Token obtained successfully")
-			}
-			return tokenInfo, nil
-		}
-	}
-}
-
 // requestToken requests an access token using the device code
 func (s *OAuth2DeviceFlowStrategy) requestToken(ctx context.Context, tokenEndpoint, clientID, deviceCode string) (*TokenInfo, error) {
 	// Prepare form data

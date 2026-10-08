@@ -281,11 +281,6 @@ func (dc *DatabaseCache) parseCacheKey(cacheKey string) (tenantHash, serviceName
 	return parts[1], parts[3], nil
 }
 
-// buildCacheKey builds a cache key from tenant hash and service name
-func (dc *DatabaseCache) buildCacheKey(tenantHash, serviceName string) string {
-	return fmt.Sprintf("tenant:%s:token:%s", tenantHash, serviceName)
-}
-
 // convertTokenInfoToOAuthTokenData converts TokenInfo to OAuthTokenData
 func (dc *DatabaseCache) convertTokenInfoToOAuthTokenData(tokenInfo *TokenInfo) *db.OAuthTokenData {
 	if tokenInfo == nil {

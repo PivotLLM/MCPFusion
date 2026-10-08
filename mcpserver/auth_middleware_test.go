@@ -22,23 +22,6 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
-// mockServiceProvider implements ServiceProvider for tests.
-type mockServiceProvider struct {
-	services []string
-}
-
-func (m *mockServiceProvider) GetAvailableServices() []string {
-	return m.services
-}
-
-func (m *mockServiceProvider) GetService(name string) (*fusion.ServiceConfig, error) {
-	return nil, nil
-}
-
-func (m *mockServiceProvider) GetServiceAuthConfig(name string) (*fusion.AuthConfig, error) {
-	return nil, nil
-}
-
 // newTestAuthManager creates a MultiTenantAuthManager with no database (testing mode).
 // ExtractTenantFromToken with a non-empty token SHA256-hashes the token as the tenant ID.
 // ExtractTenantFromToken with empty token returns the NOAUTH context.

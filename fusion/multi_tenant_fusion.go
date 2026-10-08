@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
@@ -22,7 +21,6 @@ type MultiTenantFusion struct {
 	databaseCache *DatabaseCache
 	httpClient    *http.Client
 	logger        global.Logger
-	db            *db.DB
 
 	// Fusion instances per tenant (for caching configurations)
 	tenantFusions map[string]*Fusion
@@ -249,19 +247,6 @@ func (mtf *MultiTenantFusion) createTenantFusion(tenantContext *TenantContext) (
 	}
 
 	return fusion, nil
-}
-
-// registerDefaultAuthStrategies registers the default authentication strategies
-// from the shared canonical set (see defaultStrategies).
-func (mtf *MultiTenantFusion) registerDefaultAuthStrategies() {
-	for _, strategy := range defaultStrategies(mtf.httpClient, mtf.logger) {
-		mtf.authManager.RegisterStrategy(strategy)
-	}
-
-	if mtf.logger != nil {
-		strategies := mtf.authManager.GetRegisteredStrategies()
-		mtf.logger.Infof("Registered authentication strategies: %v", strategies)
-	}
 }
 
 // Close closes the multi-tenant fusion and cleans up resources
