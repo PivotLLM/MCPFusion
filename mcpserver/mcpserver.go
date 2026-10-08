@@ -357,7 +357,6 @@ func (s *MCPServer) Start() error {
 		// We don't need to log anything here - if the server is shutting down,
 		// this is expected behavior and not an error condition
 		_ = err
-		return
 	}()
 	return nil
 }

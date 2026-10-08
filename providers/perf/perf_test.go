@@ -149,7 +149,7 @@ func TestCounter_Concurrent(t *testing.T) {
 	}
 
 	// Values must span 1..100 (a fresh provider starts at 0).
-	var min, max int64 = results[0], results[0]
+	min, max := results[0], results[0]
 	for _, v := range results {
 		if v < min {
 			min = v

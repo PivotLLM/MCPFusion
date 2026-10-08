@@ -337,7 +337,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 		m.logger.Debugf("Hub service '%s': calling tool '%s' (timeout %v) [ctx deadline: %v]",
 			m.serviceName, toolName, callTimeout, func() string {
 				if d, ok := callCtx.Deadline(); ok {
-					return d.Sub(time.Now()).Round(time.Second).String()
+					return time.Until(d).Round(time.Second).String()
 				}
 				return "none"
 			}())

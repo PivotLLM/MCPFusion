@@ -113,7 +113,7 @@ func newFakeUEM(t *testing.T) *fakeUEM {
 		_, _ = w.Write([]byte(`{"status":"ok","code":200,"details":"pong"}`))
 	})
 	f.Server = httptest.NewServer(mux)
-	t.Cleanup(f.Server.Close)
+	t.Cleanup(f.Close)
 	return f
 }
 

@@ -278,11 +278,11 @@ func TestConnectionPool_MixedErrorLoad(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := requestCount.Add(1)
-		switch {
-		case n%errorEvery == 0:
+		switch n % errorEvery {
+		case 0:
 			w.WriteHeader(http.StatusBadGateway)
 			_, _ = fmt.Fprint(w, `{"error":"bad gateway"}`)
-		case n%errorEvery == 1:
+		case 1:
 			w.WriteHeader(http.StatusTooManyRequests)
 			_, _ = fmt.Fprint(w, `{"error":"rate limited"}`)
 		default:

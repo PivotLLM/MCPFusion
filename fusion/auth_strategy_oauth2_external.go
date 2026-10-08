@@ -43,7 +43,7 @@ func (s *OAuth2ExternalStrategy) SupportsRefresh() bool {
 }
 
 func (s *OAuth2ExternalStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
-	return nil, fmt.Errorf("no stored token found for this service. Please run fusion-auth to authenticate.")
+	return nil, fmt.Errorf("no stored token found for this service. Please run fusion-auth to authenticate")
 }
 
 func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
@@ -129,11 +129,7 @@ func (s *OAuth2ExternalStrategy) RefreshToken(ctx context.Context, tokenInfo *To
 	if err != nil {
 		return nil, fmt.Errorf("failed to send token refresh request: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-		}
-	}(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
 
 	if s.logger != nil {
 		s.logger.Debugf("Token refresh response status: %d", resp.StatusCode)

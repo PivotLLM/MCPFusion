@@ -79,9 +79,6 @@ func (p *Provider) ValidateConfiguration(config *providers.ServiceConfig) error 
 	}
 
 	// Client secret is not required for device flow but recommended for auth code flow
-	if config.ClientSecret == "" {
-		// This is acceptable for device flow, but we should warn
-	}
 
 	// Validate scopes format
 	if config.Scopes != "" {

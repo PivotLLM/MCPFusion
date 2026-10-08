@@ -700,9 +700,7 @@ func (mtam *MultiTenantAuthManager) convertOAuthTokenDataToTokenInfo(tokenData *
 // If token is empty, returns a NOAUTH tenant context for no-auth mode
 func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*TenantContext, error) {
 	// Remove "Bearer " prefix if present
-	if strings.HasPrefix(token, "Bearer ") {
-		token = strings.TrimPrefix(token, "Bearer ")
-	}
+	token = strings.TrimPrefix(token, "Bearer ")
 
 	// If token is empty, create a NOAUTH tenant context (for no-auth mode)
 	if token == "" {

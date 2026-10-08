@@ -38,7 +38,8 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/users":
-			if r.Method == "GET" {
+			switch r.Method {
+			case "GET":
 				// Handle GET /users?limit=X
 				limit := r.URL.Query().Get("limit")
 				users := []map[string]interface{}{
@@ -55,7 +56,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					"users": users,
 					"total": len(users),
 				})
-			} else if r.Method == "POST" {
+			case "POST":
 				// Handle POST /users
 				var requestBody map[string]interface{}
 				_ = json.NewDecoder(r.Body).Decode(&requestBody)

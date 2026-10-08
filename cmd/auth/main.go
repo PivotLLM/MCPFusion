@@ -302,7 +302,7 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 		Scopes:       strings.Join(provider.GetRequiredScopes(), " "),
 	}
 	if err := provider.ValidateConfiguration(serviceConfig); err != nil {
-		return fmt.Errorf("configuration validation failed: %w\n\nThe server may not have OAuth credentials configured.\nCheck GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables on the server.", err)
+		return fmt.Errorf("configuration validation failed: %w\n\nThe server may not have OAuth credentials configured.\nCheck GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables on the server", err)
 	}
 
 	if flags.verbose {
@@ -577,10 +577,11 @@ func (e *OAuthFlowExecutor) buildAuthorizationURL(config *providers.ServiceConfi
 	params.Set("code_challenge_method", "S256")
 
 	// Add service-specific parameters
-	if config.ServiceName == "google" {
+	switch config.ServiceName {
+	case "google":
 		params.Set("access_type", "offline")
 		params.Set("prompt", "consent")
-	} else if config.ServiceName == "microsoft365" {
+	case "microsoft365":
 		params.Set("prompt", "consent")
 	}
 

@@ -37,7 +37,7 @@ func (d *DB) StoreCredentials(tenantHash, serviceName string, credentials *Servi
 		return NewValidationError("credential_type", "", "credential type cannot be empty")
 	}
 
-	if credentials.Data == nil || len(credentials.Data) == 0 {
+	if len(credentials.Data) == 0 {
 		return NewValidationError("credential_data", nil, "credential data cannot be empty")
 	}
 

@@ -93,14 +93,13 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 		}
 
 	case "number":
-		switch value.(type) {
+		switch value := value.(type) {
 		case int, int32, int64, float32, float64:
 			// Valid number types
 		case string:
 			// Try to parse string as number
-			str := value.(string)
-			if _, err := strconv.ParseFloat(str, 64); err != nil {
-				return NewValidationError(param.Name, str, "type",
+			if _, err := strconv.ParseFloat(value, 64); err != nil {
+				return NewValidationError(param.Name, value, "type",
 					"expected number type")
 			}
 		default:
@@ -109,12 +108,12 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 		}
 
 	case "boolean":
-		switch value.(type) {
+		switch v := value.(type) {
 		case bool:
 			// Valid boolean
 		case string:
 			// Try to parse string as boolean
-			str := strings.ToLower(value.(string))
+			str := strings.ToLower(v)
 			if str != "true" && str != "false" {
 				return NewValidationError(param.Name, value, "type",
 					"expected boolean type")

@@ -388,7 +388,7 @@ func (am *AuthMiddleware) writeErrorResponse(w http.ResponseWriter, statusCode i
 	if jsonBytes, err := json.Marshal(errorResponse); err == nil {
 		_, _ = w.Write(jsonBytes)
 	} else {
-		_, _ = w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
+		_, _ = fmt.Fprintf(w, `{"error":{"code":%d,"message":"%s"}}`, statusCode, message)
 	}
 }
 
@@ -451,7 +451,7 @@ func (avm *AuthValidationMiddleware) Middleware(next http.Handler) http.Handler 
 func (avm *AuthValidationMiddleware) writeError(w http.ResponseWriter, statusCode int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	_, _ = w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
+	_, _ = fmt.Fprintf(w, `{"error":{"code":%d,"message":"%s"}}`, statusCode, message)
 }
 
 // SimpleMiddleware provides a simplified middleware that ONLY validates bearer tokens
