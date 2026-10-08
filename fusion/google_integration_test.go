@@ -795,10 +795,10 @@ func handleGoogleCalendarEventGetRequest(w http.ResponseWriter, r *http.Request,
 
 	// Extract event ID from path
 	parts := strings.Split(r.URL.Path, "/")
-	eventId := parts[len(parts)-1]
+	eventID := parts[len(parts)-1]
 
 	response := map[string]interface{}{
-		"id":          eventId,
+		"id":          eventID,
 		"summary":     "Retrieved Event",
 		"description": "This is a retrieved event",
 		"location":    "Test Location",
@@ -820,13 +820,13 @@ func handleGoogleCalendarEventUpdateRequest(w http.ResponseWriter, r *http.Reque
 
 	// Extract event ID from path
 	parts := strings.Split(r.URL.Path, "/")
-	eventId := parts[len(parts)-1]
+	eventID := parts[len(parts)-1]
 
 	var requestBody map[string]interface{}
 	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 	response := map[string]interface{}{
-		"id":          eventId,
+		"id":          eventID,
 		"summary":     requestBody["summary"],
 		"description": requestBody["description"],
 		"location":    requestBody["location"],
@@ -885,10 +885,10 @@ func handleGoogleGmailMessageGetRequest(w http.ResponseWriter, r *http.Request, 
 
 	// Extract message ID from path
 	parts := strings.Split(r.URL.Path, "/")
-	messageId := parts[len(parts)-1]
+	messageID := parts[len(parts)-1]
 
 	response := map[string]interface{}{
-		"id":           messageId,
+		"id":           messageID,
 		"threadId":     "thread-123",
 		"snippet":      "This is a test email snippet...",
 		"internalDate": "1641542400000",
@@ -973,16 +973,16 @@ func handleGoogleDriveFileGetRequest(w http.ResponseWriter, r *http.Request, t *
 
 	// Extract file ID from path
 	parts := strings.Split(r.URL.Path, "/")
-	fileId := parts[len(parts)-1]
+	fileID := parts[len(parts)-1]
 
 	response := map[string]interface{}{
-		"id":             fileId,
+		"id":             fileID,
 		"name":           "Test File.txt",
 		"mimeType":       "text/plain",
 		"size":           "1024",
 		"modifiedTime":   "2025-01-10T10:00:00Z",
-		"webViewLink":    fmt.Sprintf("https://drive.google.com/file/d/%s/view", fileId),
-		"webContentLink": fmt.Sprintf("https://drive.google.com/uc?id=%s&export=download", fileId),
+		"webViewLink":    fmt.Sprintf("https://drive.google.com/file/d/%s/view", fileID),
+		"webContentLink": fmt.Sprintf("https://drive.google.com/uc?id=%s&export=download", fileID),
 		"description":    "This is a test file",
 		"parents":        []string{"folder-123"},
 	}

@@ -503,7 +503,7 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 	if h.endpoint.BaseURL != "" {
 		baseURL = h.endpoint.BaseURL
 	}
-	requestUrl, err := mapper.BuildURL(baseURL, h.endpoint.Path, h.endpoint.Parameters, args)
+	requestURL, err := mapper.BuildURL(baseURL, h.endpoint.Path, h.endpoint.Parameters, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build URL: %w", err)
 	}
@@ -536,7 +536,7 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 	}
 
 	// Create request
-	req, err := http.NewRequestWithContext(ctx, h.endpoint.Method, requestUrl, body)
+	req, err := http.NewRequestWithContext(ctx, h.endpoint.Method, requestURL, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
