@@ -29,11 +29,11 @@ func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 
 	tempDir, err := os.MkdirTemp("", "auth-setup-test-*")
 	require.NoError(t, err, "failed to create temp directory")
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	t.Cleanup(func() { assert.NoError(t, os.RemoveAll(tempDir)) })
 
 	database, err := db.New(db.WithLogger(logger), db.WithDataDir(tempDir))
 	require.NoError(t, err, "failed to create database")
-	t.Cleanup(func() { database.Close() })
+	t.Cleanup(func() { assert.NoError(t, database.Close()) })
 
 	mtam := NewMultiTenantAuthManager(database.(*db.DB), nil, logger)
 

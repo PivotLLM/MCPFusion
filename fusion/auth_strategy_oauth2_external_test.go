@@ -165,7 +165,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 					Scope:        "openid email",
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					t.Errorf("failed to encode response: %v", err)
+				}
 			},
 			wantToken:   "new_access_token",
 			wantRefresh: "new_refresh_token",
@@ -204,7 +206,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 					Scope:        "openid profile",
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					t.Errorf("failed to encode response: %v", err)
+				}
 			},
 			wantToken:   "refreshed_token",
 			wantRefresh: "refresh_token_123", // old refresh token kept since server returned empty
@@ -240,7 +244,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 					ExpiresIn:   3600,
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					t.Errorf("failed to encode response: %v", err)
+				}
 			},
 			wantToken:   "refreshed_token_snake",
 			wantRefresh: "refresh_token_123",
@@ -315,7 +321,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 			},
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error": "server_error"}`))
+				if _, err := w.Write([]byte(`{"error": "server_error"}`)); err != nil {
+					t.Errorf("failed to write response: %v", err)
+				}
 			},
 			wantError: true,
 			errorMsg:  "token refresh request failed with status 500",
@@ -332,7 +340,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 			},
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`not valid json`))
+				if _, err := w.Write([]byte(`not valid json`)); err != nil {
+					t.Errorf("failed to write response: %v", err)
+				}
 			},
 			wantError: true,
 			errorMsg:  "failed to parse token refresh response",
@@ -414,7 +424,9 @@ func TestOAuth2ExternalStrategy_RefreshToken_NoScope(t *testing.T) {
 			ExpiresIn:   3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -452,7 +464,9 @@ func TestOAuth2ExternalStrategy_RefreshToken_UsesTokenURLDirectly(t *testing.T) 
 			ExpiresIn:   3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 

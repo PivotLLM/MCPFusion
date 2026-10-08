@@ -153,7 +153,9 @@ func (s *StdioClient) Connect(ctx context.Context) error {
 	// first so concurrent callers cannot use the client while it is closing.
 	if err := s.manager.Connect(ctx); err != nil {
 		s.manager.SetClient(nil)
-		c.Close()
+		if closeErr := c.Close(); closeErr != nil {
+			s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, closeErr)
+		}
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
@@ -208,7 +210,9 @@ func (s *StdioClient) RunWithReconnect(ctx context.Context, onConnected func(), 
 			onDisconnected()
 		}
 
-		s.manager.Disconnect()
+		if err := s.manager.Disconnect(); err != nil {
+			s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, err)
+		}
 
 		if waitErr := s.backoff.Wait(ctx); waitErr != nil {
 			return // context cancelled

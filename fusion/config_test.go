@@ -199,12 +199,8 @@ func TestLoadConfigFromFile_FileNotFound(t *testing.T) {
 
 func TestExpandEnvironmentVariables_Success(t *testing.T) {
 	// Set up test environment variables
-	os.Setenv("TEST_TOKEN", "secret-token-123")
-	os.Setenv("TEST_URL", "https://api.test.com")
-	defer func() {
-		os.Unsetenv("TEST_TOKEN")
-		os.Unsetenv("TEST_URL")
-	}()
+	t.Setenv("TEST_TOKEN", "secret-token-123")
+	t.Setenv("TEST_URL", "https://api.test.com")
 
 	input := `{
 		"services": {
@@ -265,8 +261,7 @@ func TestExpandEnvironmentVariables_MissingVar(t *testing.T) {
 
 func TestExpandEnvironmentVariables_EmptyVar(t *testing.T) {
 	// Set empty environment variable
-	os.Setenv("EMPTY_VAR", "")
-	defer os.Unsetenv("EMPTY_VAR")
+	t.Setenv("EMPTY_VAR", "")
 
 	input := `{
 		"token": "${EMPTY_VAR}"
@@ -285,14 +280,9 @@ func TestExpandEnvironmentVariables_EmptyVar(t *testing.T) {
 }
 
 func TestExpandEnvironmentVariables_MultipleVars(t *testing.T) {
-	os.Setenv("VAR1", "value1")
-	os.Setenv("VAR2", "value2")
-	os.Setenv("VAR3", "value3")
-	defer func() {
-		os.Unsetenv("VAR1")
-		os.Unsetenv("VAR2")
-		os.Unsetenv("VAR3")
-	}()
+	t.Setenv("VAR1", "value1")
+	t.Setenv("VAR2", "value2")
+	t.Setenv("VAR3", "value3")
 
 	input := `{
 		"field1": "${VAR1}",
@@ -323,8 +313,7 @@ func TestExpandEnvironmentVariables_MultipleVars(t *testing.T) {
 
 func TestExpandEnvironmentVariables_WithDefaults(t *testing.T) {
 	// Set one environment variable, leave others unset to test defaults
-	os.Setenv("EXISTING_VAR", "existing-value")
-	defer os.Unsetenv("EXISTING_VAR")
+	t.Setenv("EXISTING_VAR", "existing-value")
 
 	input := `{
 		"existingVar": "${EXISTING_VAR}",
@@ -890,12 +879,8 @@ func TestLoadConfigFromFile_RealExample(t *testing.T) {
 
 func TestLoadConfigFromFile_WithEnvironmentVariables(t *testing.T) {
 	// Set test environment variables
-	os.Setenv("TEST_BASE_URL", "https://test-api.example.com")
-	os.Setenv("TEST_TOKEN", "test-secret-token")
-	defer func() {
-		os.Unsetenv("TEST_BASE_URL")
-		os.Unsetenv("TEST_TOKEN")
-	}()
+	t.Setenv("TEST_BASE_URL", "https://test-api.example.com")
+	t.Setenv("TEST_TOKEN", "test-secret-token")
 
 	// Create a test config with environment variables
 	tempDir := t.TempDir()

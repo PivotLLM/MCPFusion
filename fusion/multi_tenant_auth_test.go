@@ -160,10 +160,12 @@ func TestRefreshIfPossible_UnsupportedStrategy(t *testing.T) {
 
 	// Store a token in the cache so getCachedToken finds it
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "some_token",
 		RefreshToken: "some_refresh",
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	// Use an auth type with no registered strategy
 	authConfig := AuthConfig{
@@ -199,10 +201,12 @@ func TestRefreshIfPossible_StrategyDoesNotSupportRefresh(t *testing.T) {
 	}
 
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "some_token",
 		RefreshToken: "some_refresh",
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
@@ -237,10 +241,12 @@ func TestRefreshIfPossible_NoRefreshToken(t *testing.T) {
 
 	// Store a token without a refresh token
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "some_token",
 		RefreshToken: "", // no refresh token
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
@@ -278,10 +284,12 @@ func TestRefreshIfPossible_RefreshFails(t *testing.T) {
 	}
 
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "old_access_token",
 		RefreshToken: "valid_refresh_token",
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
@@ -329,11 +337,13 @@ func TestRefreshIfPossible_Success(t *testing.T) {
 	}
 
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "old_access_token",
 		RefreshToken: "old_refresh_token",
 		TokenType:    "Bearer",
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,

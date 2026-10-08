@@ -80,7 +80,9 @@ func (s *SSEClient) Connect(ctx context.Context) error {
 
 	// Start the SSE transport (establishes the event stream)
 	if err := c.Start(ctx); err != nil {
-		c.Close()
+		if closeErr := c.Close(); closeErr != nil {
+			s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, closeErr)
+		}
 		return fmt.Errorf("failed to start SSE transport: %w", err)
 	}
 
@@ -99,7 +101,9 @@ func (s *SSEClient) Connect(ctx context.Context) error {
 	// first so concurrent callers cannot use the client while it is closing.
 	if err := s.manager.Connect(ctx); err != nil {
 		s.manager.SetClient(nil)
-		c.Close()
+		if closeErr := c.Close(); closeErr != nil {
+			s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, closeErr)
+		}
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
@@ -180,7 +184,9 @@ func (s *SSEClient) RunWithReconnect(ctx context.Context, onConnected func(), on
 			onDisconnected()
 		}
 
-		s.manager.Disconnect()
+		if err := s.manager.Disconnect(); err != nil {
+			s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, err)
+		}
 
 		if waitErr := s.backoff.Wait(ctx); waitErr != nil {
 			return

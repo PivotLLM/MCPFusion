@@ -120,7 +120,9 @@ func parseMultipartBody(t *testing.T, body string, contentType string) map[strin
 			content:  sb.String(),
 			header:   part.Header,
 		}
-		part.Close()
+		if err := part.Close(); err != nil {
+			t.Fatalf("failed to close part %q: %v", name, err)
+		}
 	}
 
 	return parts

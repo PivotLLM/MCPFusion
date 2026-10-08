@@ -105,11 +105,15 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 		if callCount == 1 {
 			// First call returns 401
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"error": "unauthorized"}`))
+			if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+				t.Errorf("failed to write response: %v", err)
+			}
 		} else {
 			// Second call (after token refresh) returns success
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"result": "success"}`))
+			if _, err := w.Write([]byte(`{"result": "success"}`)); err != nil {
+				t.Errorf("failed to write response: %v", err)
+			}
 		}
 	}))
 	defer mockServer.Close()
@@ -184,7 +188,9 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 		callCount++
 		// Always return 401
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -277,7 +283,9 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(`{"error": "test error"}`))
+				if _, err := w.Write([]byte(`{"error": "test error"}`)); err != nil {
+					t.Errorf("failed to write response: %v", err)
+				}
 			}))
 			defer mockServer.Close()
 
@@ -444,7 +452,9 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 	// Test that InvalidateToken handles nil multiTenantAuth gracefully
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -504,7 +514,9 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -569,7 +581,9 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 		callCount++
 		// Both calls return 401
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 

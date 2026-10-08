@@ -16,8 +16,8 @@ import (
 
 func TestCreateAuthCode(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	tenantHash := createTestTenant(t, database, "auth code test tenant")
 
@@ -34,8 +34,8 @@ func TestCreateAuthCode(t *testing.T) {
 
 func TestCreateAuthCode_InvalidInputs(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	tenantHash := createTestTenant(t, database, "invalid input test tenant")
 
@@ -82,8 +82,8 @@ func TestCreateAuthCode_InvalidInputs(t *testing.T) {
 
 func TestValidateAuthCode_Success(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	tenantHash := createTestTenant(t, database, "validate success test tenant")
 	service := "microsoft365"
@@ -101,8 +101,8 @@ func TestValidateAuthCode_Success(t *testing.T) {
 
 func TestValidateAuthCode_Expired(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	tenantHash := createTestTenant(t, database, "validate expired test tenant")
 
@@ -121,8 +121,8 @@ func TestValidateAuthCode_Expired(t *testing.T) {
 
 func TestValidateAuthCode_NotFound(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	// Validate a code that was never created
 	_, _, err := database.ValidateAuthCode("nonexistent_code_1234567890")
@@ -131,8 +131,8 @@ func TestValidateAuthCode_NotFound(t *testing.T) {
 
 func TestCleanupExpiredAuthCodes(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	tenantHash := createTestTenant(t, database, "cleanup test tenant")
 

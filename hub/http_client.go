@@ -107,7 +107,9 @@ func (h *HTTPClient) Connect(ctx context.Context) error {
 
 	// Initialize the MCP session
 	if err := h.manager.Connect(ctx); err != nil {
-		c.Close()
+		if closeErr := c.Close(); closeErr != nil {
+			h.logger.Warningf("Hub service '%s': failed to close client: %v", h.config.ServiceKey, closeErr)
+		}
 		h.manager.SetClient(nil)
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
@@ -197,7 +199,9 @@ func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func(), o
 			onDisconnected()
 		}
 
-		h.manager.Disconnect()
+		if err := h.manager.Disconnect(); err != nil {
+			h.logger.Warningf("Hub service '%s': failed to close client: %v", h.config.ServiceKey, err)
+		}
 
 		if waitErr := h.backoff.Wait(ctx); waitErr != nil {
 			return
