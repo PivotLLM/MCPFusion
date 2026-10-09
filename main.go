@@ -99,7 +99,7 @@ func run(opts options, logger global.Logger, loadedEnvFile string) error {
 	if loadedEnvFile != "" {
 		logger.Infof("Loaded environment from: %s", loadedEnvFile)
 	} else {
-		logger.Debug("No environment file loaded (searched: /opt/mcpfusion/env, ~/.mcpfusion, ~/.mcp)")
+		logger.Debug("No environment file loaded (searched: /opt/mcpfusion/env, ~/.mcpfusion)")
 	}
 
 	// Now that env files are loaded, check for fusion configs

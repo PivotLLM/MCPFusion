@@ -96,6 +96,6 @@ func (c AuthCodeCommand) Run(database db.Database, logger global.Logger) error {
 	fmt.Printf("  ./fusion-auth %s\n", encoded)
 	fmt.Printf("\n")
 
-	logger.Infof("Generated auth code for service %s (tenant %s)", c.Service, tenantHash[:12])
+	logger.Infof("Generated auth code for service %s (tenant %s)", c.Service, (&fusion.TenantContext{TenantHash: tenantHash}).ShortHash())
 	return nil
 }
