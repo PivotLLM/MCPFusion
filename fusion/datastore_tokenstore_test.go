@@ -85,7 +85,7 @@ func TestDataStoreTokenStore_OAuthRoundTrip(t *testing.T) {
 
 	require.NoError(t, store.StoreOAuthToken(tenant, service, token))
 
-	got, err := store.GetOAuthToken(tenant, service)
+	got, err := store.LoadOAuthToken(tenant, service)
 	require.NoError(t, err)
 	assert.Equal(t, token.AccessToken, got.AccessToken)
 	assert.Equal(t, token.RefreshToken, got.RefreshToken)
@@ -103,7 +103,7 @@ func TestDataStoreTokenStore_OAuthRoundTrip(t *testing.T) {
 
 	// Delete removes both the record and the index entry.
 	require.NoError(t, store.DeleteOAuthToken(tenant, service))
-	_, err = store.GetOAuthToken(tenant, service)
+	_, err = store.LoadOAuthToken(tenant, service)
 	assert.Error(t, err, "token should be gone after delete")
 
 	list, err = store.ListOAuthTokens(tenant)
@@ -141,7 +141,7 @@ func TestDataStoreTokenStore_CredentialsRoundTrip(t *testing.T) {
 	}
 	require.NoError(t, store.StoreCredentials(tenant, service, creds))
 
-	got, err := store.GetCredentials(tenant, service)
+	got, err := store.LoadCredentials(tenant, service)
 	require.NoError(t, err)
 	assert.Equal(t, db.CredentialTypeAPIKey, got.Type)
 	assert.Equal(t, "secret", got.Data["apiKey"])
@@ -153,7 +153,7 @@ func TestDataStoreTokenStore_CredentialsRoundTrip(t *testing.T) {
 	assert.Equal(t, db.CredentialTypeAPIKey, list[service].Type)
 
 	require.NoError(t, store.DeleteCredentials(tenant, service))
-	_, err = store.GetCredentials(tenant, service)
+	_, err = store.LoadCredentials(tenant, service)
 	assert.Error(t, err)
 
 	list, err = store.ListCredentials(tenant)
@@ -222,7 +222,7 @@ func TestDataStoreTokenStore_CleanupExpiredIsNoOp(t *testing.T) {
 func TestDataStoreTokenStore_GetMissing(t *testing.T) {
 	store, _ := newTestTokenStore(t)
 
-	_, err := store.GetOAuthToken("tenant-a", "missing")
+	_, err := store.LoadOAuthToken("tenant-a", "missing")
 	assert.Error(t, err)
 
 	list, err := store.ListOAuthTokens("tenant-a")

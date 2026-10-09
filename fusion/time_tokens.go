@@ -338,8 +338,8 @@ func (ttp *TimeTokenProcessor) ValidateTimeTokens(value string) error {
 	return nil
 }
 
-// GetSupportedTokens returns information about supported time token patterns
-func (ttp *TimeTokenProcessor) GetSupportedTokens() map[string]string {
+// SupportedTokens returns information about supported time token patterns
+func (ttp *TimeTokenProcessor) SupportedTokens() map[string]string {
 	return map[string]string{
 		"#DAYS-N":  "N days ago at 00:00:00 UTC (e.g., #DAYS-0 = today at midnight, #DAYS-3 = 3 days ago at midnight)",
 		"#HOURS-N": "N hours ago from current time (e.g., #HOURS-6 = 6 hours ago, #HOURS-24 = 24 hours ago)",

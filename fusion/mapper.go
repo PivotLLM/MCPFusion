@@ -316,7 +316,7 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 
 	// Apply body encoding if configured
 	if requestBody != nil && len(flatParamNames) > 0 {
-		encoder, ok := GetBodyEncoder(requestBody.Encoding)
+		encoder, ok := LookupBodyEncoder(requestBody.Encoding)
 		if !ok {
 			return nil, fmt.Errorf("unknown body encoding: %s", requestBody.Encoding)
 		}
@@ -455,7 +455,7 @@ func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]int
 
 	for _, param := range params {
 		// Use MCP-compliant name (alias or sanitized)
-		mcpName := GetMCPParameterName(&param)
+		mcpName := MCPParameterName(&param)
 
 		// Log the mapping if different from original
 		if m.logger != nil && mcpName != param.Name {

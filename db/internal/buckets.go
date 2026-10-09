@@ -77,46 +77,46 @@ var (
 	PathTenants = NewBucketPath(BucketTenants)
 )
 
-// GetTenantPath returns the bucket path for a specific tenant
-func GetTenantPath(tenantHash string) BucketPath {
+// TenantPath returns the bucket path for a specific tenant
+func TenantPath(tenantHash string) BucketPath {
 	return PathTenants.Append(tenantHash)
 }
 
-// GetTenantOAuthPath returns the OAuth tokens bucket path for a tenant
+// TenantOAuthPath returns the OAuth tokens bucket path for a tenant
 //
 //goland:noinspection GoUnusedExportedFunction
-func GetTenantOAuthPath(tenantHash string) BucketPath {
-	return GetTenantPath(tenantHash).Append(BucketOAuthTokens)
+func TenantOAuthPath(tenantHash string) BucketPath {
+	return TenantPath(tenantHash).Append(BucketOAuthTokens)
 }
 
-// GetTenantCredentialsPath returns the credentials bucket path for a tenant
-func GetTenantCredentialsPath(tenantHash string) BucketPath {
-	return GetTenantPath(tenantHash).Append(BucketServiceCredentials)
+// TenantCredentialsPath returns the credentials bucket path for a tenant
+func TenantCredentialsPath(tenantHash string) BucketPath {
+	return TenantPath(tenantHash).Append(BucketServiceCredentials)
 }
 
-// GetCredentialTypePath returns the path for a specific credential type
+// CredentialTypePath returns the path for a specific credential type
 //
 //goland:noinspection GoUnusedExportedFunction
-func GetCredentialTypePath(tenantHash string, credType string) BucketPath {
-	return GetTenantCredentialsPath(tenantHash).Append(credType)
+func CredentialTypePath(tenantHash string, credType string) BucketPath {
+	return TenantCredentialsPath(tenantHash).Append(credType)
 }
 
-// GetUserPath returns the bucket path for a specific user
-func GetUserPath(userID string) BucketPath {
+// UserPath returns the bucket path for a specific user
+func UserPath(userID string) BucketPath {
 	return NewBucketPath(BucketUsers, userID)
 }
 
-// GetUserAPIKeysPath returns the API keys bucket path for a user
-func GetUserAPIKeysPath(userID string) BucketPath {
-	return GetUserPath(userID).Append(BucketUserAPIKeys)
+// UserAPIKeysPath returns the API keys bucket path for a user
+func UserAPIKeysPath(userID string) BucketPath {
+	return UserPath(userID).Append(BucketUserAPIKeys)
 }
 
-// GetUserKnowledgePath returns the knowledge bucket path for a user
-func GetUserKnowledgePath(userID string) BucketPath {
-	return GetUserPath(userID).Append(BucketUserKnowledge)
+// UserKnowledgePath returns the knowledge bucket path for a user
+func UserKnowledgePath(userID string) BucketPath {
+	return UserPath(userID).Append(BucketUserKnowledge)
 }
 
-// GetUserKnowledgeDomainPath returns the knowledge domain bucket path for a user
-func GetUserKnowledgeDomainPath(userID string, domain string) BucketPath {
-	return GetUserKnowledgePath(userID).Append(domain)
+// UserKnowledgeDomainPath returns the knowledge domain bucket path for a user
+func UserKnowledgeDomainPath(userID string, domain string) BucketPath {
+	return UserKnowledgePath(userID).Append(domain)
 }

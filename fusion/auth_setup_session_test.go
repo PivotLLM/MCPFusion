@@ -66,9 +66,9 @@ func TestAuthSetupHandler_SessionCredentials_ClearsStoredValues(t *testing.T) {
 	assert.Contains(t, result, "fusion-auth ")
 	assert.NotContains(t, result, "web browser")
 
-	_, err = mtam.GetUserCredentials(testTenantHash, "uem")
+	_, err = mtam.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err, "old credentials must be cleared before the user enters new ones")
-	_, err = mtam.db.GetOAuthToken(testTenantHash, "uem")
+	_, err = mtam.db.LoadOAuthToken(testTenantHash, "uem")
 	assert.Error(t, err, "old token must be cleared")
 }
 
@@ -83,6 +83,6 @@ func TestAuthSetupHandler_UserCredentials_DoesNotTouchCredentialStore(t *testing
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenant("trello"))
 	_, err := handler(map[string]any{"__mcp_context": ctx})
 	require.NoError(t, err)
-	_, err = mtam.GetUserCredentials(testTenantHash, "trello")
+	_, err = mtam.LoadUserCredentials(testTenantHash, "trello")
 	assert.NoError(t, err)
 }

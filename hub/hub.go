@@ -183,7 +183,7 @@ func (h *HubProvider) discoverAndRegisterTools(ctx context.Context, serviceKey s
 
 	// Compute diff against currently cached tools to minimise the unavailability window.
 	// We add/replace all new tools first, then remove only those that disappeared.
-	oldTools := manager.GetCachedTools()
+	oldTools := manager.CachedTools()
 	diff := DiffTools(oldTools, newTools)
 
 	// Build a per-call FormatOptions factory that captures the hub's download dir
@@ -382,7 +382,7 @@ func (h *HubProvider) onToolsChanged(serviceName string, added, removed []string
 
 	// Add new tools
 	if len(added) > 0 {
-		cachedTools := manager.GetCachedTools()
+		cachedTools := manager.CachedTools()
 		getOpts := h.makeGetOpts()
 		var serverTools []server.ServerTool
 		for _, name := range added {

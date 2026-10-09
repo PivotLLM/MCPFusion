@@ -23,9 +23,9 @@ import (
 
 // ServiceProvider interface for getting available services
 type ServiceProvider interface {
-	GetAvailableServices() []string
-	GetService(name string) (*fusion.ServiceConfig, error)
-	GetServiceAuthConfig(name string) (*fusion.AuthConfig, error)
+	AvailableServices() []string
+	Service(name string) (*fusion.ServiceConfig, error)
+	ServiceAuthConfig(name string) (*fusion.AuthConfig, error)
 }
 
 // AuthMiddleware provides bearer token authentication and tenant context extraction
@@ -301,7 +301,7 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, _ *fusion.TenantCo
 
 		// Validate that this service exists in our configuration
 		if am.serviceProvider != nil {
-			availableServices := am.serviceProvider.GetAvailableServices()
+			availableServices := am.serviceProvider.AvailableServices()
 			serviceFound := false
 			for _, availableService := range availableServices {
 				if availableService == serviceName {
@@ -343,7 +343,7 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, _ *fusion.TenantCo
 	// Strategy 4: Check if there's only one available service for this tenant
 	// This is only used when there's no tool name and no explicit service specification
 	if am.serviceProvider != nil {
-		availableServices := am.serviceProvider.GetAvailableServices()
+		availableServices := am.serviceProvider.AvailableServices()
 		if len(availableServices) == 1 {
 			serviceName := availableServices[0]
 			if am.logger != nil {

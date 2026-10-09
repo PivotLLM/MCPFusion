@@ -141,7 +141,7 @@ func (s server) run(ctx context.Context) error {
 		health.WithCollector(sharedCollector),
 	}
 	if fusionProvider != nil {
-		healthOpts = append(healthOpts, health.WithCircuitBreakerSource(fusionProvider.GetCircuitBreakerSource()))
+		healthOpts = append(healthOpts, health.WithCircuitBreakerSource(fusionProvider.CircuitBreakerSource()))
 	}
 	healthProvider := health.New(healthOpts...)
 	providers = append(providers, healthProvider)
@@ -180,7 +180,7 @@ func (s server) run(ctx context.Context) error {
 	// Identify hub services and create hub provider
 	var hubProvider *hub.HubProvider
 	hubConfigs := make(map[string]*fusion.ServiceConfig)
-	for name, svc := range configManager.GetAllServices() {
+	for name, svc := range configManager.Services() {
 		if svc.IsHubService() {
 			hubConfigs[name] = svc
 		}
@@ -250,7 +250,7 @@ func (s server) run(ctx context.Context) error {
 
 	// Start hub provider after MCP server is created
 	if hubProvider != nil {
-		hubProvider.SetMCPServer(mcp.GetMCPServer())
+		hubProvider.SetMCPServer(mcp.Server())
 		hubProvider.Start(ctx)
 	}
 

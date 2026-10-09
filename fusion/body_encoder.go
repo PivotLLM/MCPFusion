@@ -22,8 +22,8 @@ var bodyEncoders = map[string]BodyEncoder{
 	"rfc2822_base64url": &RFC2822Base64URLEncoder{},
 }
 
-// GetBodyEncoder returns the encoder registered under the given name.
-func GetBodyEncoder(name string) (BodyEncoder, bool) {
+// LookupBodyEncoder returns the encoder registered under the given name.
+func LookupBodyEncoder(name string) (BodyEncoder, bool) {
 	enc, ok := bodyEncoders[name]
 	return enc, ok
 }

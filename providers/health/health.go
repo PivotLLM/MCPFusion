@@ -21,7 +21,7 @@ import (
 // breaker state for each registered service.  It is defined here so that callers
 // can supply an adapter without importing the fusion package.
 type CircuitBreakerSource interface {
-	GetAllCircuitBreakerMetrics() map[string]CircuitBreakerInfo
+	AllCircuitBreakerMetrics() map[string]CircuitBreakerInfo
 }
 
 // CircuitBreakerInfo carries the minimal circuit-breaker state needed by the
@@ -133,12 +133,12 @@ func (p *Provider) handleHealth(_ map[string]interface{}) (string, error) {
 		return string(data), nil
 	}
 
-	uptime := p.collector.GetUptime()
-	allStats := p.collector.GetAllServiceStats()
+	uptime := p.collector.Uptime()
+	allStats := p.collector.AllServiceStats()
 
 	var cbMetrics map[string]CircuitBreakerInfo
 	if p.cbSource != nil {
-		cbMetrics = p.cbSource.GetAllCircuitBreakerMetrics()
+		cbMetrics = p.cbSource.AllCircuitBreakerMetrics()
 	}
 
 	services := make([]healthService, 0, len(allStats))

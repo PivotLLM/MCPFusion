@@ -538,15 +538,15 @@ func (cb *CircuitBreaker) recordSuccess() {
 	}
 }
 
-// GetState returns the current circuit breaker state
-func (cb *CircuitBreaker) GetState() CircuitBreakerState {
+// State returns the current circuit breaker state
+func (cb *CircuitBreaker) State() CircuitBreakerState {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 	return cb.state
 }
 
-// GetMetrics returns circuit breaker metrics
-func (cb *CircuitBreaker) GetMetrics() CircuitBreakerMetrics {
+// Metrics returns circuit breaker metrics
+func (cb *CircuitBreaker) Metrics() CircuitBreakerMetrics {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 

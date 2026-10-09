@@ -14,10 +14,10 @@ import (
 	"testing"
 )
 
-func TestSessionJWTStrategy_GetAuthType(t *testing.T) {
+func TestSessionJWTStrategy_Type(t *testing.T) {
 	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
-	if strategy.GetAuthType() != AuthTypeSessionJWT {
-		t.Errorf("GetAuthType() = %v, want %v", strategy.GetAuthType(), AuthTypeSessionJWT)
+	if strategy.Type() != AuthTypeSessionJWT {
+		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeSessionJWT)
 	}
 }
 

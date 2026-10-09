@@ -29,18 +29,18 @@ type Database interface {
 	ValidateAPIToken(token string) (bool, string, error)
 	DeleteAPIToken(hash string) error
 	ListAPITokens() ([]APITokenMetadata, error)
-	GetAPITokenMetadata(hash string) (*APITokenMetadata, error)
+	LoadAPITokenMetadata(hash string) (*APITokenMetadata, error)
 	ResolveAPIToken(identifier string) (string, error)
 
 	// OAuth Token Management
 	StoreOAuthToken(tenantHash, serviceName string, tokenData *OAuthTokenData) error
-	GetOAuthToken(tenantHash, serviceName string) (*OAuthTokenData, error)
+	LoadOAuthToken(tenantHash, serviceName string) (*OAuthTokenData, error)
 	DeleteOAuthToken(tenantHash, serviceName string) error
 	ListOAuthTokens(tenantHash string) (map[string]*OAuthTokenData, error)
 
 	// Service Credentials Management
 	StoreCredentials(tenantHash, serviceName string, credentials *ServiceCredentials) error
-	GetCredentials(tenantHash, serviceName string) (*ServiceCredentials, error)
+	LoadCredentials(tenantHash, serviceName string) (*ServiceCredentials, error)
 	DeleteCredentials(tenantHash, serviceName string) error
 	ListCredentials(tenantHash string) (map[string]*ServiceCredentials, error)
 
@@ -50,22 +50,22 @@ type Database interface {
 	CleanupExpiredAuthCodes() error
 
 	// Tenant Management
-	GetTenantInfo(hash string) (*TenantInfo, error)
+	LoadTenantInfo(hash string) (*TenantInfo, error)
 	ListTenants() ([]TenantInfo, error)
 
 	// User Management
 	CreateUser(description string) (*UserMetadata, error)
-	GetUser(userID string) (*UserMetadata, error)
+	LoadUser(userID string) (*UserMetadata, error)
 	ListUsers() ([]UserMetadata, error)
 	DeleteUser(userID string) error
 	LinkAPIKey(userID, keyHash string) error
 	UnlinkAPIKey(keyHash string) error
-	GetUserByAPIKey(keyHash string) (string, error)
+	LookupUserByAPIKey(keyHash string) (string, error)
 	AutoMigrateKeys() error
 
 	// Knowledge Management
 	SetKnowledge(userID string, entry *KnowledgeEntry) error
-	GetKnowledge(userID, domain, key string) (*KnowledgeEntry, error)
+	LoadKnowledge(userID, domain, key string) (*KnowledgeEntry, error)
 	ListKnowledge(userID, domain string) ([]KnowledgeEntry, error)
 	DeleteKnowledge(userID, domain, key string) error
 	RenameKnowledge(userID, domain, oldKey, newKey string) error

@@ -220,7 +220,7 @@ func (h *oauthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 
 	// session_jwt services with a credentials block receive field values, not
 	// a token: either persist them, or exchange them for a token right now.
-	if service := h.engine.GetService(req.Service); service != nil {
+	if service := h.engine.Service(req.Service); service != nil {
 		if sc, ok := service.Auth.SessionCredentials(); ok {
 			h.storeSessionCredentials(w, r, tenantContext, req.Service, service, sc, req.Metadata)
 			return
@@ -377,7 +377,7 @@ func (h *oauthAPIHandler) handleServiceConfig(w http.ResponseWriter, r *http.Req
 	}
 
 	// Retrieve the service configuration from the engine
-	service := h.engine.GetService(serviceName)
+	service := h.engine.Service(serviceName)
 	if service == nil {
 		h.writeErrorResponse(w, http.StatusNotFound, fmt.Sprintf("Service '%s' not found", serviceName))
 		return

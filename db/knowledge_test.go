@@ -55,7 +55,7 @@ func TestSetKnowledge_UpdateExisting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Retrieve to capture the original CreatedAt
-	original, err := database.GetKnowledge(userID, "email", "preferences")
+	original, err := database.LoadKnowledge(userID, "email", "preferences")
 	require.NoError(t, err)
 	originalCreatedAt := original.CreatedAt
 	originalUpdatedAt := original.UpdatedAt
@@ -73,7 +73,7 @@ func TestSetKnowledge_UpdateExisting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Retrieve and verify timestamps
-	retrieved, err := database.GetKnowledge(userID, "email", "preferences")
+	retrieved, err := database.LoadKnowledge(userID, "email", "preferences")
 	require.NoError(t, err)
 
 	assert.Equal(t, "User prefers plain text emails", retrieved.Content)
@@ -150,7 +150,7 @@ func TestSetKnowledge_UserNotFound(t *testing.T) {
 	assert.True(t, errors.Is(err, ErrUserNotFound), "expected ErrUserNotFound, got: %v", err)
 }
 
-func TestGetKnowledge(t *testing.T) {
+func TestLoadKnowledge(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
 	defer cleanupTestDB(database, tempDir)
 
@@ -165,7 +165,7 @@ func TestGetKnowledge(t *testing.T) {
 	err := database.SetKnowledge(userID, entry)
 	require.NoError(t, err)
 
-	retrieved, err := database.GetKnowledge(userID, "calendar", "meeting-preferences")
+	retrieved, err := database.LoadKnowledge(userID, "calendar", "meeting-preferences")
 	require.NoError(t, err)
 
 	assert.Equal(t, "calendar", retrieved.Domain)
@@ -175,7 +175,7 @@ func TestGetKnowledge(t *testing.T) {
 	assert.False(t, retrieved.UpdatedAt.IsZero(), "UpdatedAt should be set")
 }
 
-func TestGetKnowledge_NotFound(t *testing.T) {
+func TestLoadKnowledge_NotFound(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
 	defer cleanupTestDB(database, tempDir)
 
@@ -202,18 +202,18 @@ func TestGetKnowledge_NotFound(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := database.GetKnowledge(userID, tt.domain, tt.key)
+			_, err := database.LoadKnowledge(userID, tt.domain, tt.key)
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, ErrKnowledgeNotFound), "expected ErrKnowledgeNotFound, got: %v", err)
 		})
 	}
 }
 
-func TestGetKnowledge_UserNotFound(t *testing.T) {
+func TestLoadKnowledge_UserNotFound(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
 	defer cleanupTestDB(database, tempDir)
 
-	_, err := database.GetKnowledge("nonexistent-user-id", "email", "preferences")
+	_, err := database.LoadKnowledge("nonexistent-user-id", "email", "preferences")
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, ErrUserNotFound), "expected ErrUserNotFound, got: %v", err)
 }
@@ -345,7 +345,7 @@ func TestDeleteKnowledge(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the entry exists
-	_, err = database.GetKnowledge(userID, "email", "preferences")
+	_, err = database.LoadKnowledge(userID, "email", "preferences")
 	require.NoError(t, err)
 
 	// Delete it
@@ -353,7 +353,7 @@ func TestDeleteKnowledge(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify it is gone
-	_, err = database.GetKnowledge(userID, "email", "preferences")
+	_, err = database.LoadKnowledge(userID, "email", "preferences")
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, ErrKnowledgeNotFound), "expected ErrKnowledgeNotFound, got: %v", err)
 }
@@ -407,7 +407,7 @@ func TestDeleteKnowledge_CleansEmptyDomain(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the new entry is retrievable
-	retrieved, err := database.GetKnowledge(userID, "temp-domain", "new-entry")
+	retrieved, err := database.LoadKnowledge(userID, "temp-domain", "new-entry")
 	require.NoError(t, err)
 	assert.Equal(t, "new content after cleanup", retrieved.Content)
 }
@@ -437,11 +437,11 @@ func TestKnowledge_MultipleDomainsIsolation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify each domain returns the correct content
-	emailResult, err := database.GetKnowledge(userID, "email", "preferences")
+	emailResult, err := database.LoadKnowledge(userID, "email", "preferences")
 	require.NoError(t, err)
 	assert.Equal(t, "Email preferences content", emailResult.Content)
 
-	calendarResult, err := database.GetKnowledge(userID, "calendar", "preferences")
+	calendarResult, err := database.LoadKnowledge(userID, "calendar", "preferences")
 	require.NoError(t, err)
 	assert.Equal(t, "Calendar preferences content", calendarResult.Content)
 
@@ -460,11 +460,11 @@ func TestKnowledge_MultipleDomainsIsolation(t *testing.T) {
 	err = database.DeleteKnowledge(userID, "email", "preferences")
 	require.NoError(t, err)
 
-	_, err = database.GetKnowledge(userID, "email", "preferences")
+	_, err = database.LoadKnowledge(userID, "email", "preferences")
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, ErrKnowledgeNotFound))
 
-	calendarStillThere, err := database.GetKnowledge(userID, "calendar", "preferences")
+	calendarStillThere, err := database.LoadKnowledge(userID, "calendar", "preferences")
 	require.NoError(t, err)
 	assert.Equal(t, "Calendar preferences content", calendarStillThere.Content)
 }
@@ -495,11 +495,11 @@ func TestKnowledge_MultipleUsersIsolation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify each user sees only their own data
-	result1, err := database.GetKnowledge(user1, "email", "preferences")
+	result1, err := database.LoadKnowledge(user1, "email", "preferences")
 	require.NoError(t, err)
 	assert.Equal(t, "User 1 prefers HTML", result1.Content)
 
-	result2, err := database.GetKnowledge(user2, "email", "preferences")
+	result2, err := database.LoadKnowledge(user2, "email", "preferences")
 	require.NoError(t, err)
 	assert.Equal(t, "User 2 prefers plain text", result2.Content)
 
@@ -518,11 +518,11 @@ func TestKnowledge_MultipleUsersIsolation(t *testing.T) {
 	err = database.DeleteKnowledge(user1, "email", "preferences")
 	require.NoError(t, err)
 
-	_, err = database.GetKnowledge(user1, "email", "preferences")
+	_, err = database.LoadKnowledge(user1, "email", "preferences")
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, ErrKnowledgeNotFound))
 
-	stillThere, err := database.GetKnowledge(user2, "email", "preferences")
+	stillThere, err := database.LoadKnowledge(user2, "email", "preferences")
 	require.NoError(t, err)
 	assert.Equal(t, "User 2 prefers plain text", stillThere.Content)
 }

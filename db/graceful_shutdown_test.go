@@ -48,7 +48,7 @@ func TestLastUsedWorker_FlushOnClose(t *testing.T) {
 	require.NoError(t, err)
 
 	// Capture the LastUsed value written at creation time.
-	md, err := database.GetAPITokenMetadata(hash)
+	md, err := database.LoadAPITokenMetadata(hash)
 	require.NoError(t, err)
 	createdAt := md.LastUsed
 
@@ -73,7 +73,7 @@ func TestLastUsedWorker_FlushOnClose(t *testing.T) {
 	defer func() { _ = database2.Close() }()
 
 	// Read the token metadata back.
-	md2, err := database2.GetAPITokenMetadata(hash)
+	md2, err := database2.LoadAPITokenMetadata(hash)
 	require.NoError(t, err)
 
 	// LastUsed must have been updated by the flush.
@@ -109,7 +109,7 @@ func TestLastUsedWorker_ManyUpdatesBeforeClose(t *testing.T) {
 	// Record creation timestamps.
 	createdAts := make([]time.Time, numTokens)
 	for i, hash := range hashes {
-		md, err := database.GetAPITokenMetadata(hash)
+		md, err := database.LoadAPITokenMetadata(hash)
 		require.NoError(t, err)
 		createdAts[i] = md.LastUsed
 	}
@@ -137,7 +137,7 @@ func TestLastUsedWorker_ManyUpdatesBeforeClose(t *testing.T) {
 
 	updated := 0
 	for i, hash := range hashes {
-		md, err := database2.GetAPITokenMetadata(hash)
+		md, err := database2.LoadAPITokenMetadata(hash)
 		if err != nil {
 			t.Errorf("token %d: failed to get metadata: %v", i, err)
 			continue

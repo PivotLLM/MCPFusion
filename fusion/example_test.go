@@ -17,7 +17,7 @@ func ExampleNew() {
 	// Create a Fusion instance with multi-tenant auth (automatically enabled)
 	fusionProvider := fusion.New()
 
-	fmt.Printf("Fusion provider created with %d configured services\n", len(fusionProvider.GetServiceNames()))
+	fmt.Printf("Fusion provider created with %d configured services\n", len(fusionProvider.ServiceNames()))
 	// Output: Fusion provider created with 0 configured services
 }
 
@@ -68,7 +68,7 @@ func ExampleNew_withConfig() {
 	// Get tools that would be registered
 	tools := fusionProvider.RegisterTools()
 
-	fmt.Printf("Loaded %d services\n", len(fusionProvider.GetServiceNames()))
+	fmt.Printf("Loaded %d services\n", len(fusionProvider.ServiceNames()))
 	fmt.Printf("Generated %d tools\n", len(tools))
 	if len(tools) > 0 {
 		fmt.Printf("First tool: %s\n", tools[0].Name)

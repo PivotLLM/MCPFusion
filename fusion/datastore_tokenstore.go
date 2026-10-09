@@ -85,7 +85,7 @@ func (a *dataStoreTokenStore) StoreOAuthToken(tenantHash, serviceName string, to
 	return a.addToIndex(tenantHash, dsCollectionOAuth, serviceName)
 }
 
-func (a *dataStoreTokenStore) GetOAuthToken(tenantHash, serviceName string) (*db.OAuthTokenData, error) {
+func (a *dataStoreTokenStore) LoadOAuthToken(tenantHash, serviceName string) (*db.OAuthTokenData, error) {
 	value, ok, err := a.ds.Get(context.Background(), dsCollectionOAuth, recordKey(tenantHash, serviceName))
 	if err != nil {
 		return nil, fmt.Errorf("get oauth token: %w", err)
@@ -114,7 +114,7 @@ func (a *dataStoreTokenStore) ListOAuthTokens(tenantHash string) (map[string]*db
 	}
 	result := make(map[string]*db.OAuthTokenData, len(services))
 	for _, serviceName := range services {
-		tokenData, err := a.GetOAuthToken(tenantHash, serviceName)
+		tokenData, err := a.LoadOAuthToken(tenantHash, serviceName)
 		if err != nil {
 			// A stale index entry (record deleted out of band) is skipped, not fatal.
 			continue
@@ -137,7 +137,7 @@ func (a *dataStoreTokenStore) StoreCredentials(tenantHash, serviceName string, c
 	return a.addToIndex(tenantHash, dsCollectionCreds, serviceName)
 }
 
-func (a *dataStoreTokenStore) GetCredentials(tenantHash, serviceName string) (*db.ServiceCredentials, error) {
+func (a *dataStoreTokenStore) LoadCredentials(tenantHash, serviceName string) (*db.ServiceCredentials, error) {
 	value, ok, err := a.ds.Get(context.Background(), dsCollectionCreds, recordKey(tenantHash, serviceName))
 	if err != nil {
 		return nil, fmt.Errorf("get credentials: %w", err)
@@ -166,7 +166,7 @@ func (a *dataStoreTokenStore) ListCredentials(tenantHash string) (map[string]*db
 	}
 	result := make(map[string]*db.ServiceCredentials, len(services))
 	for _, serviceName := range services {
-		credentials, err := a.GetCredentials(tenantHash, serviceName)
+		credentials, err := a.LoadCredentials(tenantHash, serviceName)
 		if err != nil {
 			continue
 		}

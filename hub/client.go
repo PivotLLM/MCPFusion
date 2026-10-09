@@ -282,8 +282,8 @@ func (m *MCPClientManager) RefreshTools(ctx context.Context) error {
 	return nil
 }
 
-// GetCachedTools returns a copy of the cached tool set.
-func (m *MCPClientManager) GetCachedTools() map[string]mcp.Tool {
+// CachedTools returns a copy of the cached tool set.
+func (m *MCPClientManager) CachedTools() map[string]mcp.Tool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	result := make(map[string]mcp.Tool, len(m.tools))

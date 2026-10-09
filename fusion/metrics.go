@@ -187,8 +187,8 @@ func (mc *MetricsCollector) RecordRequest(req RequestMetrics) {
 	}
 }
 
-// GetServiceMetrics returns metrics for a specific service
-func (mc *MetricsCollector) GetServiceMetrics(serviceName string) *ServiceMetrics {
+// ServiceMetrics returns metrics for a specific service
+func (mc *MetricsCollector) ServiceMetrics(serviceName string) *ServiceMetrics {
 	if !mc.enabled {
 		return nil
 	}
@@ -218,8 +218,8 @@ func (mc *MetricsCollector) GetServiceMetrics(serviceName string) *ServiceMetric
 	return nil
 }
 
-// GetAllMetrics returns all collected metrics
-func (mc *MetricsCollector) GetAllMetrics() map[string]*ServiceMetrics {
+// AllMetrics returns all collected metrics
+func (mc *MetricsCollector) AllMetrics() map[string]*ServiceMetrics {
 	if !mc.enabled {
 		return nil
 	}
@@ -229,14 +229,14 @@ func (mc *MetricsCollector) GetAllMetrics() map[string]*ServiceMetrics {
 
 	result := make(map[string]*ServiceMetrics)
 	for serviceName := range mc.metrics {
-		result[serviceName] = mc.GetServiceMetrics(serviceName)
+		result[serviceName] = mc.ServiceMetrics(serviceName)
 	}
 
 	return result
 }
 
-// GetGlobalMetrics returns global metrics summary
-func (mc *MetricsCollector) GetGlobalMetrics() GlobalMetrics {
+// GlobalMetrics returns global metrics summary
+func (mc *MetricsCollector) GlobalMetrics() GlobalMetrics {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
 
@@ -266,8 +266,8 @@ type GlobalMetrics struct {
 	StartTime    time.Time     `json:"start_time"`
 }
 
-// GetErrorRate returns the error rate for a service over a time window
-func (mc *MetricsCollector) GetErrorRate(serviceName string, _ time.Duration) float64 {
+// ErrorRate returns the error rate for a service over a time window
+func (mc *MetricsCollector) ErrorRate(serviceName string, _ time.Duration) float64 {
 	if !mc.enabled {
 		return 0
 	}
@@ -289,7 +289,7 @@ func (mc *MetricsCollector) IsServiceHealthy(serviceName string, errorRateThresh
 		return true // Assume healthy if metrics disabled
 	}
 
-	errorRate := mc.GetErrorRate(serviceName, 5*time.Minute)
+	errorRate := mc.ErrorRate(serviceName, 5*time.Minute)
 	return errorRate <= errorRateThreshold
 }
 

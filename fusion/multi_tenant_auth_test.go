@@ -88,7 +88,7 @@ func (s *mockStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, c
 	return nil, fmt.Errorf("refresh not implemented")
 }
 
-func (s *mockStrategy) GetAuthType() AuthType {
+func (s *mockStrategy) Type() AuthType {
 	return s.authType
 }
 
@@ -100,7 +100,7 @@ func (s *mockStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
-	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
+	req.Header.Set("Authorization", tokenInfo.AuthorizationHeader())
 	return nil
 }
 
@@ -500,7 +500,7 @@ func TestNewMultiTenantAuthManager_RegistersAllDefaultStrategies(t *testing.T) {
 	}
 
 	got := make(map[AuthType]bool)
-	for _, at := range manager.GetRegisteredStrategies() {
+	for _, at := range manager.RegisteredStrategies() {
 		got[at] = true
 	}
 

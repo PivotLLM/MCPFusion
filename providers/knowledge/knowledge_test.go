@@ -35,7 +35,7 @@ func (m *mockDB) SetKnowledge(userID string, entry *db.KnowledgeEntry) error {
 	m.store[m.key(userID, entry.Domain, entry.Key)] = entry
 	return nil
 }
-func (m *mockDB) GetKnowledge(userID, domain, key string) (*db.KnowledgeEntry, error) {
+func (m *mockDB) LoadKnowledge(userID, domain, key string) (*db.KnowledgeEntry, error) {
 	e, ok := m.store[m.key(userID, domain, key)]
 	if !ok {
 		return nil, fmt.Errorf("not found")
@@ -69,38 +69,38 @@ func (m *mockDB) AddAPIToken(_ string) (string, string, error)    { return "", "
 func (m *mockDB) ValidateAPIToken(_ string) (bool, string, error) { return false, "", nil }
 func (m *mockDB) DeleteAPIToken(_ string) error                   { return nil }
 func (m *mockDB) ListAPITokens() ([]db.APITokenMetadata, error)   { return nil, nil }
-func (m *mockDB) GetAPITokenMetadata(_ string) (*db.APITokenMetadata, error) {
+func (m *mockDB) LoadAPITokenMetadata(_ string) (*db.APITokenMetadata, error) {
 	return nil, nil
 }
 func (m *mockDB) ResolveAPIToken(_ string) (string, error) { return "", nil }
 func (m *mockDB) StoreOAuthToken(_, _ string, _ *db.OAuthTokenData) error {
 	return nil
 }
-func (m *mockDB) GetOAuthToken(_, _ string) (*db.OAuthTokenData, error) { return nil, nil }
-func (m *mockDB) DeleteOAuthToken(_, _ string) error                    { return nil }
+func (m *mockDB) LoadOAuthToken(_, _ string) (*db.OAuthTokenData, error) { return nil, nil }
+func (m *mockDB) DeleteOAuthToken(_, _ string) error                     { return nil }
 func (m *mockDB) ListOAuthTokens(_ string) (map[string]*db.OAuthTokenData, error) {
 	return nil, nil
 }
 func (m *mockDB) StoreCredentials(_, _ string, _ *db.ServiceCredentials) error {
 	return nil
 }
-func (m *mockDB) GetCredentials(_, _ string) (*db.ServiceCredentials, error) { return nil, nil }
-func (m *mockDB) DeleteCredentials(_, _ string) error                        { return nil }
+func (m *mockDB) LoadCredentials(_, _ string) (*db.ServiceCredentials, error) { return nil, nil }
+func (m *mockDB) DeleteCredentials(_, _ string) error                         { return nil }
 func (m *mockDB) ListCredentials(_ string) (map[string]*db.ServiceCredentials, error) {
 	return nil, nil
 }
 func (m *mockDB) CreateAuthCode(_, _ string, _ time.Duration) (string, error) { return "", nil }
 func (m *mockDB) ValidateAuthCode(_ string) (string, string, error)           { return "", "", nil }
 func (m *mockDB) CleanupExpiredAuthCodes() error                              { return nil }
-func (m *mockDB) GetTenantInfo(_ string) (*db.TenantInfo, error)              { return nil, nil }
+func (m *mockDB) LoadTenantInfo(_ string) (*db.TenantInfo, error)             { return nil, nil }
 func (m *mockDB) ListTenants() ([]db.TenantInfo, error)                       { return nil, nil }
 func (m *mockDB) CreateUser(_ string) (*db.UserMetadata, error)               { return nil, nil }
-func (m *mockDB) GetUser(_ string) (*db.UserMetadata, error)                  { return nil, nil }
+func (m *mockDB) LoadUser(_ string) (*db.UserMetadata, error)                 { return nil, nil }
 func (m *mockDB) ListUsers() ([]db.UserMetadata, error)                       { return nil, nil }
 func (m *mockDB) DeleteUser(_ string) error                                   { return nil }
 func (m *mockDB) LinkAPIKey(_, _ string) error                                { return nil }
 func (m *mockDB) UnlinkAPIKey(_ string) error                                 { return nil }
-func (m *mockDB) GetUserByAPIKey(_ string) (string, error)                    { return "", nil }
+func (m *mockDB) LookupUserByAPIKey(_ string) (string, error)                 { return "", nil }
 func (m *mockDB) AutoMigrateKeys() error                                      { return nil }
 func (m *mockDB) Close() error                                                { return nil }
 func (m *mockDB) Backup(_ string) error                                       { return nil }

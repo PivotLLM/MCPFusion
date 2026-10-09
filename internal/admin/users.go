@@ -124,7 +124,7 @@ func userList(database db.Database) error {
 // userDelete removes a user
 func userDelete(database db.Database, userID string) error {
 	// Verify user exists
-	user, err := database.GetUser(userID)
+	user, err := database.LoadUser(userID)
 	if err != nil {
 		return fmt.Errorf("user not found: %w", err)
 	}

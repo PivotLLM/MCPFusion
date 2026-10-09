@@ -36,7 +36,7 @@ func (f *Fusion) ToolSpecDefinitions(tenant string) []toolspec.ToolDefinition {
 		td := tools[i]
 		service := serviceForToolName(td.Name, serviceNames)
 		revealTogether := false
-		if svc := f.GetService(service); svc != nil {
+		if svc := f.Service(service); svc != nil {
 			revealTogether = svc.RevealTogether
 		}
 		params := convertParameters(td.Parameters)
@@ -126,7 +126,7 @@ func (f *Fusion) wrapToolHandler(handler global.ToolHandler, tenant, service str
 // serviceNamesLongestFirst returns configured service names ordered longest
 // first, so serviceForToolName matches the most specific prefix.
 func (f *Fusion) serviceNamesLongestFirst() []string {
-	names := f.GetServiceNames()
+	names := f.ServiceNames()
 	sortByLengthDesc(names)
 	return names
 }

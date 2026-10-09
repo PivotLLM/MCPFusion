@@ -34,7 +34,7 @@ func NewOAuth2ExternalStrategy(httpClient *http.Client, logger global.Logger) *O
 	}
 }
 
-func (s *OAuth2ExternalStrategy) GetAuthType() AuthType {
+func (s *OAuth2ExternalStrategy) Type() AuthType {
 	return AuthTypeOAuth2External
 }
 
@@ -50,7 +50,7 @@ func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenIn
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
-	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
+	req.Header.Set("Authorization", tokenInfo.AuthorizationHeader())
 	return nil
 }
 

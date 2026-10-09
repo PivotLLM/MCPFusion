@@ -109,8 +109,8 @@ func (d *DB) CreateUser(description string) (*UserMetadata, error) {
 	return metadata, nil
 }
 
-// GetUser retrieves user metadata by user ID
-func (d *DB) GetUser(userID string) (*UserMetadata, error) {
+// LoadUser retrieves user metadata by user ID
+func (d *DB) LoadUser(userID string) (*UserMetadata, error) {
 	if err := d.checkClosed(); err != nil {
 		return nil, err
 	}
@@ -396,8 +396,8 @@ func (d *DB) UnlinkAPIKey(keyHash string) error {
 	return nil
 }
 
-// GetUserByAPIKey looks up the user ID associated with an API key hash
-func (d *DB) GetUserByAPIKey(keyHash string) (string, error) {
+// LookupUserByAPIKey looks up the user ID associated with an API key hash
+func (d *DB) LookupUserByAPIKey(keyHash string) (string, error) {
 	if err := d.checkClosed(); err != nil {
 		return "", err
 	}

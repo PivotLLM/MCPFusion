@@ -40,7 +40,7 @@ func (s *OAuth2DeviceFlowStrategy) SetAuthManager(authManager *MultiTenantAuthMa
 	s.authManager = authManager
 }
 
-func (s *OAuth2DeviceFlowStrategy) GetAuthType() AuthType {
+func (s *OAuth2DeviceFlowStrategy) Type() AuthType {
 	return AuthTypeOAuth2Device
 }
 
@@ -340,7 +340,7 @@ func (s *OAuth2DeviceFlowStrategy) ApplyAuth(req *http.Request, tokenInfo *Token
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
-	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
+	req.Header.Set("Authorization", tokenInfo.AuthorizationHeader())
 	return nil
 }
 
@@ -354,7 +354,7 @@ func NewBearerTokenStrategy(logger global.Logger) *BearerTokenStrategy {
 	return &BearerTokenStrategy{logger: logger}
 }
 
-func (s *BearerTokenStrategy) GetAuthType() AuthType {
+func (s *BearerTokenStrategy) Type() AuthType {
 	return AuthTypeBearer
 }
 
@@ -381,7 +381,7 @@ func (s *BearerTokenStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo,
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
-	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
+	req.Header.Set("Authorization", tokenInfo.AuthorizationHeader())
 	return nil
 }
 
@@ -395,7 +395,7 @@ func NewAPIKeyStrategy(logger global.Logger) *APIKeyStrategy {
 	return &APIKeyStrategy{logger: logger}
 }
 
-func (s *APIKeyStrategy) GetAuthType() AuthType {
+func (s *APIKeyStrategy) Type() AuthType {
 	return AuthTypeAPIKey
 }
 
@@ -416,7 +416,7 @@ func (s *APIKeyStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ ma
 		return fmt.Errorf("token info is nil")
 	}
 	// This would typically set an API key header
-	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
+	req.Header.Set("Authorization", tokenInfo.AuthorizationHeader())
 	return nil
 }
 
@@ -430,7 +430,7 @@ func NewBasicAuthStrategy(logger global.Logger) *BasicAuthStrategy {
 	return &BasicAuthStrategy{logger: logger}
 }
 
-func (s *BasicAuthStrategy) GetAuthType() AuthType {
+func (s *BasicAuthStrategy) Type() AuthType {
 	return AuthTypeBasic
 }
 
@@ -450,7 +450,7 @@ func (s *BasicAuthStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
-	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
+	req.Header.Set("Authorization", tokenInfo.AuthorizationHeader())
 	return nil
 }
 
@@ -767,7 +767,7 @@ func NewSessionJWTStrategy(httpClient *http.Client, logger global.Logger) *Sessi
 	}
 }
 
-func (s *SessionJWTStrategy) GetAuthType() AuthType {
+func (s *SessionJWTStrategy) Type() AuthType {
 	return AuthTypeSessionJWT
 }
 
@@ -1240,7 +1240,7 @@ func NewUserCredentialsStrategy(logger global.Logger) *UserCredentialsStrategy {
 	return &UserCredentialsStrategy{logger: logger}
 }
 
-func (s *UserCredentialsStrategy) GetAuthType() AuthType {
+func (s *UserCredentialsStrategy) Type() AuthType {
 	return AuthTypeUserCredentials
 }
 

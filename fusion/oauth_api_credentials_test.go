@@ -82,10 +82,10 @@ func TestHandleOAuthTokens_CredentialsMode_Stores(t *testing.T) {
 	assert.Equal(t, true, body["success"])
 	assert.Equal(t, "Credentials stored successfully", body["message"])
 
-	creds, err := f.multiTenantAuth.GetUserCredentials(testTenantHash, "uem")
+	creds, err := f.multiTenantAuth.LoadUserCredentials(testTenantHash, "uem")
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"username": testUser, "password": testPassword}, creds)
-	_, err = f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "uem")
+	_, err = f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "uem")
 	assert.Error(t, err, "stale token must be removed")
 	assert.Equal(t, 0, uem.logins(), "credentials mode does not log in at storage time")
 }
@@ -97,7 +97,7 @@ func TestHandleOAuthTokens_CredentialsMode_IgnoresUndeclaredFields(t *testing.T)
 	payload["metadata"] = map[string]string{"username": testUser, "password": testPassword, "extra": "x"}
 	rec, _ := postTokens(t, h, "uem", payload)
 	require.Equal(t, http.StatusCreated, rec.Code)
-	creds, err := f.multiTenantAuth.GetUserCredentials(testTenantHash, "uem")
+	creds, err := f.multiTenantAuth.LoadUserCredentials(testTenantHash, "uem")
 	require.NoError(t, err)
 	_, hasExtra := creds["extra"]
 	assert.False(t, hasExtra)
@@ -110,7 +110,7 @@ func TestHandleOAuthTokens_MissingField(t *testing.T) {
 	rec, body := postTokens(t, h, "uem", payload)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, body["error"].(map[string]interface{})["message"], "credential field 'password'")
-	_, err := f.multiTenantAuth.GetUserCredentials(testTenantHash, "uem")
+	_, err := f.multiTenantAuth.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err)
 }
 
@@ -123,14 +123,14 @@ func TestHandleOAuthTokens_TokenMode_ExchangesAndStoresToken(t *testing.T) {
 	assert.Contains(t, body["message"], "exchanged")
 	assert.Equal(t, 1, uem.logins())
 
-	tok, err := f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "uem")
+	tok, err := f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "uem")
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok.AccessToken)
-	_, err = f.multiTenantAuth.GetUserCredentials(testTenantHash, "uem")
+	_, err = f.multiTenantAuth.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err, "token mode must not persist credentials")
 
 	// The stored token serves tool calls without another login.
-	got, err := f.multiTenantAuth.GetToken(context.Background(), tenant("uem"),
+	got, err := f.multiTenantAuth.AcquireToken(context.Background(), tenant("uem"),
 		f.config.Services["uem"].AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", got.AccessToken)
@@ -146,7 +146,7 @@ func TestHandleOAuthTokens_TokenMode_FailedExchange(t *testing.T) {
 	msg := body["error"].(map[string]interface{})["message"].(string)
 	assert.Contains(t, msg, "Login to UnifyEM failed")
 	assert.NotContains(t, msg, "wrong", "error must not echo the password")
-	_, err := f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "uem")
+	_, err := f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "uem")
 	assert.Error(t, err)
 }
 
@@ -160,7 +160,7 @@ func TestHandleOAuthTokens_UserCredentialsServiceUnchanged(t *testing.T) {
 	})
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, "Tokens stored successfully", body["message"])
-	tok, err := f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "trello")
+	tok, err := f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "trello")
 	require.NoError(t, err)
 	assert.Equal(t, "k123", tok.Metadata["key"])
 }
@@ -172,7 +172,7 @@ func TestHandleOAuthTokens_ExpiresInStillHonouredForPlainTokens(t *testing.T) {
 		"service": "trello", "access_token": "abc", "expires_in": 60,
 	})
 	require.Equal(t, http.StatusCreated, rec.Code)
-	tok, err := f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "trello")
+	tok, err := f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "trello")
 	require.NoError(t, err)
 	require.NotNil(t, tok.ExpiresAt)
 	assert.WithinDuration(t, time.Now().Add(time.Minute), *tok.ExpiresAt, 5*time.Second)

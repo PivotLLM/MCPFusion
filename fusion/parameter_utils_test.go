@@ -62,7 +62,7 @@ func TestSanitizeParameterName(t *testing.T) {
 	}
 }
 
-func TestGetMCPParameterName(t *testing.T) {
+func TestMCPParameterName(t *testing.T) {
 	tests := []struct {
 		name     string
 		param    ParameterConfig
@@ -94,9 +94,9 @@ func TestGetMCPParameterName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetMCPParameterName(&tt.param)
+			result := MCPParameterName(&tt.param)
 			if result != tt.expected {
-				t.Errorf("GetMCPParameterName(%+v) = %s; want %s", tt.param, result, tt.expected)
+				t.Errorf("MCPParameterName(%+v) = %s; want %s", tt.param, result, tt.expected)
 			}
 		})
 	}
@@ -150,21 +150,21 @@ func TestParameterNameMapper(t *testing.T) {
 	}
 
 	// Test retrieving original names
-	if orig := mapper.GetOriginalName("select"); orig != "$select" {
-		t.Errorf("GetOriginalName(select) = %s; want $select", orig)
+	if orig := mapper.OriginalName("select"); orig != "$select" {
+		t.Errorf("OriginalName(select) = %s; want $select", orig)
 	}
 
-	if orig := mapper.GetOriginalName("unknown"); orig != "unknown" {
-		t.Errorf("GetOriginalName(unknown) = %s; want unknown", orig)
+	if orig := mapper.OriginalName("unknown"); orig != "unknown" {
+		t.Errorf("OriginalName(unknown) = %s; want unknown", orig)
 	}
 
 	// Test retrieving MCP names
-	if mcp := mapper.GetMCPName("$select"); mcp != "select" {
-		t.Errorf("GetMCPName($select) = %s; want select", mcp)
+	if mcp := mapper.MCPName("$select"); mcp != "select" {
+		t.Errorf("MCPName($select) = %s; want select", mcp)
 	}
 
-	if mcp := mapper.GetMCPName("$unknown"); mcp != "unknown" {
-		t.Errorf("GetMCPName($unknown) = %s; want unknown", mcp)
+	if mcp := mapper.MCPName("$unknown"); mcp != "unknown" {
+		t.Errorf("MCPName($unknown) = %s; want unknown", mcp)
 	}
 
 	// Test mapping args

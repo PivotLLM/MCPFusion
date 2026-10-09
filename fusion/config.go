@@ -962,9 +962,9 @@ func (a *AuthConfig) Validate() error {
 	return a.ValidateWithLogger("", nil)
 }
 
-// GetEffectiveTokenInvalidationConfig returns the effective token invalidation configuration
+// EffectiveTokenInvalidationConfig returns the effective token invalidation configuration
 // Returns configured values with defaults for missing fields, or defaults if not configured
-func (a *AuthConfig) GetEffectiveTokenInvalidationConfig() *TokenInvalidationConfig {
+func (a *AuthConfig) EffectiveTokenInvalidationConfig() *TokenInvalidationConfig {
 	if a.TokenInvalidation != nil {
 		// Use configured values, with defaults for missing fields
 		config := *a.TokenInvalidation
@@ -1062,7 +1062,7 @@ func (e *EndpointConfig) ValidateWithLogger(serviceName string, logger global.Lo
 			}
 			return fmt.Errorf("requestBody.wrapperPath is required")
 		}
-		if _, ok := GetBodyEncoder(e.RequestBody.Encoding); !ok {
+		if _, ok := LookupBodyEncoder(e.RequestBody.Encoding); !ok {
 			if logger != nil {
 				logger.Errorf("Service %s: endpoint %s unknown requestBody encoding: %s", serviceName, e.ID, e.RequestBody.Encoding)
 			}
@@ -1356,8 +1356,8 @@ func expandEnvironmentVariables(data []byte) ([]byte, error) {
 	return []byte(result), nil
 }
 
-// GetEndpointByID finds an endpoint by ID within a service
-func (s *ServiceConfig) GetEndpointByID(id string) *EndpointConfig {
+// EndpointByID finds an endpoint by ID within a service
+func (s *ServiceConfig) EndpointByID(id string) *EndpointConfig {
 	for i := range s.Endpoints {
 		if s.Endpoints[i].ID == id {
 			return &s.Endpoints[i]
@@ -1366,8 +1366,8 @@ func (s *ServiceConfig) GetEndpointByID(id string) *EndpointConfig {
 	return nil
 }
 
-// GetRequiredParameters returns all required parameters for an endpoint
-func (e *EndpointConfig) GetRequiredParameters() []ParameterConfig {
+// RequiredParameters returns all required parameters for an endpoint
+func (e *EndpointConfig) RequiredParameters() []ParameterConfig {
 	var required []ParameterConfig
 	for _, param := range e.Parameters {
 		if param.Required {
@@ -1377,8 +1377,8 @@ func (e *EndpointConfig) GetRequiredParameters() []ParameterConfig {
 	return required
 }
 
-// GetParameterByName finds a parameter by name
-func (e *EndpointConfig) GetParameterByName(name string) *ParameterConfig {
+// ParameterByName finds a parameter by name
+func (e *EndpointConfig) ParameterByName(name string) *ParameterConfig {
 	for i := range e.Parameters {
 		if e.Parameters[i].Name == name {
 			return &e.Parameters[i]
@@ -1387,8 +1387,8 @@ func (e *EndpointConfig) GetParameterByName(name string) *ParameterConfig {
 	return nil
 }
 
-// GetTransformedParameterName returns the target name if transform is configured, otherwise the original name
-func (p *ParameterConfig) GetTransformedParameterName() string {
+// TransformedParameterName returns the target name if transform is configured, otherwise the original name
+func (p *ParameterConfig) TransformedParameterName() string {
 	if p.Transform != nil && p.Transform.TargetName != "" {
 		return p.Transform.TargetName
 	}
@@ -1424,8 +1424,8 @@ func (v *ValidationConfig) IsValidLength(value string) bool {
 	return true
 }
 
-// GetServiceByName returns a service configuration by name
-func (c *Config) GetServiceByName(name string) *ServiceConfig {
+// ServiceByName returns a service configuration by name
+func (c *Config) ServiceByName(name string) *ServiceConfig {
 	for _, service := range c.Services {
 		if service.Name == name {
 			return service
@@ -1434,8 +1434,8 @@ func (c *Config) GetServiceByName(name string) *ServiceConfig {
 	return nil
 }
 
-// GetAllEndpoints returns all endpoints from all services with their service context
-func (c *Config) GetAllEndpoints() []EndpointWithService {
+// AllEndpoints returns all endpoints from all services with their service context
+func (c *Config) AllEndpoints() []EndpointWithService {
 	var endpoints []EndpointWithService
 	for serviceName, service := range c.Services {
 		for _, endpoint := range service.Endpoints {
@@ -1467,8 +1467,8 @@ func (c *Config) ValidateServiceConfig(serviceName string) error {
 	return service.Validate()
 }
 
-// GetRequiredEnvironmentVariables scans the configuration and returns all environment variables that are referenced
-func (c *Config) GetRequiredEnvironmentVariables() []string {
+// RequiredEnvironmentVariables scans the configuration and returns all environment variables that are referenced
+func (c *Config) RequiredEnvironmentVariables() []string {
 	content, _ := json.Marshal(c.Services)
 	return extractEnvironmentVariables(content)
 }
@@ -1535,9 +1535,9 @@ func (c *Config) MergeConfig(other *Config) error {
 	return c.Validate()
 }
 
-// GetEffectiveRetryConfig returns the effective retry configuration for an endpoint
+// EffectiveRetryConfig returns the effective retry configuration for an endpoint
 // Endpoint-level config overrides service-level config, which overrides global defaults
-func (e *EndpointConfig) GetEffectiveRetryConfig(service *ServiceConfig) *RetryConfig {
+func (e *EndpointConfig) EffectiveRetryConfig(service *ServiceConfig) *RetryConfig {
 	// Endpoint-level override takes precedence
 	if e.Retry != nil {
 		return e.Retry
@@ -1563,8 +1563,8 @@ func (e *EndpointConfig) GetEffectiveRetryConfig(service *ServiceConfig) *RetryC
 	}
 }
 
-// GetEffectiveCircuitBreakerConfig returns the effective circuit breaker configuration for a service
-func (s *ServiceConfig) GetEffectiveCircuitBreakerConfig() *CircuitBreakerConfig {
+// EffectiveCircuitBreakerConfig returns the effective circuit breaker configuration for a service
+func (s *ServiceConfig) EffectiveCircuitBreakerConfig() *CircuitBreakerConfig {
 	if s.CircuitBreaker != nil {
 		return s.CircuitBreaker
 	}
@@ -1582,12 +1582,12 @@ func (s *ServiceConfig) GetEffectiveCircuitBreakerConfig() *CircuitBreakerConfig
 
 // IsRetryEnabled checks if retry is enabled for this endpoint
 func (e *EndpointConfig) IsRetryEnabled(service *ServiceConfig) bool {
-	config := e.GetEffectiveRetryConfig(service)
+	config := e.EffectiveRetryConfig(service)
 	return config.Enabled
 }
 
 // IsCircuitBreakerEnabled checks if circuit breaker is enabled for this service
 func (s *ServiceConfig) IsCircuitBreakerEnabled() bool {
-	config := s.GetEffectiveCircuitBreakerConfig()
+	config := s.EffectiveCircuitBreakerConfig()
 	return config.Enabled
 }

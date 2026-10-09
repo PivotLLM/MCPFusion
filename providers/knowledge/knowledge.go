@@ -245,7 +245,7 @@ func (p *Provider) knowledgeGetTool() global.ToolDefinition {
 				if domain != "" && key != "" {
 					// system/readme: always prepend the embedded header.
 					if domain == "system" && key == "readme" {
-						entry, err := p.database.GetKnowledge(userID, domain, key)
+						entry, err := p.database.LoadKnowledge(userID, domain, key)
 						if err != nil {
 							// No user content yet — return just the embedded header.
 							return knowledgeReadme, nil
@@ -254,7 +254,7 @@ func (p *Provider) knowledgeGetTool() global.ToolDefinition {
 						return knowledgeReadme + entry.Content, nil
 					}
 
-					entry, err := p.database.GetKnowledge(userID, domain, key)
+					entry, err := p.database.LoadKnowledge(userID, domain, key)
 					if err != nil {
 						return "", fmt.Errorf("failed to get knowledge: %w", err)
 					}

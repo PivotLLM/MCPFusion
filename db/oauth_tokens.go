@@ -84,8 +84,8 @@ func (d *DB) StoreOAuthToken(tenantHash, serviceName string, tokenData *OAuthTok
 	return nil
 }
 
-// GetOAuthToken retrieves OAuth token data for a tenant and service
-func (d *DB) GetOAuthToken(tenantHash, serviceName string) (*OAuthTokenData, error) {
+// LoadOAuthToken retrieves OAuth token data for a tenant and service
+func (d *DB) LoadOAuthToken(tenantHash, serviceName string) (*OAuthTokenData, error) {
 	if err := d.checkClosed(); err != nil {
 		return nil, err
 	}

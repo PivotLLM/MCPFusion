@@ -360,13 +360,13 @@ func (mtam *MultiTenantAuthManager) StoreUserCredentials(tenantHash, serviceName
 	})
 }
 
-// GetUserCredentials returns the field values a tenant supplied for a service.
+// LoadUserCredentials returns the field values a tenant supplied for a service.
 // Non-string values in the stored record are ignored.
-func (mtam *MultiTenantAuthManager) GetUserCredentials(tenantHash, serviceName string) (map[string]string, error) {
+func (mtam *MultiTenantAuthManager) LoadUserCredentials(tenantHash, serviceName string) (map[string]string, error) {
 	if mtam.db == nil {
 		return nil, fmt.Errorf("token store not available")
 	}
-	record, err := mtam.db.GetCredentials(tenantHash, serviceName)
+	record, err := mtam.db.LoadCredentials(tenantHash, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +443,7 @@ func (mtam *MultiTenantAuthManager) loginConfigForTenant(tenantContext *TenantCo
 	if sc.Store == CredentialStoreToken {
 		return nil, credentialsRequiredError(authConfig.Type, tenantContext.ServiceName)
 	}
-	creds, err := mtam.GetUserCredentials(tenantContext.TenantHash, tenantContext.ServiceName)
+	creds, err := mtam.LoadUserCredentials(tenantContext.TenantHash, tenantContext.ServiceName)
 	if err != nil || len(creds) == 0 {
 		if mtam.logger != nil {
 			mtam.logger.Debugf("No stored credentials for tenant %s service %s: %v",

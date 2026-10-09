@@ -14,14 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetBodyEncoder_Known(t *testing.T) {
-	enc, ok := GetBodyEncoder("rfc2822_base64url")
+func TestLookupBodyEncoder_Known(t *testing.T) {
+	enc, ok := LookupBodyEncoder("rfc2822_base64url")
 	assert.True(t, ok)
 	assert.NotNil(t, enc)
 }
 
-func TestGetBodyEncoder_Unknown(t *testing.T) {
-	enc, ok := GetBodyEncoder("nonexistent")
+func TestLookupBodyEncoder_Unknown(t *testing.T) {
+	enc, ok := LookupBodyEncoder("nonexistent")
 	assert.False(t, ok)
 	assert.Nil(t, enc)
 }

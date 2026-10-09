@@ -100,8 +100,8 @@ func (d *DB) StoreCredentials(tenantHash, serviceName string, credentials *Servi
 	return nil
 }
 
-// GetCredentials retrieves service credentials for a tenant and service
-func (d *DB) GetCredentials(tenantHash, serviceName string) (*ServiceCredentials, error) {
+// LoadCredentials retrieves service credentials for a tenant and service
+func (d *DB) LoadCredentials(tenantHash, serviceName string) (*ServiceCredentials, error) {
 	if err := d.checkClosed(); err != nil {
 		return nil, err
 	}
@@ -342,8 +342,8 @@ func (d *DB) UpdateCredentials(tenantHash, serviceName string, credentials *Serv
 	return nil
 }
 
-// GetCredentialsByType returns all credentials of a specific type for a tenant
-func (d *DB) GetCredentialsByType(tenantHash string, credType CredentialType) (map[string]*ServiceCredentials, error) {
+// LoadCredentialsByType returns all credentials of a specific type for a tenant
+func (d *DB) LoadCredentialsByType(tenantHash string, credType CredentialType) (map[string]*ServiceCredentials, error) {
 	if err := d.checkClosed(); err != nil {
 		return nil, err
 	}

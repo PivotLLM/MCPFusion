@@ -266,7 +266,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}()
 
 	// Check for token invalidation status codes (only retry once to prevent infinite loops)
-	tokenInvalidationConfig := h.service.Auth.GetEffectiveTokenInvalidationConfig()
+	tokenInvalidationConfig := h.service.Auth.EffectiveTokenInvalidationConfig()
 	shouldInvalidate := false
 	for _, code := range tokenInvalidationConfig.StatusCodes {
 		if resp.StatusCode == code {
@@ -575,10 +575,10 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 	}
 
 	// Get effective retry configuration
-	retryConfig := h.endpoint.GetEffectiveRetryConfig(h.service)
+	retryConfig := h.endpoint.EffectiveRetryConfig(h.service)
 
 	// Check if circuit breaker is enabled for this service
-	circuitBreakerConfig := h.service.GetEffectiveCircuitBreakerConfig()
+	circuitBreakerConfig := h.service.EffectiveCircuitBreakerConfig()
 	var circuitBreaker *CircuitBreaker
 	if circuitBreakerConfig.Enabled {
 		// Get or create circuit breaker for this service

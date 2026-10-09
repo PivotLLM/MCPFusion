@@ -527,11 +527,11 @@ func TestTimeTokenSubstitution_FutureTimeCalculation(t *testing.T) {
 	}
 }
 
-func TestTimeTokenProcessor_GetSupportedTokens(t *testing.T) {
+func TestTimeTokenProcessor_SupportedTokens(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
 	processor := NewTimeTokenProcessor(logger)
 
-	tokens := processor.GetSupportedTokens()
+	tokens := processor.SupportedTokens()
 
 	// Check that we have all expected token types
 	expectedTokens := []string{"#DAYS-N", "#HOURS-N", "#MINS-N", "#DAYS+N", "#HOURS+N", "#MINS+N"}

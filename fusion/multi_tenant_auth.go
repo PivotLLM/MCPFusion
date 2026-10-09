@@ -65,8 +65,8 @@ func (tc *TenantContext) String() string {
 // call it; the full db.Database supplies it, a bare TokenStore does not.
 type apiTokenResolver interface {
 	ValidateAPIToken(token string) (bool, string, error)
-	GetAPITokenMetadata(hash string) (*db.APITokenMetadata, error)
-	GetUserByAPIKey(keyHash string) (string, error)
+	LoadAPITokenMetadata(hash string) (*db.APITokenMetadata, error)
+	LookupUserByAPIKey(keyHash string) (string, error)
 }
 
 // MultiTenantAuthManager manages authentication for multiple tenants
@@ -139,7 +139,7 @@ func (mtam *MultiTenantAuthManager) RegisterStrategy(strategy AuthStrategy) {
 	mtam.mu.Lock()
 	defer mtam.mu.Unlock()
 
-	mtam.strategies[strategy.GetAuthType()] = strategy
+	mtam.strategies[strategy.Type()] = strategy
 
 	// Set auth manager reference for OAuth2 device flow strategies
 	if oauth2Strategy, ok := strategy.(*OAuth2DeviceFlowStrategy); ok {
@@ -147,12 +147,12 @@ func (mtam *MultiTenantAuthManager) RegisterStrategy(strategy AuthStrategy) {
 	}
 
 	if mtam.logger != nil {
-		mtam.logger.Infof("Registered multi-tenant auth strategy: %s", strategy.GetAuthType())
+		mtam.logger.Infof("Registered multi-tenant auth strategy: %s", strategy.Type())
 	}
 }
 
-// GetToken gets a valid token for a tenant and service, performing authentication if necessary
-func (mtam *MultiTenantAuthManager) GetToken(ctx context.Context, tenantContext *TenantContext,
+// AcquireToken gets a valid token for a tenant and service, performing authentication if necessary
+func (mtam *MultiTenantAuthManager) AcquireToken(ctx context.Context, tenantContext *TenantContext,
 	authConfig AuthConfig) (*TokenInfo, error) {
 
 	if tenantContext == nil {
@@ -310,7 +310,7 @@ func (mtam *MultiTenantAuthManager) ApplyAuthentication(ctx context.Context, req
 			tenantContext.ShortHash(), tenantContext.ServiceName, req.Method, req.URL.String())
 	}
 
-	tokenInfo, err := mtam.GetToken(ctx, tenantContext, authConfig)
+	tokenInfo, err := mtam.AcquireToken(ctx, tenantContext, authConfig)
 	if err != nil {
 		if mtam.logger != nil {
 			mtam.logger.Errorf("Failed to get token for tenant %s service %s: %v",
@@ -532,7 +532,7 @@ func (mtam *MultiTenantAuthManager) getCachedToken(tenantContext *TenantContext)
 			mtam.logger.Debugf("Checking database for tenant %s service: %s",
 				tenantContext.ShortHash(), tenantContext.ServiceName)
 		}
-		if tokenData, err := mtam.db.GetOAuthToken(tenantContext.TenantHash, tenantContext.ServiceName); err == nil {
+		if tokenData, err := mtam.db.LoadOAuthToken(tenantContext.TenantHash, tenantContext.ServiceName); err == nil {
 			tokenInfo := mtam.convertOAuthTokenDataToTokenInfo(tokenData)
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Found token in database for tenant %s service: %s",
@@ -727,7 +727,7 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 		}
 
 		// Get token metadata for additional context
-		metadata, err := mtam.apiTokens.GetAPITokenMetadata(hash)
+		metadata, err := mtam.apiTokens.LoadAPITokenMetadata(hash)
 		if err != nil {
 			if mtam.logger != nil {
 				mtam.logger.Warningf("Failed to get token metadata: %v", err)
@@ -736,7 +736,7 @@ func (mtam *MultiTenantAuthManager) ExtractTenantFromToken(token string) (*Tenan
 
 		// Look up user ID from the key hash
 		var userID string
-		if resolvedUserID, err := mtam.apiTokens.GetUserByAPIKey(hash); err == nil {
+		if resolvedUserID, err := mtam.apiTokens.LookupUserByAPIKey(hash); err == nil {
 			userID = resolvedUserID
 			if mtam.logger != nil {
 				mtam.logger.Debugf("Resolved user ID %s for API key %s", userID, hash[:12])
@@ -853,8 +853,8 @@ func (mtam *MultiTenantAuthManager) ValidateTenantAccess(tenantContext *TenantCo
 	return nil
 }
 
-// GetRegisteredStrategies returns a list of registered authentication types
-func (mtam *MultiTenantAuthManager) GetRegisteredStrategies() []AuthType {
+// RegisteredStrategies returns a list of registered authentication types
+func (mtam *MultiTenantAuthManager) RegisteredStrategies() []AuthType {
 	mtam.mu.RLock()
 	defer mtam.mu.RUnlock()
 
@@ -874,8 +874,8 @@ func (mtam *MultiTenantAuthManager) HasStrategy(authType AuthType) bool {
 	return exists
 }
 
-// GetTenantTokens returns all tokens for a specific tenant
-func (mtam *MultiTenantAuthManager) GetTenantTokens(tenantHash string) (map[string]*TokenInfo, error) {
+// ListTenantTokens returns all tokens for a specific tenant
+func (mtam *MultiTenantAuthManager) ListTenantTokens(tenantHash string) (map[string]*TokenInfo, error) {
 	if mtam.db == nil {
 		return nil, fmt.Errorf("database not available")
 	}

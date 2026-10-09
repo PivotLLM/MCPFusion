@@ -14,10 +14,10 @@ import (
 	"testing"
 )
 
-func TestOAuth2ExternalStrategy_GetAuthType(t *testing.T) {
+func TestOAuth2ExternalStrategy_Type(t *testing.T) {
 	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
-	if strategy.GetAuthType() != AuthTypeOAuth2External {
-		t.Errorf("GetAuthType() = %v, want %v", strategy.GetAuthType(), AuthTypeOAuth2External)
+	if strategy.Type() != AuthTypeOAuth2External {
+		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeOAuth2External)
 	}
 }
 

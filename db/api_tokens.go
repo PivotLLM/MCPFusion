@@ -300,8 +300,8 @@ func (d *DB) ListAPITokens() ([]APITokenMetadata, error) {
 	return tokens, nil
 }
 
-// GetAPITokenMetadata retrieves metadata for a specific API token by hash
-func (d *DB) GetAPITokenMetadata(hash string) (*APITokenMetadata, error) {
+// LoadAPITokenMetadata retrieves metadata for a specific API token by hash
+func (d *DB) LoadAPITokenMetadata(hash string) (*APITokenMetadata, error) {
 	if err := d.checkClosed(); err != nil {
 		return nil, err
 	}

@@ -404,8 +404,8 @@ func (s *MCPServer) Stop() error {
 	}
 }
 
-// GetMCPServer returns the underlying mcp-go server for dynamic tool management
-func (s *MCPServer) GetMCPServer() *server.MCPServer {
+// Server returns the underlying mcp-go server for dynamic tool management
+func (s *MCPServer) Server() *server.MCPServer {
 	return s.srv
 }
 

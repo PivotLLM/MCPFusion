@@ -43,8 +43,8 @@ func (t *TokenInfo) HasRefreshToken() bool {
 	return t.RefreshToken != ""
 }
 
-// GetAuthorizationHeader returns the authorization header value
-func (t *TokenInfo) GetAuthorizationHeader() string {
+// AuthorizationHeader returns the authorization header value
+func (t *TokenInfo) AuthorizationHeader() string {
 	if t.TokenType != "" {
 		return t.TokenType + " " + t.AccessToken
 	}
@@ -98,8 +98,8 @@ type AuthStrategy interface {
 	// RefreshToken refreshes an existing token
 	RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error)
 
-	// GetAuthType returns the authentication type this strategy handles
-	GetAuthType() AuthType
+	// Type returns the authentication type this strategy handles
+	Type() AuthType
 
 	// SupportsRefresh returns true if this strategy supports token refresh
 	SupportsRefresh() bool

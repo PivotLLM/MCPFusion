@@ -332,7 +332,7 @@ func TestLoadConfigFromJSON_EndpointBaseURLOverride(t *testing.T) {
 	}
 
 	// First endpoint should have no BaseURL override
-	defaultEP := service.GetEndpointByID("default_base")
+	defaultEP := service.EndpointByID("default_base")
 	if defaultEP == nil {
 		t.Fatal("Expected 'default_base' endpoint to exist")
 	}
@@ -341,7 +341,7 @@ func TestLoadConfigFromJSON_EndpointBaseURLOverride(t *testing.T) {
 	}
 
 	// Second endpoint should have the override
-	customEP := service.GetEndpointByID("custom_base")
+	customEP := service.EndpointByID("custom_base")
 	if customEP == nil {
 		t.Fatal("Expected 'custom_base' endpoint to exist")
 	}

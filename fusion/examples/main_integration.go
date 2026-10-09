@@ -55,7 +55,7 @@ func main() {
 	}
 
 	// Log configuration summary
-	serviceNames := fusionProvider.GetServiceNames()
+	serviceNames := fusionProvider.ServiceNames()
 	logger.Infof("Configured services: %v", serviceNames)
 
 	tools := fusionProvider.RegisterTools()
@@ -91,7 +91,7 @@ func main() {
 		logger.Infof("Server will be available at http://localhost:8080")
 
 		// Log service names
-		serviceNames := fusionProvider.GetServiceNames()
+		serviceNames := fusionProvider.ServiceNames()
 		logger.Infof("Configured services: %v", serviceNames)
 
 		if err := server.Start(); err != nil {

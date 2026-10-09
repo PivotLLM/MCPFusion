@@ -14,8 +14,8 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-// GetTenantInfo retrieves information about a specific tenant
-func (d *DB) GetTenantInfo(hash string) (*TenantInfo, error) {
+// LoadTenantInfo retrieves information about a specific tenant
+func (d *DB) LoadTenantInfo(hash string) (*TenantInfo, error) {
 	if err := d.checkClosed(); err != nil {
 		return nil, err
 	}
@@ -485,8 +485,8 @@ func (d *DB) TenantExists(tenantHash string) (bool, error) {
 	return exists, nil
 }
 
-// GetTenantResourceCount returns the total count of resources for a tenant
-func (d *DB) GetTenantResourceCount(tenantHash string) (int, int, error) {
+// CountTenantResources returns the total count of resources for a tenant
+func (d *DB) CountTenantResources(tenantHash string) (int, int, error) {
 	if err := d.checkClosed(); err != nil {
 		return 0, 0, err
 	}

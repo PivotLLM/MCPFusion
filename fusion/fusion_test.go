@@ -176,7 +176,7 @@ func TestInterfaceImplementation(t *testing.T) {
 	var _ global.PromptProvider = fusion
 }
 
-func TestGetServiceNames(t *testing.T) {
+func TestServiceNames(t *testing.T) {
 	jsonConfig := `{
 		"services": {
 			"service1": {
@@ -198,7 +198,7 @@ func TestGetServiceNames(t *testing.T) {
 		WithJSONConfigData([]byte(jsonConfig), "test-config.json"),
 	)
 
-	names := fusion.GetServiceNames()
+	names := fusion.ServiceNames()
 
 	if len(names) != 2 {
 		t.Errorf("Expected 2 service names, got %d", len(names))

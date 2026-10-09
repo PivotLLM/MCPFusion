@@ -79,7 +79,7 @@ func (dc *DatabaseCache) Get(key string) (interface{}, error) {
 	}
 
 	// Get the OAuth token from the database
-	tokenData, err := dc.db.GetOAuthToken(tenantHash, serviceName)
+	tokenData, err := dc.db.LoadOAuthToken(tenantHash, serviceName)
 	if err != nil {
 		if dc.logger != nil {
 			dc.logger.Debugf("Database cache MISS - token not found for key: %s (%v)", SanitizeCacheKeyForLogging(key), err)
@@ -246,7 +246,7 @@ func (dc *DatabaseCache) Has(key string) bool {
 	}
 
 	// Check if the token exists and is not expired
-	tokenData, err := dc.db.GetOAuthToken(tenantHash, serviceName)
+	tokenData, err := dc.db.LoadOAuthToken(tenantHash, serviceName)
 	if err != nil {
 		if dc.logger != nil {
 			dc.logger.Debugf("Database cache HAS result for key %s: false (not found)", key)
@@ -382,8 +382,8 @@ func (dc *DatabaseCache) CleanupExpired() error {
 	return nil
 }
 
-// GetStats returns statistics about the cache
-func (dc *DatabaseCache) GetStats() map[string]interface{} {
+// Stats returns statistics about the cache
+func (dc *DatabaseCache) Stats() map[string]interface{} {
 	stats := map[string]interface{}{
 		"type":        "database",
 		"default_ttl": dc.defaultTTL.String(),

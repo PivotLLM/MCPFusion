@@ -13,10 +13,10 @@ import (
 	"testing"
 )
 
-func TestUserCredentialsStrategy_GetAuthType(t *testing.T) {
+func TestUserCredentialsStrategy_Type(t *testing.T) {
 	strategy := NewUserCredentialsStrategy(nil)
-	if strategy.GetAuthType() != AuthTypeUserCredentials {
-		t.Errorf("GetAuthType() = %v, want %v", strategy.GetAuthType(), AuthTypeUserCredentials)
+	if strategy.Type() != AuthTypeUserCredentials {
+		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeUserCredentials)
 	}
 }
 

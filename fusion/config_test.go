@@ -938,7 +938,7 @@ func TestLoadConfigFromFile_WithEnvironmentVariables(t *testing.T) {
 	}
 }
 
-func TestConfig_GetServiceByName(t *testing.T) {
+func TestConfig_ServiceByName(t *testing.T) {
 	config := &Config{
 		Services: map[string]*ServiceConfig{
 			"service1": {Name: "Service One"},
@@ -947,7 +947,7 @@ func TestConfig_GetServiceByName(t *testing.T) {
 	}
 
 	// Test existing service
-	service := config.GetServiceByName("Service One")
+	service := config.ServiceByName("Service One")
 	if service == nil {
 		t.Fatal("Expected to find Service One")
 	}
@@ -956,13 +956,13 @@ func TestConfig_GetServiceByName(t *testing.T) {
 	}
 
 	// Test non-existent service
-	service = config.GetServiceByName("Non-existent")
+	service = config.ServiceByName("Non-existent")
 	if service != nil {
 		t.Error("Expected nil for non-existent service")
 	}
 }
 
-func TestConfig_GetAllEndpoints(t *testing.T) {
+func TestConfig_AllEndpoints(t *testing.T) {
 	config := &Config{
 		Services: map[string]*ServiceConfig{
 			"service1": {
@@ -981,7 +981,7 @@ func TestConfig_GetAllEndpoints(t *testing.T) {
 		},
 	}
 
-	endpoints := config.GetAllEndpoints()
+	endpoints := config.AllEndpoints()
 	if len(endpoints) != 3 {
 		t.Errorf("Expected 3 endpoints, got %d", len(endpoints))
 	}
@@ -1051,7 +1051,7 @@ func TestConfig_ValidateServiceConfig(t *testing.T) {
 	}
 }
 
-func TestConfig_GetRequiredEnvironmentVariables(t *testing.T) {
+func TestConfig_RequiredEnvironmentVariables(t *testing.T) {
 	validConfig := `{
 		"services": {
 			"test_service": {
@@ -1085,7 +1085,7 @@ func TestConfig_GetRequiredEnvironmentVariables(t *testing.T) {
 		t.Fatalf("Failed to load config: %v", err)
 	}
 
-	envVars := config.GetRequiredEnvironmentVariables()
+	envVars := config.RequiredEnvironmentVariables()
 
 	// AUTH_HEADER has a default, so it should not be considered "required"
 	expectedVars := []string{"API_URL", "API_TOKEN", "USER_ID"}

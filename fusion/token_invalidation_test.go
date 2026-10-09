@@ -16,7 +16,7 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
-func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.T) {
+func TestTokenInvalidationConfig_EffectiveTokenInvalidationConfig(t *testing.T) {
 	tests := []struct {
 		name                    string
 		authConfig              AuthConfig
@@ -76,7 +76,7 @@ func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.authConfig.GetEffectiveTokenInvalidationConfig()
+			got := tt.authConfig.EffectiveTokenInvalidationConfig()
 			if len(got.StatusCodes) != len(tt.wantStatusCodes) {
 				t.Errorf("StatusCodes length = %v, want %v", len(got.StatusCodes), len(tt.wantStatusCodes))
 				return
@@ -665,7 +665,7 @@ func TestTokenInvalidationConfig_RetryDelay(t *testing.T) {
 				"statusCodes": [401],
 				"retryOnInvalidation": true
 			}`,
-			wantRetryDelay: 0, // Will be set to default by GetEffectiveTokenInvalidationConfig
+			wantRetryDelay: 0, // Will be set to default by EffectiveTokenInvalidationConfig
 			wantError:      false,
 		},
 		{

@@ -36,7 +36,7 @@ func TestRefreshOAuthToken_UpdatesAccessTokenPreservesRefreshToken(t *testing.T)
 	require.NoError(t, err)
 
 	// Capture the UpdatedAt written by StoreOAuthToken.
-	stored, err := iface.GetOAuthToken(tenantHash, "svc")
+	stored, err := iface.LoadOAuthToken(tenantHash, "svc")
 	require.NoError(t, err)
 	originalUpdatedAt := stored.UpdatedAt
 
@@ -47,7 +47,7 @@ func TestRefreshOAuthToken_UpdatesAccessTokenPreservesRefreshToken(t *testing.T)
 	err = database.RefreshOAuthToken(tenantHash, "svc", "new-access", &newExpiry)
 	require.NoError(t, err)
 
-	refreshed, err := iface.GetOAuthToken(tenantHash, "svc")
+	refreshed, err := iface.LoadOAuthToken(tenantHash, "svc")
 	require.NoError(t, err)
 
 	assert.Equal(t, "new-access", refreshed.AccessToken, "access token should be updated")

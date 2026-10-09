@@ -20,10 +20,10 @@ import (
 // P0-3: BearerTokenStrategy unit tests
 // ---------------------------------------------------------------------------
 
-func TestBearerTokenStrategy_GetAuthType(t *testing.T) {
+func TestBearerTokenStrategy_Type(t *testing.T) {
 	s := NewBearerTokenStrategy(nil)
-	if s.GetAuthType() != AuthTypeBearer {
-		t.Errorf("GetAuthType() = %v, want %v", s.GetAuthType(), AuthTypeBearer)
+	if s.Type() != AuthTypeBearer {
+		t.Errorf("Type() = %v, want %v", s.Type(), AuthTypeBearer)
 	}
 }
 
@@ -387,10 +387,10 @@ func TestOAuth2DeviceFlowStrategy_Authenticate_MissingAuthorizationURL(t *testin
 	}
 }
 
-func TestOAuth2DeviceFlowStrategy_GetAuthType(t *testing.T) {
+func TestOAuth2DeviceFlowStrategy_Type(t *testing.T) {
 	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient, nil)
-	if strategy.GetAuthType() != AuthTypeOAuth2Device {
-		t.Errorf("GetAuthType() = %v, want %v", strategy.GetAuthType(), AuthTypeOAuth2Device)
+	if strategy.Type() != AuthTypeOAuth2Device {
+		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeOAuth2Device)
 	}
 }
 

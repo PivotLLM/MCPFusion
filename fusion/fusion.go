@@ -217,10 +217,10 @@ func WithConfig(config *Config) Option {
 // WithConfigManager sets the configuration from a config manager.
 // If the config manager also implements NativeToolPrefixRegistrar, the reference
 // is stored so that native tool prefixes can be registered during RegisterTools().
-func WithConfigManager(configManager interface{ GetConfig() *Config }) Option {
+func WithConfigManager(configManager interface{ Config() *Config }) Option {
 	return func(f *Fusion) {
 		if configManager != nil {
-			f.config = configManager.GetConfig()
+			f.config = configManager.Config()
 			if f.logger != nil && f.config != nil {
 				f.logger.Infof("Loaded configuration from config manager with %d services", len(f.config.Services))
 			}
@@ -620,25 +620,25 @@ func New(options ...Option) *Fusion {
 
 // Legacy authentication strategies removed - only multi-tenant auth is supported
 
-// GetConfig returns the current configuration
-func (f *Fusion) GetConfig() *Config {
+// Config returns the current configuration
+func (f *Fusion) Config() *Config {
 	return f.config
 }
 
 // Legacy GetAuthManager removed - use multi-tenant auth manager
 
-// GetHTTPClient returns the HTTP client
-func (f *Fusion) GetHTTPClient() *http.Client {
+// HTTPClient returns the HTTP client
+func (f *Fusion) HTTPClient() *http.Client {
 	return f.httpClient
 }
 
-// GetCache returns the cache
-func (f *Fusion) GetCache() Cache {
+// Cache returns the cache
+func (f *Fusion) Cache() Cache {
 	return f.cache
 }
 
-// GetLogger returns the logger
-func (f *Fusion) GetLogger() global.Logger {
+// Logger returns the logger
+func (f *Fusion) Logger() global.Logger {
 	return f.logger
 }
 
@@ -771,7 +771,7 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 		}
 
 		// Use MCP-compliant name (alias or sanitized)
-		mcpName := GetMCPParameterName(&param)
+		mcpName := MCPParameterName(&param)
 
 		// Log the mapping if different from original
 		if f.logger != nil && mcpName != param.Name {
@@ -1049,8 +1049,8 @@ func (f *Fusion) ReloadConfig() error {
 	return nil
 }
 
-// GetServiceNames returns a list of configured service names
-func (f *Fusion) GetServiceNames() []string {
+// ServiceNames returns a list of configured service names
+func (f *Fusion) ServiceNames() []string {
 	if f.config == nil {
 		return []string{}
 	}
@@ -1062,8 +1062,8 @@ func (f *Fusion) GetServiceNames() []string {
 	return names
 }
 
-// GetService returns a service configuration by name
-func (f *Fusion) GetService(name string) *ServiceConfig {
+// Service returns a service configuration by name
+func (f *Fusion) Service(name string) *ServiceConfig {
 	if f.config == nil {
 		return nil
 	}
@@ -1081,14 +1081,14 @@ func (f *Fusion) HasService(name string) bool {
 	return exists
 }
 
-// GetEndpoint returns an endpoint configuration by service and endpoint ID
-func (f *Fusion) GetEndpoint(serviceName, endpointID string) *EndpointConfig {
-	service := f.GetService(serviceName)
+// Endpoint returns an endpoint configuration by service and endpoint ID
+func (f *Fusion) Endpoint(serviceName, endpointID string) *EndpointConfig {
+	service := f.Service(serviceName)
 	if service == nil {
 		return nil
 	}
 
-	return service.GetEndpointByID(endpointID)
+	return service.EndpointByID(endpointID)
 }
 
 // Legacy authentication methods removed - use multi-tenant auth manager
@@ -1186,25 +1186,25 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 		// Apply parameter to appropriate location
 		switch param.Location {
 		case ParameterLocationPath:
-			pathParams[param.GetTransformedParameterName()] = transformedValue
+			pathParams[param.TransformedParameterName()] = transformedValue
 			// Replace path parameter
-			placeholder := "{" + param.GetTransformedParameterName() + "}"
+			placeholder := "{" + param.TransformedParameterName() + "}"
 			parsedURL.Path = strings.ReplaceAll(parsedURL.Path, placeholder, fmt.Sprintf("%v", transformedValue))
 			if f.logger != nil {
 				f.logger.Debugf("Applied path parameter %s: %v", param.Name, transformedValue)
 			}
 		case ParameterLocationQuery:
-			queryParams.Set(param.GetTransformedParameterName(), fmt.Sprintf("%v", transformedValue))
+			queryParams.Set(param.TransformedParameterName(), fmt.Sprintf("%v", transformedValue))
 			if f.logger != nil {
 				f.logger.Debugf("Applied query parameter %s: %v", param.Name, transformedValue)
 			}
 		case ParameterLocationHeader:
-			headerParams[param.GetTransformedParameterName()] = transformedValue
+			headerParams[param.TransformedParameterName()] = transformedValue
 			if f.logger != nil {
 				f.logger.Debugf("Prepared header parameter %s: %v", param.Name, transformedValue)
 			}
 		case ParameterLocationBody:
-			bodyParameters[param.GetTransformedParameterName()] = transformedValue
+			bodyParameters[param.TransformedParameterName()] = transformedValue
 			if f.logger != nil {
 				f.logger.Debugf("Applied body parameter %s: %v", param.Name, transformedValue)
 			}
@@ -1270,7 +1270,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 	for _, param := range endpoint.Parameters {
 		if param.Location == ParameterLocationHeader {
 			if value, exists := options[param.Name]; exists {
-				headerName := param.GetTransformedParameterName()
+				headerName := param.TransformedParameterName()
 				headerValue := fmt.Sprintf("%v", value)
 				req.Header.Set(headerName, headerValue)
 				headerCount++
@@ -1848,53 +1848,53 @@ func (f *Fusion) getOrCreateCircuitBreaker(serviceName string, config *CircuitBr
 	return cb
 }
 
-// GetCircuitBreakerMetrics returns circuit breaker metrics for a service
-func (f *Fusion) GetCircuitBreakerMetrics(serviceName string) *CircuitBreakerMetrics {
+// CircuitBreakerMetrics returns circuit breaker metrics for a service
+func (f *Fusion) CircuitBreakerMetrics(serviceName string) *CircuitBreakerMetrics {
 	f.circuitBreakersMutex.RLock()
 	defer f.circuitBreakersMutex.RUnlock()
 
 	if cb, exists := f.circuitBreakers[serviceName]; exists {
-		metrics := cb.GetMetrics()
+		metrics := cb.Metrics()
 		return &metrics
 	}
 	return nil
 }
 
-// GetAllCircuitBreakerMetrics returns circuit breaker metrics for all services
-func (f *Fusion) GetAllCircuitBreakerMetrics() map[string]*CircuitBreakerMetrics {
+// AllCircuitBreakerMetrics returns circuit breaker metrics for all services
+func (f *Fusion) AllCircuitBreakerMetrics() map[string]*CircuitBreakerMetrics {
 	f.circuitBreakersMutex.RLock()
 	defer f.circuitBreakersMutex.RUnlock()
 
 	result := make(map[string]*CircuitBreakerMetrics)
 	for serviceName, cb := range f.circuitBreakers {
-		metrics := cb.GetMetrics()
+		metrics := cb.Metrics()
 		result[serviceName] = &metrics
 	}
 	return result
 }
 
-// GetMetrics returns metrics for all services
-func (f *Fusion) GetMetrics() map[string]*ServiceMetrics {
+// Metrics returns metrics for all services
+func (f *Fusion) Metrics() map[string]*ServiceMetrics {
 	if f.metricsCollector == nil {
 		return nil
 	}
-	return f.metricsCollector.GetAllMetrics()
+	return f.metricsCollector.AllMetrics()
 }
 
-// GetServiceMetrics returns metrics for a specific service
-func (f *Fusion) GetServiceMetrics(serviceName string) *ServiceMetrics {
+// ServiceMetrics returns metrics for a specific service
+func (f *Fusion) ServiceMetrics(serviceName string) *ServiceMetrics {
 	if f.metricsCollector == nil {
 		return nil
 	}
-	return f.metricsCollector.GetServiceMetrics(serviceName)
+	return f.metricsCollector.ServiceMetrics(serviceName)
 }
 
-// GetGlobalMetrics returns global system metrics
-func (f *Fusion) GetGlobalMetrics() *GlobalMetrics {
+// GlobalMetrics returns global system metrics
+func (f *Fusion) GlobalMetrics() *GlobalMetrics {
 	if f.metricsCollector == nil {
 		return nil
 	}
-	metrics := f.metricsCollector.GetGlobalMetrics()
+	metrics := f.metricsCollector.GlobalMetrics()
 	return &metrics
 }
 
@@ -1989,9 +1989,9 @@ type circuitBreakerSourceAdapter struct {
 	fusion *Fusion
 }
 
-// GetAllCircuitBreakerMetrics implements health.CircuitBreakerSource.
-func (a *circuitBreakerSourceAdapter) GetAllCircuitBreakerMetrics() map[string]health.CircuitBreakerInfo {
-	raw := a.fusion.GetAllCircuitBreakerMetrics()
+// AllCircuitBreakerMetrics implements health.CircuitBreakerSource.
+func (a *circuitBreakerSourceAdapter) AllCircuitBreakerMetrics() map[string]health.CircuitBreakerInfo {
+	raw := a.fusion.AllCircuitBreakerMetrics()
 	result := make(map[string]health.CircuitBreakerInfo, len(raw))
 	for name, m := range raw {
 		result[name] = health.CircuitBreakerInfo{
@@ -2002,8 +2002,8 @@ func (a *circuitBreakerSourceAdapter) GetAllCircuitBreakerMetrics() map[string]h
 	return result
 }
 
-// GetCircuitBreakerSource returns a health.CircuitBreakerSource that exposes the
+// CircuitBreakerSource returns a health.CircuitBreakerSource that exposes the
 // circuit-breaker state of all services managed by this Fusion instance.
-func (f *Fusion) GetCircuitBreakerSource() health.CircuitBreakerSource {
+func (f *Fusion) CircuitBreakerSource() health.CircuitBreakerSource {
 	return &circuitBreakerSourceAdapter{fusion: f}
 }

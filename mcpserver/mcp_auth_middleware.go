@@ -102,7 +102,7 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 
 			// Validate that this service exists in our configuration
 			if config.serviceProvider != nil {
-				availableServices := config.serviceProvider.GetAvailableServices()
+				availableServices := config.serviceProvider.AvailableServices()
 				serviceFound := false
 				for _, availableService := range availableServices {
 					if availableService == serviceName {
