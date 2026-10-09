@@ -89,11 +89,7 @@ func (at *AuthenticatedTransport) Shutdown(ctx context.Context) error {
 
 // ServeHTTP implements http.Handler interface to allow this transport to be wrapped by other middleware
 func (at *AuthenticatedTransport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if at.handler != nil {
-		at.handler.ServeHTTP(w, r)
-	} else {
-		http.Error(w, "Handler not configured", http.StatusInternalServerError)
-	}
+	at.handler.ServeHTTP(w, r)
 }
 
 // listenerTransport is a transport that serves on a listener opened by MCPServer,
