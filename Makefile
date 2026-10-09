@@ -12,6 +12,8 @@ GO_VERSION=$(shell go version | awk '{print $$3}')
 BUILD_NUMBER:=$(shell date -u +%Y%m%d%H%M%S)
 APP_PKG=github.com/PivotLLM/MCPFusion/app
 LDFLAGS=-ldflags "-X $(APP_PKG).gitCommit=$(GIT_COMMIT) -X $(APP_PKG).buildTime=$(BUILD_TIME) -X $(APP_PKG).goVersion=$(GO_VERSION) -X $(APP_PKG).buildNumber=$(BUILD_NUMBER) -s -w"
+AUTH_APP_PKG=github.com/PivotLLM/MCPFusion/cmd/auth/app
+AUTH_LDFLAGS=-ldflags "-X $(AUTH_APP_PKG).gitCommit=$(GIT_COMMIT) -X $(AUTH_APP_PKG).buildTime=$(BUILD_TIME) -X $(AUTH_APP_PKG).goVersion=$(GO_VERSION) -X $(AUTH_APP_PKG).buildNumber=$(BUILD_NUMBER) -s -w"
 
 all: test
 	$(MAKE) build
@@ -25,10 +27,10 @@ test-integration:
 
 build:
 	go build $(LDFLAGS) -o mcpfusion .
-	cd cmd/auth && go build -o fusion-oauth .
+	cd cmd/auth && go build $(AUTH_LDFLAGS) -o fusion-auth .
 
 clean:
-	rm -f mcpfusion cmd/auth/fusion-oauth
+	rm -f mcpfusion cmd/auth/fusion-auth
 	go clean -testcache
 
 fmt:

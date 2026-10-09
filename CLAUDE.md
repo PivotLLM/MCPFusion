@@ -54,7 +54,7 @@ make build
 # Full regression suite (both modules, race detector) — the one gate
 make test
 
-# Test, then build mcpfusion and cmd/auth/fusion-oauth
+# Test, then build mcpfusion and cmd/auth/fusion-auth
 make
 
 # Run tests with coverage
