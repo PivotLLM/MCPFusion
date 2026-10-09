@@ -29,7 +29,7 @@ func TestNewSSEClient_DefaultBackoff(t *testing.T) {
 		BaseURL:    "http://localhost:9999/sse",
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	require.NotNil(t, c)
 
 	assert.Equal(t, time.Second, c.backoff.currentDelay,
@@ -53,7 +53,7 @@ func TestNewSSEClient_CustomRetryConfig(t *testing.T) {
 		},
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	require.NotNil(t, c)
 
 	assert.Equal(t, 500*time.Millisecond, c.backoff.baseDelay,
@@ -76,7 +76,7 @@ func TestNewSSEClient_PartialRetryConfig(t *testing.T) {
 		},
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	require.NotNil(t, c)
 
 	assert.Equal(t, 2*time.Second, c.backoff.baseDelay,
@@ -99,7 +99,7 @@ func TestSSEClient_Manager_ReturnsNonNil(t *testing.T) {
 		BaseURL:    "http://localhost:9999/sse",
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	mgr := c.Manager()
 	require.NotNil(t, mgr, "Manager() must return a non-nil MCPClientManager")
 }
@@ -259,7 +259,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 				BaseURL:    "http://localhost:9999/sse",
 				Auth:       tc.auth,
 			}
-			c := NewSSEClient(cfg, newTestLogger(t))
+			c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 			headers := c.buildAuthHeaders()
 			assert.Equal(t, tc.expected, headers)
 		})
@@ -278,7 +278,7 @@ func TestSSEClient_Connect_InvalidURL(t *testing.T) {
 		BaseURL:    "http://127.0.0.1:0/nonexistent-sse-endpoint",
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -298,7 +298,7 @@ func TestSSEClient_Close_NeverConnected(t *testing.T) {
 		BaseURL:    "http://localhost:9999/sse",
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	assert.NotPanics(t, func() {
 		err := c.Close()
 		assert.NoError(t, err, "Close on a never-connected client should not error")
@@ -322,7 +322,7 @@ func TestSSEClient_RunWithReconnect_ContextCancellation(t *testing.T) {
 		},
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 
 	ctx, cancel := context.WithCancel(context.Background())
 

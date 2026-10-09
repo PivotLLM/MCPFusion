@@ -65,7 +65,7 @@ func (m *memDataStore) Delete(_ context.Context, collection, key string) error {
 func newTestTokenStore(t *testing.T) (TokenStore, *memDataStore) {
 	t.Helper()
 	ds := newMemDataStore()
-	return NewDataStoreTokenStore(ds, testlogger.New(t)), ds
+	return NewDataStoreTokenStore(ds, WithLogger(testlogger.New(t))), ds
 }
 
 func TestDataStoreTokenStore_OAuthRoundTrip(t *testing.T) {

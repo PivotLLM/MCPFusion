@@ -75,7 +75,8 @@ type RequestMetrics struct {
 }
 
 // NewMetricsCollector creates a new metrics collector
-func NewMetricsCollector(logger global.Logger, enabled bool) *MetricsCollector {
+func NewMetricsCollector(enabled bool, opts ...ComponentOption) *MetricsCollector {
+	logger := newComponentOptions(opts).logger
 	return &MetricsCollector{
 		logger:    logger,
 		enabled:   enabled,

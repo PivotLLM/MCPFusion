@@ -42,34 +42,40 @@ type HubProvider struct {
 	downloadDir     string // directory for saving image/binary content from tool results; empty = disabled
 }
 
-// HubOption defines a functional option for configuring a HubProvider.
-type HubOption func(*HubProvider)
+// HubOption configures a HubProvider.
+type HubOption interface {
+	applyToHub(*HubProvider)
+}
+
+// hubOptionFunc adapts a function to the HubOption interface.
+type hubOptionFunc func(*HubProvider)
+
+func (o hubOptionFunc) applyToHub(h *HubProvider) { o(h) }
 
 // WithSharedCollector sets the cross-package metrics collector for request tracking.
 func WithSharedCollector(c *metrics.Collector) HubOption {
-	return func(h *HubProvider) {
+	return hubOptionFunc(func(h *HubProvider) {
 		h.sharedCollector = c
-	}
+	})
 }
 
 // WithDownloadDir sets the directory where image and binary content from hub
 // tool responses will be saved. An empty string disables image saving.
 func WithDownloadDir(dir string) HubOption {
-	return func(h *HubProvider) {
+	return hubOptionFunc(func(h *HubProvider) {
 		h.downloadDir = dir
-	}
+	})
 }
 
 // NewHubProvider creates a new HubProvider with the given hub service configurations.
-func NewHubProvider(configs map[string]*fusion.ServiceConfig, logger global.Logger, opts ...HubOption) *HubProvider {
+func NewHubProvider(configs map[string]*fusion.ServiceConfig, opts ...HubOption) *HubProvider {
 	h := &HubProvider{
 		configs:        configs,
 		clients:        make(map[string]hubClient),
 		refreshCancels: make(map[string]context.CancelFunc),
-		logger:         logger,
 	}
 	for _, opt := range opts {
-		opt(h)
+		opt.applyToHub(h)
 	}
 	return h
 }
@@ -96,13 +102,15 @@ func (h *HubProvider) Start(ctx context.Context) {
 
 		switch config.Transport {
 		case fusion.TransportTypeStdio:
-			c = NewStdioClient(config, h.logger)
+			c = NewStdioClient(config, WithLogger(h.logger))
 		case fusion.TransportTypeMCPHTTP:
-			c = NewHTTPClient(config, h.logger)
+			c = NewHTTPClient(config, WithLogger(h.logger))
 		case fusion.TransportTypeSSE:
-			c = NewSSEClient(config, h.logger)
+			c = NewSSEClient(config, WithLogger(h.logger))
 		default:
-			h.logger.Errorf("Hub service '%s': unsupported transport: %s", serviceKey, config.Transport)
+			if h.logger != nil {
+				h.logger.Errorf("Hub service '%s': unsupported transport: %s", serviceKey, config.Transport)
+			}
 			continue
 		}
 
@@ -155,7 +163,9 @@ func (h *HubProvider) Start(ctx context.Context) {
 	}
 
 	if len(h.configs) > 0 {
-		h.logger.Infof("Hub: started %d hub service connection(s)", len(h.configs))
+		if h.logger != nil {
+			h.logger.Infof("Hub: started %d hub service connection(s)", len(h.configs))
+		}
 	}
 }
 
@@ -164,11 +174,15 @@ func (h *HubProvider) discoverAndRegisterTools(ctx context.Context, serviceKey s
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	h.logger.Debugf("Hub service '%s': discovering tools", serviceKey)
+	if h.logger != nil {
+		h.logger.Debugf("Hub service '%s': discovering tools", serviceKey)
+	}
 
 	newTools, err := manager.ListTools(ctx)
 	if err != nil {
-		h.logger.Errorf("Hub service '%s': failed to discover tools: %v", serviceKey, err)
+		if h.logger != nil {
+			h.logger.Errorf("Hub service '%s': failed to discover tools: %v", serviceKey, err)
+		}
 		return
 	}
 
@@ -177,7 +191,9 @@ func (h *HubProvider) discoverAndRegisterTools(ctx context.Context, serviceKey s
 	h.mu.RUnlock()
 
 	if srv == nil {
-		h.logger.Errorf("Hub service '%s': MCP server not set, cannot register tools", serviceKey)
+		if h.logger != nil {
+			h.logger.Errorf("Hub service '%s': MCP server not set, cannot register tools", serviceKey)
+		}
 		return
 	}
 
@@ -211,14 +227,18 @@ func (h *HubProvider) discoverAndRegisterTools(ctx context.Context, serviceKey s
 			prefixedRemoved = append(prefixedRemoved, serviceKey+"_"+name)
 		}
 		srv.DeleteTools(prefixedRemoved...)
-		h.logger.Debugf("Hub service '%s': removed %d stale tools", serviceKey, len(diff.Removed))
+		if h.logger != nil {
+			h.logger.Debugf("Hub service '%s': removed %d stale tools", serviceKey, len(diff.Removed))
+		}
 	}
 
 	manager.SetCachedTools(newTools)
 
-	h.logger.Infof("Hub service '%s': registered %d tools (%d added, %d removed, %d unchanged)",
-		serviceKey, len(newTools), len(diff.Added), len(diff.Removed),
-		len(newTools)-len(diff.Added))
+	if h.logger != nil {
+		h.logger.Infof("Hub service '%s': registered %d tools (%d added, %d removed, %d unchanged)",
+			serviceKey, len(newTools), len(diff.Added), len(diff.Removed),
+			len(newTools)-len(diff.Added))
+	}
 
 	// Register/update hub service in shared collector
 	if h.sharedCollector != nil {
@@ -377,7 +397,9 @@ func (h *HubProvider) onToolsChanged(serviceName string, added, removed []string
 			prefixedRemoved = append(prefixedRemoved, serviceName+"_"+name)
 		}
 		srv.DeleteTools(prefixedRemoved...)
-		h.logger.Infof("Hub service '%s': removed %d tools", serviceName, len(removed))
+		if h.logger != nil {
+			h.logger.Infof("Hub service '%s': removed %d tools", serviceName, len(removed))
+		}
 	}
 
 	// Add new tools
@@ -397,7 +419,9 @@ func (h *HubProvider) onToolsChanged(serviceName string, added, removed []string
 		}
 		if len(serverTools) > 0 {
 			srv.AddTools(serverTools...)
-			h.logger.Infof("Hub service '%s': added %d tools", serviceName, len(added))
+			if h.logger != nil {
+				h.logger.Infof("Hub service '%s': added %d tools", serviceName, len(added))
+			}
 		}
 	}
 }
@@ -419,7 +443,9 @@ func (h *HubProvider) periodicRefresh(refreshCtx context.Context, serviceKey str
 
 			ctx, cancel := context.WithTimeout(refreshCtx, 30*time.Second)
 			if err := manager.RefreshTools(ctx); err != nil {
-				h.logger.Debugf("Hub service '%s': periodic refresh failed: %v", serviceKey, err)
+				if h.logger != nil {
+					h.logger.Debugf("Hub service '%s': periodic refresh failed: %v", serviceKey, err)
+				}
 			}
 			cancel()
 		}
@@ -461,7 +487,9 @@ func (h *HubProvider) Shutdown() {
 
 	for key, c := range clients {
 		if err := c.Close(); err != nil {
-			h.logger.Errorf("Hub service '%s': error closing: %v", key, err)
+			if h.logger != nil {
+				h.logger.Errorf("Hub service '%s': error closing: %v", key, err)
+			}
 		}
 	}
 
@@ -474,8 +502,12 @@ func (h *HubProvider) Shutdown() {
 
 	select {
 	case <-done:
-		h.logger.Info("Hub: all connections closed")
+		if h.logger != nil {
+			h.logger.Info("Hub: all connections closed")
+		}
 	case <-time.After(5 * time.Second):
-		h.logger.Warning("Hub: shutdown timed out waiting for connections to close")
+		if h.logger != nil {
+			h.logger.Warning("Hub: shutdown timed out waiting for connections to close")
+		}
 	}
 }

@@ -18,7 +18,7 @@ func TestMetricsCollector(t *testing.T) {
 	logger, _ := mlogger.New()
 
 	t.Run("basic metrics collection", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		// Record some requests
 		req1 := RequestMetrics{
@@ -100,7 +100,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("global metrics", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		// Record requests for multiple services
 		req1 := RequestMetrics{
@@ -135,7 +135,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("cache hit tracking", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		cacheHitReq := RequestMetrics{
 			ServiceName: "test-service",
@@ -155,7 +155,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("error rate calculation", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		// Record 8 successes and 2 failures
 		for i := 0; i < 8; i++ {
@@ -194,7 +194,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("disabled metrics", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, false)
+		collector := NewMetricsCollector(false, WithLogger(logger))
 
 		req := RequestMetrics{
 			ServiceName: "test-service",
@@ -217,7 +217,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("metrics reset", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		req := RequestMetrics{
 			ServiceName: "test-service",
@@ -249,7 +249,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("periodic logging", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()

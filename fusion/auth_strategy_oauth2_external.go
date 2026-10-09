@@ -27,7 +27,8 @@ type OAuth2ExternalStrategy struct {
 }
 
 // NewOAuth2ExternalStrategy creates a new OAuth2 external strategy
-func NewOAuth2ExternalStrategy(httpClient *http.Client, logger global.Logger) *OAuth2ExternalStrategy {
+func NewOAuth2ExternalStrategy(httpClient *http.Client, opts ...ComponentOption) *OAuth2ExternalStrategy {
+	logger := newComponentOptions(opts).logger
 	return &OAuth2ExternalStrategy{
 		httpClient: httpClient,
 		logger:     logger,

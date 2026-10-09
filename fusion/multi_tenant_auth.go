@@ -85,7 +85,8 @@ type MultiTenantAuthManager struct {
 // stateless manager. When database also implements apiTokenResolver (the full
 // *db.DB does), standalone bearer-token resolution via ExtractTenantFromToken is
 // enabled; a bare TokenStore leaves it on the development-mode fallback.
-func NewMultiTenantAuthManager(database TokenStore, cache Cache, logger global.Logger) *MultiTenantAuthManager {
+func NewMultiTenantAuthManager(database TokenStore, cache Cache, opts ...ComponentOption) *MultiTenantAuthManager {
+	logger := newComponentOptions(opts).logger
 	mtam := &MultiTenantAuthManager{
 		db:         database,
 		strategies: make(map[AuthType]AuthStrategy),
@@ -116,13 +117,13 @@ func defaultAuthHTTPClient() *http.Client {
 // authentication type".
 func defaultStrategies(httpClient *http.Client, logger global.Logger) []AuthStrategy {
 	return []AuthStrategy{
-		NewOAuth2DeviceFlowStrategy(httpClient, logger),
-		NewBearerTokenStrategy(logger),
-		NewAPIKeyStrategy(logger),
-		NewBasicAuthStrategy(logger),
-		NewSessionJWTStrategy(httpClient, logger),
-		NewOAuth2ExternalStrategy(httpClient, logger),
-		NewUserCredentialsStrategy(logger),
+		NewOAuth2DeviceFlowStrategy(httpClient, WithLogger(logger)),
+		NewBearerTokenStrategy(WithLogger(logger)),
+		NewAPIKeyStrategy(WithLogger(logger)),
+		NewBasicAuthStrategy(WithLogger(logger)),
+		NewSessionJWTStrategy(httpClient, WithLogger(logger)),
+		NewOAuth2ExternalStrategy(httpClient, WithLogger(logger)),
+		NewUserCredentialsStrategy(WithLogger(logger)),
 	}
 }
 

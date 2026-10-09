@@ -26,7 +26,8 @@ type TimeTokenProcessor struct {
 }
 
 // NewTimeTokenProcessor creates a new time token processor
-func NewTimeTokenProcessor(logger global.Logger) *TimeTokenProcessor {
+func NewTimeTokenProcessor(opts ...ComponentOption) *TimeTokenProcessor {
+	logger := newComponentOptions(opts).logger
 	return &TimeTokenProcessor{
 		logger:         logger,
 		daysRegex:      regexp.MustCompile(`#DAYS-(\d+)`),
@@ -379,13 +380,13 @@ func (ttp *TimeTokenProcessor) ProcessParameterArgs(args map[string]interface{})
 // SubstituteTimeTokensInParameterValue is a convenience function for processing individual parameter values
 // This can be used when processing parameters in different locations (path, query, body, header)
 func SubstituteTimeTokensInParameterValue(value interface{}, logger global.Logger) interface{} {
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 	return processor.ProcessValue(value)
 }
 
 // SubstituteTimeTokensInString is a convenience function for processing string values
 func SubstituteTimeTokensInString(value string, logger global.Logger) string {
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 	result := processor.ProcessValue(value)
 	if strResult, ok := result.(string); ok {
 		return strResult

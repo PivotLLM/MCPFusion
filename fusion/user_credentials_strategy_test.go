@@ -14,14 +14,14 @@ import (
 )
 
 func TestUserCredentialsStrategy_Type(t *testing.T) {
-	strategy := NewUserCredentialsStrategy(nil)
+	strategy := NewUserCredentialsStrategy()
 	if strategy.Type() != AuthTypeUserCredentials {
 		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeUserCredentials)
 	}
 }
 
 func TestUserCredentialsStrategy_SupportsRefresh(t *testing.T) {
-	strategy := NewUserCredentialsStrategy(nil)
+	strategy := NewUserCredentialsStrategy()
 	if strategy.SupportsRefresh() {
 		t.Error("SupportsRefresh() should return false")
 	}
@@ -246,7 +246,7 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 		},
 	}
 
-	strategy := NewUserCredentialsStrategy(nil)
+	strategy := NewUserCredentialsStrategy()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -326,7 +326,7 @@ func TestUserCredentials_BasicAuth(t *testing.T) {
 		},
 	}
 
-	strategy := NewUserCredentialsStrategy(nil)
+	strategy := NewUserCredentialsStrategy()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -385,7 +385,7 @@ func TestUserCredentials_BasicAuth_MissingField(t *testing.T) {
 		},
 	}
 
-	strategy := NewUserCredentialsStrategy(nil)
+	strategy := NewUserCredentialsStrategy()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -432,7 +432,7 @@ func TestUserCredentials_BasicAuth_WrongFieldCount(t *testing.T) {
 		},
 	}
 
-	strategy := NewUserCredentialsStrategy(nil)
+	strategy := NewUserCredentialsStrategy()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -462,7 +462,7 @@ func TestUserCredentials_BasicAuth_WrongFieldCount(t *testing.T) {
 }
 
 func TestUserCredentials_BasicAuth_EmptyFieldName(t *testing.T) {
-	strategy := NewUserCredentialsStrategy(nil)
+	strategy := NewUserCredentialsStrategy()
 
 	req := httptest.NewRequest(http.MethodGet, "https://api.example.com/v1/resource", nil)
 

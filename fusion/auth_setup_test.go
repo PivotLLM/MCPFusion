@@ -35,7 +35,7 @@ func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 	require.NoError(t, err, "failed to create database")
 	t.Cleanup(func() { assert.NoError(t, database.Close()) })
 
-	mtam := NewMultiTenantAuthManager(database.(*db.DB), nil, logger)
+	mtam := NewMultiTenantAuthManager(database.(*db.DB), nil, WithLogger(logger))
 
 	return &Fusion{
 		config: &Config{

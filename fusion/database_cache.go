@@ -39,12 +39,13 @@ func (ci *CacheItem) IsExpired() bool {
 }
 
 // NewDatabaseCache creates a new database-backed cache
-func NewDatabaseCache(database TokenStore, logger global.Logger) *DatabaseCache {
-	return NewDatabaseCacheWithDefaultTTL(database, logger, 24*time.Hour)
+func NewDatabaseCache(database TokenStore, opts ...ComponentOption) *DatabaseCache {
+	return NewDatabaseCacheWithDefaultTTL(database, 24*time.Hour, opts...)
 }
 
 // NewDatabaseCacheWithDefaultTTL creates a new database-backed cache with a custom default TTL
-func NewDatabaseCacheWithDefaultTTL(database TokenStore, logger global.Logger, defaultTTL time.Duration) *DatabaseCache {
+func NewDatabaseCacheWithDefaultTTL(database TokenStore, defaultTTL time.Duration, opts ...ComponentOption) *DatabaseCache {
+	logger := newComponentOptions(opts).logger
 	cache := &DatabaseCache{
 		db:         database,
 		logger:     logger,

@@ -106,7 +106,7 @@ func (s *mockStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[
 
 func TestRefreshIfPossible_NilTenantContext(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
@@ -125,7 +125,7 @@ func TestRefreshIfPossible_NilTenantContext(t *testing.T) {
 
 func TestRefreshIfPossible_NoToken(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	tenantCtx := &TenantContext{
 		TenantHash:  "abc123def456",
@@ -150,7 +150,7 @@ func TestRefreshIfPossible_NoToken(t *testing.T) {
 
 func TestRefreshIfPossible_UnsupportedStrategy(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	tenantCtx := &TenantContext{
 		TenantHash:  "abc123def456",
@@ -185,7 +185,7 @@ func TestRefreshIfPossible_UnsupportedStrategy(t *testing.T) {
 
 func TestRefreshIfPossible_StrategyDoesNotSupportRefresh(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	// Register a strategy that does not support refresh
 	strategy := &mockStrategy{
@@ -225,7 +225,7 @@ func TestRefreshIfPossible_StrategyDoesNotSupportRefresh(t *testing.T) {
 
 func TestRefreshIfPossible_NoRefreshToken(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	strategy := &mockStrategy{
 		authType:        AuthTypeOAuth2External,
@@ -265,7 +265,7 @@ func TestRefreshIfPossible_NoRefreshToken(t *testing.T) {
 
 func TestRefreshIfPossible_RefreshFails(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	refreshErr := fmt.Errorf("upstream token endpoint unavailable")
 	strategy := &mockStrategy{
@@ -309,7 +309,7 @@ func TestRefreshIfPossible_RefreshFails(t *testing.T) {
 
 func TestRefreshIfPossible_Success(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	newExpiry := time.Now().Add(1 * time.Hour)
 	refreshedToken := &TokenInfo{
@@ -396,7 +396,7 @@ func TestRefreshIfPossible_Success(t *testing.T) {
 // With nil database and nil cache, no I/O occurs but the per-key mutex logic
 // in invalidationLocks (sync.Map with *sync.Mutex values) is fully exercised.
 func TestInvalidateToken_ConcurrentSameKey(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 
 	const goroutines = 50
 	var wg sync.WaitGroup
@@ -422,7 +422,7 @@ func TestInvalidateToken_ConcurrentSameKey(t *testing.T) {
 // Each goroutine targets a unique key, exercising concurrent LoadOrStore calls
 // on the invalidationLocks sync.Map.
 func TestInvalidateToken_ConcurrentDifferentKeys(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 
 	const goroutines = 50
 	var wg sync.WaitGroup
@@ -448,7 +448,7 @@ func TestInvalidateToken_ConcurrentDifferentKeys(t *testing.T) {
 // LoadOrStore contention path (same key) and the concurrent creation path
 // (different keys) simultaneously.
 func TestInvalidateToken_ConcurrentMixed(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 
 	const goroutinesPerKey = 20
 	const uniqueKeys = 10
@@ -476,7 +476,7 @@ func TestInvalidateToken_ConcurrentMixed(t *testing.T) {
 // TestInvalidateToken_NilTenantContext verifies that InvalidateToken returns
 // immediately without panicking when given a nil TenantContext.
 func TestInvalidateToken_NilTenantContext(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 	// Must not panic
 	manager.InvalidateToken(nil)
 }
@@ -487,7 +487,7 @@ func TestInvalidateToken_NilTenantContext(t *testing.T) {
 // them with "unsupported authentication type". The embedded manager must expose
 // the full canonical strategy set.
 func TestNewMultiTenantAuthManager_RegistersAllDefaultStrategies(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 
 	want := []AuthType{
 		AuthTypeOAuth2Device,

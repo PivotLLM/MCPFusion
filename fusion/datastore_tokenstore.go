@@ -47,7 +47,8 @@ type dataStoreTokenStore struct {
 
 // NewDataStoreTokenStore wraps a toolspec.DataStore as a TokenStore. ds must be
 // non-nil; callers gate on host persistence before constructing one.
-func NewDataStoreTokenStore(ds toolspec.DataStore, logger global.Logger) TokenStore {
+func NewDataStoreTokenStore(ds toolspec.DataStore, opts ...ComponentOption) TokenStore {
+	logger := newComponentOptions(opts).logger
 	return &dataStoreTokenStore{ds: ds, logger: logger}
 }
 

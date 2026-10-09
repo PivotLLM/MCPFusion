@@ -21,7 +21,7 @@
 //
 // Example usage:
 //
-//	multiTenantAuth := fusion.NewMultiTenantAuthManager(db, logger)
+//	multiTenantAuth := fusion.NewMultiTenantAuthManager(db, cache, fusion.WithLogger(logger))
 //	fusionProvider := fusion.New(
 //		fusion.WithJSONConfig("configs/microsoft365.json"),
 //		fusion.WithLogger(logger),
@@ -134,9 +134,7 @@ type NativeToolPrefixRegistrar interface {
 	RegisterNativeToolPrefix(prefix string)
 }
 
-// Option defines a functional option type for configuring Fusion instances.
-// This pattern allows for flexible and extensible configuration while maintaining
-// backward compatibility. Options are applied during Fusion initialization.
+// Option configures a Fusion instance. Options are applied during New.
 //
 // Example usage:
 //
@@ -144,7 +142,14 @@ type NativeToolPrefixRegistrar interface {
 //		WithJSONConfig("config.json"),
 //		WithLogger(logger),
 //	)
-type Option func(*Fusion)
+type Option interface {
+	applyToFusion(*Fusion)
+}
+
+// optionFunc adapts a function to the Option interface.
+type optionFunc func(*Fusion)
+
+func (o optionFunc) applyToFusion(f *Fusion) { o(f) }
 
 // WithJSONConfig loads API service configuration from a JSON file.
 // This is the primary way to configure API endpoints, authentication, and service settings.
@@ -165,7 +170,7 @@ type Option func(*Fusion)
 // If the file cannot be loaded or contains invalid configuration, the error will be
 // logged and the Fusion instance will be created without that configuration.
 func WithJSONConfig(configPath string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if f.logger != nil {
 			f.logger.Infof("Loading configuration from file: %s", configPath)
 		}
@@ -186,12 +191,12 @@ func WithJSONConfig(configPath string) Option {
 			return
 		}
 		f.config = config
-	}
+	})
 }
 
 // WithJSONConfigData loads configuration from JSON data
 func WithJSONConfigData(jsonData []byte, configPath string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if f.logger != nil {
 			f.logger.Infof("Loading configuration from JSON data (path: %s)", configPath)
 		}
@@ -204,21 +209,21 @@ func WithJSONConfigData(jsonData []byte, configPath string) Option {
 			return
 		}
 		f.config = config
-	}
+	})
 }
 
 // WithConfig sets the configuration directly
 func WithConfig(config *Config) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.config = config
-	}
+	})
 }
 
 // WithConfigManager sets the configuration from a config manager.
 // If the config manager also implements NativeToolPrefixRegistrar, the reference
 // is stored so that native tool prefixes can be registered during RegisterTools().
 func WithConfigManager(configManager interface{ Config() *Config }) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if configManager != nil {
 			f.config = configManager.Config()
 			if f.logger != nil && f.config != nil {
@@ -228,23 +233,16 @@ func WithConfigManager(configManager interface{ Config() *Config }) Option {
 				f.nativeToolPrefixRegistrar = registrar
 			}
 		}
-	}
-}
-
-// WithLogger sets the logger
-func WithLogger(logger global.Logger) Option {
-	return func(f *Fusion) {
-		f.logger = logger
-	}
+	})
 }
 
 // WithHTTPClient sets a custom HTTP client
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithHTTPClient(client *http.Client) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.httpClient = client
-	}
+	})
 }
 
 // Cache is managed exclusively by the multi-tenant auth manager
@@ -254,71 +252,71 @@ func WithHTTPClient(client *http.Client) Option {
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithTimeout(timeout time.Duration) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if f.httpClient == nil {
 			f.httpClient = &http.Client{}
 		}
 		f.httpClient.Timeout = timeout
-	}
+	})
 }
 
 // WithMetrics enables or disables metrics collection
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithMetrics(enabled bool) Option {
-	return func(f *Fusion) {
-		f.metricsCollector = NewMetricsCollector(f.logger, enabled)
-	}
+	return optionFunc(func(f *Fusion) {
+		f.metricsCollector = NewMetricsCollector(enabled, WithLogger(f.logger))
+	})
 }
 
 // WithMetricsCollector sets a custom metrics collector
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithMetricsCollector(collector *MetricsCollector) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.metricsCollector = collector
-	}
+	})
 }
 
 // WithCorrelationIDGenerator sets a custom correlation ID generator
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithCorrelationIDGenerator(generator *CorrelationIDGenerator) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.correlationIDGenerator = generator
-	}
+	})
 }
 
 // WithMultiTenantAuth sets a custom multi-tenant authentication manager
 // NOTE: This is optional - if not provided, a default auth manager will be auto-created
 func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.multiTenantAuth = multiTenantAuth
-	}
+	})
 }
 
 // WithExternalURL sets the externally-accessible URL of this server.
 // Used by auth setup tools to generate auth code blobs for fusion-auth.
 // Typically set from the MCP_FUSION_EXTERNAL_URL environment variable.
 func WithExternalURL(url string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.externalURL = url
-	}
+	})
 }
 
 // WithDownloadDir sets the directory where binary responses (e.g. DOCX files) are saved.
 // If the directory does not exist, Fusion will attempt to create it.
 func WithDownloadDir(dir string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.downloadDir = dir
-	}
+	})
 }
 
 // WithDatabase sets the database for native tool operations such as the knowledge store.
 func WithDatabase(database db.Database) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.database = database
-	}
+	})
 }
 
 // WithDataStore wires stateful multi-tenant auth on top of a generic
@@ -330,17 +328,17 @@ func WithDatabase(database db.Database) Option {
 // stateless manager). Place after WithLogger so the manager and cache share the
 // configured logger.
 func WithDataStore(ds toolspec.DataStore) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if ds == nil {
 			return
 		}
-		store := NewDataStoreTokenStore(ds, f.logger)
-		dbCache := NewDatabaseCache(store, f.logger)
-		f.multiTenantAuth = NewMultiTenantAuthManager(store, dbCache, f.logger)
+		store := NewDataStoreTokenStore(ds, WithLogger(f.logger))
+		dbCache := NewDatabaseCache(store, WithLogger(f.logger))
+		f.multiTenantAuth = NewMultiTenantAuthManager(store, dbCache, WithLogger(f.logger))
 		if f.logger != nil {
 			f.logger.Info("Configured multi-tenant auth from DataStore-backed TokenStore")
 		}
-	}
+	})
 }
 
 // WithConfigDir loads configuration from a host-provided directory: it first
@@ -350,7 +348,7 @@ func WithDataStore(ds toolspec.DataStore) Option {
 // a single Config. Later files overwrite earlier ones on name collision, matching
 // the standalone config manager. Place after WithLogger for load logging.
 func WithConfigDir(dir string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if dir == "" {
 			return
 		}
@@ -416,43 +414,43 @@ func WithConfigDir(dir string) Option {
 			f.logger.Infof("Loaded %d services and %d command groups from %s",
 				len(merged.Services), len(merged.Commands), dir)
 		}
-	}
+	})
 }
 
 // WithSharedCollector sets the cross-package metrics collector used by the health tool
 // to report request/error counts for all services (API, hub, knowledge, etc.).
 func WithSharedCollector(c *metrics.Collector) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.sharedCollector = c
-	}
+	})
 }
 
 // WithMaxResponseBytes sets a limit on the size of responses returned to callers.
 // Responses exceeding this limit are replaced with an informational message.
 // A value of 0 disables the limit. Default is global.DefaultMaxResponseBytes (1 MB).
 func WithMaxResponseBytes(n int) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.maxResponseBytes = n
-	}
+	})
 }
 
 // WithAllowDestructive enables destructive tools (e.g. DELETE operations) for this instance.
 // This option overrides the MCP_FUSION_ALLOW_DESTRUCTIVE environment variable.
 func WithAllowDestructive(allow bool) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.allowDestructive = allow
-	}
+	})
 }
 
 // WithAuthCommandName sets the CLI command name shown in auth setup instructions
 // (default "fusion-auth"). Embedding hosts override it, e.g. "claw-auth", so the
 // generated command matches the utility they ship. An empty name is ignored.
 func WithAuthCommandName(name string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if name != "" {
 			f.authCommandName = name
 		}
-	}
+	})
 }
 
 // New creates a new production-ready Fusion instance with the provided configuration options.
@@ -528,8 +526,8 @@ func New(options ...Option) *Fusion {
 			Transport: transport,
 			Timeout:   global.HTTPDefaultClientTimeout,
 		},
-		cache:                  nil,                            // Cache will be set by multi-tenant auth manager
-		metricsCollector:       NewMetricsCollector(nil, true), // Enable metrics by default
+		cache:                  nil,                       // Cache will be set by multi-tenant auth manager
+		metricsCollector:       NewMetricsCollector(true), // Enable metrics by default
 		correlationIDGenerator: NewCorrelationIDGenerator(),
 		circuitBreakers:        make(map[string]*CircuitBreaker),
 		maxResponseBytes:       global.DefaultMaxResponseBytes,
@@ -538,7 +536,7 @@ func New(options ...Option) *Fusion {
 
 	// Apply all options
 	for _, opt := range options {
-		opt(fusion)
+		opt.applyToFusion(fusion)
 	}
 
 	// Parse MCP_FUSION_ALLOW_DESTRUCTIVE environment variable
@@ -558,8 +556,8 @@ func New(options ...Option) *Fusion {
 	// Automatically create multi-tenant auth manager if not provided
 	if fusion.multiTenantAuth == nil {
 		// Create database cache for multi-tenant authentication
-		dbCache := NewDatabaseCache(nil, fusion.logger)
-		fusion.multiTenantAuth = NewMultiTenantAuthManager(nil, dbCache, fusion.logger)
+		dbCache := NewDatabaseCache(nil, WithLogger(fusion.logger))
+		fusion.multiTenantAuth = NewMultiTenantAuthManager(nil, dbCache, WithLogger(fusion.logger))
 
 		if fusion.logger != nil {
 			fusion.logger.Info("Auto-created multi-tenant authentication manager")
@@ -1843,7 +1841,7 @@ func (f *Fusion) getOrCreateCircuitBreaker(serviceName string, config *CircuitBr
 		f.logger.Infof("Creating circuit breaker for service '%s'", serviceName)
 	}
 
-	cb := NewCircuitBreaker(config, f.logger)
+	cb := NewCircuitBreaker(config, WithLogger(f.logger))
 	f.circuitBreakers[serviceName] = cb
 	return cb
 }

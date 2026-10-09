@@ -158,7 +158,7 @@ func TestRetryExecutor(t *testing.T) {
 			server := httptest.NewServer(tt.serverResponse(&attempts))
 			defer server.Close()
 
-			retryExecutor := NewRetryExecutor(tt.config, logger)
+			retryExecutor := NewRetryExecutor(tt.config, WithLogger(logger))
 			client := &http.Client{Timeout: 5 * time.Second}
 
 			req, err := http.NewRequest("GET", server.URL, nil)
@@ -241,7 +241,7 @@ func TestRetryStrategies(t *testing.T) {
 				BackoffFactor: 2.0,
 			}
 
-			executor := NewRetryExecutor(config, logger)
+			executor := NewRetryExecutor(config, WithLogger(logger))
 
 			for _, attempt := range tt.attempts {
 				delay := executor.calculateDelay(attempt)
@@ -285,7 +285,7 @@ func TestCircuitBreaker(t *testing.T) {
 			ResetTimeout:     100 * time.Millisecond,
 		}
 
-		cb := NewCircuitBreaker(config, logger)
+		cb := NewCircuitBreaker(config, WithLogger(logger))
 
 		// Initially closed
 		if cb.State() != CircuitBreakerClosed {
@@ -348,7 +348,7 @@ func TestCircuitBreaker(t *testing.T) {
 			ResetTimeout:     100 * time.Millisecond,
 		}
 
-		cb := NewCircuitBreaker(config, logger)
+		cb := NewCircuitBreaker(config, WithLogger(logger))
 		ctx := context.Background()
 
 		// Test some failures
@@ -369,7 +369,7 @@ func TestCircuitBreaker(t *testing.T) {
 			Enabled: false,
 		}
 
-		cb := NewCircuitBreaker(config, logger)
+		cb := NewCircuitBreaker(config, WithLogger(logger))
 		ctx := context.Background()
 
 		// Should execute directly without protection
@@ -502,7 +502,7 @@ func TestCircuitBreaker_HalfOpenFailureReopens(t *testing.T) {
 		ResetTimeout:     20 * time.Millisecond, // short timeout to trigger HALF_OPEN quickly
 	}
 
-	cb := NewCircuitBreaker(config, logger)
+	cb := NewCircuitBreaker(config, WithLogger(logger))
 	ctx := context.Background()
 
 	// Open the circuit breaker by recording enough failures.

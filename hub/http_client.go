@@ -29,7 +29,8 @@ type HTTPClient struct {
 }
 
 // NewHTTPClient creates a new HTTP client for the given service config
-func NewHTTPClient(config *fusion.ServiceConfig, logger global.Logger) *HTTPClient {
+func NewHTTPClient(config *fusion.ServiceConfig, opts ...ClientOption) *HTTPClient {
+	logger := newClientOptions(opts).logger
 	baseDelay := time.Second
 	maxDelay := 60 * time.Second
 	factor := 2.0
@@ -46,7 +47,7 @@ func NewHTTPClient(config *fusion.ServiceConfig, logger global.Logger) *HTTPClie
 		}
 	}
 
-	manager := NewMCPClientManager(config.ServiceKey, logger)
+	manager := NewMCPClientManager(config.ServiceKey, WithLogger(logger))
 	manager.SetCallTimeout(config.CallTimeout)
 
 	return &HTTPClient{
@@ -64,7 +65,9 @@ func (h *HTTPClient) Manager() *MCPClientManager {
 
 // Connect creates and connects the HTTP MCP client
 func (h *HTTPClient) Connect(ctx context.Context) error {
-	h.logger.Infof("Hub service '%s': connecting to HTTP endpoint: %s", h.config.ServiceKey, h.config.BaseURL)
+	if h.logger != nil {
+		h.logger.Infof("Hub service '%s': connecting to HTTP endpoint: %s", h.config.ServiceKey, h.config.BaseURL)
+	}
 
 	// Build transport options
 	var opts []transport.StreamableHTTPCOption
@@ -94,7 +97,9 @@ func (h *HTTPClient) Connect(ctx context.Context) error {
 
 	// Register connection loss handler
 	c.OnConnectionLost(func(err error) {
-		h.logger.Errorf("Hub service '%s': connection lost: %v", h.config.ServiceKey, err)
+		if h.logger != nil {
+			h.logger.Errorf("Hub service '%s': connection lost: %v", h.config.ServiceKey, err)
+		}
 		h.manager.SetConnected(false)
 		// Signal waitForDisconnect
 		select {
@@ -108,14 +113,18 @@ func (h *HTTPClient) Connect(ctx context.Context) error {
 	// Initialize the MCP session
 	if err := h.manager.Connect(ctx); err != nil {
 		if closeErr := c.Close(); closeErr != nil {
-			h.logger.Warningf("Hub service '%s': failed to close client: %v", h.config.ServiceKey, closeErr)
+			if h.logger != nil {
+				h.logger.Warningf("Hub service '%s': failed to close client: %v", h.config.ServiceKey, closeErr)
+			}
 		}
 		h.manager.SetClient(nil)
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
 	h.backoff.Reset()
-	h.logger.Infof("Hub service '%s': HTTP connection established", h.config.ServiceKey)
+	if h.logger != nil {
+		h.logger.Infof("Hub service '%s': HTTP connection established", h.config.ServiceKey)
+	}
 	return nil
 }
 
@@ -168,8 +177,10 @@ func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func(), o
 
 		err := h.Connect(ctx)
 		if err != nil {
-			h.logger.Errorf("Hub service '%s': connection failed: %v (retrying in %v)",
-				h.config.ServiceKey, err, h.backoff.CurrentDelay())
+			if h.logger != nil {
+				h.logger.Errorf("Hub service '%s': connection failed: %v (retrying in %v)",
+					h.config.ServiceKey, err, h.backoff.CurrentDelay())
+			}
 
 			if onDisconnected != nil {
 				onDisconnected()
@@ -192,15 +203,19 @@ func (h *HTTPClient) RunWithReconnect(ctx context.Context, onConnected func(), o
 			return
 		}
 
-		h.logger.Warningf("Hub service '%s': disconnected, will reconnect in %v",
-			h.config.ServiceKey, h.backoff.CurrentDelay())
+		if h.logger != nil {
+			h.logger.Warningf("Hub service '%s': disconnected, will reconnect in %v",
+				h.config.ServiceKey, h.backoff.CurrentDelay())
+		}
 
 		if onDisconnected != nil {
 			onDisconnected()
 		}
 
 		if err := h.manager.Disconnect(); err != nil {
-			h.logger.Warningf("Hub service '%s': failed to close client: %v", h.config.ServiceKey, err)
+			if h.logger != nil {
+				h.logger.Warningf("Hub service '%s': failed to close client: %v", h.config.ServiceKey, err)
+			}
 		}
 
 		if waitErr := h.backoff.Wait(ctx); waitErr != nil {

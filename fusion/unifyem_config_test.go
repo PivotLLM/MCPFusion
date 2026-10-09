@@ -69,7 +69,7 @@ func TestUnifyEMConfig_RequestShapes(t *testing.T) {
 	f := New(WithLogger(logger), WithJSONConfig("../configs/unifyem.json"))
 	require.NotNil(t, f.config)
 	service := f.config.Services["unifyem"]
-	m := NewMapper(logger)
+	m := NewMapper(WithLogger(logger))
 
 	build := func(t *testing.T, id string, args map[string]interface{}) (string, string) {
 		t.Helper()

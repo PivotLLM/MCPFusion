@@ -22,7 +22,7 @@ func newTestLogger(t *testing.T) *testlogger.Logger {
 
 func TestKaliConfig_Nmap(t *testing.T) {
 	// Skip if nmap not installed
-	executor := NewCommandExecutor(nil)
+	executor := NewCommandExecutor()
 	checkResult := executor.Execute(context.Background(), ExecutionConfig{
 		Executable:    "/usr/bin/which",
 		Args:          []string{"nmap"},

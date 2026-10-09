@@ -58,7 +58,8 @@ type MCPClientManager struct {
 }
 
 // NewMCPClientManager creates a new client manager for the named service.
-func NewMCPClientManager(serviceName string, logger global.Logger) *MCPClientManager {
+func NewMCPClientManager(serviceName string, opts ...ClientOption) *MCPClientManager {
+	logger := newClientOptions(opts).logger
 	return &MCPClientManager{
 		serviceName: serviceName,
 		tools:       make(map[string]mcp.Tool),

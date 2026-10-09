@@ -15,21 +15,21 @@ import (
 )
 
 func TestSessionJWTStrategy_Type(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 	if strategy.Type() != AuthTypeSessionJWT {
 		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeSessionJWT)
 	}
 }
 
 func TestSessionJWTStrategy_SupportsRefresh(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 	if !strategy.SupportsRefresh() {
 		t.Error("SupportsRefresh() should return true")
 	}
 }
 
 func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name      string
@@ -121,7 +121,7 @@ func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_ApplyAuth_Header(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name           string
@@ -198,7 +198,7 @@ func TestSessionJWTStrategy_ApplyAuth_Header(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_ApplyAuth_Cookie(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name           string
@@ -281,7 +281,7 @@ func TestSessionJWTStrategy_ApplyAuth_Cookie(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_ApplyAuth_Query(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name           string
@@ -332,7 +332,7 @@ func TestSessionJWTStrategy_ApplyAuth_Query(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_ApplyAuth_Errors(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name      string
@@ -397,7 +397,7 @@ func TestSessionJWTStrategy_Authenticate(t *testing.T) {
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
 	config := map[string]interface{}{
 		"loginURL":  server.URL + "/api/users/token",
@@ -431,7 +431,7 @@ func TestSessionJWTStrategy_Authenticate(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_Authenticate_Errors(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name      string
@@ -481,7 +481,7 @@ func TestSessionJWTStrategy_Authenticate_WithExpiration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
 	config := map[string]interface{}{
 		"loginURL":      server.URL + "/login",
@@ -516,7 +516,7 @@ func TestSessionJWTStrategy_Authenticate_WithRefreshToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
 	config := map[string]interface{}{
 		"loginURL":         server.URL + "/login",
@@ -545,7 +545,7 @@ func TestSessionJWTStrategy_Authenticate_LoginFailure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
 	config := map[string]interface{}{
 		"loginURL":      server.URL + "/login",
@@ -582,7 +582,7 @@ func TestSessionJWTStrategy_RefreshToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
 	config := map[string]interface{}{
 		"refreshURL":    server.URL + "/refresh",
@@ -616,7 +616,7 @@ func TestSessionJWTStrategy_RefreshToken(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_RefreshToken_NoRefreshURL(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	config := map[string]interface{}{
 		"tokenPath": "datas.token",

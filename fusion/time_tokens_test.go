@@ -16,7 +16,7 @@ import (
 
 func TestTimeTokenProcessor_ProcessValue(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tests := []struct {
 		name         string
@@ -230,7 +230,7 @@ func TestTimeTokenProcessor_ProcessValue(t *testing.T) {
 
 func TestTimeTokenProcessor_HasTimeTokens(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tests := []struct {
 		name     string
@@ -263,7 +263,7 @@ func TestTimeTokenProcessor_HasTimeTokens(t *testing.T) {
 
 func TestTimeTokenProcessor_ValidateTimeTokens(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tests := []struct {
 		name      string
@@ -308,7 +308,7 @@ func TestTimeTokenProcessor_ValidateTimeTokens(t *testing.T) {
 
 func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tests := []struct {
 		name     string
@@ -374,7 +374,7 @@ func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 
 func TestTimeTokenSubstitution_ActualTimeCalculation(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	// Test that DAYS tokens produce times at midnight
 	result := processor.ProcessValue("#DAYS-0")
@@ -442,7 +442,7 @@ func TestTimeTokenSubstitution_ActualTimeCalculation(t *testing.T) {
 
 func TestTimeTokenSubstitution_FutureTimeCalculation(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	// Test that DAYS+ tokens produce times at midnight in the future
 	result := processor.ProcessValue("#DAYS+0")
@@ -529,7 +529,7 @@ func TestTimeTokenSubstitution_FutureTimeCalculation(t *testing.T) {
 
 func TestTimeTokenProcessor_SupportedTokens(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tokens := processor.SupportedTokens()
 

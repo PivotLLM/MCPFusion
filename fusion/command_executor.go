@@ -22,7 +22,8 @@ type CommandExecutor struct {
 }
 
 // NewCommandExecutor creates a new command executor
-func NewCommandExecutor(logger global.Logger) *CommandExecutor {
+func NewCommandExecutor(opts ...ComponentOption) *CommandExecutor {
+	logger := newComponentOptions(opts).logger
 	return &CommandExecutor{
 		logger: logger,
 	}

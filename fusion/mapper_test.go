@@ -95,7 +95,7 @@ func Test_setNestedValue(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_DotNotation(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{
@@ -147,7 +147,7 @@ func TestMapper_BuildRequestBody_DotNotation(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_IdentityPassthrough(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{
@@ -175,7 +175,7 @@ func TestMapper_BuildRequestBody_IdentityPassthrough(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_WithEncoding(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{Name: "to", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
@@ -215,7 +215,7 @@ func TestMapper_BuildRequestBody_WithEncoding(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_WithEncoding_MixedParams(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{
@@ -267,7 +267,7 @@ func TestMapper_BuildRequestBody_WithEncoding_MixedParams(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_NoEncoding_FlatParams(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{Name: "to", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},

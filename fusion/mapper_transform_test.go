@@ -13,7 +13,7 @@ import (
 )
 
 func TestMapper_TransformResponse(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	tests := []struct {
 		name        string
@@ -188,7 +188,7 @@ func TestMapper_TransformResponse(t *testing.T) {
 // TestMapper_TransformResponse_GmailMessage tests the full Gmail message
 // transform expression used in the Google Workspace configuration.
 func TestMapper_TransformResponse_GmailMessage(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	transform := `{id: .id, threadId: .threadId, labelIds: .labelIds, snippet: .snippet, internalDate: .internalDate, sizeEstimate: .sizeEstimate, headers: [.payload.headers[] | select(.name | test("^(Subject|From|To|Date|Cc)$"; "i"))]}`
 
@@ -272,7 +272,7 @@ func TestMapper_TransformResponse_GmailMessage(t *testing.T) {
 // TestMapper_TransformResponse_CalendarEvents tests the full Google Calendar
 // events transform expression used in the Google Workspace configuration.
 func TestMapper_TransformResponse_CalendarEvents(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	transform := `.items | map({id: .id, summary: .summary, start: .start.dateTime // .start.date, end: .end.dateTime // .end.date, location: .location, description: .description})`
 
@@ -371,7 +371,7 @@ func TestMapper_TransformResponse_CalendarEvents(t *testing.T) {
 // TestMapper_TransformResponse_DriveFiles tests the full Google Drive files
 // transform expression used in the Google Workspace configuration.
 func TestMapper_TransformResponse_DriveFiles(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	transform := `.files | map({id: .id, name: .name, type: .mimeType, size: .size, modified: .modifiedTime, link: .webViewLink, parents: .parents})`
 
@@ -459,7 +459,7 @@ func TestMapper_TransformResponse_DriveFiles(t *testing.T) {
 // TestTransformResponse_InvalidJQExpression verifies that a syntactically invalid
 // JQ expression returns an error rather than panicking (P1-4).
 func TestTransformResponse_InvalidJQExpression(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	result, err := mapper.TransformResponse(
 		map[string]interface{}{"id": "1"},
@@ -474,7 +474,7 @@ func TestTransformResponse_InvalidJQExpression(t *testing.T) {
 // TestTransformResponse_UndefinedVariable verifies that a JQ expression referencing
 // an undefined variable ($targetId) returns an error rather than panicking (P1-5).
 func TestTransformResponse_UndefinedVariable(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	// args is empty — $targetId is not provided, so the expression should fail
 	// at execution time because gojq will encounter an undefined variable.
@@ -496,7 +496,7 @@ func TestTransformResponse_UndefinedVariable(t *testing.T) {
 // TestTransformResponse_ValidTransform_PositiveCase verifies that valid JQ
 // transforms continue to work correctly alongside the error-path tests.
 func TestTransformResponse_ValidTransform_PositiveCase(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	result, err := mapper.TransformResponse(
 		map[string]interface{}{"name": "hello"},

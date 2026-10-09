@@ -44,12 +44,12 @@ func (s server) run(ctx context.Context) error {
 	}
 
 	// Initialize database-backed cache
-	dbCache := fusion.NewDatabaseCache(s.database, s.logger)
+	dbCache := fusion.NewDatabaseCache(s.database, fusion.WithLogger(s.logger))
 
 	// Create multi-tenant authentication manager. It registers the full canonical
 	// set of auth strategies (see fusion.defaultStrategies), so no manual
 	// per-strategy registration is needed here.
-	multiTenantAuth := fusion.NewMultiTenantAuthManager(s.database, dbCache, s.logger)
+	multiTenantAuth := fusion.NewMultiTenantAuthManager(s.database, dbCache, fusion.WithLogger(s.logger))
 
 	// Initialize config manager with all configuration files
 	configManager := config.New(
@@ -188,12 +188,13 @@ func (s server) run(ctx context.Context) error {
 	if len(hubConfigs) > 0 {
 		s.logger.Infof("Found %d hub service(s) to connect", len(hubConfigs))
 		hubOpts := []hub.HubOption{
+			hub.WithLogger(s.logger),
 			hub.WithSharedCollector(sharedCollector),
 		}
 		if dlDir := os.Getenv("MCP_FUSION_DL_DIR"); dlDir != "" {
 			hubOpts = append(hubOpts, hub.WithDownloadDir(dlDir))
 		}
-		hubProvider = hub.NewHubProvider(hubConfigs, s.logger, hubOpts...)
+		hubProvider = hub.NewHubProvider(hubConfigs, hubOpts...)
 		providers = append(providers, hubProvider)
 	}
 

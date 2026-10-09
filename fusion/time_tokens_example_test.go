@@ -15,7 +15,7 @@ import (
 // demonstrateTimeTokens demonstrates how the time token substitution system works
 func demonstrateTimeTokens() {
 	logger, _ := mlogger.New(mlogger.WithLogStdout(true), mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	// Demonstrate different token types
 	examples := []string{

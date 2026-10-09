@@ -15,21 +15,21 @@ import (
 )
 
 func TestOAuth2ExternalStrategy_Type(t *testing.T) {
-	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
+	strategy := NewOAuth2ExternalStrategy(&http.Client{})
 	if strategy.Type() != AuthTypeOAuth2External {
 		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeOAuth2External)
 	}
 }
 
 func TestOAuth2ExternalStrategy_SupportsRefresh(t *testing.T) {
-	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
+	strategy := NewOAuth2ExternalStrategy(&http.Client{})
 	if !strategy.SupportsRefresh() {
 		t.Error("SupportsRefresh() should return true")
 	}
 }
 
 func TestOAuth2ExternalStrategy_Authenticate(t *testing.T) {
-	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
+	strategy := NewOAuth2ExternalStrategy(&http.Client{})
 
 	_, err := strategy.Authenticate(context.Background(), map[string]interface{}{})
 	if err == nil {
@@ -42,7 +42,7 @@ func TestOAuth2ExternalStrategy_Authenticate(t *testing.T) {
 }
 
 func TestOAuth2ExternalStrategy_ApplyAuth(t *testing.T) {
-	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
+	strategy := NewOAuth2ExternalStrategy(&http.Client{})
 
 	tests := []struct {
 		name      string
@@ -372,7 +372,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				httpClient = &http.Client{}
 			}
 
-			strategy := NewOAuth2ExternalStrategy(httpClient, nil)
+			strategy := NewOAuth2ExternalStrategy(httpClient)
 			newTokenInfo, err := strategy.RefreshToken(context.Background(), tt.tokenInfo, tt.config)
 
 			if tt.wantError {
@@ -430,7 +430,7 @@ func TestOAuth2ExternalStrategy_RefreshToken_NoScope(t *testing.T) {
 	}))
 	defer server.Close()
 
-	strategy := NewOAuth2ExternalStrategy(server.Client(), nil)
+	strategy := NewOAuth2ExternalStrategy(server.Client())
 
 	tokenInfo := &TokenInfo{
 		AccessToken:  "old_token",
@@ -470,7 +470,7 @@ func TestOAuth2ExternalStrategy_RefreshToken_UsesTokenURLDirectly(t *testing.T) 
 	}))
 	defer server.Close()
 
-	strategy := NewOAuth2ExternalStrategy(server.Client(), nil)
+	strategy := NewOAuth2ExternalStrategy(server.Client())
 
 	tokenInfo := &TokenInfo{
 		AccessToken:  "old_token",

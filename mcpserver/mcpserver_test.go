@@ -45,7 +45,7 @@ func TestNewAuthenticatedTransport_AppliesMiddleware(t *testing.T) {
 				})
 			}
 
-			at := NewAuthenticatedTransport(underlying, middleware, mlogger.NewMemoryLogger())
+			at := NewAuthenticatedTransport(underlying, middleware, WithLogger(mlogger.NewMemoryLogger()))
 
 			rec := httptest.NewRecorder()
 			at.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/mcp", nil))

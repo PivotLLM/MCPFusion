@@ -27,7 +27,7 @@ func NewCommandHandler(fusion *Fusion, commandGroup *CommandGroupConfig, command
 		commandGroup: commandGroup,
 		command:      command,
 		fusion:       fusion,
-		executor:     NewCommandExecutor(fusion.logger),
+		executor:     NewCommandExecutor(WithLogger(fusion.logger)),
 	}
 }
 

@@ -30,7 +30,8 @@ type ExtendedTransport struct {
 
 // NewExtendedTransport creates a transport that combines both MCP transports with custom API endpoints
 func NewExtendedTransport(sseTransport, httpTransport MCPServerTransport, oauthEngine OAuthRouteProvider,
-	authMiddleware func(http.Handler) http.Handler, logger global.Logger) *ExtendedTransport {
+	authMiddleware func(http.Handler) http.Handler, opts ...TransportOption) *ExtendedTransport {
+	logger := newTransportOptions(opts).logger
 
 	// Create a new ServeMux for routing
 	mux := http.NewServeMux()
@@ -53,17 +54,25 @@ func NewExtendedTransport(sseTransport, httpTransport MCPServerTransport, oauthE
 		// SSEServer's ServeHTTP will route between /sse and /message internally
 		mux.Handle("/sse", sseHandler)
 		mux.Handle("/message", sseHandler)
-		logger.Info("Mounted SSE transport at /sse and /message")
+		if logger != nil {
+			logger.Info("Mounted SSE transport at /sse and /message")
+		}
 	} else {
-		logger.Error("SSE transport does not implement http.Handler")
+		if logger != nil {
+			logger.Error("SSE transport does not implement http.Handler")
+		}
 	}
 
 	// Mount Streamable HTTP transport at /mcp (per MCP specification)
 	if httpHandler, ok := httpTransport.(http.Handler); ok {
 		mux.Handle("/mcp", httpHandler)
-		logger.Info("Mounted Streamable HTTP transport at /mcp")
+		if logger != nil {
+			logger.Info("Mounted Streamable HTTP transport at /mcp")
+		}
 	} else {
-		logger.Error("HTTP transport does not implement http.Handler")
+		if logger != nil {
+			logger.Error("HTTP transport does not implement http.Handler")
+		}
 	}
 
 	return &ExtendedTransport{

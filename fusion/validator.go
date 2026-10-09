@@ -21,7 +21,8 @@ type Validator struct {
 }
 
 // NewValidator creates a new Validator
-func NewValidator(logger global.Logger) *Validator {
+func NewValidator(opts ...ComponentOption) *Validator {
+	logger := newComponentOptions(opts).logger
 	return &Validator{
 		logger: logger,
 	}

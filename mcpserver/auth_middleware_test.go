@@ -26,7 +26,7 @@ import (
 // ExtractTenantFromToken with a non-empty token SHA256-hashes the token as the tenant ID.
 // ExtractTenantFromToken with empty token returns the NOAUTH context.
 func newTestAuthManager() *fusion.MultiTenantAuthManager {
-	return fusion.NewMultiTenantAuthManager(nil, nil, nil)
+	return fusion.NewMultiTenantAuthManager(nil, nil)
 }
 
 // newTestAuthManagerWithDB creates a MultiTenantAuthManager backed by a real BoltDB
@@ -43,7 +43,7 @@ func newTestAuthManagerWithDB(t *testing.T) (*fusion.MultiTenantAuthManager, db.
 		_ = os.RemoveAll(tempDir)
 		t.Fatalf("failed to create test database: %v", err)
 	}
-	manager := fusion.NewMultiTenantAuthManager(database.(*db.DB), nil, nil)
+	manager := fusion.NewMultiTenantAuthManager(database.(*db.DB), nil)
 	return manager, database, tempDir
 }
 

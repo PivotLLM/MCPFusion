@@ -15,7 +15,7 @@ import (
 
 func TestTimeTokenIntegration_MapperProcessing(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	mapper := NewMapper(logger)
+	mapper := NewMapper(WithLogger(logger))
 
 	tests := []struct {
 		name        string
@@ -170,7 +170,7 @@ func TestTimeTokenIntegration_ParameterNameMapper(t *testing.T) {
 	apiArgs := mapper.MapArgsToOriginal(mcpArgs)
 
 	// Process time tokens
-	timeTokenProcessor := NewTimeTokenProcessor(logger)
+	timeTokenProcessor := NewTimeTokenProcessor(WithLogger(logger))
 	processedArgs := timeTokenProcessor.ProcessParameterArgs(apiArgs)
 
 	// Verify the filter parameter was processed
@@ -194,7 +194,7 @@ func TestTimeTokenIntegration_ParameterNameMapper(t *testing.T) {
 
 func TestTimeTokenIntegration_PathParameters(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	mapper := NewMapper(logger)
+	mapper := NewMapper(WithLogger(logger))
 
 	// Test path parameters with time tokens
 	params := []ParameterConfig{
@@ -234,7 +234,7 @@ func TestTimeTokenIntegration_PathParameters(t *testing.T) {
 
 func TestTimeTokenIntegration_ComplexScenario(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	mapper := NewMapper(logger)
+	mapper := NewMapper(WithLogger(logger))
 
 	// Test complex scenario with multiple parameter types and time tokens
 	params := []ParameterConfig{

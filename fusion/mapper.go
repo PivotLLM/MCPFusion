@@ -22,10 +22,11 @@ type Mapper struct {
 }
 
 // NewMapper creates a new Mapper
-func NewMapper(logger global.Logger) *Mapper {
+func NewMapper(opts ...ComponentOption) *Mapper {
+	logger := newComponentOptions(opts).logger
 	return &Mapper{
 		logger:             logger,
-		timeTokenProcessor: NewTimeTokenProcessor(logger),
+		timeTokenProcessor: NewTimeTokenProcessor(WithLogger(logger)),
 	}
 }
 

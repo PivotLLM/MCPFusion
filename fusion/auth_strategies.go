@@ -27,7 +27,8 @@ type OAuth2DeviceFlowStrategy struct {
 }
 
 // NewOAuth2DeviceFlowStrategy creates a new OAuth2 device flow strategy
-func NewOAuth2DeviceFlowStrategy(httpClient *http.Client, logger global.Logger) *OAuth2DeviceFlowStrategy {
+func NewOAuth2DeviceFlowStrategy(httpClient *http.Client, opts ...ComponentOption) *OAuth2DeviceFlowStrategy {
+	logger := newComponentOptions(opts).logger
 	return &OAuth2DeviceFlowStrategy{
 		httpClient:  httpClient,
 		logger:      logger,
@@ -350,7 +351,8 @@ type BearerTokenStrategy struct {
 }
 
 // NewBearerTokenStrategy creates a new bearer token strategy
-func NewBearerTokenStrategy(logger global.Logger) *BearerTokenStrategy {
+func NewBearerTokenStrategy(opts ...ComponentOption) *BearerTokenStrategy {
+	logger := newComponentOptions(opts).logger
 	return &BearerTokenStrategy{logger: logger}
 }
 
@@ -391,7 +393,8 @@ type APIKeyStrategy struct {
 }
 
 // NewAPIKeyStrategy creates a new API key strategy
-func NewAPIKeyStrategy(logger global.Logger) *APIKeyStrategy {
+func NewAPIKeyStrategy(opts ...ComponentOption) *APIKeyStrategy {
+	logger := newComponentOptions(opts).logger
 	return &APIKeyStrategy{logger: logger}
 }
 
@@ -426,7 +429,8 @@ type BasicAuthStrategy struct {
 }
 
 // NewBasicAuthStrategy creates a new basic auth strategy
-func NewBasicAuthStrategy(logger global.Logger) *BasicAuthStrategy {
+func NewBasicAuthStrategy(opts ...ComponentOption) *BasicAuthStrategy {
+	logger := newComponentOptions(opts).logger
 	return &BasicAuthStrategy{logger: logger}
 }
 
@@ -760,7 +764,8 @@ type SessionJWTStrategy struct {
 }
 
 // NewSessionJWTStrategy creates a new session JWT strategy
-func NewSessionJWTStrategy(httpClient *http.Client, logger global.Logger) *SessionJWTStrategy {
+func NewSessionJWTStrategy(httpClient *http.Client, opts ...ComponentOption) *SessionJWTStrategy {
+	logger := newComponentOptions(opts).logger
 	return &SessionJWTStrategy{
 		httpClient: httpClient,
 		logger:     logger,
@@ -1236,7 +1241,8 @@ type UserCredentialsStrategy struct {
 }
 
 // NewUserCredentialsStrategy creates a new user credentials strategy
-func NewUserCredentialsStrategy(logger global.Logger) *UserCredentialsStrategy {
+func NewUserCredentialsStrategy(opts ...ComponentOption) *UserCredentialsStrategy {
+	logger := newComponentOptions(opts).logger
 	return &UserCredentialsStrategy{logger: logger}
 }
 

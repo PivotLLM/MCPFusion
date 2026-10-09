@@ -87,7 +87,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Process time tokens in parameter values
-	timeTokenProcessor := NewTimeTokenProcessor(h.fusion.logger)
+	timeTokenProcessor := NewTimeTokenProcessor(WithLogger(h.fusion.logger))
 	args = timeTokenProcessor.ProcessParameterArgs(args)
 
 	// Coerce JSON-encoded string values to native array/object types.
@@ -103,7 +103,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Validate parameters
-	validator := NewValidator(h.fusion.logger)
+	validator := NewValidator(WithLogger(h.fusion.logger))
 	if err := validator.ValidateParameters(h.endpoint.Parameters, args); err != nil {
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Parameter validation failed [%s]: %v", correlationID, err)
@@ -496,7 +496,7 @@ func buildMultipartBody(params []ParameterConfig, args map[string]interface{}) (
 
 // buildRequest constructs an HTTP request based on the endpoint configuration
 func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interface{}) (*http.Request, error) {
-	mapper := NewMapper(h.fusion.logger)
+	mapper := NewMapper(WithLogger(h.fusion.logger))
 
 	// Build URL with path parameters, using endpoint-level baseURL override if set
 	baseURL := h.service.BaseURL
@@ -645,7 +645,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 				h.fusion.logger.Debugf("Executing HTTP request with retry (max %d attempts): %s %s [%s]",
 					retryConfig.MaxAttempts, req.Method, req.URL.String(), correlationID)
 			}
-			retryExecutor := NewRetryExecutor(retryConfig, h.fusion.logger)
+			retryExecutor := NewRetryExecutor(retryConfig, WithLogger(h.fusion.logger))
 			resp, err = retryExecutor.Execute(ctx, httpClient, req)
 			if err != nil && resp == nil {
 				// Count retry attempts from the error context
@@ -804,7 +804,7 @@ func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, c
 		// Apply transformation if specified before enforcing the size limit,
 		// so that transforms can reduce an oversized response to a valid one.
 		if h.endpoint.Response.Transform != "" {
-			mapper := NewMapper(h.fusion.logger)
+			mapper := NewMapper(WithLogger(h.fusion.logger))
 			transformed, err := mapper.TransformResponse(data, h.endpoint.Response.Transform, args)
 			if err != nil {
 				return "", fmt.Errorf("failed to transform response: %w", err)

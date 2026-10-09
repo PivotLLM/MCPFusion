@@ -181,7 +181,7 @@ func newBoltTokenStore(t *testing.T, logger global.Logger) TokenStore {
 
 func newAuthManager(t *testing.T, store TokenStore, logger global.Logger) *MultiTenantAuthManager {
 	t.Helper()
-	return NewMultiTenantAuthManager(store, NewDatabaseCache(store, logger), logger)
+	return NewMultiTenantAuthManager(store, NewDatabaseCache(store, WithLogger(logger)), WithLogger(logger))
 }
 
 func tenant(service string) *TenantContext {
@@ -391,7 +391,7 @@ func TestAuthenticateWithCredentials_Guards(t *testing.T) {
 }
 
 func TestCredentialStore_WithoutDatabase(t *testing.T) {
-	mtam := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
+	mtam := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil))
 	assert.Error(t, mtam.StoreUserCredentials(testTenantHash, "uem", map[string]string{"a": "b"}))
 	_, err := mtam.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err)

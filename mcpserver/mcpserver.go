@@ -22,8 +22,15 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
-// Option defines a function type for configuring the MCPServer.
-type Option func(*MCPServer)
+// Option configures the MCPServer.
+type Option interface {
+	applyToServer(*MCPServer)
+}
+
+// optionFunc adapts a function to the Option interface.
+type optionFunc func(*MCPServer)
+
+func (o optionFunc) applyToServer(m *MCPServer) { o(m) }
 
 // MCPServerTransport is an interface that abstracts the different transport types
 //
@@ -43,7 +50,8 @@ type AuthenticatedTransport struct {
 // NewAuthenticatedTransport creates a new authenticated transport wrapper. The
 // underlying transport is taken as an http.Handler so that every request it
 // serves always passes through the middleware.
-func NewAuthenticatedTransport(underlying http.Handler, middleware func(http.Handler) http.Handler, logger global.Logger) *AuthenticatedTransport {
+func NewAuthenticatedTransport(underlying http.Handler, middleware func(http.Handler) http.Handler, opts ...TransportOption) *AuthenticatedTransport {
+	logger := newTransportOptions(opts).logger
 	handler := middleware(underlying)
 	return &AuthenticatedTransport{
 		handler: handler,
@@ -137,89 +145,83 @@ type MCPServer struct {
 }
 
 func WithListen(listen string) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.listen = listen
-	}
-}
-
-func WithLogger(logger global.Logger) Option {
-	return func(m *MCPServer) {
-		m.logger = logger
-	}
+	})
 }
 
 func WithDebug(debug bool) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.debug = debug
-	}
+	})
 }
 
 func WithName(name string) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.name = name
-	}
+	})
 }
 
 func WithVersion(version string) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.version = version
-	}
+	})
 }
 
 func WithToolProviders(providers []global.ToolProvider) Option {
-	return func(s *MCPServer) {
+	return optionFunc(func(s *MCPServer) {
 		s.toolProviders = providers
-	}
+	})
 }
 
 func WithResourceProviders(providers []global.ResourceProvider) Option {
-	return func(s *MCPServer) {
+	return optionFunc(func(s *MCPServer) {
 		s.resourceProviders = providers
-	}
+	})
 }
 
 func WithPromptProviders(providers []global.PromptProvider) Option {
-	return func(s *MCPServer) {
+	return optionFunc(func(s *MCPServer) {
 		s.promptProviders = providers
-	}
+	})
 }
 
 func WithAuthMiddleware(authMiddleware *AuthMiddleware) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.authMiddleware = authMiddleware
-	}
+	})
 }
 
 func WithDatabase(database *db.DB) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.database = database
-	}
+	})
 }
 
 func WithAuthManager(authManager *fusion.MultiTenantAuthManager) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.authManager = authManager
-	}
+	})
 }
 
 func WithConfigManager(configManager ServiceProvider) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.configManager = configManager
-	}
+	})
 }
 
 // WithOAuthEngine sets the fusion engine that serves the OAuth token-management
 // HTTP API routes. Required to enable the OAuth API endpoints on the extended transport.
 func WithOAuthEngine(engine OAuthRouteProvider) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.oauthEngine = engine
-	}
+	})
 }
 
 func WithAuthorizer(authorizer global.Authorizer) Option {
-	return func(m *MCPServer) {
+	return optionFunc(func(m *MCPServer) {
 		m.authorizer = authorizer
-	}
+	})
 }
 
 // New creates a new MCPServer instance with the provided options.
@@ -242,7 +244,7 @@ func New(options ...Option) (*MCPServer, error) {
 
 	// Apply options
 	for _, opt := range options {
-		opt(m)
+		opt.applyToServer(m)
 	}
 
 	// If there is no logger, create one
@@ -326,9 +328,9 @@ func (s *MCPServer) Start() error {
 	var authSSE *AuthenticatedTransport
 	if s.authMiddleware != nil {
 		s.logger.Info("Applying HTTP authentication middleware to both transports")
-		authSSE = NewAuthenticatedTransport(s.sseServer, s.authMiddleware.SimpleMiddleware, s.logger)
+		authSSE = NewAuthenticatedTransport(s.sseServer, s.authMiddleware.SimpleMiddleware, WithLogger(s.logger))
 		authenticatedSSE = authSSE
-		authenticatedHTTP = NewAuthenticatedTransport(s.httpServer, s.authMiddleware.SimpleMiddleware, s.logger)
+		authenticatedHTTP = NewAuthenticatedTransport(s.httpServer, s.authMiddleware.SimpleMiddleware, WithLogger(s.logger))
 	}
 
 	switch {
@@ -341,7 +343,7 @@ func (s *MCPServer) Start() error {
 		}
 		// Wrap both transports with ExtendedTransport to add OAuth API endpoints
 		s.transport = NewExtendedTransport(authenticatedSSE, authenticatedHTTP, s.oauthEngine,
-			oauthAuthMiddleware, s.logger)
+			oauthAuthMiddleware, WithLogger(s.logger))
 	case authSSE != nil:
 		// No OAuth API - just use SSE transport with both available through routing
 		s.logger.Warning("OAuth API disabled - using SSE transport only")

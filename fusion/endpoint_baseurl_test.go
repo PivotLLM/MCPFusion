@@ -138,7 +138,7 @@ func TestEndpointConfig_BaseURL_DeserializeFromJSON(t *testing.T) {
 }
 
 func TestMapper_BuildURL_EndpointBaseURLOverride(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	tests := []struct {
 		name        string
@@ -236,7 +236,7 @@ func TestMapper_BuildURL_EndpointBaseURLOverride(t *testing.T) {
 func TestBuildURL_ServiceVsEndpointBaseURL(t *testing.T) {
 	// This test simulates the logic in handler.go buildRequest(), verifying that
 	// the endpoint-level baseURL takes precedence over the service-level baseURL.
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	serviceBaseURL := "https://www.googleapis.com"
 	endpointBaseURL := "https://people.googleapis.com"
