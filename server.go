@@ -36,7 +36,7 @@ type server struct {
 }
 
 // run wires the providers and the MCP server, serves until ctx is cancelled,
-// then shuts down. It closes the database during shutdown.
+// then shuts down. It closes the database before it returns, on every path.
 func (s server) run(ctx context.Context) error {
 	// Auto-migrate unlinked API keys to user accounts on startup
 	if err := s.database.AutoMigrateKeys(); err != nil {
@@ -127,6 +127,7 @@ func (s server) run(ctx context.Context) error {
 		var err error
 		fusionProvider, err = fusion.New(fusionOpts...)
 		if err != nil {
+			s.release(nil, nil)
 			return fmt.Errorf("unable to create fusion provider: %w", err)
 		}
 		providers = append(providers, fusionProvider)
@@ -250,6 +251,7 @@ func (s server) run(ctx context.Context) error {
 
 	mcp, err := mcpserver.New(mcpOpts...)
 	if err != nil {
+		s.release(nil, fusionProvider)
 		return fmt.Errorf("unable to create MCP server: %w", err)
 	}
 
@@ -261,6 +263,7 @@ func (s server) run(ctx context.Context) error {
 
 	// Start MCP server
 	if err = mcp.Start(); err != nil {
+		s.release(hubProvider, fusionProvider)
 		return fmt.Errorf("MCP server failed to start: %w", err)
 	}
 
@@ -271,25 +274,7 @@ func (s server) run(ctx context.Context) error {
 	// Stop the MCP server. On failure the remaining shutdown still runs so the
 	// providers and the database are closed; the error is returned at the end.
 	stopErr := mcp.Stop()
-
-	// Shutdown hub provider if initialized
-	if hubProvider != nil {
-		hubProvider.Shutdown()
-	}
-
-	// Shutdown Fusion provider if initialized
-	if fusionProvider != nil {
-		fusionProvider.Shutdown()
-	}
-
-	// Close database connection if initialized
-	if s.database != nil {
-		if err := s.database.Close(); err != nil {
-			s.logger.Errorf("Error closing database: %v", err)
-		} else {
-			s.logger.Info("Database connection closed successfully")
-		}
-	}
+	s.release(hubProvider, fusionProvider)
 
 	if stopErr != nil {
 		return fmt.Errorf("error stopping MCP server: %w", stopErr)
@@ -297,4 +282,24 @@ func (s server) run(ctx context.Context) error {
 
 	s.logger.Infof("MCP server stopped successfully")
 	return nil
+}
+
+// release shuts down the providers run has started and closes the database, in
+// reverse order of creation. A nil provider was not started and is skipped.
+func (s server) release(hubProvider *hub.HubProvider, fusionProvider *fusion.Fusion) {
+	if hubProvider != nil {
+		hubProvider.Shutdown()
+	}
+
+	if fusionProvider != nil {
+		fusionProvider.Shutdown()
+	}
+
+	if s.database != nil {
+		if err := s.database.Close(); err != nil {
+			s.logger.Errorf("Error closing database: %v", err)
+		} else {
+			s.logger.Info("Database connection closed successfully")
+		}
+	}
 }
