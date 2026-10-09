@@ -26,8 +26,3 @@ type Cache interface {
 	// Has checks if a key exists in the cache
 	Has(key string) bool
 }
-
-// InMemoryCache implements a simple in-memory cache
-// DEPRECATED: Use DatabaseCache with multi-tenant authentication instead.
-// This cache implementation is only kept for compatibility and will be removed.
-type InMemoryCache struct{}
