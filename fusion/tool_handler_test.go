@@ -20,7 +20,10 @@ func intPtr(i int) *int {
 }
 
 func TestBuildRequest_BasicGET(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -60,7 +63,10 @@ func TestBuildRequest_BasicGET(t *testing.T) {
 }
 
 func TestBuildRequest_POSTWithBody(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -120,7 +126,10 @@ func TestBuildRequest_POSTWithBody(t *testing.T) {
 }
 
 func TestBuildRequest_PathParameters(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -156,7 +165,10 @@ func TestBuildRequest_PathParameters(t *testing.T) {
 }
 
 func TestBuildRequest_HeaderParameters(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -191,7 +203,10 @@ func TestBuildRequest_HeaderParameters(t *testing.T) {
 }
 
 func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -213,7 +228,7 @@ func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
 	options := map[string]any{} // Missing required parameter
 
 	ctx := context.Background()
-	_, err := fusion.buildRequest(ctx, "test", service, endpoint, options)
+	_, err = fusion.buildRequest(ctx, "test", service, endpoint, options)
 	if err == nil {
 		t.Fatal("Expected error for missing required parameter")
 	}
@@ -227,7 +242,10 @@ func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
 }
 
 func TestBuildRequest_DefaultValue(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -262,7 +280,10 @@ func TestBuildRequest_DefaultValue(t *testing.T) {
 }
 
 func TestProcessResponse_JSON(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	endpoint := &EndpointConfig{
 		Response: ResponseConfig{
@@ -311,7 +332,10 @@ func TestProcessResponse_JSON(t *testing.T) {
 }
 
 func TestProcessResponse_Text(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	endpoint := &EndpointConfig{
 		Response: ResponseConfig{
@@ -343,7 +367,10 @@ func TestProcessResponse_Text(t *testing.T) {
 }
 
 func TestProcessResponse_HTTPError(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	endpoint := &EndpointConfig{
 		ID: "test_endpoint",
@@ -363,7 +390,7 @@ func TestProcessResponse_HTTPError(t *testing.T) {
 		_ = Body.Close()
 	}(resp.Body)
 
-	_, err := fusion.processResponse(resp, endpoint, "test")
+	_, err = fusion.processResponse(resp, endpoint, "test")
 	if err == nil {
 		t.Fatal("Expected error for 404 response")
 	}
@@ -385,7 +412,10 @@ func TestProcessResponse_HTTPError(t *testing.T) {
 }
 
 func TestValidateParameter_String(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	param := &ParameterConfig{
 		Name: "test",
@@ -424,7 +454,10 @@ func TestValidateParameter_String(t *testing.T) {
 }
 
 func TestValidateParameter_Number(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	param := &ParameterConfig{
 		Name: "test",
@@ -456,7 +489,10 @@ func TestValidateParameter_Number(t *testing.T) {
 }
 
 func TestValidateParameter_Enum(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	param := &ParameterConfig{
 		Name: "test",
@@ -478,7 +514,10 @@ func TestValidateParameter_Enum(t *testing.T) {
 }
 
 func TestTransformParameter_BasicTransforms(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tests := []struct {
 		name       string
@@ -526,7 +565,10 @@ func TestTransformParameter_BasicTransforms(t *testing.T) {
 }
 
 func TestExtractJSONPath(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	data := map[string]interface{}{
 		"user": map[string]interface{}{

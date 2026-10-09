@@ -136,7 +136,7 @@ Before committing any code changes:
 
 ### Common Issues to Avoid
 
-- **Function Signature Mismatches**: Always check the actual return values of functions (e.g., `New()` returns `*Fusion`, not `(*Fusion, error)`)
+- **Function Signature Mismatches**: Always check the actual return values of functions (e.g., `fusion.New()` returns `(*Fusion, error)`, not `*Fusion`)
 - **Type Mismatches**: Verify field types match struct definitions (e.g., `TenantHash` is `string`, not `[]byte`)
 - **Undefined Variables**: Use `:=` for new variable declarations, `=` for assignments to existing variables
 - **Nil Checks**: Add nil checks for optional dependencies like `multiTenantAuth` before calling methods

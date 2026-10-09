@@ -76,11 +76,14 @@ func TestGoogleIntegration(t *testing.T) {
 
 	// Create fusion instance
 	logger := mlogger.NewMemoryLogger()
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(config), "test-google-config.json"),
 		WithLogger(logger),
 		WithAllowDestructive(true),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Get the tools
 	tools := fusion.RegisterTools()
@@ -593,10 +596,13 @@ func TestGoogleOAuth2DeviceFlow(t *testing.T) {
 	config := createTestGoogleConfig(server.URL)
 	logger := mlogger.NewMemoryLogger()
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(config), "test-google-oauth-config.json"),
 		WithLogger(logger),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Get the tools
 	tools := fusion.RegisterTools()

@@ -234,11 +234,11 @@ func (mtf *MultiTenantFusion) createTenantFusion(tenantContext *TenantContext) (
 	// The fusion instance will use its own auth manager instead of tenant-specific wrapper
 
 	// Create the fusion instance
-	fusion := New(
+	fusion, err := New(
 		WithConfig(config),
 	)
-	if fusion == nil {
-		return nil, fmt.Errorf("failed to create fusion instance")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fusion instance: %w", err)
 	}
 
 	if mtf.logger != nil {

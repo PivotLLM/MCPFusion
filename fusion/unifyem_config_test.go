@@ -18,7 +18,10 @@ import (
 // agreed hints, and build request bodies in the shape the UnifyEM API expects.
 func TestUnifyEMConfig_LoadsAndRegistersTools(t *testing.T) {
 	logger := newTestLogger(t)
-	f := New(WithLogger(logger), WithJSONConfig("../configs/unifyem.json"))
+	f, err := New(WithLogger(logger), WithJSONConfig("../configs/unifyem.json"))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	require.NotNil(t, f.config, "configs/unifyem.json failed to load")
 
 	service := f.config.Services["unifyem"]
@@ -66,7 +69,10 @@ func TestUnifyEMConfig_LoadsAndRegistersTools(t *testing.T) {
 
 func TestUnifyEMConfig_RequestShapes(t *testing.T) {
 	logger := newTestLogger(t)
-	f := New(WithLogger(logger), WithJSONConfig("../configs/unifyem.json"))
+	f, err := New(WithLogger(logger), WithJSONConfig("../configs/unifyem.json"))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	require.NotNil(t, f.config)
 	service := f.config.Services["unifyem"]
 	m := NewMapper(WithLogger(logger))

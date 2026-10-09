@@ -147,7 +147,10 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -223,7 +226,10 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -238,7 +244,7 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]interface{}{})
 
 	// Should fail without retry
 	if err == nil {
@@ -317,7 +323,10 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 				},
 			}
 
-			fusion := New(WithConfig(config))
+			fusion, err := New(WithConfig(config))
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
 
 			service := config.Services["test_service"]
 			endpoint := &service.Endpoints[0]
@@ -372,7 +381,10 @@ func TestHTTPHandler_PrepareAuthConfig(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -486,7 +498,10 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -503,7 +518,7 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// This should not panic even with nil multiTenantAuth
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]interface{}{})
 
 	// We expect an error due to no auth being configured
 	if err == nil {
@@ -548,7 +563,10 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -566,7 +584,7 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 	ctx = context.WithValue(ctx, global.TenantContextKey, tenantContext)
 
 	// Execute the handler with cancelled context
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]interface{}{})
 
 	// Should get context cancelled error
 	if err == nil {
@@ -616,7 +634,10 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]

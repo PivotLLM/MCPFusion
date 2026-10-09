@@ -14,7 +14,10 @@ import (
 
 func TestNew(t *testing.T) {
 	// Test that creating a Fusion instance automatically creates multi-tenant auth
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	if fusion.multiTenantAuth == nil {
 		t.Error("Expected multi-tenant auth to be auto-created")
@@ -30,9 +33,12 @@ func TestNewWithOptions(t *testing.T) {
 	memLogger := mlogger.NewMemoryLogger()
 
 	// Test creating with options
-	fusion := New(
+	fusion, err := New(
 		WithLogger(memLogger),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	if fusion.logger != memLogger {
 		t.Error("Logger not set correctly")
@@ -77,9 +83,12 @@ func TestNewWithJSONConfig(t *testing.T) {
 		}
 	}`
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(jsonConfig), "test-config.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	if fusion.config == nil {
 		t.Fatal("Config should be loaded")
@@ -131,9 +140,12 @@ func TestRegisterTools(t *testing.T) {
 		}
 	}`
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(jsonConfig), "test-config.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -168,7 +180,10 @@ func TestRegisterTools(t *testing.T) {
 }
 
 func TestInterfaceImplementation(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Test that Fusion implements all required interfaces
 	var _ global.ToolProvider = fusion
@@ -194,9 +209,12 @@ func TestServiceNames(t *testing.T) {
 		}
 	}`
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(jsonConfig), "test-config.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	names := fusion.ServiceNames()
 
@@ -217,5 +235,15 @@ func TestServiceNames(t *testing.T) {
 
 	if !found1 || !found2 {
 		t.Error("Expected to find both service1 and service2")
+	}
+}
+
+func TestNew_AuthManagerWithoutCache(t *testing.T) {
+	f, err := New(WithMultiTenantAuth(NewMultiTenantAuthManager(nil, nil)))
+	if err == nil {
+		t.Fatal("New() error = nil, want an error for an auth manager without a cache")
+	}
+	if f != nil {
+		t.Errorf("New() = %v, want nil on error", f)
 	}
 }

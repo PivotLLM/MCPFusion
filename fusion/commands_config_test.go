@@ -17,10 +17,13 @@ func TestCommandsConfig_ShellExec(t *testing.T) {
 	logger := newTestLogger(t)
 
 	// Load commands.json config
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/commands.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	if fusion.config == nil {
 		t.Fatal("Failed to load commands.json config")
@@ -63,10 +66,13 @@ func TestCommandsConfig_ShellExec(t *testing.T) {
 func TestCommandsConfig_DirectExec(t *testing.T) {
 	logger := newTestLogger(t)
 
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/commands.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -105,10 +111,13 @@ func TestCommandsConfig_DirectExec(t *testing.T) {
 func TestCommandsConfig_WithEnvironment(t *testing.T) {
 	logger := newTestLogger(t)
 
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/commands.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -148,10 +157,13 @@ func TestCommandsConfig_WithEnvironment(t *testing.T) {
 func TestCommandsConfig_DirectExecWithStdin(t *testing.T) {
 	logger := newTestLogger(t)
 
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/commands.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 

@@ -113,10 +113,13 @@ func TestConnectionPool_SequentialLoad(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "pool-test.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 
@@ -151,7 +154,7 @@ func TestConnectionPool_SequentialLoad(t *testing.T) {
 	}
 
 	// Pool health check: one final request must succeed after all the errors.
-	_, err := tool.Handler(withTestContext(map[string]any{}))
+	_, err = tool.Handler(withTestContext(map[string]any{}))
 	if err != nil {
 		t.Errorf("post-load health check failed — connection pool may be exhausted: %v", err)
 	}
@@ -169,10 +172,13 @@ func TestConnectionPool_ConcurrentLoad(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "pool-test.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 
@@ -237,10 +243,13 @@ func TestConnectionPool_RetryBodyDrain(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "pool-test.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 
@@ -292,10 +301,13 @@ func TestConnectionPool_MixedErrorLoad(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "pool-test.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 

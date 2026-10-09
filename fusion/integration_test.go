@@ -192,10 +192,13 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 	}`
 
 	// Create Fusion instance
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Verify configuration loaded
 	if fusion.config == nil {
@@ -370,10 +373,13 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 		}
 	}`
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -390,7 +396,7 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 	}
 
 	// Execute the tool - should get an API error
-	_, err := targetTool.Handler(withTestContext(map[string]any{}))
+	_, err = targetTool.Handler(withTestContext(map[string]any{}))
 	if err == nil {
 		t.Fatal("Expected API error for invalid authentication")
 	}
@@ -432,10 +438,13 @@ func TestFusionIntegration_NetworkError(t *testing.T) {
 		}
 	}`
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -452,7 +461,7 @@ func TestFusionIntegration_NetworkError(t *testing.T) {
 	}
 
 	// Execute the tool - should get a network error
-	_, err := targetTool.Handler(withTestContext(map[string]any{}))
+	_, err = targetTool.Handler(withTestContext(map[string]any{}))
 	if err == nil {
 		t.Fatal("Expected network error for invalid host")
 	}

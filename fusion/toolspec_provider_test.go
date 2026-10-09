@@ -20,8 +20,9 @@ import (
 // newToolSpecTestFusion builds a Fusion whose single auth:none service targets
 // the given base URL, so generated toolspec handlers exercise the real fusion
 // request path (which requires a tenant context in the call ctx).
-func newToolSpecTestFusion(baseURL string) *Fusion {
-	f := New(WithConfig(&Config{
+func newToolSpecTestFusion(t *testing.T, baseURL string) *Fusion {
+	t.Helper()
+	f, err := New(WithConfig(&Config{
 		Services: map[string]*ServiceConfig{
 			"echo": {
 				Name:    "Echo",
@@ -48,6 +49,9 @@ func newToolSpecTestFusion(baseURL string) *Fusion {
 			},
 		},
 	}))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	return f
 }
 
@@ -61,7 +65,7 @@ func findToolSpec(defs []toolspec.ToolDefinition, name string) *toolspec.ToolDef
 }
 
 func TestToolSpecDefinitions_SchemaAndFields(t *testing.T) {
-	f := newToolSpecTestFusion("https://api.example.com")
+	f := newToolSpecTestFusion(t, "https://api.example.com")
 
 	defs := f.ToolSpecDefinitions("tenant-xyz")
 
@@ -100,7 +104,7 @@ func TestToolSpecDefinitions_HandlerInjectsTenantAndSucceeds(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := newToolSpecTestFusion(srv.URL)
+	f := newToolSpecTestFusion(t, srv.URL)
 	tool := findToolSpec(f.ToolSpecDefinitions("tenant-xyz"), "echo_get")
 	require.NotNil(t, tool)
 
@@ -122,7 +126,7 @@ func TestToolSpecDefinitions_HandlerMapsError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := newToolSpecTestFusion(srv.URL)
+	f := newToolSpecTestFusion(t, srv.URL)
 	tool := findToolSpec(f.ToolSpecDefinitions("tenant-xyz"), "echo_get")
 	require.NotNil(t, tool)
 
@@ -143,7 +147,7 @@ func TestToolSpecDefinitions_HandlerNilCtx(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := newToolSpecTestFusion(srv.URL)
+	f := newToolSpecTestFusion(t, srv.URL)
 	tool := findToolSpec(f.ToolSpecDefinitions("tenant-xyz"), "echo_get")
 	require.NotNil(t, tool)
 

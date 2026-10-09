@@ -53,10 +53,13 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 	// Create fusion instance
 	logger := mlogger.NewMemoryLogger()
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(config), "test-config.json"),
 		WithLogger(logger),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Get the tools
 	tools := fusion.RegisterTools()
@@ -261,10 +264,13 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 	config := createTestMicrosoft365Config(server.URL)
 	logger := mlogger.NewMemoryLogger()
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(config), "test-oauth-config.json"),
 		WithLogger(logger),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Get the tools
 	tools := fusion.RegisterTools()

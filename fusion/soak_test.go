@@ -40,10 +40,13 @@ func TestSoak_MemoryAndGoroutines(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "soak-test.json"),
 		WithLogger(nil), // no logger to avoid log buffer growth skewing heap
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 

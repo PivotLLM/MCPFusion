@@ -99,15 +99,18 @@ func TestChaos_ConnectionReset(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(chaosTestConfig(server.URL, "5s")), "chaos-reset.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "chaos_ping")
 
 	// Phase 1: connection reset must return an error.
-	_, err := tool.Handler(withTestContext(map[string]any{}))
+	_, err = tool.Handler(withTestContext(map[string]any{}))
 	if err == nil {
 		t.Error("expected an error from connection reset, got nil")
 	}
@@ -139,15 +142,18 @@ func TestChaos_SlowResponseTimeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(chaosTestConfig(server.URL, endpointTimeout)), "chaos-slow.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "chaos_ping")
 
 	start := time.Now()
-	_, err := tool.Handler(withTestContext(map[string]any{}))
+	_, err = tool.Handler(withTestContext(map[string]any{}))
 	elapsed := time.Since(start)
 
 	if err == nil {
@@ -200,10 +206,13 @@ func TestChaos_PoolHealthAfterErrors(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(chaosTestConfig(server.URL, "5s")), "chaos-pool.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "chaos_ping")
 

@@ -39,7 +39,7 @@ func main() {
 	logger.Info("Starting MCPFusion server with Fusion provider...")
 
 	// Create production-ready Fusion provider
-	fusionProvider := fusion.New(
+	fusionProvider, err := fusion.New(
 		// Load multiple service configurations
 		fusion.WithJSONConfig("configs/microsoft365.json"),
 		fusion.WithJSONConfig("configs/google.json"),
@@ -48,6 +48,9 @@ func main() {
 		// Configure production features
 		fusion.WithLogger(logger), // Structured logging
 	)
+	if err != nil {
+		logger.Fatalf("Failed to create Fusion provider: %v", err)
+	}
 
 	// Validate configuration at startup
 	if err := fusionProvider.Validate(); err != nil {

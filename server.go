@@ -124,7 +124,11 @@ func (s server) run(ctx context.Context) error {
 		// Provide database for native tools (e.g., knowledge store)
 		fusionOpts = append(fusionOpts, fusion.WithDatabase(s.database))
 
-		fusionProvider = fusion.New(fusionOpts...)
+		var err error
+		fusionProvider, err = fusion.New(fusionOpts...)
+		if err != nil {
+			return fmt.Errorf("unable to create fusion provider: %w", err)
+		}
 		providers = append(providers, fusionProvider)
 	} else {
 		s.logger.Warning("No fusion provider created - no configurations loaded")

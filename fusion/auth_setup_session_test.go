@@ -25,10 +25,13 @@ func TestRegisterTools_AuthSetupForSessionCredentialsOnly(t *testing.T) {
 			"loginURL": "/api/v1/login", "tokenPath": "access_token", "tokenLocation": "header",
 		}},
 	}
-	f := New(WithLogger(logger), WithConfig(&Config{Services: map[string]*ServiceConfig{
+	f, err := New(WithLogger(logger), WithConfig(&Config{Services: map[string]*ServiceConfig{
 		"uem":   sessionService(uem.URL, CredentialStoreCredentials),
 		"plain": plain,
 	}}))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	names := map[string]global.ToolDefinition{}
 	for _, tool := range f.RegisterTools() {

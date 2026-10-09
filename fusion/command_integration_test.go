@@ -36,10 +36,13 @@ func TestKaliConfig_Nmap(t *testing.T) {
 
 	// Load config and test
 	logger := newTestLogger(t)
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/kali.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 

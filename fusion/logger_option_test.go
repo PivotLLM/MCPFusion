@@ -27,7 +27,10 @@ func TestWithLogger_ComponentUsesLogger(t *testing.T) {
 
 func TestWithLogger_FusionUsesLogger(t *testing.T) {
 	mem := mlogger.NewMemoryLogger()
-	f := New(WithLogger(mem))
+	f, err := New(WithLogger(mem))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	if f.Logger() != mem {
 		t.Fatalf("Logger() = %v, want the WithLogger logger", f.Logger())

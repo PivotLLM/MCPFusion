@@ -406,8 +406,11 @@ func TestHTTPHandler_SessionCredentials_ReloginOn401(t *testing.T) {
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
 	mtam := newAuthManager(t, newBoltTokenStore(t, logger), logger)
-	f := New(WithLogger(logger), WithMultiTenantAuth(mtam),
+	f, err := New(WithLogger(logger), WithMultiTenantAuth(mtam),
 		WithConfig(&Config{Services: map[string]*ServiceConfig{"uem": service}}))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	handler := NewHTTPHandler(f, service, &service.Endpoints[0])
 
 	require.NoError(t, mtam.StoreUserCredentials(testTenantHash, "uem", map[string]string{
@@ -434,12 +437,15 @@ func TestHTTPHandler_SessionCredentials_NoCredentials(t *testing.T) {
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
 	mtam := newAuthManager(t, newBoltTokenStore(t, logger), logger)
-	f := New(WithLogger(logger), WithMultiTenantAuth(mtam),
+	f, err := New(WithLogger(logger), WithMultiTenantAuth(mtam),
 		WithConfig(&Config{Services: map[string]*ServiceConfig{"uem": service}}))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	handler := NewHTTPHandler(f, service, &service.Endpoints[0])
 
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenant("uem"))
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]interface{}{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uem_auth_setup")
 	assert.Equal(t, 0, uem.logins())

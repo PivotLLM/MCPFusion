@@ -22,7 +22,7 @@
 // Example usage:
 //
 //	multiTenantAuth := fusion.NewMultiTenantAuthManager(db, cache, fusion.WithLogger(logger))
-//	fusionProvider := fusion.New(
+//	fusionProvider, err := fusion.New(
 //		fusion.WithJSONConfig("configs/microsoft365.json"),
 //		fusion.WithLogger(logger),
 //	)
@@ -33,6 +33,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -138,7 +139,7 @@ type NativeToolPrefixRegistrar interface {
 //
 // Example usage:
 //
-//	fusion := New(
+//	fusion, err := New(
 //		WithJSONConfig("config.json"),
 //		WithLogger(logger),
 //	)
@@ -165,7 +166,7 @@ func (o optionFunc) applyToFusion(f *Fusion) { o(f) }
 //
 // Example:
 //
-//	fusion := New(WithJSONConfig("configs/microsoft365.json"))
+//	fusion, err := New(WithJSONConfig("configs/microsoft365.json"))
 //
 // If the file cannot be loaded or contains invalid configuration, the error will be
 // logged and the Fusion instance will be created without that configuration.
@@ -476,14 +477,15 @@ func WithAuthCommandName(name string) Option {
 //
 // Returns:
 //   - *Fusion: Configured Fusion instance ready for use as an MCP provider
+//   - error: non-nil if the multi-tenant auth manager has no cache
 //
 // Example Basic Usage:
 //
-//	fusion := New()  // Creates instance with defaults
+//	fusion, err := New()  // Creates instance with defaults
 //
 // Example Production Usage:
 //
-//	fusion := New(
+//	fusion, err := New(
 //		WithJSONConfig("configs/microsoft365.json"),
 //		WithJSONConfig("configs/google.json"),
 //		WithLogger(logger),
@@ -495,7 +497,7 @@ func WithAuthCommandName(name string) Option {
 // Thread Safety:
 // The returned Fusion instance is thread-safe and can handle concurrent requests
 // from multiple goroutines without additional synchronization.
-func New(options ...Option) *Fusion {
+func New(options ...Option) (*Fusion, error) {
 	// Create custom HTTP transport with optimized connection pooling
 	transport := &http.Transport{
 		// Connection pooling settings
@@ -571,7 +573,7 @@ func New(options ...Option) *Fusion {
 			fusion.logger.Info("Using database-backed cache for persistent token storage")
 		}
 	} else {
-		panic("Multi-tenant auth manager must have a valid database cache")
+		return nil, errors.New("multi-tenant auth manager has no cache")
 	}
 
 	// Update metrics collector with logger
@@ -613,7 +615,7 @@ func New(options ...Option) *Fusion {
 		fusion.logger.Info("Fusion instance initialization completed")
 	}
 
-	return fusion
+	return fusion, nil
 }
 
 // Legacy authentication strategies removed - only multi-tenant auth is supported

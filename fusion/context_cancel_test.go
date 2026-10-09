@@ -82,10 +82,13 @@ func TestContextCancel_MidFlight(t *testing.T) {
 		}
 	}`
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(cfg), "ctx-cancel.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "ctxtest_ping")
 
@@ -174,10 +177,13 @@ func TestContextCancel_AlreadyCancelled(t *testing.T) {
 		}
 	}`
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(cfg), "precancelled.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "precancelled_ping")
 
@@ -185,7 +191,7 @@ func TestContextCancel_AlreadyCancelled(t *testing.T) {
 	cancel() // cancel before the call
 
 	start := time.Now()
-	_, err := tool.Handler(withCancellableContext(ctx))
+	_, err = tool.Handler(withCancellableContext(ctx))
 	elapsed := time.Since(start)
 
 	if err == nil {
