@@ -9,11 +9,11 @@ User=mcpfusion
 Group=mcpfusion
 WorkingDirectory=/opt/mcpfusion
 ExecStart=/opt/mcpfusion/mcpfusion
-Restart=always
+Restart=on-failure
 RestartSec=5
 
 # Environment variables
-Environment=DATA_DIR=/opt/mcpfusion/
+Environment=MCP_FUSION_DB_DIR=/opt/mcpfusion
 
 # Logging
 StandardOutput=journal

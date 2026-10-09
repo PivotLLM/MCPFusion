@@ -4,6 +4,6 @@
 # Please see LICENSE file for details.                                         *
 #*******************************************************************************
 
-rm MCPFusion
-go build -o MCPFusion
-./MCPFusion -debug -no-auth
+set -e
+make build
+./mcpfusion -debug -no-auth
