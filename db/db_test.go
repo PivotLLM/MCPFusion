@@ -840,14 +840,14 @@ func TestConcurrentOAuthOperations(t *testing.T) {
 				// Store token
 				err := db.StoreOAuthToken(tenantHash, serviceName, tokenData)
 				if err != nil {
-					errorChan <- fmt.Errorf("store failed: %v", err)
+					errorChan <- fmt.Errorf("store failed: %w", err)
 					return
 				}
 
 				// Immediately retrieve and verify
 				retrieved, err := db.GetOAuthToken(tenantHash, serviceName)
 				if err != nil {
-					errorChan <- fmt.Errorf("retrieve failed: %v", err)
+					errorChan <- fmt.Errorf("retrieve failed: %w", err)
 					return
 				}
 

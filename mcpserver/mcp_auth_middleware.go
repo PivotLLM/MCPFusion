@@ -141,7 +141,7 @@ func WithMCPAuthentication(options ...MCPAuthOption) server.ServerOption {
 					config.logger.Errorf("MCP Auth: Authorization denied for tenant %s tool %s: %v",
 						tenantContext.ShortHash(), request.Params.Name, err)
 				}
-				return nil, fmt.Errorf("authorization denied: %v", err)
+				return nil, fmt.Errorf("authorization denied: %w", err)
 			}
 
 			if config.logger != nil {
