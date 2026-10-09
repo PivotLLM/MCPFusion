@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PivotLLM/MCPFusion/cmd/auth/app"
 	"github.com/PivotLLM/MCPFusion/cmd/auth/config"
 	"github.com/PivotLLM/MCPFusion/cmd/auth/debug"
 	"github.com/PivotLLM/MCPFusion/cmd/auth/mcp"
@@ -41,10 +42,7 @@ type authCodeBlob struct {
 	Service string `json:"s"`
 }
 
-const (
-	defaultTimeout = 10 * time.Minute
-	version        = "1.0.0"
-)
+const defaultTimeout = 10 * time.Minute
 
 // guidanceError is an error with advice for the person running the command.
 // The CLI prints the guidance after the error; the error string stays plain.
@@ -75,7 +73,7 @@ func main() {
 	debug.Debug = flags.debug
 
 	if flags.version {
-		fmt.Printf("fusion-auth version %s\n", version)
+		printVersion()
 		return
 	}
 
@@ -117,6 +115,16 @@ func main() {
 	}
 }
 
+// printVersion prints the application identity and build details.
+func printVersion() {
+	fmt.Printf("%s %s\n%s\n%s\n", app.Name(), app.Version(), app.TagLine(), app.Copyright())
+	buildTime, goVersion := app.BuildInfo()
+	if buildTime != "" {
+		fmt.Printf("Built: %s\n", buildTime)
+	}
+	fmt.Printf("Go:    %s\n", goVersion)
+}
+
 func parseFlags(flags *cliFlags) {
 	flag.StringVar(&flags.service, "service", "", "OAuth service provider (e.g., google, github, dropbox)")
 	flag.StringVar(&flags.fusionURL, "fusion", "", "MCPFusion server URL (e.g., http://10.0.0.1:8888)")
@@ -129,7 +137,7 @@ func parseFlags(flags *cliFlags) {
 	flag.Usage = func() {
 		_, _ = fmt.Fprintf(os.Stderr, "Usage: %s <auth-code-blob>\n", os.Args[0])
 		_, _ = fmt.Fprintf(os.Stderr, "   or: %s -service <name> -fusion <url> -token <token>\n\n", os.Args[0])
-		_, _ = fmt.Fprintf(os.Stderr, "fusion-auth is a generic authentication helper for MCPFusion.\n\n")
+		_, _ = fmt.Fprintf(os.Stderr, "%s is a generic authentication helper for MCPFusion.\n\n", app.Name())
 		_, _ = fmt.Fprintf(os.Stderr, "Auth Code Mode (recommended):\n")
 		_, _ = fmt.Fprintf(os.Stderr, "  Generate an auth code on the server: mcpfusion -auth-code google -auth-url http://host:port\n")
 		_, _ = fmt.Fprintf(os.Stderr, "  Then run: %s <auth-code-blob>\n\n", os.Args[0])

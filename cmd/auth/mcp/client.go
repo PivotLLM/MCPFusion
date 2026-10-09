@@ -14,9 +14,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/PivotLLM/MCPFusion/cmd/auth/app"
 	"github.com/PivotLLM/MCPFusion/cmd/auth/debug"
 	"github.com/PivotLLM/MCPFusion/cmd/auth/providers"
 )
+
+// userAgent identifies this helper to the MCPFusion server.
+func userAgent() string { return app.Name() + "/" + app.SemVer() }
 
 // Client handles communication with MCPFusion server
 type Client struct {
@@ -75,7 +79,7 @@ func (c *Client) Ping(ctx context.Context) (*PingResponse, error) {
 	}
 
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("User-Agent", "fusion-auth/1.0")
+	req.Header.Set("User-Agent", userAgent())
 
 	// Log the request if debug is enabled
 	debug.LogHTTPRequest(req)
@@ -136,7 +140,7 @@ func (c *Client) StoreTokens(ctx context.Context, service, accessToken, refreshT
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiToken)
-	httpReq.Header.Set("User-Agent", "fusion-oauth/1.0")
+	httpReq.Header.Set("User-Agent", userAgent())
 
 	// Log the request if debug is enabled
 	debug.LogHTTPRequest(httpReq)
@@ -179,7 +183,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
 
-	req.Header.Set("User-Agent", "fusion-oauth/1.0")
+	req.Header.Set("User-Agent", userAgent())
 
 	// Log the request if debug is enabled
 	debug.LogHTTPRequest(req)
@@ -212,7 +216,7 @@ func (c *Client) AuthCheck(ctx context.Context) error {
 	}
 
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("User-Agent", "fusion-oauth/1.0")
+	req.Header.Set("User-Agent", userAgent())
 
 	// Log the request if debug is enabled
 	debug.LogHTTPRequest(req)
@@ -249,7 +253,7 @@ func (c *Client) GetServiceConfig(ctx context.Context, serviceName string) (*Ser
 	}
 
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("User-Agent", "fusion-oauth/1.0")
+	req.Header.Set("User-Agent", userAgent())
 
 	// Log the request if debug is enabled
 	debug.LogHTTPRequest(req)
@@ -343,7 +347,7 @@ func (c *Client) NotifySuccess(ctx context.Context, serviceName string, userInfo
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("User-Agent", "fusion-oauth/1.0")
+	req.Header.Set("User-Agent", userAgent())
 
 	// Log the request if debug is enabled
 	debug.LogHTTPRequest(req)
@@ -392,7 +396,7 @@ func (c *Client) NotifyError(ctx context.Context, serviceName string, errorMsg s
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("User-Agent", "fusion-oauth/1.0")
+	req.Header.Set("User-Agent", userAgent())
 
 	// Log the request if debug is enabled
 	debug.LogHTTPRequest(req)

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Config holds the configuration for the fusion-oauth tool
+// Config holds the configuration for the fusion-auth tool
 type Config struct {
 	// Command-line options
 	Service   string        `json:"service"`
