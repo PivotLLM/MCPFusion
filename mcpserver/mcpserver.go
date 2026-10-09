@@ -120,8 +120,6 @@ type MCPServer struct {
 	sseServer         *server.SSEServer
 	httpServer        *server.StreamableHTTPServer
 	transport         listenerTransport
-	ctx               context.Context
-	cancel            context.CancelFunc
 	wg                sync.WaitGroup
 	logger            global.Logger
 	debug             bool
@@ -235,8 +233,6 @@ func New(options ...Option) (*MCPServer, error) {
 		sseServer:  nil,
 		httpServer: nil,
 		transport:  nil,
-		ctx:        nil,
-		cancel:     nil,
 		logger:     nil,
 		debug:      false,
 		name:       "Generic-MCP",
@@ -365,7 +361,6 @@ func (s *MCPServer) Start() error {
 	s.logger.Infof("MCP server listening on TCP port %s", s.listen)
 	s.logger.Info("Available endpoints: /sse, /message (SSE mode), /mcp (Streamable HTTP mode)")
 
-	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
@@ -379,11 +374,6 @@ func (s *MCPServer) Start() error {
 
 // Stop signals the MCP server to shut down and waits for the goroutine to exit.
 func (s *MCPServer) Stop() error {
-	// First cancel the context to signal all operations to stop
-	if s.cancel != nil {
-		s.cancel()
-	}
-
 	if s.transport != nil {
 		// Attempt graceful shutdown with a timeout
 		// Use a shorter timeout to avoid the context deadline exceeded error

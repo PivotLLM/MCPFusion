@@ -9,8 +9,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/PivotLLM/MCPFusion/app"
 	"github.com/PivotLLM/MCPFusion/config"
@@ -37,9 +35,9 @@ type server struct {
 	perfEnabled      bool
 }
 
-// run wires the providers and the MCP server, serves until SIGINT or SIGTERM,
+// run wires the providers and the MCP server, serves until ctx is cancelled,
 // then shuts down. It closes the database during shutdown.
-func (s server) run() error {
+func (s server) run(ctx context.Context) error {
 	// Auto-migrate unlinked API keys to user accounts on startup
 	if err := s.database.AutoMigrateKeys(); err != nil {
 		s.logger.Warningf("API key auto-migration had issues: %v", err)
@@ -253,7 +251,7 @@ func (s server) run() error {
 	// Start hub provider after MCP server is created
 	if hubProvider != nil {
 		hubProvider.SetMCPServer(mcp.GetMCPServer())
-		hubProvider.Start(context.Background())
+		hubProvider.Start(ctx)
 	}
 
 	// Start MCP server
@@ -261,12 +259,8 @@ func (s server) run() error {
 		return fmt.Errorf("MCP server failed to start: %w", err)
 	}
 
-	// Set up signal handling for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Wait for termination signal
-	<-sigChan
+	// Wait for termination
+	<-ctx.Done()
 	s.logger.Infof("Shutting down...")
 
 	// Stop the MCP server. On failure the remaining shutdown still runs so the

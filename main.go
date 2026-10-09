@@ -6,10 +6,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/tenebris-tech/mlogger"
 
@@ -165,5 +168,10 @@ func run(opts options, logger global.Logger, loadedEnvFile string) error {
 		knowledgeEnabled: knowledgeEnabled,
 		perfEnabled:      perfEnabled,
 	}
-	return srv.run()
+
+	// The server runs until SIGINT or SIGTERM. The signal context is created here,
+	// after the administration commands, so that those can still be interrupted.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	return srv.run(ctx)
 }

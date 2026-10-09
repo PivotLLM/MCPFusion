@@ -166,7 +166,9 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 		pollTimeout = 10 * time.Minute
 	}
 
-	pollCtx, pollCancel := context.WithTimeout(context.Background(), pollTimeout)
+	// Polling outlives the request that started it, so it keeps the caller's
+	// context values but not its cancellation.
+	pollCtx, pollCancel := context.WithTimeout(context.WithoutCancel(ctx), pollTimeout)
 	go func() {
 		defer pollCancel()
 		s.backgroundTokenPolling(pollCtx, tokenEndpoint, clientID, deviceCodeResp.DeviceCode,

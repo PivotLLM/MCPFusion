@@ -35,7 +35,6 @@ type HubProvider struct {
 	refreshCancels  map[string]context.CancelFunc // per-service periodic refresh cancellation
 	mcpServer       *server.MCPServer
 	logger          global.Logger
-	ctx             context.Context
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
 	tokenCounter    int64 // atomic counter for unique downstream progress tokens (int64 overflow is not a practical concern)
@@ -90,7 +89,7 @@ func (h *HubProvider) SetMCPServer(srv *server.MCPServer) {
 
 // Start begins connecting to all configured hub services.
 func (h *HubProvider) Start(ctx context.Context) {
-	h.ctx, h.cancel = context.WithCancel(ctx)
+	ctx, h.cancel = context.WithCancel(ctx)
 
 	for serviceKey, config := range h.configs {
 		var c hubClient
@@ -118,7 +117,7 @@ func (h *HubProvider) Start(ctx context.Context) {
 		h.wg.Add(1)
 		go func(key string, client hubClient, cfg *fusion.ServiceConfig) {
 			defer h.wg.Done()
-			client.RunWithReconnect(h.ctx,
+			client.RunWithReconnect(ctx,
 				func() {
 					// Cancel any previous periodic refresh goroutine for this service
 					h.mu.Lock()
@@ -129,11 +128,11 @@ func (h *HubProvider) Start(ctx context.Context) {
 					h.mu.Unlock()
 
 					// Discover and register tools
-					h.discoverAndRegisterTools(key, client.Manager())
+					h.discoverAndRegisterTools(ctx, key, client.Manager())
 
 					// Start periodic refresh if configured
 					if cfg.ToolRefreshInterval > 0 {
-						refreshCtx, refreshCancel := context.WithCancel(h.ctx)
+						refreshCtx, refreshCancel := context.WithCancel(ctx)
 						h.mu.Lock()
 						h.refreshCancels[key] = refreshCancel
 						h.mu.Unlock()
@@ -161,8 +160,8 @@ func (h *HubProvider) Start(ctx context.Context) {
 }
 
 // discoverAndRegisterTools discovers tools from a downstream server and registers them.
-func (h *HubProvider) discoverAndRegisterTools(serviceKey string, manager *MCPClientManager) {
-	ctx, cancel := context.WithTimeout(h.ctx, 30*time.Second)
+func (h *HubProvider) discoverAndRegisterTools(ctx context.Context, serviceKey string, manager *MCPClientManager) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	h.logger.Debugf("Hub service '%s': discovering tools", serviceKey)
