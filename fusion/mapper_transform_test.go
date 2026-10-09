@@ -486,7 +486,7 @@ func TestTransformResponse_UndefinedVariable(t *testing.T) {
 			},
 		},
 		`.items[] | select(.id == $targetId)`,
-		map[string]any{},
+		map[string]any{}, // no $targetId variable
 	)
 
 	require.Error(t, err, "expected an error for undefined JQ variable, got none")
