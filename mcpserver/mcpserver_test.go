@@ -6,8 +6,10 @@
 package mcpserver
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/tenebris-tech/mlogger"
@@ -55,5 +57,47 @@ func TestNewAuthenticatedTransport_AppliesMiddleware(t *testing.T) {
 				t.Errorf("underlying reached = %v, want %v", reached, tt.wantUnderlying)
 			}
 		})
+	}
+}
+
+// TestMCPServerStart_AddressInUse ensures Start fails when the listen address
+// is already bound, instead of leaving the server running with nothing listening.
+func TestMCPServerStart_AddressInUse(t *testing.T) {
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to bind test listener: %v", err)
+	}
+	defer func() { _ = busy.Close() }()
+
+	s, err := New(WithLogger(mlogger.NewMemoryLogger()), WithListen(busy.Addr().String()))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	if err := s.Start(); err == nil {
+		_ = s.Stop()
+		t.Fatal("Start() error = nil, want error for an address already in use")
+	}
+}
+
+// TestMCPServerStartStop ensures a normal shutdown is not reported as an error.
+func TestMCPServerStartStop(t *testing.T) {
+	logger := mlogger.NewMemoryLogger()
+	s, err := New(WithLogger(logger), WithListen("127.0.0.1:0"))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	if err := s.Start(); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	if err := s.Stop(); err != nil {
+		t.Fatalf("Stop() error = %v", err)
+	}
+
+	for _, line := range logger.Logs() {
+		if strings.HasPrefix(line, "ERROR:") {
+			t.Errorf("unexpected error logged on shutdown: %s", line)
+		}
 	}
 }

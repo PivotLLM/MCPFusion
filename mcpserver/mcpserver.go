@@ -7,7 +7,9 @@ package mcpserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -42,36 +44,39 @@ type AuthenticatedTransport struct {
 // underlying transport is taken as an http.Handler so that every request it
 // serves always passes through the middleware.
 func NewAuthenticatedTransport(underlying http.Handler, middleware func(http.Handler) http.Handler, logger global.Logger) *AuthenticatedTransport {
+	handler := middleware(underlying)
 	return &AuthenticatedTransport{
-		handler: middleware(underlying),
+		handler: handler,
 		logger:  logger,
+		server: &http.Server{
+			Handler:      handler,
+			ReadTimeout:  0,                  // No timeout for reading request
+			WriteTimeout: 3600 * time.Second, // 1 hour timeout for writing response (allows long-running commands)
+			IdleTimeout:  120 * time.Second,  // 2 minutes idle timeout
+		},
 	}
 }
 
-// Start starts the authenticated transport
+// Start listens on addr and serves the authenticated transport.
 func (at *AuthenticatedTransport) Start(addr string) error {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	return at.Serve(ln)
+}
+
+// Serve serves the authenticated transport on an already open listener.
+func (at *AuthenticatedTransport) Serve(ln net.Listener) error {
 	if at.logger != nil {
-		at.logger.Infof("Starting authenticated transport on %s", addr)
+		at.logger.Infof("Starting authenticated transport on %s", ln.Addr())
 	}
-
-	// Create HTTP server with our wrapped handler
-	at.server = &http.Server{
-		Addr:         addr,
-		Handler:      at.handler,
-		ReadTimeout:  0,                  // No timeout for reading request
-		WriteTimeout: 3600 * time.Second, // 1 hour timeout for writing response (allows long-running commands)
-		IdleTimeout:  120 * time.Second,  // 2 minutes idle timeout
-	}
-
-	return at.server.ListenAndServe()
+	return at.server.Serve(ln)
 }
 
 // Shutdown shuts down the authenticated transport
 func (at *AuthenticatedTransport) Shutdown(ctx context.Context) error {
-	if at.server != nil {
-		return at.server.Shutdown(ctx)
-	}
-	return nil
+	return at.server.Shutdown(ctx)
 }
 
 // ServeHTTP implements http.Handler interface to allow this transport to be wrapped by other middleware
@@ -83,13 +88,38 @@ func (at *AuthenticatedTransport) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// listenerTransport is a transport that serves on a listener opened by MCPServer,
+// so that a failure to listen is reported by Start rather than lost.
+type listenerTransport interface {
+	Serve(ln net.Listener) error
+	Shutdown(ctx context.Context) error
+}
+
+// sseOnlyTransport serves a bare SSE transport when neither authentication nor
+// the OAuth API is configured.
+type sseOnlyTransport struct {
+	sse    *server.SSEServer
+	server *http.Server
+}
+
+// Serve serves the SSE transport on an already open listener.
+func (t *sseOnlyTransport) Serve(ln net.Listener) error {
+	return t.server.Serve(ln)
+}
+
+// Shutdown closes the SSE sessions and shuts down the HTTP server.
+func (t *sseOnlyTransport) Shutdown(ctx context.Context) error {
+	t.sse.CloseSessions()
+	return t.server.Shutdown(ctx)
+}
+
 // MCPServer represents the server instance.
 type MCPServer struct {
 	listen            string
 	srv               *server.MCPServer
 	sseServer         *server.SSEServer
 	httpServer        *server.StreamableHTTPServer
-	transport         MCPServerTransport
+	transport         listenerTransport
 	ctx               context.Context
 	cancel            context.CancelFunc
 	wg                sync.WaitGroup
@@ -274,64 +304,75 @@ func New(options ...Option) (*MCPServer, error) {
 	return m, nil
 }
 
-// Start runs the MCP server in a background goroutine and checks for a logger.
+// Start opens the listener and serves the MCP transports in a background
+// goroutine. It returns an error if the listener cannot be opened.
 func (s *MCPServer) Start() error {
 	if s.logger == nil {
 		return fmt.Errorf("logger not set")
 	}
+
+	// Create both transports - clients can use either
+	s.sseServer = server.NewSSEServer(s.srv) // Handles /sse and /message
+	// Configure Streamable HTTP transport for /mcp
+	// Disable GET streaming since MCPFusion doesn't send server-initiated notifications.
+	// This returns 405 Method Not Allowed for GET /mcp (per MCP spec), which is cleaner
+	// than opening an SSE stream that never sends data (causing client timeouts).
+	// POST /mcp works normally for request/response operations.
+	s.httpServer = server.NewStreamableHTTPServer(s.srv,
+		server.WithDisableStreaming(true),
+	) // Handles /mcp
+
+	// Apply HTTP-level authentication to both transports
+	var authenticatedSSE, authenticatedHTTP MCPServerTransport
+	authenticatedSSE = s.sseServer
+	authenticatedHTTP = s.httpServer
+
+	var authSSE *AuthenticatedTransport
+	if s.authMiddleware != nil {
+		s.logger.Info("Applying HTTP authentication middleware to both transports")
+		authSSE = NewAuthenticatedTransport(s.sseServer, s.authMiddleware.SimpleMiddleware, s.logger)
+		authenticatedSSE = authSSE
+		authenticatedHTTP = NewAuthenticatedTransport(s.httpServer, s.authMiddleware.SimpleMiddleware, s.logger)
+	}
+
+	switch {
+	case s.database != nil && s.authManager != nil && s.configManager != nil && s.oauthEngine != nil:
+		s.logger.Info("Enabling OAuth API endpoints with extended transport")
+		// Build auth middleware for OAuth API routes (/ping, /api/*)
+		var oauthAuthMiddleware func(http.Handler) http.Handler
+		if s.authMiddleware != nil {
+			oauthAuthMiddleware = s.authMiddleware.SimpleMiddleware
+		}
+		// Wrap both transports with ExtendedTransport to add OAuth API endpoints
+		s.transport = NewExtendedTransport(authenticatedSSE, authenticatedHTTP, s.oauthEngine,
+			oauthAuthMiddleware, s.logger)
+	case authSSE != nil:
+		// No OAuth API - just use SSE transport with both available through routing
+		s.logger.Warning("OAuth API disabled - using SSE transport only")
+		s.transport = authSSE
+	default:
+		s.logger.Warning("OAuth API disabled - using SSE transport only")
+		s.transport = &sseOnlyTransport{sse: s.sseServer, server: &http.Server{Handler: s.sseServer}}
+	}
+
+	// Open the listener before returning so that a busy or invalid address
+	// fails startup instead of leaving the process running with nothing listening.
+	ln, err := net.Listen("tcp", s.listen)
+	if err != nil {
+		return fmt.Errorf("open listener: %w", err)
+	}
+
+	s.logger.Infof("MCP server listening on TCP port %s", s.listen)
+	s.logger.Info("Available endpoints: /sse, /message (SSE mode), /mcp (Streamable HTTP mode)")
+
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-
-		// Log the start - both transports are always available
-		s.logger.Infof("MCP server listening on TCP port %s", s.listen)
-		s.logger.Info("Available endpoints: /sse, /message (SSE mode), /mcp (Streamable HTTP mode)")
-
-		// Create both transports - clients can use either
-		s.sseServer = server.NewSSEServer(s.srv) // Handles /sse and /message
-		// Configure Streamable HTTP transport for /mcp
-		// Disable GET streaming since MCPFusion doesn't send server-initiated notifications.
-		// This returns 405 Method Not Allowed for GET /mcp (per MCP spec), which is cleaner
-		// than opening an SSE stream that never sends data (causing client timeouts).
-		// POST /mcp works normally for request/response operations.
-		s.httpServer = server.NewStreamableHTTPServer(s.srv,
-			server.WithDisableStreaming(true),
-		) // Handles /mcp
-
-		// Apply HTTP-level authentication to both transports
-		var authenticatedSSE, authenticatedHTTP MCPServerTransport
-		authenticatedSSE = s.sseServer
-		authenticatedHTTP = s.httpServer
-
-		if s.authMiddleware != nil {
-			s.logger.Info("Applying HTTP authentication middleware to both transports")
-			authenticatedSSE = NewAuthenticatedTransport(s.sseServer, s.authMiddleware.SimpleMiddleware, s.logger)
-			authenticatedHTTP = NewAuthenticatedTransport(s.httpServer, s.authMiddleware.SimpleMiddleware, s.logger)
+		// http.ErrServerClosed is the expected result of a shutdown.
+		if err := s.transport.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			s.logger.Errorf("MCP server stopped serving: %v", err)
 		}
-
-		// Check if OAuth API functionality should be enabled
-		if s.database != nil && s.authManager != nil && s.configManager != nil && s.oauthEngine != nil {
-			s.logger.Info("Enabling OAuth API endpoints with extended transport")
-			// Build auth middleware for OAuth API routes (/ping, /api/*)
-			var oauthAuthMiddleware func(http.Handler) http.Handler
-			if s.authMiddleware != nil {
-				oauthAuthMiddleware = s.authMiddleware.SimpleMiddleware
-			}
-			// Wrap both transports with ExtendedTransport to add OAuth API endpoints
-			s.transport = NewExtendedTransport(authenticatedSSE, authenticatedHTTP, s.oauthEngine,
-				oauthAuthMiddleware, s.logger)
-		} else {
-			// No OAuth API - just use SSE transport with both available through routing
-			s.logger.Warning("OAuth API disabled - using SSE transport only")
-			s.transport = authenticatedSSE
-		}
-
-		// Start the server
-		err := s.transport.Start(s.listen)
-		// We don't need to log anything here - if the server is shutting down,
-		// this is expected behavior and not an error condition
-		_ = err
 	}()
 	return nil
 }

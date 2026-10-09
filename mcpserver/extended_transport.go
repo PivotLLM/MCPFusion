@@ -7,6 +7,7 @@ package mcpserver
 
 import (
 	"context"
+	"net"
 	"net/http"
 
 	"github.com/PivotLLM/MCPFusion/global"
@@ -75,14 +76,21 @@ func NewExtendedTransport(sseTransport, httpTransport MCPServerTransport, oauthE
 	}
 }
 
-// Start starts the extended transport with both MCP transports and API functionality
+// Start listens on addr and serves both MCP transports and the API functionality.
 func (et *ExtendedTransport) Start(addr string) error {
-	if et.logger != nil {
-		et.logger.Infof("Starting extended transport with both MCP transports and OAuth API on %s", addr)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
 	}
+	return et.Serve(ln)
+}
 
-	et.server.Addr = addr
-	return et.server.ListenAndServe()
+// Serve serves both MCP transports and the API functionality on an already open listener.
+func (et *ExtendedTransport) Serve(ln net.Listener) error {
+	if et.logger != nil {
+		et.logger.Infof("Starting extended transport with both MCP transports and OAuth API on %s", ln.Addr())
+	}
+	return et.server.Serve(ln)
 }
 
 // Shutdown shuts down the extended transport
