@@ -43,7 +43,7 @@ func (s *OAuth2ExternalStrategy) SupportsRefresh() bool {
 }
 
 func (s *OAuth2ExternalStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
-	return nil, fmt.Errorf("no stored token found for this service. Please run fusion-auth to authenticate")
+	return nil, fmt.Errorf("no stored token for this service (authenticate with fusion-auth)")
 }
 
 func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {

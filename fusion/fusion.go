@@ -849,7 +849,7 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 		originalHandler := handler
 		handler = func(args map[string]interface{}) (string, error) {
 			_ = originalHandler // preserve reference
-			return "", fmt.Errorf("this tool performs a destructive operation and is currently disabled. Set the MCP_FUSION_ALLOW_DESTRUCTIVE environment variable to 'true' to enable destructive tools")
+			return "", fmt.Errorf("destructive operations are disabled (set MCP_FUSION_ALLOW_DESTRUCTIVE=true to allow)")
 		}
 	}
 

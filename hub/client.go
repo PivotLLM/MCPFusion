@@ -316,8 +316,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	m.mu.RUnlock()
 
 	if !connected || c == nil {
-		return nil, fmt.Errorf("hub service '%s' is currently unavailable. The server will automatically reconnect",
-			m.serviceName)
+		return nil, fmt.Errorf("hub service '%s' is unavailable (reconnecting automatically)", m.serviceName)
 	}
 
 	if m.isCircuitOpen() {

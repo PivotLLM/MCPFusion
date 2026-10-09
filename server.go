@@ -159,7 +159,7 @@ func (s server) run(ctx context.Context) error {
 					return "", fmt.Errorf("no tenant context available")
 				}
 				if tc.UserID == "" {
-					return "", fmt.Errorf("no user ID associated with this API key — link with: mcpfusion -user-link <user_id>:<key_hash>")
+					return "", fmt.Errorf("no user ID linked to this API key (link with mcpfusion -user-link <user_id>:<key_hash>)")
 				}
 				return tc.UserID, nil
 			}),
