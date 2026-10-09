@@ -31,29 +31,20 @@ type MCPServerTransport interface {
 	Shutdown(ctx context.Context) error
 }
 
-// AuthenticatedTransport wraps an underlying transport with authentication middleware
+// AuthenticatedTransport wraps an underlying transport handler with authentication middleware
 type AuthenticatedTransport struct {
-	underlying MCPServerTransport
-	handler    http.Handler
-	server     *http.Server
-	logger     global.Logger
+	handler http.Handler
+	server  *http.Server
+	logger  global.Logger
 }
 
-// NewAuthenticatedTransport creates a new authenticated transport wrapper
-func NewAuthenticatedTransport(underlying MCPServerTransport, middleware func(http.Handler) http.Handler, logger global.Logger) *AuthenticatedTransport {
-	// Extract the http.Handler from the underlying transport
-	var handler http.Handler
-	if h, ok := underlying.(http.Handler); ok {
-		handler = middleware(h)
-	} else {
-		logger.Error("Underlying transport does not implement http.Handler")
-		return nil
-	}
-
+// NewAuthenticatedTransport creates a new authenticated transport wrapper. The
+// underlying transport is taken as an http.Handler so that every request it
+// serves always passes through the middleware.
+func NewAuthenticatedTransport(underlying http.Handler, middleware func(http.Handler) http.Handler, logger global.Logger) *AuthenticatedTransport {
 	return &AuthenticatedTransport{
-		underlying: underlying,
-		handler:    handler,
-		logger:     logger,
+		handler: middleware(underlying),
+		logger:  logger,
 	}
 }
 
@@ -315,20 +306,8 @@ func (s *MCPServer) Start() error {
 
 		if s.authMiddleware != nil {
 			s.logger.Info("Applying HTTP authentication middleware to both transports")
-
-			// Wrap SSE transport with auth
 			authenticatedSSE = NewAuthenticatedTransport(s.sseServer, s.authMiddleware.SimpleMiddleware, s.logger)
-			if authenticatedSSE == nil {
-				s.logger.Error("Failed to create authenticated SSE transport, using unauthenticated")
-				authenticatedSSE = s.sseServer
-			}
-
-			// Wrap HTTP transport with auth
 			authenticatedHTTP = NewAuthenticatedTransport(s.httpServer, s.authMiddleware.SimpleMiddleware, s.logger)
-			if authenticatedHTTP == nil {
-				s.logger.Error("Failed to create authenticated HTTP transport, using unauthenticated")
-				authenticatedHTTP = s.httpServer
-			}
 		}
 
 		// Check if OAuth API functionality should be enabled
@@ -342,10 +321,6 @@ func (s *MCPServer) Start() error {
 			// Wrap both transports with ExtendedTransport to add OAuth API endpoints
 			s.transport = NewExtendedTransport(authenticatedSSE, authenticatedHTTP, s.oauthEngine,
 				oauthAuthMiddleware, s.logger)
-			if s.transport == nil {
-				s.logger.Error("Failed to create extended transport, falling back to SSE transport only")
-				s.transport = authenticatedSSE
-			}
 		} else {
 			// No OAuth API - just use SSE transport with both available through routing
 			s.logger.Warning("OAuth API disabled - using SSE transport only")
