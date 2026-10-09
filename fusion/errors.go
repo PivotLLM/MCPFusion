@@ -157,10 +157,10 @@ func (e ConfigurationError) Unwrap() error {
 
 // ValidationError represents parameter validation errors
 type ValidationError struct {
-	Parameter string      `json:"parameter"`
-	Value     interface{} `json:"value"`
-	Rule      string      `json:"rule"`
-	Message   string      `json:"message"`
+	Parameter string `json:"parameter"`
+	Value     any    `json:"value"`
+	Rule      string `json:"rule"`
+	Message   string `json:"message"`
 }
 
 // Error implements the error interface
@@ -247,12 +247,12 @@ func (e APIError) IsTransient() bool {
 
 // TransformationError represents errors during parameter or response transformation
 type TransformationError struct {
-	Type       string      `json:"type"` // "parameter" or "response"
-	Name       string      `json:"name"`
-	Expression string      `json:"expression"`
-	Value      interface{} `json:"value"`
-	Message    string      `json:"message"`
-	Cause      error       `json:"-"`
+	Type       string `json:"type"` // "parameter" or "response"
+	Name       string `json:"name"`
+	Expression string `json:"expression"`
+	Value      any    `json:"value"`
+	Message    string `json:"message"`
+	Cause      error  `json:"-"`
 }
 
 // Error implements the error interface
@@ -410,7 +410,7 @@ func NewConfigurationError(field, service, message string, cause error) *Configu
 }
 
 // NewValidationError creates a new ValidationError
-func NewValidationError(parameter string, value interface{}, rule, message string) *ValidationError {
+func NewValidationError(parameter string, value any, rule, message string) *ValidationError {
 	return &ValidationError{
 		Parameter: parameter,
 		Value:     value,
@@ -443,7 +443,7 @@ func NewAPIErrorWithCorrelation(service, endpoint string, statusCode int, messag
 }
 
 // NewTransformationError creates a new TransformationError
-func NewTransformationError(transformType, name, expression string, value interface{}, message string, cause error) *TransformationError {
+func NewTransformationError(transformType, name, expression string, value any, message string, cause error) *TransformationError {
 	return &TransformationError{
 		Type:       transformType,
 		Name:       name,

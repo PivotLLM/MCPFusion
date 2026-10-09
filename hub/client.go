@@ -309,7 +309,7 @@ func (m *MCPClientManager) SetCachedTools(tools map[string]mcp.Tool) {
 // If a transport error is detected (e.g. the upstream server restarted and
 // invalidated the session without dropping the TCP connection), CallTool
 // triggers the reconnect loop and retries the call once after reconnection.
-func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args map[string]interface{}, meta *mcp.Meta) (*mcp.CallToolResult, error) {
+func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args map[string]any, meta *mcp.Meta) (*mcp.CallToolResult, error) {
 	m.mu.RLock()
 	c := m.client
 	connected := m.connected

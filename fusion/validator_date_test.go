@@ -74,7 +74,7 @@ func TestValidator_AutoConvertISOToYYYYMMDD(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create args map with test value
-			args := map[string]interface{}{
+			args := map[string]any{
 				"startDate": tt.inputValue,
 			}
 
@@ -174,7 +174,7 @@ func TestValidator_NoConversionForNonDatePatterns(t *testing.T) {
 	}
 
 	// Create args map with ISO date (should not be converted for non-date fields)
-	args := map[string]interface{}{
+	args := map[string]any{
 		"emailField": "2025-08-19T00:00:00Z",
 	}
 

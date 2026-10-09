@@ -28,7 +28,7 @@ func TestLookupBodyEncoder_Unknown(t *testing.T) {
 
 func TestRFC2822Base64URLEncoder_BasicMessage(t *testing.T) {
 	enc := &RFC2822Base64URLEncoder{}
-	params := map[string]interface{}{
+	params := map[string]any{
 		"to":      "alice@example.com",
 		"subject": "Hello",
 		"body":    "Hi Alice!",
@@ -55,7 +55,7 @@ func TestRFC2822Base64URLEncoder_BasicMessage(t *testing.T) {
 
 func TestRFC2822Base64URLEncoder_WithCcBcc(t *testing.T) {
 	enc := &RFC2822Base64URLEncoder{}
-	params := map[string]interface{}{
+	params := map[string]any{
 		"to":      "alice@example.com",
 		"cc":      "bob@example.com",
 		"bcc":     "charlie@example.com",
@@ -78,7 +78,7 @@ func TestRFC2822Base64URLEncoder_WithCcBcc(t *testing.T) {
 
 func TestRFC2822Base64URLEncoder_EmptyOptionals(t *testing.T) {
 	enc := &RFC2822Base64URLEncoder{}
-	params := map[string]interface{}{
+	params := map[string]any{
 		"to":      "alice@example.com",
 		"subject": "Test",
 		"body":    "Content",
@@ -99,7 +99,7 @@ func TestRFC2822Base64URLEncoder_EmptyOptionals(t *testing.T) {
 
 func TestRFC2822Base64URLEncoder_NoPadding(t *testing.T) {
 	enc := &RFC2822Base64URLEncoder{}
-	params := map[string]interface{}{
+	params := map[string]any{
 		"to":      "x@y.com",
 		"subject": "A",
 		"body":    "B",
@@ -114,7 +114,7 @@ func TestRFC2822Base64URLEncoder_NoPadding(t *testing.T) {
 
 func TestRFC2822Base64URLEncoder_URLSafeChars(t *testing.T) {
 	enc := &RFC2822Base64URLEncoder{}
-	params := map[string]interface{}{
+	params := map[string]any{
 		"to":      "test@example.com",
 		"subject": "Special chars: +/=",
 		"body":    "Body with special characters that might produce + and / in standard base64",
@@ -130,7 +130,7 @@ func TestRFC2822Base64URLEncoder_URLSafeChars(t *testing.T) {
 
 func TestRFC2822Base64URLEncoder_RoundTrip(t *testing.T) {
 	enc := &RFC2822Base64URLEncoder{}
-	params := map[string]interface{}{
+	params := map[string]any{
 		"to":      "recipient@example.com",
 		"cc":      "cc1@example.com, cc2@example.com",
 		"subject": "Important: Q4 Results",
@@ -155,7 +155,7 @@ func TestRFC2822Base64URLEncoder_RoundTrip(t *testing.T) {
 
 func TestRFC2822Base64URLEncoder_HeaderInjection(t *testing.T) {
 	enc := &RFC2822Base64URLEncoder{}
-	params := map[string]interface{}{
+	params := map[string]any{
 		"to":      "alice@example.com\r\nBcc: evil@attacker.com",
 		"subject": "Normal Subject\r\nX-Injected: true",
 		"body":    "Body content",

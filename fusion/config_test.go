@@ -232,7 +232,7 @@ func TestExpandEnvironmentVariables_Success(t *testing.T) {
 	}
 
 	// Verify it's still valid JSON
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal(result, &parsed); err != nil {
 		t.Errorf("Result should be valid JSON: %v", err)
 	}
@@ -356,7 +356,7 @@ func TestExpandEnvironmentVariables_WithDefaults(t *testing.T) {
 	}
 
 	// Verify it's still valid JSON
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal(result, &parsed); err != nil {
 		t.Errorf("Result should be valid JSON: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestServiceConfig_Validate_MissingName(t *testing.T) {
 		BaseURL: "https://api.example.com",
 		Auth: AuthConfig{
 			Type:   AuthTypeBearer,
-			Config: map[string]interface{}{"token": "test"},
+			Config: map[string]any{"token": "test"},
 		},
 		Endpoints: []EndpointConfig{
 			{
@@ -437,7 +437,7 @@ func TestServiceConfig_Validate_MissingBaseURL(t *testing.T) {
 		BaseURL: "",
 		Auth: AuthConfig{
 			Type:   AuthTypeBearer,
-			Config: map[string]interface{}{"token": "test"},
+			Config: map[string]any{"token": "test"},
 		},
 		Endpoints: []EndpointConfig{
 			{
@@ -467,7 +467,7 @@ func TestServiceConfig_Validate_NoEndpoints(t *testing.T) {
 		BaseURL: "https://api.example.com",
 		Auth: AuthConfig{
 			Type:   AuthTypeBearer,
-			Config: map[string]interface{}{"token": "test"},
+			Config: map[string]any{"token": "test"},
 		},
 		Endpoints: []EndpointConfig{},
 	}
@@ -485,13 +485,13 @@ func TestServiceConfig_Validate_NoEndpoints(t *testing.T) {
 func TestAuthConfig_Validate_OAuth2Device(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      map[string]interface{}
+		config      map[string]any
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid oauth2_device config",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "https://oauth.example.com/token",
 			},
@@ -499,7 +499,7 @@ func TestAuthConfig_Validate_OAuth2Device(t *testing.T) {
 		},
 		{
 			name: "missing clientId",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"tokenURL": "https://oauth.example.com/token",
 			},
 			expectError: true,
@@ -507,7 +507,7 @@ func TestAuthConfig_Validate_OAuth2Device(t *testing.T) {
 		},
 		{
 			name: "missing tokenURL",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 			},
 			expectError: true,
@@ -542,27 +542,27 @@ func TestAuthConfig_Validate_OAuth2Device(t *testing.T) {
 func TestAuthConfig_Validate_Bearer(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      map[string]interface{}
+		config      map[string]any
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid bearer with token",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"token": "test-token",
 			},
 			expectError: false,
 		},
 		{
 			name: "valid bearer with tokenEnvVar",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"tokenEnvVar": "AUTH_TOKEN",
 			},
 			expectError: false,
 		},
 		{
 			name:        "missing token and tokenEnvVar",
-			config:      map[string]interface{}{},
+			config:      map[string]any{},
 			expectError: true,
 			errorMsg:    "bearer auth requires either token or tokenEnvVar",
 		},
@@ -595,27 +595,27 @@ func TestAuthConfig_Validate_Bearer(t *testing.T) {
 func TestAuthConfig_Validate_APIKey(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      map[string]interface{}
+		config      map[string]any
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid apikey with apiKey",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"apiKey": "test-key",
 			},
 			expectError: false,
 		},
 		{
 			name: "valid apikey with apiKeyEnvVar",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"apiKeyEnvVar": "API_KEY",
 			},
 			expectError: false,
 		},
 		{
 			name:        "missing apiKey and apiKeyEnvVar",
-			config:      map[string]interface{}{},
+			config:      map[string]any{},
 			expectError: true,
 			errorMsg:    "api_key auth requires either apiKey or apiKeyEnvVar",
 		},
@@ -648,13 +648,13 @@ func TestAuthConfig_Validate_APIKey(t *testing.T) {
 func TestAuthConfig_Validate_Basic(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      map[string]interface{}
+		config      map[string]any
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid basic auth",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"username": "testuser",
 				"password": "testpass",
 			},
@@ -662,7 +662,7 @@ func TestAuthConfig_Validate_Basic(t *testing.T) {
 		},
 		{
 			name: "missing username",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"password": "testpass",
 			},
 			expectError: true,
@@ -670,7 +670,7 @@ func TestAuthConfig_Validate_Basic(t *testing.T) {
 		},
 		{
 			name: "missing password",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"username": "testuser",
 			},
 			expectError: true,
@@ -705,7 +705,7 @@ func TestAuthConfig_Validate_Basic(t *testing.T) {
 func TestAuthConfig_Validate_UnsupportedType(t *testing.T) {
 	auth := &AuthConfig{
 		Type:   AuthType("unsupported"),
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	err := auth.Validate()
@@ -1008,7 +1008,7 @@ func TestConfig_ValidateServiceConfig(t *testing.T) {
 				BaseURL: "https://api.example.com",
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test"},
+					Config: map[string]any{"token": "test"},
 				},
 				Endpoints: []EndpointConfig{
 					{
@@ -1115,7 +1115,7 @@ func TestConfig_Clone(t *testing.T) {
 				BaseURL: "https://api1.example.com",
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test1"},
+					Config: map[string]any{"token": "test1"},
 				},
 				Endpoints: []EndpointConfig{
 					{
@@ -1159,7 +1159,7 @@ func TestConfig_MergeConfig(t *testing.T) {
 				BaseURL: "https://api1.example.com",
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test1"},
+					Config: map[string]any{"token": "test1"},
 				},
 				Endpoints: []EndpointConfig{
 					{
@@ -1182,7 +1182,7 @@ func TestConfig_MergeConfig(t *testing.T) {
 				BaseURL: "https://api2.example.com",
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test2"},
+					Config: map[string]any{"token": "test2"},
 				},
 				Endpoints: []EndpointConfig{
 					{

@@ -20,7 +20,7 @@ func TestTimeTokenIntegration_MapperProcessing(t *testing.T) {
 	tests := []struct {
 		name        string
 		parameters  []ParameterConfig
-		args        map[string]interface{}
+		args        map[string]any
 		location    string
 		expectRegex string
 	}{
@@ -35,7 +35,7 @@ func TestTimeTokenIntegration_MapperProcessing(t *testing.T) {
 					Description: "Start date for query",
 				},
 			},
-			args: map[string]interface{}{
+			args: map[string]any{
 				"startDate": "#DAYS-7",
 			},
 			location:    "query",
@@ -52,7 +52,7 @@ func TestTimeTokenIntegration_MapperProcessing(t *testing.T) {
 					Description: "Timestamp for request",
 				},
 			},
-			args: map[string]interface{}{
+			args: map[string]any{
 				"timestamp": "#HOURS-1",
 			},
 			location:    "body",
@@ -69,7 +69,7 @@ func TestTimeTokenIntegration_MapperProcessing(t *testing.T) {
 					Description: "Date range header",
 				},
 			},
-			args: map[string]interface{}{
+			args: map[string]any{
 				"X-Date-Range": "from=#DAYS-30&to=#DAYS-0",
 			},
 			location:    "header",
@@ -162,7 +162,7 @@ func TestTimeTokenIntegration_ParameterNameMapper(t *testing.T) {
 	}
 
 	// Simulate MCP args (using sanitized/alias names)
-	mcpArgs := map[string]interface{}{
+	mcpArgs := map[string]any{
 		"filter": "createdDateTime ge #DAYS-7",
 	}
 
@@ -207,7 +207,7 @@ func TestTimeTokenIntegration_PathParameters(t *testing.T) {
 		},
 	}
 
-	args := map[string]interface{}{
+	args := map[string]any{
 		"date": "#DAYS-1",
 	}
 
@@ -268,7 +268,7 @@ func TestTimeTokenIntegration_ComplexScenario(t *testing.T) {
 		},
 	}
 
-	args := map[string]interface{}{
+	args := map[string]any{
 		"startDate":      "#DAYS-30",
 		"endDate":        "#DAYS-0",
 		"X-Request-Time": "#HOURS-0",

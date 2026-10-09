@@ -20,7 +20,7 @@ func TestTimeTokenProcessor_ProcessValue(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		input        interface{}
+		input        any
 		expectRegex  string // Use regex to match because exact time will vary
 		expectChange bool
 	}{
@@ -312,19 +312,19 @@ func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    map[string]interface{}
-		validate func(t *testing.T, result map[string]interface{})
+		input    map[string]any
+		validate func(t *testing.T, result map[string]any)
 	}{
 		{
 			name: "Mix of token and non-token parameters",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"startDate": "#DAYS-7",
 				"endDate":   "#DAYS-0",
 				"count":     10,
 				"name":      "test",
 				"timestamp": "#HOURS-1",
 			},
-			validate: func(t *testing.T, result map[string]interface{}) {
+			validate: func(t *testing.T, result map[string]any) {
 				// Check that startDate was processed
 				startDate, ok := result["startDate"].(string)
 				if !ok {
@@ -347,7 +347,7 @@ func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 		{
 			name:  "Nil input",
 			input: nil,
-			validate: func(t *testing.T, result map[string]interface{}) {
+			validate: func(t *testing.T, result map[string]any) {
 				if result != nil {
 					t.Error("Result should be nil for nil input")
 				}
@@ -355,8 +355,8 @@ func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 		},
 		{
 			name:  "Empty map",
-			input: map[string]interface{}{},
-			validate: func(t *testing.T, result map[string]interface{}) {
+			input: map[string]any{},
+			validate: func(t *testing.T, result map[string]any) {
 				if len(result) != 0 {
 					t.Error("Result should be empty for empty input")
 				}

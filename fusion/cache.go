@@ -12,10 +12,10 @@ import (
 // Cache defines the interface for caching operations
 type Cache interface {
 	// Get retrieves a value from the cache
-	Get(key string) (interface{}, error)
+	Get(key string) (any, error)
 
 	// Set stores a value in the cache with the given TTL
-	Set(key string, value interface{}, ttl time.Duration) error
+	Set(key string, value any, ttl time.Duration) error
 
 	// Delete removes a value from the cache
 	Delete(key string) error

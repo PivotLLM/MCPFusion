@@ -375,8 +375,8 @@ func (am *AuthMiddleware) writeErrorResponse(w http.ResponseWriter, statusCode i
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
-	errorResponse := map[string]interface{}{
-		"error": map[string]interface{}{
+	errorResponse := map[string]any{
+		"error": map[string]any{
 			"code":    statusCode,
 			"message": message,
 			"type":    "authentication_error",

@@ -42,7 +42,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 			case "GET":
 				// Handle GET /users?limit=X
 				limit := r.URL.Query().Get("limit")
-				users := []map[string]interface{}{
+				users := []map[string]any{
 					{"id": 1, "name": "John Doe", "email": "john@example.com"},
 					{"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
 				}
@@ -52,13 +52,13 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				}
 
 				w.Header().Set("Content-Type", "application/json")
-				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]any{
 					"users": users,
 					"total": len(users),
 				})
 			case "POST":
 				// Handle POST /users
-				var requestBody map[string]interface{}
+				var requestBody map[string]any
 				_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 				// Verify auth header
@@ -69,7 +69,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					return
 				}
 
-				user := map[string]interface{}{
+				user := map[string]any{
 					"id":    3,
 					"name":  requestBody["name"],
 					"email": requestBody["email"],
@@ -83,7 +83,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 		case "/users/123":
 			if r.Method == "GET" {
 				// Handle GET /users/{id}
-				user := map[string]interface{}{
+				user := map[string]any{
 					"id":    123,
 					"name":  "Specific User",
 					"email": "specific@example.com",
@@ -233,7 +233,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				}
 
 				// Parse result
-				var users []map[string]interface{}
+				var users []map[string]any
 				if err := json.Unmarshal([]byte(result), &users); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}
@@ -248,7 +248,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					t.Fatalf("Tool execution with limit failed: %v", err)
 				}
 
-				var limitedUsers []map[string]interface{}
+				var limitedUsers []map[string]any
 				if err := json.Unmarshal([]byte(result), &limitedUsers); err != nil {
 					t.Fatalf("Failed to parse limited result: %v", err)
 				}
@@ -265,7 +265,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
 
-				var user map[string]interface{}
+				var user map[string]any
 				if err := json.Unmarshal([]byte(result), &user); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}
@@ -295,7 +295,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
 
-				var user map[string]interface{}
+				var user map[string]any
 				if err := json.Unmarshal([]byte(result), &user); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}

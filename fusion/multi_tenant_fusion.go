@@ -85,7 +85,7 @@ func (mtf *MultiTenantFusion) FusionForTenant(tenantContext *TenantContext) (*Fu
 
 // CallTool calls a tool for a specific tenant
 func (mtf *MultiTenantFusion) CallTool(_ context.Context, tenantContext *TenantContext,
-	toolName string, args map[string]interface{}) (string, error) {
+	toolName string, args map[string]any) (string, error) {
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Calling tool %s for tenant %s service %s",
@@ -125,7 +125,7 @@ func (mtf *MultiTenantFusion) ReadResource(_ context.Context, tenantContext *Ten
 	resources := fusion.RegisterResources()
 	for _, resource := range resources {
 		if resource.URI == resourceURI {
-			response, err := resource.Handler(resourceURI, make(map[string]interface{}))
+			response, err := resource.Handler(resourceURI, make(map[string]any))
 			//goland:noinspection GoDfaErrorMayBeNotNil
 			return response.Content, err
 		}
@@ -135,7 +135,7 @@ func (mtf *MultiTenantFusion) ReadResource(_ context.Context, tenantContext *Ten
 	for _, template := range templates {
 		// Simple URI matching - in a real implementation you'd do proper template matching
 		if strings.Contains(resourceURI, template.Name) {
-			response, err := template.Handler(resourceURI, make(map[string]interface{}))
+			response, err := template.Handler(resourceURI, make(map[string]any))
 			//goland:noinspection GoDfaErrorMayBeNotNil
 			return response.Content, err
 		}
@@ -145,7 +145,7 @@ func (mtf *MultiTenantFusion) ReadResource(_ context.Context, tenantContext *Ten
 
 // RenderPrompt renders a prompt for a specific tenant
 func (mtf *MultiTenantFusion) RenderPrompt(_ context.Context, tenantContext *TenantContext,
-	promptName string, args map[string]interface{}) (string, global.Messages, error) {
+	promptName string, args map[string]any) (string, global.Messages, error) {
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Getting prompt %s for tenant %s service %s",
@@ -273,12 +273,12 @@ func (mtf *MultiTenantFusion) Close() error {
 }
 
 // Stats returns statistics about the multi-tenant fusion
-func (mtf *MultiTenantFusion) Stats() map[string]interface{} {
+func (mtf *MultiTenantFusion) Stats() map[string]any {
 	mtf.mu.RLock()
 	tenantCount := len(mtf.tenantFusions)
 	mtf.mu.RUnlock()
 
-	stats := map[string]interface{}{
+	stats := map[string]any{
 		"active_tenants":           tenantCount,
 		"database_cache_available": mtf.databaseCache != nil,
 		"auth_strategies":          mtf.authManager.RegisteredStrategies(),

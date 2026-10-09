@@ -32,7 +32,7 @@ func NewCommandHandler(fusion *Fusion, commandGroup *CommandGroupConfig, command
 }
 
 // Handle executes the command with provided arguments
-func (h *CommandHandler) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (h *CommandHandler) Handle(ctx context.Context, args map[string]any) (string, error) {
 	// Extract control parameters
 	execConfig := h.buildExecutionConfig(args)
 
@@ -68,7 +68,7 @@ func (h *CommandHandler) Handle(ctx context.Context, args map[string]interface{}
 }
 
 // buildExecutionConfig constructs execution configuration from parameters
-func (h *CommandHandler) buildExecutionConfig(args map[string]interface{}) ExecutionConfig {
+func (h *CommandHandler) buildExecutionConfig(args map[string]any) ExecutionConfig {
 	config := ExecutionConfig{
 		Timeout:          180, // Default timeout
 		KillGracePeriod:  5,
@@ -120,7 +120,7 @@ func (h *CommandHandler) buildExecutionConfig(args map[string]interface{}) Execu
 }
 
 // handleControlParameter handles execution control parameters
-func (h *CommandHandler) handleControlParameter(config *ExecutionConfig, name string, value interface{}) {
+func (h *CommandHandler) handleControlParameter(config *ExecutionConfig, name string, value any) {
 	switch name {
 	case "executable":
 		if str, ok := value.(string); ok {
@@ -162,7 +162,7 @@ func (h *CommandHandler) handleControlParameter(config *ExecutionConfig, name st
 }
 
 // handleArgumentParameter handles command-line argument parameters
-func (h *CommandHandler) handleArgumentParameter(config *ExecutionConfig, param *ParameterConfig, value interface{}) {
+func (h *CommandHandler) handleArgumentParameter(config *ExecutionConfig, param *ParameterConfig, value any) {
 	// Skip if value is nil/empty and parameter is optional
 	if value == nil {
 		return
@@ -194,8 +194,8 @@ func (h *CommandHandler) handleArgumentParameter(config *ExecutionConfig, param 
 }
 
 // handleArglistParameter handles array of arguments
-func (h *CommandHandler) handleArglistParameter(config *ExecutionConfig, value interface{}) {
-	if arr, ok := value.([]interface{}); ok {
+func (h *CommandHandler) handleArglistParameter(config *ExecutionConfig, value any) {
+	if arr, ok := value.([]any); ok {
 		for _, item := range arr {
 			if str := h.valueToString(item); str != "" {
 				config.Args = append(config.Args, str)
@@ -205,14 +205,14 @@ func (h *CommandHandler) handleArglistParameter(config *ExecutionConfig, value i
 }
 
 // handleEnvironmentParameter handles environment variables
-func (h *CommandHandler) handleEnvironmentParameter(config *ExecutionConfig, name string, value interface{}) {
+func (h *CommandHandler) handleEnvironmentParameter(config *ExecutionConfig, name string, value any) {
 	// Initialize env if needed
 	if len(config.Env) == 0 {
 		config.Env = os.Environ()
 	}
 
 	// Check if value is an object (map) containing multiple env vars
-	if envMap, ok := value.(map[string]interface{}); ok {
+	if envMap, ok := value.(map[string]any); ok {
 		for key, val := range envMap {
 			strValue := h.valueToString(val)
 			if strValue != "" {
@@ -251,12 +251,12 @@ func (h *CommandHandler) setEnvironmentVariable(config *ExecutionConfig, name st
 }
 
 // handleStdinParameter handles stdin data
-func (h *CommandHandler) handleStdinParameter(config *ExecutionConfig, value interface{}) {
+func (h *CommandHandler) handleStdinParameter(config *ExecutionConfig, value any) {
 	config.Stdin = h.valueToString(value)
 }
 
 // valueToString converts a value to string
-func (h *CommandHandler) valueToString(value interface{}) string {
+func (h *CommandHandler) valueToString(value any) string {
 	if value == nil {
 		return ""
 	}

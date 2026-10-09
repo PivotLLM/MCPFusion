@@ -71,10 +71,10 @@ const (
 
 // ServiceCredentials represents other service authentication data
 type ServiceCredentials struct {
-	Type      CredentialType         `json:"type"` // Type of credential
-	Data      map[string]interface{} `json:"data"` // Service-specific credential data
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
+	Type      CredentialType `json:"type"` // Type of credential
+	Data      map[string]any `json:"data"` // Service-specific credential data
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 }
 
 // TenantInfo represents information about a tenant

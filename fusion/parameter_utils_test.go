@@ -168,7 +168,7 @@ func TestParameterNameMapper(t *testing.T) {
 	}
 
 	// Test mapping args
-	args := map[string]interface{}{
+	args := map[string]any{
 		"select": "field1,field2",
 		"filter": "isRead eq false",
 		"top":    10,

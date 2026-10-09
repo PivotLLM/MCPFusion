@@ -27,7 +27,7 @@ func TestTokenInvalidationConfig_EffectiveTokenInvalidationConfig(t *testing.T) 
 			name: "default config when not specified",
 			authConfig: AuthConfig{
 				Type:              AuthTypeBearer,
-				Config:            map[string]interface{}{"token": "test"},
+				Config:            map[string]any{"token": "test"},
 				TokenInvalidation: nil,
 			},
 			wantStatusCodes:         DefaultTokenInvalidationStatusCodes,
@@ -37,7 +37,7 @@ func TestTokenInvalidationConfig_EffectiveTokenInvalidationConfig(t *testing.T) 
 			name: "configured with custom status codes",
 			authConfig: AuthConfig{
 				Type:   AuthTypeBearer,
-				Config: map[string]interface{}{"token": "test"},
+				Config: map[string]any{"token": "test"},
 				TokenInvalidation: &TokenInvalidationConfig{
 					StatusCodes:         []int{401, 403},
 					RetryOnInvalidation: false,
@@ -50,7 +50,7 @@ func TestTokenInvalidationConfig_EffectiveTokenInvalidationConfig(t *testing.T) 
 			name: "configured with empty status codes uses defaults",
 			authConfig: AuthConfig{
 				Type:   AuthTypeBearer,
-				Config: map[string]interface{}{"token": "test"},
+				Config: map[string]any{"token": "test"},
 				TokenInvalidation: &TokenInvalidationConfig{
 					StatusCodes:         []int{},
 					RetryOnInvalidation: true,
@@ -63,7 +63,7 @@ func TestTokenInvalidationConfig_EffectiveTokenInvalidationConfig(t *testing.T) 
 			name: "configured with retry enabled",
 			authConfig: AuthConfig{
 				Type:   AuthTypeBearer,
-				Config: map[string]interface{}{"token": "test"},
+				Config: map[string]any{"token": "test"},
 				TokenInvalidation: &TokenInvalidationConfig{
 					StatusCodes:         []int{401},
 					RetryOnInvalidation: true,
@@ -126,7 +126,7 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: true,
@@ -165,7 +165,7 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	result, err := handler.Handle(ctx, map[string]interface{}{})
+	result, err := handler.Handle(ctx, map[string]any{})
 
 	// The token invalidation config triggers a retry on 401; the second call succeeds.
 	// With multi-tenant auth properly configured we expect the retry to succeed.
@@ -205,7 +205,7 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: false, // No retry
@@ -244,7 +244,7 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	_, err = handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]any{})
 
 	// Should fail without retry
 	if err == nil {
@@ -302,7 +302,7 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 						BaseURL: mockServer.URL,
 						Auth: AuthConfig{
 							Type:   AuthTypeBearer,
-							Config: map[string]interface{}{"token": "test_token"},
+							Config: map[string]any{"token": "test_token"},
 							TokenInvalidation: &TokenInvalidationConfig{
 								StatusCodes:         tt.configuredCodes,
 								RetryOnInvalidation: false,
@@ -340,7 +340,7 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 			ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 			// Execute the handler
-			result, err := handler.Handle(ctx, map[string]interface{}{})
+			result, err := handler.Handle(ctx, map[string]any{})
 
 			// For status codes >= 400, we return the error body as result with no error
 			if tt.statusCode >= 400 && err == nil {
@@ -361,7 +361,7 @@ func TestHTTPHandler_PrepareAuthConfig(t *testing.T) {
 				BaseURL: "https://api.example.com",
 				Auth: AuthConfig{
 					Type: AuthTypeBearer,
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"token": "test_token",
 						"scope": "read:data",
 					},
@@ -477,7 +477,7 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: false,
@@ -518,7 +518,7 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// This should not panic even with nil multiTenantAuth
-	_, err = handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]any{})
 
 	// We expect an error due to no auth being configured
 	if err == nil {
@@ -542,7 +542,7 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: true,
@@ -584,7 +584,7 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 	ctx = context.WithValue(ctx, global.TenantContextKey, tenantContext)
 
 	// Execute the handler with cancelled context
-	_, err = handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]any{})
 
 	// Should get context cancelled error
 	if err == nil {
@@ -612,7 +612,7 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: true,
@@ -651,7 +651,7 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	result, err := handler.Handle(ctx, map[string]interface{}{})
+	result, err := handler.Handle(ctx, map[string]any{})
 
 	// Should return error body as result for 401 status
 	if err == nil && result == "" {

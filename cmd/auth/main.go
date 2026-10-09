@@ -742,7 +742,7 @@ func (e *OAuthFlowExecutor) exchangeCodeForTokens(code, redirectURI, codeVerifie
 	}
 
 	// Parse token response
-	var tokenResponse map[string]interface{}
+	var tokenResponse map[string]any
 	if err := json.Unmarshal(body, &tokenResponse); err != nil {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}

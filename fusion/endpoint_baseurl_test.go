@@ -54,7 +54,7 @@ func TestEndpointConfig_BaseURL_JSONSerialization(t *testing.T) {
 			}
 
 			// Check whether the raw JSON contains the "baseURL" key
-			var raw map[string]interface{}
+			var raw map[string]any
 			if err := json.Unmarshal(data, &raw); err != nil {
 				t.Fatalf("Failed to unmarshal raw JSON: %v", err)
 			}
@@ -145,7 +145,7 @@ func TestMapper_BuildURL_EndpointBaseURLOverride(t *testing.T) {
 		baseURL     string
 		path        string
 		params      []ParameterConfig
-		args        map[string]interface{}
+		args        map[string]any
 		expectedURL string
 		expectError bool
 	}{
@@ -197,7 +197,7 @@ func TestMapper_BuildURL_EndpointBaseURLOverride(t *testing.T) {
 					Required: true,
 				},
 			},
-			args:        map[string]interface{}{"userId": "abc123"},
+			args:        map[string]any{"userId": "abc123"},
 			expectedURL: "https://override.example.com/api/users/abc123/items",
 			expectError: false,
 		},

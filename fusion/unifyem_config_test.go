@@ -77,7 +77,7 @@ func TestUnifyEMConfig_RequestShapes(t *testing.T) {
 	service := f.config.Services["unifyem"]
 	m := NewMapper(WithLogger(logger))
 
-	build := func(t *testing.T, id string, args map[string]interface{}) (string, string) {
+	build := func(t *testing.T, id string, args map[string]any) (string, string) {
 		t.Helper()
 		for i := range service.Endpoints {
 			e := &service.Endpoints[i]
@@ -95,26 +95,26 @@ func TestUnifyEMConfig_RequestShapes(t *testing.T) {
 		return "", ""
 	}
 
-	u, body := build(t, "cmd_ping", map[string]interface{}{"args.agent_id": "A-1"})
+	u, body := build(t, "cmd_ping", map[string]any{"args.agent_id": "A-1"})
 	assert.Equal(t, "https://uem.example.com/api/v1/cmd", u)
 	assert.JSONEq(t, `{"cmd":"ping","args":{"agent_id":"A-1"}}`, body)
 
-	_, body = build(t, "cmd_execute", map[string]interface{}{"args.agent_id": "A-1", "args.cmd": "ls", "args.arg1": "-la"})
+	_, body = build(t, "cmd_execute", map[string]any{"args.agent_id": "A-1", "args.cmd": "ls", "args.arg1": "-la"})
 	assert.JSONEq(t, `{"cmd":"execute","args":{"agent_id":"A-1","cmd":"ls","arg1":"-la"}}`, body)
 
-	u, body = build(t, "agent_trigger_wipe", map[string]interface{}{"agent_id": "A-1"})
+	u, body = build(t, "agent_trigger_wipe", map[string]any{"agent_id": "A-1"})
 	assert.Equal(t, "https://uem.example.com/api/v1/agent/A-1", u)
 	assert.JSONEq(t, `{"triggers":{"wipe":true}}`, body)
 
-	_, body = build(t, "agent_tags_add", map[string]interface{}{"agent_id": "A-1", "tags": []interface{}{"a", "b"}})
+	_, body = build(t, "agent_tags_add", map[string]any{"agent_id": "A-1", "tags": []any{"a", "b"}})
 	assert.JSONEq(t, `{"tags":["a","b"]}`, body)
 
-	_, body = build(t, "config_agents_set", map[string]interface{}{"parameters": map[string]interface{}{"sync_interval": "300"}})
+	_, body = build(t, "config_agents_set", map[string]any{"parameters": map[string]any{"sync_interval": "300"}})
 	assert.JSONEq(t, `{"parameters":{"sync_interval":"300"}}`, body)
 
-	_, body = build(t, "report_get", map[string]interface{}{"report": "agents"})
+	_, body = build(t, "report_get", map[string]any{"report": "agents"})
 	assert.JSONEq(t, `{"report":"agents","args":{"format":"json"}}`, body)
 
-	u, _ = build(t, "agent_list_by_tag", map[string]interface{}{"tag": "finance"})
+	u, _ = build(t, "agent_list_by_tag", map[string]any{"tag": "finance"})
 	assert.Equal(t, "https://uem.example.com/api/v1/agent/by-tag/finance", u)
 }

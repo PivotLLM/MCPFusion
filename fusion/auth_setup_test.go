@@ -43,7 +43,7 @@ func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 				"google": {Name: "Google Workspace", Auth: AuthConfig{Type: AuthTypeOAuth2External}},
 				"trello": {Name: "Trello", Auth: AuthConfig{
 					Type: AuthTypeUserCredentials,
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"instructions": "To use Trello with MCPFusion, you need a Trello API Key and Token.\n\n" +
 							"1. Visit https://trello.com/power-ups/admin/ to get your API Key\n" +
 							"2. Click 'Generate a Token' link on that page to get your Token\n" +
@@ -52,7 +52,7 @@ func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 				}},
 				"basic_creds": {Name: "Basic Service", Auth: AuthConfig{
 					Type:   AuthTypeUserCredentials,
-					Config: map[string]interface{}{},
+					Config: map[string]any{},
 				}},
 			},
 		},

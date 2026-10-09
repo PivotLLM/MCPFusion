@@ -31,7 +31,7 @@ func NewMapper(opts ...ComponentOption) *Mapper {
 }
 
 // BuildURL builds a URL with path parameters replaced
-func (m *Mapper) BuildURL(baseURL, path string, params []ParameterConfig, args map[string]interface{}) (string, error) {
+func (m *Mapper) BuildURL(baseURL, path string, params []ParameterConfig, args map[string]any) (string, error) {
 	// Start with base URL
 	fullURL := strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(path, "/")
 
@@ -93,7 +93,7 @@ func (m *Mapper) BuildURL(baseURL, path string, params []ParameterConfig, args m
 }
 
 // ApplyQueryParams adds query parameters to a request
-func (m *Mapper) ApplyQueryParams(req *http.Request, params []ParameterConfig, args map[string]interface{}) error {
+func (m *Mapper) ApplyQueryParams(req *http.Request, params []ParameterConfig, args map[string]any) error {
 	query := req.URL.Query()
 
 	for _, param := range params {
@@ -162,7 +162,7 @@ func (m *Mapper) ApplyQueryParams(req *http.Request, params []ParameterConfig, a
 }
 
 // ApplyHeaders adds header parameters to a request
-func (m *Mapper) ApplyHeaders(req *http.Request, params []ParameterConfig, args map[string]interface{}) error {
+func (m *Mapper) ApplyHeaders(req *http.Request, params []ParameterConfig, args map[string]any) error {
 	for _, param := range params {
 		if param.Location != "header" {
 			continue
@@ -217,7 +217,7 @@ func (m *Mapper) ApplyHeaders(req *http.Request, params []ParameterConfig, args 
 // setNestedValue sets a value in a nested map using dot-notation keys.
 // e.g., setNestedValue(body, "start.dateTime", "2025-01-15T10:00:00Z")
 // produces: {"start": {"dateTime": "2025-01-15T10:00:00Z"}}
-func setNestedValue(body map[string]interface{}, key string, value interface{}) {
+func setNestedValue(body map[string]any, key string, value any) {
 	parts := strings.Split(key, ".")
 	if len(parts) == 1 {
 		body[key] = value
@@ -226,15 +226,15 @@ func setNestedValue(body map[string]interface{}, key string, value interface{}) 
 	current := body
 	for _, part := range parts[:len(parts)-1] {
 		if existing, ok := current[part]; ok {
-			if m, ok := existing.(map[string]interface{}); ok {
+			if m, ok := existing.(map[string]any); ok {
 				current = m
 			} else {
-				m := make(map[string]interface{})
+				m := make(map[string]any)
 				current[part] = m
 				current = m
 			}
 		} else {
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 			current[part] = m
 			current = m
 		}
@@ -246,10 +246,10 @@ func setNestedValue(body map[string]interface{}, key string, value interface{}) 
 // When requestBody is non-nil, body parameters without a transform.targetName
 // are collected, passed through the named encoder, and placed at wrapperPath.
 // Parameters with targetName bypass encoding and go directly into the body.
-func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]interface{},
-	requestBody *RequestBodyConfig) (map[string]interface{}, error) {
+func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]any,
+	requestBody *RequestBodyConfig) (map[string]any, error) {
 
-	body := make(map[string]interface{})
+	body := make(map[string]any)
 
 	// Track flat params (no targetName) separately when encoding is configured
 	var flatParamNames []string
@@ -323,7 +323,7 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 		}
 
 		// Extract flat params from body into a separate map for encoding
-		flatParams := make(map[string]interface{}, len(flatParamNames))
+		flatParams := make(map[string]any, len(flatParamNames))
 		for _, name := range flatParamNames {
 			flatParams[name] = body[name]
 			delete(body, name)
@@ -353,7 +353,7 @@ func (m *Mapper) BuildRequestBody(params []ParameterConfig, args map[string]inte
 }
 
 // transformParameter applies transformation to a parameter value
-func (m *Mapper) transformParameter(param ParameterConfig, value interface{}) (interface{}, error) {
+func (m *Mapper) transformParameter(param ParameterConfig, value any) (any, error) {
 	if param.Transform == nil {
 		return value, nil
 	}
@@ -403,7 +403,7 @@ func (m *Mapper) transformParameter(param ParameterConfig, value interface{}) (i
 // TransformResponse applies jq transformations to the response using gojq.
 // vars contains request args that are passed as JQ variables (e.g., $vuln_id).
 // Variable names in the transform expression must be prefixed with $ per JQ syntax.
-func (m *Mapper) TransformResponse(data interface{}, transform string, vars map[string]interface{}) (interface{}, error) {
+func (m *Mapper) TransformResponse(data any, transform string, vars map[string]any) (any, error) {
 	if transform == "" {
 		return data, nil
 	}
@@ -419,7 +419,7 @@ func (m *Mapper) TransformResponse(data interface{}, transform string, vars map[
 	// JQ variable names require a leading $ but gojq.WithVariables expects
 	// the name without the $.
 	var varNames []string
-	var varValues []interface{}
+	var varValues []any
 	for k, v := range vars {
 		if strings.Contains(transform, "$"+k) {
 			varNames = append(varNames, k)
@@ -450,8 +450,8 @@ func (m *Mapper) TransformResponse(data interface{}, transform string, vars map[
 }
 
 // ConvertToMCPParameters converts endpoint parameters to MCP tool parameters
-func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]interface{} {
-	properties := make(map[string]interface{})
+func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]any {
+	properties := make(map[string]any)
 	required := make([]string, 0)
 
 	for _, param := range params {
@@ -469,7 +469,7 @@ func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]int
 		}
 
 		// Create property definition
-		prop := map[string]interface{}{
+		prop := map[string]any{
 			"type":        m.getMCPType(param.Type),
 			"description": param.Description,
 		}
@@ -505,7 +505,7 @@ func (m *Mapper) ConvertToMCPParameters(params []ParameterConfig) map[string]int
 	}
 
 	// Build the schema
-	schema := map[string]interface{}{
+	schema := map[string]any{
 		"type":       "object",
 		"properties": properties,
 	}

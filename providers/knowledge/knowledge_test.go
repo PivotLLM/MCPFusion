@@ -154,7 +154,7 @@ func TestHandleKnowledgeSet_NoTenantContext_ReturnsError(t *testing.T) {
 	require.NotNil(t, setTool)
 
 	// Call without an MCP context — extractor will return an error.
-	_, err := setTool.Handler(map[string]interface{}{
+	_, err := setTool.Handler(map[string]any{
 		"domain":  "test",
 		"key":     "k",
 		"content": "v",

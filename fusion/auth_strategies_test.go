@@ -36,7 +36,7 @@ func TestBearerTokenStrategy_SupportsRefresh(t *testing.T) {
 
 func TestBearerTokenStrategy_Authenticate_WithToken(t *testing.T) {
 	s := NewBearerTokenStrategy()
-	config := map[string]interface{}{
+	config := map[string]any{
 		"token": "my-static-bearer-token",
 	}
 
@@ -57,7 +57,7 @@ func TestBearerTokenStrategy_Authenticate_WithToken(t *testing.T) {
 
 func TestBearerTokenStrategy_Authenticate_EmptyToken(t *testing.T) {
 	s := NewBearerTokenStrategy()
-	config := map[string]interface{}{
+	config := map[string]any{
 		"token": "",
 	}
 
@@ -69,7 +69,7 @@ func TestBearerTokenStrategy_Authenticate_EmptyToken(t *testing.T) {
 
 func TestBearerTokenStrategy_Authenticate_MissingToken(t *testing.T) {
 	s := NewBearerTokenStrategy()
-	config := map[string]interface{}{}
+	config := map[string]any{}
 
 	_, err := s.Authenticate(context.Background(), config)
 	if err == nil {
@@ -119,7 +119,7 @@ func TestApplyAuthentication_AuthTypeNone(t *testing.T) {
 	}
 	authConfig := AuthConfig{
 		Type:   AuthTypeNone,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/api", nil)
@@ -144,7 +144,7 @@ func TestApplyAuthentication_BearerWithStaticToken(t *testing.T) {
 	}
 	authConfig := AuthConfig{
 		Type: AuthTypeBearer,
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"token": "static-bearer-token",
 		},
 	}
@@ -167,7 +167,7 @@ func TestApplyAuthentication_NilTenantContext(t *testing.T) {
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeNone,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/api", nil)
@@ -301,7 +301,7 @@ func TestOAuth2DeviceFlowStrategy_Authenticate_ReturnsDeviceCodeError(t *testing
 
 	strategy := NewOAuth2DeviceFlowStrategy(server.Client())
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"clientId":         "test-client-id",
 		"authorizationURL": server.URL + "/device",
 		"tokenURL":         server.URL + "/token",
@@ -360,7 +360,7 @@ func TestOAuth2DeviceFlowStrategy_Authenticate_ReturnsDeviceCodeError(t *testing
 
 func TestOAuth2DeviceFlowStrategy_Authenticate_MissingClientID(t *testing.T) {
 	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient)
-	config := map[string]interface{}{
+	config := map[string]any{
 		"authorizationURL": "http://example.com/device",
 		"tokenURL":         "http://example.com/token",
 	}
@@ -376,7 +376,7 @@ func TestOAuth2DeviceFlowStrategy_Authenticate_MissingClientID(t *testing.T) {
 
 func TestOAuth2DeviceFlowStrategy_Authenticate_MissingAuthorizationURL(t *testing.T) {
 	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient)
-	config := map[string]interface{}{
+	config := map[string]any{
 		"clientId": "test-client",
 		"tokenURL": "http://example.com/token",
 	}

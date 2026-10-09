@@ -847,7 +847,7 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 	// Gate destructive tools when MCP_FUSION_ALLOW_DESTRUCTIVE is not enabled
 	if hints.Destructive != nil && *hints.Destructive && !f.allowDestructive {
 		originalHandler := handler
-		handler = func(args map[string]interface{}) (string, error) {
+		handler = func(args map[string]any) (string, error) {
 			_ = originalHandler // preserve reference
 			return "", fmt.Errorf("destructive operations are disabled (set MCP_FUSION_ALLOW_DESTRUCTIVE=true to allow)")
 		}
@@ -947,7 +947,7 @@ func (f *Fusion) createCommandToolDefinition(groupName string, commandGroup *Com
 
 // createCommandToolHandler creates a handler for command execution
 func (f *Fusion) createCommandToolHandler(commandGroup *CommandGroupConfig, command *CommandConfig) global.ToolHandler {
-	return func(args map[string]interface{}) (string, error) {
+	return func(args map[string]any) (string, error) {
 		// Create command handler
 		handler := NewCommandHandler(f, commandGroup, command)
 
@@ -1116,10 +1116,10 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 
 	// Prepare request body and query parameters
 	queryParams := parsedURL.Query()
-	var requestBody interface{}
-	bodyParameters := make(map[string]interface{})
-	pathParams := make(map[string]interface{})
-	headerParams := make(map[string]interface{})
+	var requestBody any
+	bodyParameters := make(map[string]any)
+	pathParams := make(map[string]any)
+	headerParams := make(map[string]any)
 
 	if f.logger != nil {
 		f.logger.Debugf("Processing %d parameters for endpoint %s", len(endpoint.Parameters), endpoint.ID)
@@ -1356,7 +1356,7 @@ func (f *Fusion) processResponse(resp *http.Response, endpoint *EndpointConfig, 
 // processJSONResponse processes JSON responses with optional transformation
 func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig, _ string) (string, error) {
 	// Parse JSON
-	var responseData interface{}
+	var responseData any
 	if err := json.Unmarshal(bodyBytes, &responseData); err != nil {
 		return "", NewTransformationError("response", "json", "json.Unmarshal", string(bodyBytes), "failed to parse JSON response", err)
 	}
@@ -1380,7 +1380,7 @@ func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig,
 }
 
 // validateParameter validates a parameter value according to its configuration
-func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) error {
+func (f *Fusion) validateParameter(param *ParameterConfig, value any) error {
 	if f.logger != nil {
 		f.logger.Debugf("Validating parameter %s (type: %s, value: %v)", param.Name, param.Type, value)
 	}
@@ -1530,7 +1530,7 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 }
 
 // transformParameter applies parameter transformation if configured
-func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (interface{}, error) {
+func (f *Fusion) transformParameter(param *ParameterConfig, value any) (any, error) {
 	if param.Transform == nil || param.Transform.Expression == "" {
 		return value, nil
 	}
@@ -1666,7 +1666,7 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 }
 
 // applyResponseTransform applies transformation to response data
-func (f *Fusion) applyResponseTransform(data interface{}, transform string) (interface{}, error) {
+func (f *Fusion) applyResponseTransform(data any, transform string) (any, error) {
 	// For now, implement basic JSON path extraction
 	// This can be extended with a full transformation engine
 
@@ -1680,7 +1680,7 @@ func (f *Fusion) applyResponseTransform(data interface{}, transform string) (int
 }
 
 // extractJSONPath performs simple JSON path extraction
-func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, error) {
+func (f *Fusion) extractJSONPath(data any, path string) (any, error) {
 	// Remove the leading "$."
 	path = strings.TrimPrefix(path, "$.")
 
@@ -1694,7 +1694,7 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 		}
 
 		switch v := current.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			current = v[part]
 		default:
 			return nil, NewTransformationError("response", "json_path", path, data, fmt.Sprintf("cannot navigate to '%s' in non-object", part), nil)
@@ -1711,7 +1711,7 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 // sanitizeRequestBody removes or masks sensitive information from request body for logging
 func (f *Fusion) sanitizeRequestBody(body []byte) string {
 	// Try to parse as JSON first
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 	if err := json.Unmarshal(body, &jsonData); err != nil {
 		// If not JSON, check if it contains sensitive keywords and truncate/mask if needed
 		bodyStr := string(body)
@@ -1732,7 +1732,7 @@ func (f *Fusion) sanitizeRequestBody(body []byte) string {
 }
 
 // sanitizeJSONData recursively sanitizes JSON data by masking sensitive fields
-func (f *Fusion) sanitizeJSONData(data interface{}) interface{} {
+func (f *Fusion) sanitizeJSONData(data any) any {
 	sensitiveFields := map[string]bool{
 		"password":      true,
 		"token":         true,
@@ -1749,8 +1749,8 @@ func (f *Fusion) sanitizeJSONData(data interface{}) interface{} {
 	}
 
 	switch v := data.(type) {
-	case map[string]interface{}:
-		result := make(map[string]interface{})
+	case map[string]any:
+		result := make(map[string]any)
 		for key, value := range v {
 			lowerKey := strings.ToLower(key)
 			if sensitiveFields[lowerKey] {
@@ -1760,8 +1760,8 @@ func (f *Fusion) sanitizeJSONData(data interface{}) interface{} {
 			}
 		}
 		return result
-	case []interface{}:
-		result := make([]interface{}, len(v))
+	case []any:
+		result := make([]any, len(v))
 		for i, item := range v {
 			result[i] = f.sanitizeJSONData(item)
 		}
@@ -1794,7 +1794,7 @@ func (f *Fusion) sanitizeResponseBody(body []byte, maxLength int) string {
 	}
 
 	// Try to parse as JSON first
-	var jsonData interface{}
+	var jsonData any
 	if err := json.Unmarshal(body, &jsonData); err != nil {
 		// If not JSON, check for sensitive data and truncate
 		bodyStr := string(body)

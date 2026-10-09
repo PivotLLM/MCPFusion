@@ -21,7 +21,7 @@ func TestRegisterTools_AuthSetupForSessionCredentialsOnly(t *testing.T) {
 	uem := newFakeUEM(t)
 	plain := &ServiceConfig{
 		Name: "Plain", ServiceKey: "plain", BaseURL: uem.URL,
-		Auth: AuthConfig{Type: AuthTypeSessionJWT, Config: map[string]interface{}{
+		Auth: AuthConfig{Type: AuthTypeSessionJWT, Config: map[string]any{
 			"loginURL": "/api/v1/login", "tokenPath": "access_token", "tokenLocation": "header",
 		}},
 	}

@@ -475,7 +475,7 @@ func TestMultiTenantIsolation(t *testing.T) {
 	// Add credentials to each tenant
 	credData := &ServiceCredentials{
 		Type: CredentialTypeAPIKey,
-		Data: map[string]interface{}{"key": "value"},
+		Data: map[string]any{"key": "value"},
 	}
 
 	err = db.StoreCredentials(tenant1, "service2", credData)
@@ -555,7 +555,7 @@ func TestTenantInfoRetrieval(t *testing.T) {
 
 	credData := &ServiceCredentials{
 		Type: CredentialTypeAPIKey,
-		Data: map[string]interface{}{"key": "value"},
+		Data: map[string]any{"key": "value"},
 	}
 
 	err = db.StoreCredentials(tenantHash, "service3", credData)
@@ -592,7 +592,7 @@ func TestCrossTenantDataSeparation(t *testing.T) {
 
 	cred1 := &ServiceCredentials{
 		Type: CredentialTypeAPIKey,
-		Data: map[string]interface{}{"tenant": "1", "secret": "tenant1-secret"},
+		Data: map[string]any{"tenant": "1", "secret": "tenant1-secret"},
 	}
 	err = db.StoreCredentials(tenant1, serviceName, cred1)
 	require.NoError(t, err)
@@ -608,7 +608,7 @@ func TestCrossTenantDataSeparation(t *testing.T) {
 
 	cred2 := &ServiceCredentials{
 		Type: CredentialTypeBearer,
-		Data: map[string]interface{}{"tenant": "2", "token": "tenant2-token"},
+		Data: map[string]any{"tenant": "2", "token": "tenant2-token"},
 	}
 	err = db.StoreCredentials(tenant2, serviceName, cred2)
 	require.NoError(t, err)

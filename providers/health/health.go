@@ -112,7 +112,7 @@ func (p *Provider) RegisterTools() []global.ToolDefinition {
 }
 
 // handleHealth is the tool handler for the health_status tool.
-func (p *Provider) handleHealth(_ map[string]interface{}) (string, error) {
+func (p *Provider) handleHealth(_ map[string]any) (string, error) {
 	allHealthy := true
 
 	if p.collector == nil {

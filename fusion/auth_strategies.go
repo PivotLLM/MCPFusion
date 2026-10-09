@@ -53,7 +53,7 @@ func (s *OAuth2DeviceFlowStrategy) SupportsRefresh() bool {
 type PollingContext struct {
 	TenantHash  string
 	ServiceName string
-	AuthConfig  map[string]interface{}
+	AuthConfig  map[string]any
 }
 
 // ShortHash returns a truncated version of the tenant hash for logging
@@ -68,7 +68,7 @@ func (pc *PollingContext) ShortHash() string {
 	return pc.TenantHash[:12] + "..."
 }
 
-func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
+func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[string]any) (*TokenInfo, error) {
 	if s.logger != nil {
 		s.logger.Infof("Starting OAuth2 device flow authentication")
 	}
@@ -194,7 +194,7 @@ func (s *OAuth2DeviceFlowStrategy) Authenticate(ctx context.Context, config map[
 	return nil, deviceCodeError
 }
 
-func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]any) (*TokenInfo, error) {
 	if tokenInfo == nil {
 		return nil, fmt.Errorf("token info is nil")
 	}
@@ -337,7 +337,7 @@ func (s *OAuth2DeviceFlowStrategy) RefreshToken(ctx context.Context, tokenInfo *
 	return newTokenInfo, nil
 }
 
-func (s *OAuth2DeviceFlowStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
+func (s *OAuth2DeviceFlowStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -364,7 +364,7 @@ func (s *BearerTokenStrategy) SupportsRefresh() bool {
 	return false
 }
 
-func (s *BearerTokenStrategy) Authenticate(_ context.Context, config map[string]interface{}) (*TokenInfo, error) {
+func (s *BearerTokenStrategy) Authenticate(_ context.Context, config map[string]any) (*TokenInfo, error) {
 	// If a static token is provided in config, return it directly.
 	if token, ok := config["token"].(string); ok && token != "" {
 		return &TokenInfo{
@@ -375,11 +375,11 @@ func (s *BearerTokenStrategy) Authenticate(_ context.Context, config map[string]
 	return nil, fmt.Errorf("bearer token: no static token in config")
 }
 
-func (s *BearerTokenStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *BearerTokenStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("bearer token refresh not supported")
 }
 
-func (s *BearerTokenStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
+func (s *BearerTokenStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -406,15 +406,15 @@ func (s *APIKeyStrategy) SupportsRefresh() bool {
 	return false
 }
 
-func (s *APIKeyStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *APIKeyStrategy) Authenticate(_ context.Context, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("API key authentication not implemented in database-only mode")
 }
 
-func (s *APIKeyStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *APIKeyStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("API key refresh not supported")
 }
 
-func (s *APIKeyStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
+func (s *APIKeyStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -442,15 +442,15 @@ func (s *BasicAuthStrategy) SupportsRefresh() bool {
 	return false
 }
 
-func (s *BasicAuthStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *BasicAuthStrategy) Authenticate(_ context.Context, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("basic authentication not implemented in database-only mode")
 }
 
-func (s *BasicAuthStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *BasicAuthStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("basic auth refresh not supported")
 }
 
-func (s *BasicAuthStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
+func (s *BasicAuthStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -578,7 +578,7 @@ func (s *OAuth2DeviceFlowStrategy) requestToken(ctx context.Context, tokenEndpoi
 
 	if resp.StatusCode != http.StatusOK {
 		// Parse error response
-		var errorResp map[string]interface{}
+		var errorResp map[string]any
 		if err := json.Unmarshal(body, &errorResp); err == nil {
 			if errorStr, ok := errorResp["error"].(string); ok {
 				return nil, fmt.Errorf("%s", errorStr)
@@ -780,7 +780,7 @@ func (s *SessionJWTStrategy) SupportsRefresh() bool {
 	return true // We support refresh if refreshURL is configured
 }
 
-func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error) {
+func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string]any) (*TokenInfo, error) {
 	if s.logger != nil {
 		s.logger.Infof("Starting session JWT authentication")
 	}
@@ -795,7 +795,7 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 	// arrive under a reserved key and are substituted into the login template.
 	// Substitution copies the template values; the shared config is never mutated.
 	creds, _ := config[sessionCredentialsRuntimeKey].(map[string]string)
-	resolved := make(map[string]interface{}, len(loginTemplateKeys))
+	resolved := make(map[string]any, len(loginTemplateKeys))
 	for _, key := range loginTemplateKeys {
 		value, ok := config[key]
 		if !ok {
@@ -834,7 +834,7 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 
 	// Build request body
 	var bodyReader io.Reader
-	if loginBody, ok := resolved["loginBody"].(map[string]interface{}); ok {
+	if loginBody, ok := resolved["loginBody"].(map[string]any); ok {
 		bodyBytes, err := json.Marshal(loginBody)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal login body: %w", err)
@@ -843,7 +843,7 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 		if s.logger != nil {
 			s.logger.Debugf("Login request body prepared (JSON)")
 		}
-	} else if formBody, ok := resolved["loginFormBody"].(map[string]interface{}); ok {
+	} else if formBody, ok := resolved["loginFormBody"].(map[string]any); ok {
 		formData := url.Values{}
 		for k, v := range formBody {
 			formData.Set(k, fmt.Sprintf("%v", v))
@@ -868,7 +868,7 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Accept", "application/json")
-	if loginHeaders, ok := resolved["loginHeaders"].(map[string]interface{}); ok {
+	if loginHeaders, ok := resolved["loginHeaders"].(map[string]any); ok {
 		for name, value := range loginHeaders {
 			if str, ok := value.(string); ok {
 				req.Header.Set(name, str)
@@ -903,7 +903,7 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 	}
 
 	// Parse response
-	var responseData map[string]interface{}
+	var responseData map[string]any
 	if err := json.Unmarshal(body, &responseData); err != nil {
 		return nil, fmt.Errorf("failed to parse login response: %w", err)
 	}
@@ -1009,7 +1009,7 @@ func (s *SessionJWTStrategy) Authenticate(ctx context.Context, config map[string
 	return tokenInfo, nil
 }
 
-func (s *SessionJWTStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+func (s *SessionJWTStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]any) (*TokenInfo, error) {
 	refreshURL, ok := config["refreshURL"].(string)
 	if !ok || refreshURL == "" {
 		return nil, fmt.Errorf("refreshURL not configured for session_jwt auth")
@@ -1080,7 +1080,7 @@ func (s *SessionJWTStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenI
 	}
 
 	// Parse response
-	var responseData map[string]interface{}
+	var responseData map[string]any
 	if err := json.Unmarshal(body, &responseData); err != nil {
 		return nil, fmt.Errorf("failed to parse refresh response: %w", err)
 	}
@@ -1152,7 +1152,7 @@ func (s *SessionJWTStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenI
 	return newTokenInfo, nil
 }
 
-func (s *SessionJWTStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
+func (s *SessionJWTStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -1254,15 +1254,15 @@ func (s *UserCredentialsStrategy) SupportsRefresh() bool {
 	return false
 }
 
-func (s *UserCredentialsStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *UserCredentialsStrategy) Authenticate(_ context.Context, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("user_credentials authentication requires running fusion-auth to provide credentials")
 }
 
-func (s *UserCredentialsStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *UserCredentialsStrategy) RefreshToken(_ context.Context, _ *TokenInfo, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("user_credentials does not support token refresh")
 }
 
-func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, config map[string]interface{}) error {
+func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, config map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -1280,7 +1280,7 @@ func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenI
 		return fmt.Errorf("user_credentials config missing 'fields'")
 	}
 
-	fields, ok := fieldsRaw.([]interface{})
+	fields, ok := fieldsRaw.([]any)
 	if !ok {
 		return fmt.Errorf("user_credentials 'fields' must be an array")
 	}
@@ -1292,11 +1292,11 @@ func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenI
 		}
 
 		// Extract field names from config
-		field0, ok := fields[0].(map[string]interface{})
+		field0, ok := fields[0].(map[string]any)
 		if !ok {
 			return fmt.Errorf("basic_auth field 0 must be an object")
 		}
-		field1, ok := fields[1].(map[string]interface{})
+		field1, ok := fields[1].(map[string]any)
 		if !ok {
 			return fmt.Errorf("basic_auth field 1 must be an object")
 		}
@@ -1332,7 +1332,7 @@ func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenI
 	q := req.URL.Query()
 
 	for _, fieldRaw := range fields {
-		field, ok := fieldRaw.(map[string]interface{})
+		field, ok := fieldRaw.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -1381,13 +1381,13 @@ func (s *UserCredentialsStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenI
 
 // extractValueByPath extracts a value from a nested map using dot notation
 // e.g., "datas.token" extracts responseData["datas"]["token"]
-func (s *SessionJWTStrategy) extractValueByPath(data map[string]interface{}, path string) (interface{}, error) {
+func (s *SessionJWTStrategy) extractValueByPath(data map[string]any, path string) (any, error) {
 	parts := strings.Split(path, ".")
-	var current interface{} = data
+	var current any = data
 
 	for _, part := range parts {
 		switch v := current.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			val, ok := v[part]
 			if !ok {
 				return nil, fmt.Errorf("key '%s' not found in path '%s'", part, path)

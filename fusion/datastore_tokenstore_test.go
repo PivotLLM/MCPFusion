@@ -137,7 +137,7 @@ func TestDataStoreTokenStore_CredentialsRoundTrip(t *testing.T) {
 
 	creds := &db.ServiceCredentials{
 		Type: db.CredentialTypeAPIKey,
-		Data: map[string]interface{}{"apiKey": "secret", "token": "tok"},
+		Data: map[string]any{"apiKey": "secret", "token": "tok"},
 	}
 	require.NoError(t, store.StoreCredentials(tenant, service, creds))
 

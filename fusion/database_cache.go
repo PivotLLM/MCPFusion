@@ -60,7 +60,7 @@ func NewDatabaseCacheWithDefaultTTL(database TokenStore, defaultTTL time.Duratio
 }
 
 // Get retrieves a value from the database cache
-func (dc *DatabaseCache) Get(key string) (interface{}, error) {
+func (dc *DatabaseCache) Get(key string) (any, error) {
 	if dc.logger != nil {
 		dc.logger.Debugf("Database cache GET operation for key: %s", SanitizeCacheKeyForLogging(key))
 	}
@@ -108,7 +108,7 @@ func (dc *DatabaseCache) Get(key string) (interface{}, error) {
 }
 
 // Set stores a value in the database cache with the given TTL
-func (dc *DatabaseCache) Set(key string, value interface{}, ttl time.Duration) error {
+func (dc *DatabaseCache) Set(key string, value any, ttl time.Duration) error {
 	if dc.logger != nil {
 		dc.logger.Debugf("Database cache SET operation for key: %s (TTL: %v)", SanitizeCacheKeyForLogging(key), ttl)
 	}
@@ -384,8 +384,8 @@ func (dc *DatabaseCache) CleanupExpired() error {
 }
 
 // Stats returns statistics about the cache
-func (dc *DatabaseCache) Stats() map[string]interface{} {
-	stats := map[string]interface{}{
+func (dc *DatabaseCache) Stats() map[string]any {
+	stats := map[string]any{
 		"type":        "database",
 		"default_ttl": dc.defaultTTL.String(),
 		"available":   dc.db != nil,

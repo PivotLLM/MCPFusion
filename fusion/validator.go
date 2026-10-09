@@ -30,7 +30,7 @@ func NewValidator(opts ...ComponentOption) *Validator {
 
 // ValidateParameters validates input parameters against their definitions
 // It may modify the args map to auto-convert compatible date formats
-func (v *Validator) ValidateParameters(params []ParameterConfig, args map[string]interface{}) error {
+func (v *Validator) ValidateParameters(params []ParameterConfig, args map[string]any) error {
 	if v.logger != nil {
 		v.logger.Debugf("Validating %d parameters", len(params))
 	}
@@ -85,7 +85,7 @@ func (v *Validator) ValidateParameters(params []ParameterConfig, args map[string
 }
 
 // validateType validates that a value matches the expected type
-func (v *Validator) validateType(param ParameterConfig, value interface{}) error {
+func (v *Validator) validateType(param ParameterConfig, value any) error {
 	switch param.Type {
 	case "string":
 		if _, ok := value.(string); !ok {
@@ -126,7 +126,7 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 
 	case "array":
 		switch value.(type) {
-		case []interface{}, []string, []int, []float64:
+		case []any, []string, []int, []float64:
 			// Valid array types
 		default:
 			return NewValidationError(param.Name, value, "type",
@@ -135,7 +135,7 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 
 	case "object":
 		switch value.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			// Valid object type
 		default:
 			return NewValidationError(param.Name, value, "type",
@@ -153,7 +153,7 @@ func (v *Validator) validateType(param ParameterConfig, value interface{}) error
 
 // applyValidationRules applies additional validation rules to a parameter
 // It may modify the args map to auto-convert compatible date formats
-func (v *Validator) applyValidationRules(param ParameterConfig, value interface{}, args map[string]interface{}) error {
+func (v *Validator) applyValidationRules(param ParameterConfig, value any, args map[string]any) error {
 	validation := param.Validation
 
 	// Pattern validation for strings

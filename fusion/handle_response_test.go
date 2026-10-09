@@ -38,7 +38,7 @@ func newHandleResponseHandler(t *testing.T, responseType ResponseType) *HTTPHand
 				BaseURL: "http://localhost",
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test-token"},
+					Config: map[string]any{"token": "test-token"},
 				},
 				Endpoints: []EndpointConfig{
 					{
@@ -144,7 +144,7 @@ func TestHandleResponse_TokenInvalidationRetry(t *testing.T) {
 				BaseURL: server.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test-token"},
+					Config: map[string]any{"token": "test-token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: true,

@@ -55,7 +55,7 @@ func (e *DatabaseError) Unwrap() error {
 // ValidationError represents a data validation error
 type ValidationError struct {
 	Field   string
-	Value   interface{}
+	Value   any
 	Message string
 }
 
@@ -99,7 +99,7 @@ func NewDatabaseErrorWithContext(op string, err error, tenantID, service string)
 }
 
 // NewValidationError creates a new ValidationError
-func NewValidationError(field string, value interface{}, message string) *ValidationError {
+func NewValidationError(field string, value any, message string) *ValidationError {
 	return &ValidationError{
 		Field:   field,
 		Value:   value,

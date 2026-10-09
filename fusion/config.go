@@ -223,7 +223,7 @@ func (t *TokenInvalidationConfig) UnmarshalJSON(data []byte) error {
 // AuthConfig represents authentication configuration
 type AuthConfig struct {
 	Type              AuthType                 `json:"type"`
-	Config            map[string]interface{}   `json:"config"`
+	Config            map[string]any           `json:"config"`
 	TokenInvalidation *TokenInvalidationConfig `json:"tokenInvalidation,omitempty"`
 }
 
@@ -279,8 +279,8 @@ type ParameterConfig struct {
 	Items         ParameterType     `json:"items,omitempty"` // Item type for array parameters: "string" or "object"
 	Required      bool              `json:"required"`
 	Location      ParameterLocation `json:"location"`
-	Default       interface{}       `json:"default,omitempty"`
-	Examples      []interface{}     `json:"examples,omitempty"`
+	Default       any               `json:"default,omitempty"`
+	Examples      []any             `json:"examples,omitempty"`
 	Validation    *ValidationConfig `json:"validation,omitempty"`
 	Transform     *TransformConfig  `json:"transform,omitempty"`
 	Transforms    []string          `json:"transforms,omitempty"`    // Named value transforms to apply (e.g. "html_compact")
@@ -291,17 +291,17 @@ type ParameterConfig struct {
 
 // ValidationConfig represents validation rules for a parameter
 type ValidationConfig struct {
-	Pattern   string        `json:"pattern,omitempty"`
-	MinLength *int          `json:"minLength,omitempty"`
-	MaxLength *int          `json:"maxLength,omitempty"`
-	Minimum   *float64      `json:"minimum,omitempty"`
-	Maximum   *float64      `json:"maximum,omitempty"`
-	Enum      []interface{} `json:"enum,omitempty"`
-	Format    string        `json:"format,omitempty"`
+	Pattern   string   `json:"pattern,omitempty"`
+	MinLength *int     `json:"minLength,omitempty"`
+	MaxLength *int     `json:"maxLength,omitempty"`
+	Minimum   *float64 `json:"minimum,omitempty"`
+	Maximum   *float64 `json:"maximum,omitempty"`
+	Enum      []any    `json:"enum,omitempty"`
+	Format    string   `json:"format,omitempty"`
 }
 
 // IsValidEnumValue checks if a value is valid according to the enum constraints
-func (v *ValidationConfig) IsValidEnumValue(value interface{}) bool {
+func (v *ValidationConfig) IsValidEnumValue(value any) bool {
 	if len(v.Enum) == 0 {
 		return true // No enum constraints
 	}
@@ -900,7 +900,7 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 			}
 			return fmt.Errorf("user_credentials auth requires 'fields' in config")
 		}
-		fields, ok := fieldsRaw.([]interface{})
+		fields, ok := fieldsRaw.([]any)
 		if !ok || len(fields) == 0 {
 			if logger != nil {
 				logger.Errorf("Service %s: user_credentials 'fields' must be a non-empty array", serviceName)
@@ -919,7 +919,7 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 
 		validLocations := map[string]bool{"query": true, "header": true, "cookie": true}
 		for i, fieldRaw := range fields {
-			field, ok := fieldRaw.(map[string]interface{})
+			field, ok := fieldRaw.(map[string]any)
 			if !ok {
 				return fmt.Errorf("user_credentials field %d must be an object", i)
 			}

@@ -111,7 +111,7 @@ func TestBuildRequest_POSTWithBody(t *testing.T) {
 	}
 
 	// Verify body content
-	var bodyData map[string]interface{}
+	var bodyData map[string]any
 	if err := json.NewDecoder(req.Body).Decode(&bodyData); err != nil {
 		t.Fatalf("Failed to decode request body: %v", err)
 	}
@@ -292,7 +292,7 @@ func TestProcessResponse_JSON(t *testing.T) {
 	}
 
 	// Create a mock response
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"id":   123,
 		"name": "John Doe",
 	}
@@ -317,7 +317,7 @@ func TestProcessResponse_JSON(t *testing.T) {
 	}
 
 	// Parse the result to verify it's valid JSON
-	var parsedResult map[string]interface{}
+	var parsedResult map[string]any
 	if err := json.Unmarshal([]byte(result), &parsedResult); err != nil {
 		t.Fatalf("Result is not valid JSON: %v", err)
 	}
@@ -498,7 +498,7 @@ func TestValidateParameter_Enum(t *testing.T) {
 		Name: "test",
 		Type: ParameterTypeString,
 		Validation: &ValidationConfig{
-			Enum: []interface{}{"red", "green", "blue"},
+			Enum: []any{"red", "green", "blue"},
 		},
 	}
 
@@ -522,8 +522,8 @@ func TestTransformParameter_BasicTransforms(t *testing.T) {
 	tests := []struct {
 		name       string
 		transform  string
-		input      interface{}
-		expected   interface{}
+		input      any
+		expected   any
 		shouldFail bool
 	}{
 		{"toString", "toString", 123, "123", false},
@@ -570,14 +570,14 @@ func TestExtractJSONPath(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	data := map[string]interface{}{
-		"user": map[string]interface{}{
+	data := map[string]any{
+		"user": map[string]any{
 			"name": "John Doe",
 			"age":  30,
 		},
-		"items": []interface{}{
-			map[string]interface{}{"id": 1, "name": "Item 1"},
-			map[string]interface{}{"id": 2, "name": "Item 2"},
+		"items": []any{
+			map[string]any{"id": 1, "name": "Item 1"},
+			map[string]any{"id": 2, "name": "Item 2"},
 		},
 	}
 
@@ -597,7 +597,7 @@ func TestExtractJSONPath(t *testing.T) {
 		t.Fatalf("extractJSONPath failed: %v", err)
 	}
 
-	user := userObj.(map[string]interface{})
+	user := userObj.(map[string]any)
 	if user["name"] != "John Doe" {
 		t.Errorf("Expected user name 'John Doe', got %v", user["name"])
 	}

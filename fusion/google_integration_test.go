@@ -157,12 +157,12 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Profile tool not found")
 		}
 
-		result, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
+		result, err := profileTool.Handler(withTestContext(map[string]any{}))
 		if err != nil {
 			t.Fatalf("Profile request failed: %v", err)
 		}
 
-		var profile map[string]interface{}
+		var profile map[string]any
 		if err := json.Unmarshal([]byte(result), &profile); err != nil {
 			t.Fatalf("Failed to parse profile response: %v", err)
 		}
@@ -178,7 +178,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar list tool not found")
 		}
 
-		result, err := calendarListTool.Handler(withTestContext(map[string]interface{}{
+		result, err := calendarListTool.Handler(withTestContext(map[string]any{
 			"startDate": "20250101",
 			"endDate":   "20250131",
 		}))
@@ -186,7 +186,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatalf("Calendar list request failed: %v", err)
 		}
 
-		var events []interface{}
+		var events []any
 		if err := json.Unmarshal([]byte(result), &events); err != nil {
 			t.Fatalf("Failed to parse calendar response: %v", err)
 		}
@@ -202,7 +202,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar create tool not found")
 		}
 
-		result, err := calendarCreateTool.Handler(withTestContext(map[string]interface{}{
+		result, err := calendarCreateTool.Handler(withTestContext(map[string]any{
 			"summary":       "Test Event",
 			"description":   "This is a test event",
 			"startDateTime": "2025-01-15T10:00:00Z",
@@ -213,7 +213,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatalf("Calendar create request failed: %v", err)
 		}
 
-		var event map[string]interface{}
+		var event map[string]any
 		if err := json.Unmarshal([]byte(result), &event); err != nil {
 			t.Fatalf("Failed to parse create event response: %v", err)
 		}
@@ -229,14 +229,14 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar get tool not found")
 		}
 
-		result, err := calendarGetTool.Handler(withTestContext(map[string]interface{}{
+		result, err := calendarGetTool.Handler(withTestContext(map[string]any{
 			"eventId": "test-event-123",
 		}))
 		if err != nil {
 			t.Fatalf("Calendar get request failed: %v", err)
 		}
 
-		var event map[string]interface{}
+		var event map[string]any
 		if err := json.Unmarshal([]byte(result), &event); err != nil {
 			t.Fatalf("Failed to parse get event response: %v", err)
 		}
@@ -252,7 +252,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar update tool not found")
 		}
 
-		result, err := calendarUpdateTool.Handler(withTestContext(map[string]interface{}{
+		result, err := calendarUpdateTool.Handler(withTestContext(map[string]any{
 			"eventId": "test-event-123",
 			"summary": "Updated Test Event",
 		}))
@@ -260,7 +260,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatalf("Calendar update request failed: %v", err)
 		}
 
-		var event map[string]interface{}
+		var event map[string]any
 		if err := json.Unmarshal([]byte(result), &event); err != nil {
 			t.Fatalf("Failed to parse update event response: %v", err)
 		}
@@ -276,7 +276,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Calendar delete tool not found")
 		}
 
-		result, err := calendarDeleteTool.Handler(withTestContext(map[string]interface{}{
+		result, err := calendarDeleteTool.Handler(withTestContext(map[string]any{
 			"eventId": "test-event-123",
 		}))
 		if err != nil {
@@ -294,14 +294,14 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Gmail list tool not found")
 		}
 
-		result, err := gmailListTool.Handler(withTestContext(map[string]interface{}{
+		result, err := gmailListTool.Handler(withTestContext(map[string]any{
 			"maxResults": 10,
 		}))
 		if err != nil {
 			t.Fatalf("Gmail list request failed: %v", err)
 		}
 
-		var messages []interface{}
+		var messages []any
 		if err := json.Unmarshal([]byte(result), &messages); err != nil {
 			t.Fatalf("Failed to parse Gmail messages response: %v", err)
 		}
@@ -317,14 +317,14 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Gmail get tool not found")
 		}
 
-		result, err := gmailGetTool.Handler(withTestContext(map[string]interface{}{
+		result, err := gmailGetTool.Handler(withTestContext(map[string]any{
 			"messageId": "test-message-123",
 		}))
 		if err != nil {
 			t.Fatalf("Gmail get request failed: %v", err)
 		}
 
-		var message map[string]interface{}
+		var message map[string]any
 		if err := json.Unmarshal([]byte(result), &message); err != nil {
 			t.Fatalf("Failed to parse Gmail message response: %v", err)
 		}
@@ -340,7 +340,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Gmail send tool not found")
 		}
 
-		result, err := gmailSendTool.Handler(withTestContext(map[string]interface{}{
+		result, err := gmailSendTool.Handler(withTestContext(map[string]any{
 			"to":      "test@example.com",
 			"subject": "Test Email",
 			"body":    "This is a test email body",
@@ -349,7 +349,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatalf("Gmail send request failed: %v", err)
 		}
 
-		var sentMessage map[string]interface{}
+		var sentMessage map[string]any
 		if err := json.Unmarshal([]byte(result), &sentMessage); err != nil {
 			t.Fatalf("Failed to parse sent message response: %v", err)
 		}
@@ -365,14 +365,14 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Gmail search tool not found")
 		}
 
-		result, err := gmailSearchTool.Handler(withTestContext(map[string]interface{}{
+		result, err := gmailSearchTool.Handler(withTestContext(map[string]any{
 			"query": "from:test@example.com",
 		}))
 		if err != nil {
 			t.Fatalf("Gmail search request failed: %v", err)
 		}
 
-		var messages []interface{}
+		var messages []any
 		if err := json.Unmarshal([]byte(result), &messages); err != nil {
 			t.Fatalf("Failed to parse Gmail search response: %v", err)
 		}
@@ -388,14 +388,14 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive list tool not found")
 		}
 
-		result, err := driveListTool.Handler(withTestContext(map[string]interface{}{
+		result, err := driveListTool.Handler(withTestContext(map[string]any{
 			"pageSize": 10,
 		}))
 		if err != nil {
 			t.Fatalf("Drive list request failed: %v", err)
 		}
 
-		var files []interface{}
+		var files []any
 		if err := json.Unmarshal([]byte(result), &files); err != nil {
 			t.Fatalf("Failed to parse Drive files response: %v", err)
 		}
@@ -411,14 +411,14 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive get tool not found")
 		}
 
-		result, err := driveGetTool.Handler(withTestContext(map[string]interface{}{
+		result, err := driveGetTool.Handler(withTestContext(map[string]any{
 			"fileId": "test-file-123",
 		}))
 		if err != nil {
 			t.Fatalf("Drive get request failed: %v", err)
 		}
 
-		var file map[string]interface{}
+		var file map[string]any
 		if err := json.Unmarshal([]byte(result), &file); err != nil {
 			t.Fatalf("Failed to parse Drive file response: %v", err)
 		}
@@ -434,7 +434,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive download tool not found")
 		}
 
-		result, err := driveDownloadTool.Handler(withTestContext(map[string]interface{}{
+		result, err := driveDownloadTool.Handler(withTestContext(map[string]any{
 			"fileId": "test-file-123",
 		}))
 		if err != nil {
@@ -453,7 +453,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive create tool not found")
 		}
 
-		result, err := driveCreateTool.Handler(withTestContext(map[string]interface{}{
+		result, err := driveCreateTool.Handler(withTestContext(map[string]any{
 			"name":        "test-file.txt",
 			"description": "This is a test file",
 			"mimeType":    "text/plain",
@@ -462,7 +462,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatalf("Drive create request failed: %v", err)
 		}
 
-		var file map[string]interface{}
+		var file map[string]any
 		if err := json.Unmarshal([]byte(result), &file); err != nil {
 			t.Fatalf("Failed to parse created file response: %v", err)
 		}
@@ -478,7 +478,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive delete tool not found")
 		}
 
-		result, err := driveDeleteTool.Handler(withTestContext(map[string]interface{}{
+		result, err := driveDeleteTool.Handler(withTestContext(map[string]any{
 			"fileId": "test-file-123",
 		}))
 		if err != nil {
@@ -496,7 +496,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatal("Drive share tool not found")
 		}
 
-		result, err := driveShareTool.Handler(withTestContext(map[string]interface{}{
+		result, err := driveShareTool.Handler(withTestContext(map[string]any{
 			"fileId":       "test-file-123",
 			"type":         "user",
 			"role":         "reader",
@@ -506,7 +506,7 @@ func TestGoogleIntegration(t *testing.T) {
 			t.Fatalf("Drive share request failed: %v", err)
 		}
 
-		var permission map[string]interface{}
+		var permission map[string]any
 		if err := json.Unmarshal([]byte(result), &permission); err != nil {
 			t.Fatalf("Failed to parse share response: %v", err)
 		}
@@ -524,7 +524,7 @@ func TestGoogleIntegration(t *testing.T) {
 
 		// First request - should hit the server
 		start := time.Now()
-		result1, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
+		result1, err := profileTool.Handler(withTestContext(map[string]any{}))
 		if err != nil {
 			t.Fatalf("First profile request failed: %v", err)
 		}
@@ -532,7 +532,7 @@ func TestGoogleIntegration(t *testing.T) {
 
 		// Second request - should be cached
 		start = time.Now()
-		result2, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
+		result2, err := profileTool.Handler(withTestContext(map[string]any{}))
 		if err != nil {
 			t.Fatalf("Second profile request failed: %v", err)
 		}
@@ -557,7 +557,7 @@ func TestGoogleIntegration(t *testing.T) {
 		}
 
 		// Test date transformation from YYYYMMDD to ISO format
-		result, err := calendarListTool.Handler(withTestContext(map[string]interface{}{
+		result, err := calendarListTool.Handler(withTestContext(map[string]any{
 			"startDate": "20250115",
 			"endDate":   "20250116",
 		}))
@@ -566,7 +566,7 @@ func TestGoogleIntegration(t *testing.T) {
 		}
 
 		// Should successfully transform dates and return events
-		var events []interface{}
+		var events []any
 		if err := json.Unmarshal([]byte(result), &events); err != nil {
 			t.Fatalf("Failed to parse transformed response: %v", err)
 		}
@@ -624,7 +624,7 @@ func TestGoogleOAuth2DeviceFlow(t *testing.T) {
 
 		// This test simulates what happens when authentication is required
 		// The device code error should be returned with user instructions
-		result, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
+		result, err := profileTool.Handler(withTestContext(map[string]any{}))
 
 		// For a real device flow, this would return instructions for the user
 		// In our mock, we'll simulate a successful flow
@@ -643,7 +643,7 @@ func handleGoogleDeviceCodeRequest(w http.ResponseWriter, r *http.Request, t *te
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"device_code":      "mockgoogledevicecode123",
 		"user_code":        "GOOG-1234",
 		"verification_url": "https://www.google.com/device",
@@ -662,7 +662,7 @@ func handleGoogleTokenRequest(w http.ResponseWriter, r *http.Request, t *testing
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"access_token":  "mock_google_token_12345",
 		"token_type":    "Bearer",
 		"expires_in":    3600,
@@ -681,7 +681,7 @@ func handleGoogleProfileRequest(w http.ResponseWriter, r *http.Request, t *testi
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":             "12345",
 		"name":           "Test Google User",
 		"email":          "test.user@gmail.com",
@@ -707,12 +707,12 @@ func handleGoogleCalendarEventsRequest(w http.ResponseWriter, r *http.Request, t
 	isPaginated := strings.Contains(r.URL.RawQuery, "timeMin") &&
 		!strings.Contains(r.URL.RawQuery, "pageToken")
 
-	var response map[string]interface{}
+	var response map[string]any
 
 	if isPaginated {
 		// First page of results
-		response = map[string]interface{}{
-			"items": []map[string]interface{}{
+		response = map[string]any{
+			"items": []map[string]any{
 				{
 					"id":          "event-1",
 					"summary":     "Team Meeting",
@@ -734,8 +734,8 @@ func handleGoogleCalendarEventsRequest(w http.ResponseWriter, r *http.Request, t
 		}
 	} else if strings.Contains(r.URL.RawQuery, "pageToken=page2token") {
 		// Second page of results
-		response = map[string]interface{}{
-			"items": []map[string]interface{}{
+		response = map[string]any{
+			"items": []map[string]any{
 				{
 					"id":          "event-3",
 					"summary":     "Client Call",
@@ -748,8 +748,8 @@ func handleGoogleCalendarEventsRequest(w http.ResponseWriter, r *http.Request, t
 		}
 	} else {
 		// Single page for summary view
-		response = map[string]interface{}{
-			"items": []map[string]interface{}{
+		response = map[string]any{
+			"items": []map[string]any{
 				{
 					"id":          "event-1",
 					"summary":     "Team Meeting",
@@ -773,10 +773,10 @@ func handleGoogleCalendarEventCreateRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var requestBody map[string]interface{}
+	var requestBody map[string]any
 	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":          "created-event-123",
 		"summary":     requestBody["summary"],
 		"description": requestBody["description"],
@@ -803,7 +803,7 @@ func handleGoogleCalendarEventGetRequest(w http.ResponseWriter, r *http.Request,
 	parts := strings.Split(r.URL.Path, "/")
 	eventID := parts[len(parts)-1]
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":          eventID,
 		"summary":     "Retrieved Event",
 		"description": "This is a retrieved event",
@@ -828,10 +828,10 @@ func handleGoogleCalendarEventUpdateRequest(w http.ResponseWriter, r *http.Reque
 	parts := strings.Split(r.URL.Path, "/")
 	eventID := parts[len(parts)-1]
 
-	var requestBody map[string]interface{}
+	var requestBody map[string]any
 	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":          eventID,
 		"summary":     requestBody["summary"],
 		"description": requestBody["description"],
@@ -864,8 +864,8 @@ func handleGoogleGmailMessagesRequest(w http.ResponseWriter, r *http.Request, t 
 		return
 	}
 
-	response := map[string]interface{}{
-		"messages": []map[string]interface{}{
+	response := map[string]any{
+		"messages": []map[string]any{
 			{
 				"id":       "msg-1",
 				"threadId": "thread-1",
@@ -893,22 +893,22 @@ func handleGoogleGmailMessageGetRequest(w http.ResponseWriter, r *http.Request, 
 	parts := strings.Split(r.URL.Path, "/")
 	messageID := parts[len(parts)-1]
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":           messageID,
 		"threadId":     "thread-123",
 		"snippet":      "This is a test email snippet...",
 		"internalDate": "1641542400000",
-		"payload": map[string]interface{}{
-			"headers": []map[string]interface{}{
+		"payload": map[string]any{
+			"headers": []map[string]any{
 				{"name": "Subject", "value": "Test Email Subject"},
 				{"name": "From", "value": "sender@example.com"},
 				{"name": "To", "value": "recipient@example.com"},
 				{"name": "Date", "value": "Thu, 06 Jan 2022 10:00:00 -0800"},
 			},
-			"body": map[string]interface{}{
+			"body": map[string]any{
 				"data": "VGhpcyBpcyB0aGUgZW1haWwgYm9keSBjb250ZW50", // Base64 encoded
 			},
-			"parts": []map[string]interface{}{},
+			"parts": []map[string]any{},
 		},
 	}
 
@@ -923,10 +923,10 @@ func handleGoogleGmailSendRequest(w http.ResponseWriter, r *http.Request, t *tes
 		return
 	}
 
-	var requestBody map[string]interface{}
+	var requestBody map[string]any
 	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":       "sent-msg-123",
 		"threadId": "sent-thread-123",
 	}
@@ -942,8 +942,8 @@ func handleGoogleDriveFilesRequest(w http.ResponseWriter, r *http.Request, t *te
 		return
 	}
 
-	response := map[string]interface{}{
-		"files": []map[string]interface{}{
+	response := map[string]any{
+		"files": []map[string]any{
 			{
 				"id":           "file-1",
 				"name":         "Test Document.docx",
@@ -981,7 +981,7 @@ func handleGoogleDriveFileGetRequest(w http.ResponseWriter, r *http.Request, t *
 	parts := strings.Split(r.URL.Path, "/")
 	fileID := parts[len(parts)-1]
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":             fileID,
 		"name":           "Test File.txt",
 		"mimeType":       "text/plain",
@@ -1016,10 +1016,10 @@ func handleGoogleDriveFileCreateRequest(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	var requestBody map[string]interface{}
+	var requestBody map[string]any
 	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":           "created-file-123",
 		"name":         requestBody["name"],
 		"mimeType":     requestBody["mimeType"],
@@ -1051,10 +1051,10 @@ func handleGoogleDriveFileShareRequest(w http.ResponseWriter, r *http.Request, t
 		return
 	}
 
-	var requestBody map[string]interface{}
+	var requestBody map[string]any
 	_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"id":           "permission-123",
 		"type":         requestBody["type"],
 		"role":         requestBody["role"],
@@ -1067,31 +1067,31 @@ func handleGoogleDriveFileShareRequest(w http.ResponseWriter, r *http.Request, t
 }
 
 func createTestGoogleConfig(baseURL string) string {
-	config := map[string]interface{}{
-		"services": map[string]interface{}{
-			"google": map[string]interface{}{
+	config := map[string]any{
+		"services": map[string]any{
+			"google": map[string]any{
 				"name":    "Google APIs",
 				"baseURL": baseURL,
-				"auth": map[string]interface{}{
+				"auth": map[string]any{
 					"type": "oauth2_device",
-					"config": map[string]interface{}{
+					"config": map[string]any{
 						"clientId":         "test-google-client-id",
 						"scope":            []string{"https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/drive"},
 						"authorizationURL": baseURL + "/oauth2/device/code",
 						"tokenURL":         baseURL + "/oauth2/token",
 					},
 				},
-				"endpoints": []interface{}{
-					map[string]interface{}{
+				"endpoints": []any{
+					map[string]any{
 						"id":          "profile_get",
 						"name":        "Get User Profile",
 						"description": "Get the current user's profile information from Google",
 						"method":      "GET",
 						"path":        "/oauth2/v2/userinfo",
-						"parameters":  []interface{}{},
-						"response": map[string]interface{}{
+						"parameters":  []any{},
+						"response": map[string]any{
 							"type": "json",
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "30m",
 							},
@@ -1107,80 +1107,80 @@ func createTestGoogleConfig(baseURL string) string {
 }
 
 func createTestGoogleConfigWithBearer(baseURL string) string {
-	config := map[string]interface{}{
-		"services": map[string]interface{}{
-			"google": map[string]interface{}{
+	config := map[string]any{
+		"services": map[string]any{
+			"google": map[string]any{
 				"name":    "Google APIs",
 				"baseURL": baseURL,
-				"auth": map[string]interface{}{
+				"auth": map[string]any{
 					"type": "bearer",
-					"config": map[string]interface{}{
+					"config": map[string]any{
 						"token": "mock_google_token_12345",
 					},
 				},
-				"endpoints": []interface{}{
+				"endpoints": []any{
 					// Profile endpoint
-					map[string]interface{}{
+					map[string]any{
 						"id":          "profile_get",
 						"name":        "Get User Profile",
 						"description": "Get the current user's profile information from Google",
 						"method":      "GET",
 						"path":        "/oauth2/v2/userinfo",
-						"parameters":  []interface{}{},
-						"response": map[string]interface{}{
+						"parameters":  []any{},
+						"response": map[string]any{
 							"type": "json",
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "30m",
 							},
 						},
 					},
 					// Calendar endpoints
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_events_list",
 						"name":        "List Calendar Events",
 						"description": "List events from Google Calendar",
 						"method":      "GET",
 						"path":        "/calendar/v3/calendars/primary/events",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "startDate",
 								"description": "Start date in YYYYMMDD format",
 								"type":        "string",
 								"required":    false,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "timeMin",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "endDate",
 								"description": "End date in YYYYMMDD format",
 								"type":        "string",
 								"required":    false,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "timeMax",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"paginated": true,
-							"paginationConfig": map[string]interface{}{
+							"paginationConfig": map[string]any{
 								"nextPageTokenPath": "nextPageToken",
 								"dataPath":          "items",
 								"pageSize":          250,
 							},
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "5m",
 							},
@@ -1188,28 +1188,28 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 							"transform": ".items",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_event_create",
 						"name":        "Create Calendar Event",
 						"description": "Create a new event in Google Calendar",
 						"method":      "POST",
 						"path":        "/calendar/v3/calendars/primary/events",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "summary",
 								"description": "Event title/summary",
 								"type":        "string",
 								"required":    true,
 								"location":    "body",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "startDateTime",
 								"description": "Start time in RFC3339 format",
 								"type":        "string",
 								"required":    true,
 								"location":    "body",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "endDateTime",
 								"description": "End time in RFC3339 format",
 								"type":        "string",
@@ -1217,18 +1217,18 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "body",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_event_get",
 						"name":        "Get Calendar Event",
 						"description": "Get a specific calendar event by ID",
 						"method":      "GET",
 						"path":        "/calendar/v3/calendars/primary/events/{eventId}",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "eventId",
 								"description": "The ID of the event to retrieve",
 								"type":        "string",
@@ -1236,29 +1236,29 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "path",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "10m",
 							},
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_event_update",
 						"name":        "Update Calendar Event",
 						"description": "Update an existing calendar event",
 						"method":      "PUT",
 						"path":        "/calendar/v3/calendars/primary/events/{eventId}",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "eventId",
 								"description": "The ID of the event to update",
 								"type":        "string",
 								"required":    true,
 								"location":    "path",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "summary",
 								"description": "Event title/summary",
 								"type":        "string",
@@ -1266,18 +1266,18 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "body",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_event_delete",
 						"name":        "Delete Calendar Event",
 						"description": "Delete a calendar event",
 						"method":      "DELETE",
 						"path":        "/calendar/v3/calendars/primary/events/{eventId}",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "eventId",
 								"description": "The ID of the event to delete",
 								"type":        "string",
@@ -1285,19 +1285,19 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "path",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "text",
 						},
 					},
 					// Gmail endpoints
-					map[string]interface{}{
+					map[string]any{
 						"id":          "gmail_messages_list",
 						"name":        "List Gmail Messages",
 						"description": "List messages from Gmail inbox",
 						"method":      "GET",
 						"path":        "/gmail/v1/users/me/messages",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "maxResults",
 								"description": "Maximum number of messages to return",
 								"type":        "number",
@@ -1306,24 +1306,24 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"default":     10,
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"paginated": true,
-							"paginationConfig": map[string]interface{}{
+							"paginationConfig": map[string]any{
 								"nextPageTokenPath": "nextPageToken",
 								"dataPath":          "messages",
 								"pageSize":          100,
 							},
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "gmail_message_get",
 						"name":        "Get Gmail Message",
 						"description": "Get a specific Gmail message by ID",
 						"method":      "GET",
 						"path":        "/gmail/v1/users/me/messages/{messageId}",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "messageId",
 								"description": "The ID of the message to retrieve",
 								"type":        "string",
@@ -1331,32 +1331,32 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "path",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "gmail_message_send",
 						"name":        "Send Gmail Message",
 						"description": "Send a new email message through Gmail",
 						"method":      "POST",
 						"path":        "/gmail/v1/users/me/messages/send",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "to",
 								"description": "Recipient email address",
 								"type":        "string",
 								"required":    true,
 								"location":    "body",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "subject",
 								"description": "Email subject line",
 								"type":        "string",
 								"required":    true,
 								"location":    "body",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "body",
 								"description": "Email body content",
 								"type":        "string",
@@ -1364,33 +1364,33 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "body",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "gmail_search_messages",
 						"name":        "Search Gmail Messages",
 						"description": "Search Gmail messages with advanced query syntax",
 						"method":      "GET",
 						"path":        "/gmail/v1/users/me/messages",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "query",
 								"description": "Advanced Gmail search query",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "q",
 									"expression": ".",
 								},
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"paginated": true,
-							"paginationConfig": map[string]interface{}{
+							"paginationConfig": map[string]any{
 								"nextPageTokenPath": "nextPageToken",
 								"dataPath":          "messages",
 								"pageSize":          100,
@@ -1398,14 +1398,14 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 						},
 					},
 					// Drive endpoints
-					map[string]interface{}{
+					map[string]any{
 						"id":          "drive_files_list",
 						"name":        "List Google Drive Files",
 						"description": "List files and folders in Google Drive",
 						"method":      "GET",
 						"path":        "/drive/v3/files",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "pageSize",
 								"description": "Maximum number of files to return",
 								"type":        "number",
@@ -1414,29 +1414,29 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"default":     10,
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"paginated": true,
-							"paginationConfig": map[string]interface{}{
+							"paginationConfig": map[string]any{
 								"nextPageTokenPath": "nextPageToken",
 								"dataPath":          "files",
 								"pageSize":          100,
 							},
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "5m",
 							},
 							"transform": ".files",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "drive_file_get",
 						"name":        "Get Google Drive File",
 						"description": "Get metadata for a specific file in Google Drive",
 						"method":      "GET",
 						"path":        "/drive/v3/files/{fileId}",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "fileId",
 								"description": "The ID of the file to retrieve",
 								"type":        "string",
@@ -1444,25 +1444,25 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "path",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "drive_file_download",
 						"name":        "Download Google Drive File Content",
 						"description": "Download the content of a file from Google Drive",
 						"method":      "GET",
 						"path":        "/drive/v3/files/{fileId}",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "fileId",
 								"description": "The ID of the file to download",
 								"type":        "string",
 								"required":    true,
 								"location":    "path",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "alt",
 								"description": "Alternative representation type",
 								"type":        "string",
@@ -1471,25 +1471,25 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"default":     "media",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "binary",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "drive_file_create",
 						"name":        "Create Google Drive File",
 						"description": "Create a new file in Google Drive",
 						"method":      "POST",
 						"path":        "/upload/drive/v3/files",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "name",
 								"description": "Name of the file to create",
 								"type":        "string",
 								"required":    true,
 								"location":    "body",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "mimeType",
 								"description": "MIME type of the file",
 								"type":        "string",
@@ -1498,18 +1498,18 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"default":     "text/plain",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "drive_file_delete",
 						"name":        "Delete Google Drive File",
 						"description": "Delete a file from Google Drive",
 						"method":      "DELETE",
 						"path":        "/drive/v3/files/{fileId}",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "fileId",
 								"description": "The ID of the file to delete",
 								"type":        "string",
@@ -1517,39 +1517,39 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "path",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "text",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "drive_file_share",
 						"name":        "Share Google Drive File",
 						"description": "Share a file in Google Drive with specific permissions",
 						"method":      "POST",
 						"path":        "/drive/v3/files/{fileId}/permissions",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "fileId",
 								"description": "The ID of the file to share",
 								"type":        "string",
 								"required":    true,
 								"location":    "path",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "role",
 								"description": "Permission role",
 								"type":        "string",
 								"required":    true,
 								"location":    "body",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "type",
 								"description": "Permission type",
 								"type":        "string",
 								"required":    true,
 								"location":    "body",
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "emailAddress",
 								"description": "Email address (required for user/group type)",
 								"type":        "string",
@@ -1557,7 +1557,7 @@ func createTestGoogleConfigWithBearer(baseURL string) string {
 								"location":    "body",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},

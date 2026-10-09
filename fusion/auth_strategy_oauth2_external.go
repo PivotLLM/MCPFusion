@@ -43,11 +43,11 @@ func (s *OAuth2ExternalStrategy) SupportsRefresh() bool {
 	return true
 }
 
-func (s *OAuth2ExternalStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *OAuth2ExternalStrategy) Authenticate(_ context.Context, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("no stored token for this service (authenticate with fusion-auth)")
 }
 
-func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
+func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
@@ -55,7 +55,7 @@ func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenIn
 	return nil
 }
 
-func (s *OAuth2ExternalStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+func (s *OAuth2ExternalStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]any) (*TokenInfo, error) {
 	if tokenInfo == nil {
 		return nil, fmt.Errorf("token info is nil")
 	}

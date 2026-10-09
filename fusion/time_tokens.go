@@ -40,7 +40,7 @@ func NewTimeTokenProcessor(opts ...ComponentOption) *TimeTokenProcessor {
 }
 
 // ProcessValue processes a parameter value and replaces any time tokens
-func (ttp *TimeTokenProcessor) ProcessValue(value interface{}) interface{} {
+func (ttp *TimeTokenProcessor) ProcessValue(value any) any {
 	// Only process string values
 	if strValue, ok := value.(string); ok {
 		processed := ttp.substituteTimeTokens(strValue)
@@ -352,12 +352,12 @@ func (ttp *TimeTokenProcessor) SupportedTokens() map[string]string {
 }
 
 // ProcessParameterArgs processes all parameter arguments and substitutes time tokens
-func (ttp *TimeTokenProcessor) ProcessParameterArgs(args map[string]interface{}) map[string]interface{} {
+func (ttp *TimeTokenProcessor) ProcessParameterArgs(args map[string]any) map[string]any {
 	if args == nil {
 		return nil
 	}
 
-	processed := make(map[string]interface{})
+	processed := make(map[string]any)
 	hasTokens := false
 
 	for key, value := range args {
@@ -379,7 +379,7 @@ func (ttp *TimeTokenProcessor) ProcessParameterArgs(args map[string]interface{})
 
 // SubstituteTimeTokensInParameterValue is a convenience function for processing individual parameter values
 // This can be used when processing parameters in different locations (path, query, body, header)
-func SubstituteTimeTokensInParameterValue(value interface{}, logger global.Logger) interface{} {
+func SubstituteTimeTokensInParameterValue(value any, logger global.Logger) any {
 	processor := NewTimeTokenProcessor(WithLogger(logger))
 	return processor.ProcessValue(value)
 }

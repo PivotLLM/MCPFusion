@@ -122,7 +122,7 @@ func TestProgressForwarder_ConcurrentAccess(t *testing.T) {
 
 	// Verify all forwarders have been cleaned up
 	count := 0
-	mgr.progressForwarders.Range(func(_, _ interface{}) bool {
+	mgr.progressForwarders.Range(func(_, _ any) bool {
 		count++
 		return true
 	})

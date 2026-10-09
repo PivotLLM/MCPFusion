@@ -31,7 +31,7 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 	tests := []struct {
 		name      string
 		tokenInfo *TokenInfo
-		config    map[string]interface{}
+		config    map[string]any
 		wantErr   bool
 		errMsg    string
 		validate  func(t *testing.T, req *http.Request)
@@ -44,14 +44,14 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 					"api_token": "tok456",
 				},
 			},
-			config: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			config: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"name":      "api_key",
 						"location":  "query",
 						"paramName": "key",
 					},
-					map[string]interface{}{
+					map[string]any{
 						"name":      "api_token",
 						"location":  "query",
 						"paramName": "token",
@@ -74,9 +74,9 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 					"x_api_key": "headerval789",
 				},
 			},
-			config: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			config: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"name":      "x_api_key",
 						"location":  "header",
 						"paramName": "X-Api-Key",
@@ -96,9 +96,9 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 					"session_id": "sess_abc",
 				},
 			},
-			config: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			config: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"name":      "session_id",
 						"location":  "cookie",
 						"paramName": "sid",
@@ -123,14 +123,14 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 					"auth_token": "hval222",
 				},
 			},
-			config: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			config: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"name":      "api_key",
 						"location":  "query",
 						"paramName": "apikey",
 					},
-					map[string]interface{}{
+					map[string]any{
 						"name":      "auth_token",
 						"location":  "header",
 						"paramName": "Authorization",
@@ -153,9 +153,9 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 					"api_key": "defaultname_val",
 				},
 			},
-			config: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			config: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"name":     "api_key",
 						"location": "query",
 						// paramName intentionally omitted
@@ -175,9 +175,9 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 					// "api_key" intentionally absent
 				},
 			},
-			config: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			config: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"name":      "api_key",
 						"location":  "query",
 						"paramName": "key",
@@ -190,8 +190,8 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 		{
 			name:      "nil tokenInfo",
 			tokenInfo: nil,
-			config: map[string]interface{}{
-				"fields": []interface{}{},
+			config: map[string]any{
+				"fields": []any{},
 			},
 			wantErr: true,
 			errMsg:  "token info is nil",
@@ -210,7 +210,7 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 			tokenInfo: &TokenInfo{
 				Metadata: map[string]string{},
 			},
-			config:  map[string]interface{}{},
+			config:  map[string]any{},
 			wantErr: true,
 			errMsg:  "user_credentials config missing 'fields'",
 		},
@@ -219,7 +219,7 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 			tokenInfo: &TokenInfo{
 				Metadata: map[string]string{},
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"fields": "not_an_array",
 			},
 			wantErr: true,
@@ -232,9 +232,9 @@ func TestUserCredentialsStrategy_ApplyAuth(t *testing.T) {
 					"api_key": "val",
 				},
 			},
-			config: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			config: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"name":      "api_key",
 						"location":  "body",
 						"paramName": "key",
@@ -339,11 +339,11 @@ func TestUserCredentials_BasicAuth(t *testing.T) {
 				},
 			}
 
-			config := map[string]interface{}{
+			config := map[string]any{
 				"authMethod": "basic_auth",
-				"fields": []interface{}{
-					map[string]interface{}{"name": tt.field1},
-					map[string]interface{}{"name": tt.field2},
+				"fields": []any{
+					map[string]any{"name": tt.field1},
+					map[string]any{"name": tt.field2},
 				},
 			}
 
@@ -392,11 +392,11 @@ func TestUserCredentials_BasicAuth_MissingField(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "https://api.example.com/v1/resource", nil)
 
 			tokenInfo := &TokenInfo{Metadata: tt.metadata}
-			config := map[string]interface{}{
+			config := map[string]any{
 				"authMethod": "basic_auth",
-				"fields": []interface{}{
-					map[string]interface{}{"name": "username"},
-					map[string]interface{}{"name": "password"},
+				"fields": []any{
+					map[string]any{"name": "username"},
+					map[string]any{"name": "password"},
 				},
 			}
 
@@ -414,20 +414,20 @@ func TestUserCredentials_BasicAuth_MissingField(t *testing.T) {
 func TestUserCredentials_BasicAuth_WrongFieldCount(t *testing.T) {
 	tests := []struct {
 		name   string
-		fields []interface{}
+		fields []any
 	}{
 		{
 			name: "one field",
-			fields: []interface{}{
-				map[string]interface{}{"name": "username"},
+			fields: []any{
+				map[string]any{"name": "username"},
 			},
 		},
 		{
 			name: "three fields",
-			fields: []interface{}{
-				map[string]interface{}{"name": "username"},
-				map[string]interface{}{"name": "password"},
-				map[string]interface{}{"name": "extra"},
+			fields: []any{
+				map[string]any{"name": "username"},
+				map[string]any{"name": "password"},
+				map[string]any{"name": "extra"},
 			},
 		},
 	}
@@ -445,7 +445,7 @@ func TestUserCredentials_BasicAuth_WrongFieldCount(t *testing.T) {
 					"extra":    "val",
 				},
 			}
-			config := map[string]interface{}{
+			config := map[string]any{
 				"authMethod": "basic_auth",
 				"fields":     tt.fields,
 			}
@@ -472,11 +472,11 @@ func TestUserCredentials_BasicAuth_EmptyFieldName(t *testing.T) {
 			"password": "pass",
 		},
 	}
-	config := map[string]interface{}{
+	config := map[string]any{
 		"authMethod": "basic_auth",
-		"fields": []interface{}{
-			map[string]interface{}{"name": ""},
-			map[string]interface{}{"name": "password"},
+		"fields": []any{
+			map[string]any{"name": ""},
+			map[string]any{"name": "password"},
 		},
 	}
 

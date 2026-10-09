@@ -88,7 +88,7 @@ type fakeUEM struct {
 	*httptest.Server
 	mu            sync.Mutex
 	loginCount    int
-	lastLogin     map[string]interface{}
+	lastLogin     map[string]any
 	lastLoginPath string
 	lastHeaders   http.Header
 	acceptedToken string
@@ -123,7 +123,7 @@ func (f *fakeUEM) login(w http.ResponseWriter, r *http.Request) {
 	f.loginCount++
 	f.lastLoginPath = r.URL.Path
 	f.lastHeaders = r.Header.Clone()
-	var body map[string]interface{}
+	var body map[string]any
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	f.lastLogin = body
 	if body["username"] != testUser || body["password"] != testPassword {
@@ -150,7 +150,7 @@ func (f *fakeUEM) revoke() {
 // sessionService builds a UnifyEM-like service config pointing at the fake server.
 func sessionService(baseURL, store string) *ServiceConfig {
 	cfg := sessionCredsConfig(store)
-	cfg["loginHeaders"] = map[string]interface{}{"X-Client": "{{credentials.username}}-client"}
+	cfg["loginHeaders"] = map[string]any{"X-Client": "{{credentials.username}}-client"}
 	cfg["headerFormat"] = "Bearer {token}"
 	return &ServiceConfig{
 		Name:       "UnifyEM",
@@ -418,14 +418,14 @@ func TestHTTPHandler_SessionCredentials_ReloginOn401(t *testing.T) {
 	}))
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenant("uem"))
 
-	result, err := handler.Handle(ctx, map[string]interface{}{})
+	result, err := handler.Handle(ctx, map[string]any{})
 	require.NoError(t, err)
 	assert.Contains(t, result, "pong")
 	assert.Equal(t, 1, uem.logins())
 
 	// The upstream session dies; the next call gets a 401, re-logs-in and succeeds.
 	uem.revoke()
-	result, err = handler.Handle(ctx, map[string]interface{}{})
+	result, err = handler.Handle(ctx, map[string]any{})
 	require.NoError(t, err)
 	assert.Contains(t, result, "pong")
 	assert.Equal(t, 2, uem.logins())
@@ -445,7 +445,7 @@ func TestHTTPHandler_SessionCredentials_NoCredentials(t *testing.T) {
 	handler := NewHTTPHandler(f, service, &service.Endpoints[0])
 
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenant("uem"))
-	_, err = handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]any{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uem_auth_setup")
 	assert.Equal(t, 0, uem.logins())
@@ -508,9 +508,9 @@ func TestAcquireToken_PlainSessionJWT_Unchanged(t *testing.T) {
 	uem := newFakeUEM(t)
 	service := &ServiceConfig{
 		Name: "UEM", ServiceKey: "uem", BaseURL: uem.URL,
-		Auth: AuthConfig{Type: AuthTypeSessionJWT, Config: map[string]interface{}{
+		Auth: AuthConfig{Type: AuthTypeSessionJWT, Config: map[string]any{
 			"loginURL": "/api/v1/login", "tokenPath": "access_token", "tokenLocation": "header",
-			"loginBody": map[string]interface{}{"username": testUser, "password": testPassword},
+			"loginBody": map[string]any{"username": testUser, "password": testPassword},
 		}},
 	}
 	mtam := newAuthManager(t, newBoltTokenStore(t, logger), logger)

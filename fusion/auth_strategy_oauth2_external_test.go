@@ -31,7 +31,7 @@ func TestOAuth2ExternalStrategy_SupportsRefresh(t *testing.T) {
 func TestOAuth2ExternalStrategy_Authenticate(t *testing.T) {
 	strategy := NewOAuth2ExternalStrategy(&http.Client{})
 
-	_, err := strategy.Authenticate(context.Background(), map[string]interface{}{})
+	_, err := strategy.Authenticate(context.Background(), map[string]any{})
 	if err == nil {
 		t.Error("Authenticate() expected error, got nil")
 		return
@@ -114,7 +114,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 	tests := []struct {
 		name          string
 		tokenInfo     *TokenInfo
-		config        map[string]interface{}
+		config        map[string]any
 		serverHandler http.HandlerFunc
 		wantError     bool
 		errorMsg      string
@@ -132,7 +132,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "", // will be replaced with server URL
 			},
@@ -179,7 +179,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId":     "test-client-id",
 				"clientSecret": "test-secret",
 				"tokenURL":     "", // will be replaced with server URL
@@ -220,7 +220,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"client_id":      "test-client-id",
 				"client_secret":  "test-secret-snake",
 				"token_endpoint": "", // will be replaced with server URL
@@ -255,7 +255,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 		{
 			name:      "nil token info",
 			tokenInfo: nil,
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "http://example.com/token",
 			},
@@ -268,7 +268,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "http://example.com/token",
 			},
@@ -291,7 +291,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"tokenURL": "http://example.com/token",
 			},
 			wantError: true,
@@ -303,7 +303,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 			},
 			wantError: true,
@@ -315,7 +315,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "", // will be replaced with server URL
 			},
@@ -334,7 +334,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "", // will be replaced with server URL
 			},
@@ -436,7 +436,7 @@ func TestOAuth2ExternalStrategy_RefreshToken_NoScope(t *testing.T) {
 		AccessToken:  "old_token",
 		RefreshToken: "refresh_token_123",
 	}
-	config := map[string]interface{}{
+	config := map[string]any{
 		"clientId": "test-client-id",
 		"tokenURL": server.URL + "/token",
 		// No scope configured
@@ -476,7 +476,7 @@ func TestOAuth2ExternalStrategy_RefreshToken_UsesTokenURLDirectly(t *testing.T) 
 		AccessToken:  "old_token",
 		RefreshToken: "refresh_token_123",
 	}
-	config := map[string]interface{}{
+	config := map[string]any{
 		"clientId": "test-client-id",
 		"tokenURL": server.URL + "/oauth2/v4/token",
 	}

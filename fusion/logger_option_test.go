@@ -44,7 +44,7 @@ func TestComponentConstructors_WithoutLogger(t *testing.T) {
 	}{
 		{"validator", func() {
 			params := []ParameterConfig{{Name: "q", Type: ParameterTypeString, Required: true}}
-			_ = NewValidator().ValidateParameters(params, map[string]interface{}{})
+			_ = NewValidator().ValidateParameters(params, map[string]any{})
 		}},
 		{"database cache", func() {
 			c := NewDatabaseCache(nil)

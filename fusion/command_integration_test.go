@@ -59,7 +59,7 @@ func TestKaliConfig_Nmap(t *testing.T) {
 	}
 
 	// Test with basic scan
-	result, err := nmapTool.Handler(map[string]interface{}{
+	result, err := nmapTool.Handler(map[string]any{
 		"target": "127.0.0.1",
 		"ports":  "22",
 	})

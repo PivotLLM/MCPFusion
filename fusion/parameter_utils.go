@@ -98,8 +98,8 @@ func (m *ParameterNameMapper) MCPName(originalName string) string {
 }
 
 // MapArgsToOriginal converts MCP parameter names in args to original API names
-func (m *ParameterNameMapper) MapArgsToOriginal(args map[string]interface{}) map[string]interface{} {
-	mapped := make(map[string]interface{})
+func (m *ParameterNameMapper) MapArgsToOriginal(args map[string]any) map[string]any {
+	mapped := make(map[string]any)
 	for mcpName, value := range args {
 		originalName := m.OriginalName(mcpName)
 		mapped[originalName] = value

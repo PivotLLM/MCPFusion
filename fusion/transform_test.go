@@ -14,8 +14,8 @@ func TestApplyParameterTransforms(t *testing.T) {
 	tests := []struct {
 		name      string
 		params    []ParameterConfig
-		inputArgs map[string]interface{}
-		wantArgs  map[string]interface{}
+		inputArgs map[string]any
+		wantArgs  map[string]any
 		wantErr   bool
 	}{
 		{
@@ -23,64 +23,64 @@ func TestApplyParameterTransforms(t *testing.T) {
 			params: []ParameterConfig{
 				{Name: "content", Transforms: []string{"html_compact"}},
 			},
-			inputArgs: map[string]interface{}{"content": ""},
-			wantArgs:  map[string]interface{}{"content": ""},
+			inputArgs: map[string]any{"content": ""},
+			wantArgs:  map[string]any{"content": ""},
 		},
 		{
 			name: "non-string value in args — skipped",
 			params: []ParameterConfig{
 				{Name: "count", Transforms: []string{"html_compact"}},
 			},
-			inputArgs: map[string]interface{}{"count": 42},
-			wantArgs:  map[string]interface{}{"count": 42},
+			inputArgs: map[string]any{"count": 42},
+			wantArgs:  map[string]any{"count": 42},
 		},
 		{
 			name: "parameter absent from args — skipped",
 			params: []ParameterConfig{
 				{Name: "missing", Transforms: []string{"html_compact"}},
 			},
-			inputArgs: map[string]interface{}{},
-			wantArgs:  map[string]interface{}{},
+			inputArgs: map[string]any{},
+			wantArgs:  map[string]any{},
 		},
 		{
 			name: "input with no inter-element whitespace — unchanged, no mutation",
 			params: []ParameterConfig{
 				{Name: "html", Transforms: []string{"html_compact"}},
 			},
-			inputArgs: map[string]interface{}{"html": "<p>Hello world</p>"},
-			wantArgs:  map[string]interface{}{"html": "<p>Hello world</p>"},
+			inputArgs: map[string]any{"html": "<p>Hello world</p>"},
+			wantArgs:  map[string]any{"html": "<p>Hello world</p>"},
 		},
 		{
 			name: "input with </p>\\n<p> pattern — compacted to </p><p>",
 			params: []ParameterConfig{
 				{Name: "html", Transforms: []string{"html_compact"}},
 			},
-			inputArgs: map[string]interface{}{"html": "<p>First</p>\n<p>Second</p>"},
-			wantArgs:  map[string]interface{}{"html": "<p>First</p><p>Second</p>"},
+			inputArgs: map[string]any{"html": "<p>First</p>\n<p>Second</p>"},
+			wantArgs:  map[string]any{"html": "<p>First</p><p>Second</p>"},
 		},
 		{
 			name: "input with <ol>\\n<li> pattern — compacted to <ol><li>",
 			params: []ParameterConfig{
 				{Name: "html", Transforms: []string{"html_compact"}},
 			},
-			inputArgs: map[string]interface{}{"html": "<ol>\n<li>Item</li>\n</ol>"},
-			wantArgs:  map[string]interface{}{"html": "<ol><li>Item</li></ol>"},
+			inputArgs: map[string]any{"html": "<ol>\n<li>Item</li>\n</ol>"},
+			wantArgs:  map[string]any{"html": "<ol><li>Item</li></ol>"},
 		},
 		{
 			name: "multiple newlines between tags — compacted",
 			params: []ParameterConfig{
 				{Name: "html", Transforms: []string{"html_compact"}},
 			},
-			inputArgs: map[string]interface{}{"html": "<p>A</p>\n\n\n<p>B</p>"},
-			wantArgs:  map[string]interface{}{"html": "<p>A</p><p>B</p>"},
+			inputArgs: map[string]any{"html": "<p>A</p>\n\n\n<p>B</p>"},
+			wantArgs:  map[string]any{"html": "<p>A</p><p>B</p>"},
 		},
 		{
 			name: "CRLF between tags — compacted",
 			params: []ParameterConfig{
 				{Name: "html", Transforms: []string{"html_compact"}},
 			},
-			inputArgs: map[string]interface{}{"html": "<p>A</p>\r\n<p>B</p>"},
-			wantArgs:  map[string]interface{}{"html": "<p>A</p><p>B</p>"},
+			inputArgs: map[string]any{"html": "<p>A</p>\r\n<p>B</p>"},
+			wantArgs:  map[string]any{"html": "<p>A</p><p>B</p>"},
 		},
 		{
 			name: "content inside <pre><code> blocks (newlines in text content) — preserved",
@@ -89,10 +89,10 @@ func TestApplyParameterTransforms(t *testing.T) {
 			},
 			// The newlines here appear between text characters and tag boundaries,
 			// not between two tag boundaries, so the regex does not match.
-			inputArgs: map[string]interface{}{
+			inputArgs: map[string]any{
 				"html": "<pre><code>line1\nline2\nline3</code></pre>",
 			},
-			wantArgs: map[string]interface{}{
+			wantArgs: map[string]any{
 				"html": "<pre><code>line1\nline2\nline3</code></pre>",
 			},
 		},
@@ -101,24 +101,24 @@ func TestApplyParameterTransforms(t *testing.T) {
 			params: []ParameterConfig{
 				{Name: "html", Transforms: []string{"unknown_transform"}},
 			},
-			inputArgs: map[string]interface{}{"html": "<p>Hello</p>\n<p>World</p>"},
-			wantArgs:  map[string]interface{}{"html": "<p>Hello</p>\n<p>World</p>"},
+			inputArgs: map[string]any{"html": "<p>Hello</p>\n<p>World</p>"},
+			wantArgs:  map[string]any{"html": "<p>Hello</p>\n<p>World</p>"},
 		},
 		{
 			name: "multiple transforms listed — applied in order (html_compact twice, idempotent)",
 			params: []ParameterConfig{
 				{Name: "html", Transforms: []string{"html_compact", "html_compact"}},
 			},
-			inputArgs: map[string]interface{}{"html": "<p>A</p>\n<p>B</p>"},
-			wantArgs:  map[string]interface{}{"html": "<p>A</p><p>B</p>"},
+			inputArgs: map[string]any{"html": "<p>A</p>\n<p>B</p>"},
+			wantArgs:  map[string]any{"html": "<p>A</p><p>B</p>"},
 		},
 		{
 			name: "transforms is empty slice — no change",
 			params: []ParameterConfig{
 				{Name: "html", Transforms: []string{}},
 			},
-			inputArgs: map[string]interface{}{"html": "<p>A</p>\n<p>B</p>"},
-			wantArgs:  map[string]interface{}{"html": "<p>A</p>\n<p>B</p>"},
+			inputArgs: map[string]any{"html": "<p>A</p>\n<p>B</p>"},
+			wantArgs:  map[string]any{"html": "<p>A</p>\n<p>B</p>"},
 		},
 
 		// --- html_compact_fields ---
@@ -133,18 +133,18 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"html_compact_fields:description,observation"},
 				},
 			},
-			inputArgs: map[string]interface{}{
-				"items": []interface{}{
-					map[string]interface{}{
+			inputArgs: map[string]any{
+				"items": []any{
+					map[string]any{
 						"description": "<p>A</p>\n<p>B</p>",
 						"observation": "<ol>\n<li>X</li>\n</ol>",
 						"title":       "unchanged",
 					},
 				},
 			},
-			wantArgs: map[string]interface{}{
-				"items": []interface{}{
-					map[string]interface{}{
+			wantArgs: map[string]any{
+				"items": []any{
+					map[string]any{
 						"description": "<p>A</p><p>B</p>",
 						"observation": "<ol><li>X</li></ol>",
 						"title":       "unchanged",
@@ -162,16 +162,16 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"html_compact_fields:description"},
 				},
 			},
-			inputArgs: map[string]interface{}{
-				"items": []interface{}{
-					map[string]interface{}{
+			inputArgs: map[string]any{
+				"items": []any{
+					map[string]any{
 						"description": "<p>No whitespace between tags</p>",
 					},
 				},
 			},
-			wantArgs: map[string]interface{}{
-				"items": []interface{}{
-					map[string]interface{}{
+			wantArgs: map[string]any{
+				"items": []any{
+					map[string]any{
 						"description": "<p>No whitespace between tags</p>",
 					},
 				},
@@ -187,16 +187,16 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"html_compact_fields:missing_field"},
 				},
 			},
-			inputArgs: map[string]interface{}{
-				"items": []interface{}{
-					map[string]interface{}{
+			inputArgs: map[string]any{
+				"items": []any{
+					map[string]any{
 						"other": "<p>A</p>\n<p>B</p>",
 					},
 				},
 			},
-			wantArgs: map[string]interface{}{
-				"items": []interface{}{
-					map[string]interface{}{
+			wantArgs: map[string]any{
+				"items": []any{
+					map[string]any{
 						"other": "<p>A</p>\n<p>B</p>",
 					},
 				},
@@ -212,10 +212,10 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"html_compact_fields:description"},
 				},
 			},
-			inputArgs: map[string]interface{}{
+			inputArgs: map[string]any{
 				"items": "not an array",
 			},
-			wantArgs: map[string]interface{}{
+			wantArgs: map[string]any{
 				"items": "not an array",
 			},
 		},
@@ -232,19 +232,19 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"validate_object_fields:label,customField._id"},
 				},
 			},
-			inputArgs: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			inputArgs: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"label":       "Some label",
-						"customField": map[string]interface{}{"_id": "abc123"},
+						"customField": map[string]any{"_id": "abc123"},
 					},
 				},
 			},
-			wantArgs: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			wantArgs: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"label":       "Some label",
-						"customField": map[string]interface{}{"_id": "abc123"},
+						"customField": map[string]any{"_id": "abc123"},
 					},
 				},
 			},
@@ -260,16 +260,16 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"validate_object_fields:label"},
 				},
 			},
-			inputArgs: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			inputArgs: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"other": "value",
 					},
 				},
 			},
-			wantArgs: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			wantArgs: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"other": "value",
 					},
 				},
@@ -286,17 +286,17 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"validate_object_fields:customField._id"},
 				},
 			},
-			inputArgs: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
-						"customField": map[string]interface{}{"label": "no id here"},
+			inputArgs: map[string]any{
+				"fields": []any{
+					map[string]any{
+						"customField": map[string]any{"label": "no id here"},
 					},
 				},
 			},
-			wantArgs: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
-						"customField": map[string]interface{}{"label": "no id here"},
+			wantArgs: map[string]any{
+				"fields": []any{
+					map[string]any{
+						"customField": map[string]any{"label": "no id here"},
 					},
 				},
 			},
@@ -312,16 +312,16 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"validate_object_fields:label"},
 				},
 			},
-			inputArgs: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			inputArgs: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"label": "",
 					},
 				},
 			},
-			wantArgs: map[string]interface{}{
-				"fields": []interface{}{
-					map[string]interface{}{
+			wantArgs: map[string]any{
+				"fields": []any{
+					map[string]any{
 						"label": "",
 					},
 				},
@@ -337,10 +337,10 @@ func TestApplyParameterTransforms(t *testing.T) {
 					Transforms: []string{"validate_object_fields:label"},
 				},
 			},
-			inputArgs: map[string]interface{}{
+			inputArgs: map[string]any{
 				"fields": "not an array",
 			},
-			wantArgs: map[string]interface{}{
+			wantArgs: map[string]any{
 				"fields": "not an array",
 			},
 		},
@@ -349,7 +349,7 @@ func TestApplyParameterTransforms(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Make a copy of inputArgs so we can compare mutations independently.
-			argsCopy := make(map[string]interface{}, len(tt.inputArgs))
+			argsCopy := make(map[string]any, len(tt.inputArgs))
 			for k, v := range tt.inputArgs {
 				argsCopy[k] = v
 			}
@@ -372,8 +372,8 @@ func TestApplyParameterTransforms(t *testing.T) {
 					continue
 				}
 				// Deep comparison for slices of maps
-				if wantSlice, ok := want.([]interface{}); ok {
-					gotSlice, ok := got.([]interface{})
+				if wantSlice, ok := want.([]any); ok {
+					gotSlice, ok := got.([]any)
 					if !ok {
 						t.Errorf("args[%q] is not []interface{}", k)
 						continue
@@ -384,8 +384,8 @@ func TestApplyParameterTransforms(t *testing.T) {
 					}
 					for i, wantElem := range wantSlice {
 						gotElem := gotSlice[i]
-						wantMap, wok := wantElem.(map[string]interface{})
-						gotMap, gok := gotElem.(map[string]interface{})
+						wantMap, wok := wantElem.(map[string]any)
+						gotMap, gok := gotElem.(map[string]any)
 						if wok && gok {
 							for field, wantVal := range wantMap {
 								gotVal := gotMap[field]

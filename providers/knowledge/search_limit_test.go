@@ -81,7 +81,7 @@ func TestKnowledgeSearch_QueryTooLong(t *testing.T) {
 	// Build a query one character over the 512-character limit.
 	longQuery := strings.Repeat("a", 513)
 
-	_, err := searchTool.Handler(map[string]interface{}{
+	_, err := searchTool.Handler(map[string]any{
 		"query": longQuery,
 	})
 
@@ -115,7 +115,7 @@ func TestKnowledgeSearch_QueryAtLimit(t *testing.T) {
 	// A query of exactly 512 characters is at the limit and must be accepted.
 	atLimitQuery := strings.Repeat("a", 512)
 
-	result, err := searchTool.Handler(map[string]interface{}{
+	result, err := searchTool.Handler(map[string]any{
 		"query": atLimitQuery,
 	})
 

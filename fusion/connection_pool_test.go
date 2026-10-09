@@ -267,7 +267,7 @@ func TestConnectionPool_RetryBodyDrain(t *testing.T) {
 			errorRequests, err)
 	}
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(result), &parsed); err != nil {
 		t.Fatalf("unexpected response after pool drain test: %v", err)
 	}
