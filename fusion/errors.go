@@ -71,8 +71,8 @@ func (e AuthenticationError) Error() string {
 		e.Service, e.Type, e.Message)
 }
 
-// GetUserFriendlyMessage returns a user-friendly error message with suggestions
-func (e AuthenticationError) GetUserFriendlyMessage() string {
+// UserFriendlyMessage returns a user-friendly error message with suggestions
+func (e AuthenticationError) UserFriendlyMessage() string {
 	switch e.Type {
 	case AuthTypeBearer:
 		return fmt.Sprintf("Bearer token authentication failed for service '%s'. Please check that your token is valid and has not expired. You may need to generate a new token from the service provider.", e.Service)
@@ -119,8 +119,8 @@ func (e ConfigurationError) Error() string {
 		e.Field, e.Message)
 }
 
-// GetUserFriendlyMessage returns a user-friendly error message with suggestions
-func (e ConfigurationError) GetUserFriendlyMessage() string {
+// UserFriendlyMessage returns a user-friendly error message with suggestions
+func (e ConfigurationError) UserFriendlyMessage() string {
 	if e.Service != "" {
 		switch e.Field {
 		case "baseURL":
@@ -157,10 +157,10 @@ func (e ConfigurationError) Unwrap() error {
 
 // ValidationError represents parameter validation errors
 type ValidationError struct {
-	Parameter string      `json:"parameter"`
-	Value     interface{} `json:"value"`
-	Rule      string      `json:"rule"`
-	Message   string      `json:"message"`
+	Parameter string `json:"parameter"`
+	Value     any    `json:"value"`
+	Rule      string `json:"rule"`
+	Message   string `json:"message"`
 }
 
 // Error implements the error interface
@@ -169,8 +169,8 @@ func (e ValidationError) Error() string {
 		e.Parameter, e.Message, e.Value)
 }
 
-// GetUserFriendlyMessage returns a user-friendly error message with suggestions
-func (e ValidationError) GetUserFriendlyMessage() string {
+// UserFriendlyMessage returns a user-friendly error message with suggestions
+func (e ValidationError) UserFriendlyMessage() string {
 	switch e.Rule {
 	case "required":
 		return fmt.Sprintf("The parameter '%s' is required but was not provided. Please include this parameter in your request.", e.Parameter)
@@ -245,19 +245,14 @@ func (e APIError) IsTransient() bool {
 		e.Category == ErrorCategoryServer
 }
 
-// GetCategory returns the error category
-func (e APIError) GetCategory() ErrorCategory {
-	return e.Category
-}
-
 // TransformationError represents errors during parameter or response transformation
 type TransformationError struct {
-	Type       string      `json:"type"` // "parameter" or "response"
-	Name       string      `json:"name"`
-	Expression string      `json:"expression"`
-	Value      interface{} `json:"value"`
-	Message    string      `json:"message"`
-	Cause      error       `json:"-"`
+	Type       string `json:"type"` // "parameter" or "response"
+	Name       string `json:"name"`
+	Expression string `json:"expression"`
+	Value      any    `json:"value"`
+	Message    string `json:"message"`
+	Cause      error  `json:"-"`
 }
 
 // Error implements the error interface
@@ -372,8 +367,8 @@ func (e NetworkError) IsRetryable() bool {
 	return e.Retryable
 }
 
-// GetRetryAfter returns the suggested retry delay
-func (e NetworkError) GetRetryAfter() time.Duration {
+// RetryDelay returns the suggested retry delay
+func (e NetworkError) RetryDelay() time.Duration {
 	if e.RetryAfter != nil {
 		return *e.RetryAfter
 	}
@@ -415,7 +410,7 @@ func NewConfigurationError(field, service, message string, cause error) *Configu
 }
 
 // NewValidationError creates a new ValidationError
-func NewValidationError(parameter string, value interface{}, rule, message string) *ValidationError {
+func NewValidationError(parameter string, value any, rule, message string) *ValidationError {
 	return &ValidationError{
 		Parameter: parameter,
 		Value:     value,
@@ -448,7 +443,7 @@ func NewAPIErrorWithCorrelation(service, endpoint string, statusCode int, messag
 }
 
 // NewTransformationError creates a new TransformationError
-func NewTransformationError(transformType, name, expression string, value interface{}, message string, cause error) *TransformationError {
+func NewTransformationError(transformType, name, expression string, value any, message string, cause error) *TransformationError {
 	return &TransformationError{
 		Type:       transformType,
 		Name:       name,

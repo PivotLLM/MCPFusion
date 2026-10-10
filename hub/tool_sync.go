@@ -45,7 +45,7 @@ type FormatOptions struct {
 func ConvertDownstreamTool(
 	serviceName string,
 	tool mcp.Tool,
-	callFunc func(ctx context.Context, toolName string, args map[string]interface{}, meta *mcp.Meta) (*mcp.CallToolResult, error),
+	callFunc func(ctx context.Context, toolName string, args map[string]any, meta *mcp.Meta) (*mcp.CallToolResult, error),
 	getOpts func(ctx context.Context) *FormatOptions,
 ) global.ToolDefinition {
 
@@ -71,7 +71,7 @@ func ConvertDownstreamTool(
 		meta, _ := options["__meta"].(*mcp.Meta)
 
 		// Remove internal keys before forwarding
-		args := make(map[string]interface{}, len(options))
+		args := make(map[string]any, len(options))
 		for k, v := range options {
 			if k == "__mcp_context" || k == "__meta" {
 				continue
@@ -119,7 +119,7 @@ func FormatCallToolResult(result *mcp.CallToolResult, opts *FormatOptions) strin
 			continue
 		}
 
-		var raw map[string]interface{}
+		var raw map[string]any
 		if err := json.Unmarshal(data, &raw); err != nil {
 			continue
 		}
@@ -154,7 +154,7 @@ func FormatCallToolResult(result *mcp.CallToolResult, opts *FormatOptions) strin
 // saveImageContent saves an MCP image content block to disk and returns a
 // human-readable message containing the filename and path.
 // raw is the unmarshalled content block map (must have "type":"image").
-func saveImageContent(raw map[string]interface{}, opts *FormatOptions) (string, error) {
+func saveImageContent(raw map[string]any, opts *FormatOptions) (string, error) {
 	// Extract base64 data and MIME type from the content block.
 	// MCP image content: {"type":"image","data":"<base64>","mimeType":"image/png"}
 	dataStr, _ := raw["data"].(string)
@@ -283,7 +283,7 @@ func convertProperties(properties map[string]any, required []string) []global.Pa
 			if format, ok := propMap["format"].(string); ok {
 				param.Format = format
 			}
-			if enum, ok := propMap["enum"].([]interface{}); ok {
+			if enum, ok := propMap["enum"].([]any); ok {
 				param.Enum = enum
 			}
 			if param.Type == "array" {

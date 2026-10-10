@@ -16,7 +16,7 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
-func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.T) {
+func TestTokenInvalidationConfig_EffectiveTokenInvalidationConfig(t *testing.T) {
 	tests := []struct {
 		name                    string
 		authConfig              AuthConfig
@@ -27,7 +27,7 @@ func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.
 			name: "default config when not specified",
 			authConfig: AuthConfig{
 				Type:              AuthTypeBearer,
-				Config:            map[string]interface{}{"token": "test"},
+				Config:            map[string]any{"token": "test"},
 				TokenInvalidation: nil,
 			},
 			wantStatusCodes:         DefaultTokenInvalidationStatusCodes,
@@ -37,7 +37,7 @@ func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.
 			name: "configured with custom status codes",
 			authConfig: AuthConfig{
 				Type:   AuthTypeBearer,
-				Config: map[string]interface{}{"token": "test"},
+				Config: map[string]any{"token": "test"},
 				TokenInvalidation: &TokenInvalidationConfig{
 					StatusCodes:         []int{401, 403},
 					RetryOnInvalidation: false,
@@ -50,7 +50,7 @@ func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.
 			name: "configured with empty status codes uses defaults",
 			authConfig: AuthConfig{
 				Type:   AuthTypeBearer,
-				Config: map[string]interface{}{"token": "test"},
+				Config: map[string]any{"token": "test"},
 				TokenInvalidation: &TokenInvalidationConfig{
 					StatusCodes:         []int{},
 					RetryOnInvalidation: true,
@@ -63,7 +63,7 @@ func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.
 			name: "configured with retry enabled",
 			authConfig: AuthConfig{
 				Type:   AuthTypeBearer,
-				Config: map[string]interface{}{"token": "test"},
+				Config: map[string]any{"token": "test"},
 				TokenInvalidation: &TokenInvalidationConfig{
 					StatusCodes:         []int{401},
 					RetryOnInvalidation: true,
@@ -76,7 +76,7 @@ func TestTokenInvalidationConfig_GetEffectiveTokenInvalidationConfig(t *testing.
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.authConfig.GetEffectiveTokenInvalidationConfig()
+			got := tt.authConfig.EffectiveTokenInvalidationConfig()
 			if len(got.StatusCodes) != len(tt.wantStatusCodes) {
 				t.Errorf("StatusCodes length = %v, want %v", len(got.StatusCodes), len(tt.wantStatusCodes))
 				return
@@ -105,11 +105,15 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 		if callCount == 1 {
 			// First call returns 401
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"error": "unauthorized"}`))
+			if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+				t.Errorf("failed to write response: %v", err)
+			}
 		} else {
 			// Second call (after token refresh) returns success
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"result": "success"}`))
+			if _, err := w.Write([]byte(`{"result": "success"}`)); err != nil {
+				t.Errorf("failed to write response: %v", err)
+			}
 		}
 	}))
 	defer mockServer.Close()
@@ -122,7 +126,7 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: true,
@@ -143,7 +147,10 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -158,7 +165,7 @@ func TestHTTPHandler_TokenInvalidationOn401(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	result, err := handler.Handle(ctx, map[string]interface{}{})
+	result, err := handler.Handle(ctx, map[string]any{})
 
 	// The token invalidation config triggers a retry on 401; the second call succeeds.
 	// With multi-tenant auth properly configured we expect the retry to succeed.
@@ -184,7 +191,9 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 		callCount++
 		// Always return 401
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -196,7 +205,7 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: false, // No retry
@@ -217,7 +226,10 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -232,7 +244,7 @@ func TestHTTPHandler_TokenInvalidationWithoutRetry(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]any{})
 
 	// Should fail without retry
 	if err == nil {
@@ -277,7 +289,9 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(`{"error": "test error"}`))
+				if _, err := w.Write([]byte(`{"error": "test error"}`)); err != nil {
+					t.Errorf("failed to write response: %v", err)
+				}
 			}))
 			defer mockServer.Close()
 
@@ -288,7 +302,7 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 						BaseURL: mockServer.URL,
 						Auth: AuthConfig{
 							Type:   AuthTypeBearer,
-							Config: map[string]interface{}{"token": "test_token"},
+							Config: map[string]any{"token": "test_token"},
 							TokenInvalidation: &TokenInvalidationConfig{
 								StatusCodes:         tt.configuredCodes,
 								RetryOnInvalidation: false,
@@ -309,7 +323,10 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 				},
 			}
 
-			fusion := New(WithConfig(config))
+			fusion, err := New(WithConfig(config))
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
 
 			service := config.Services["test_service"]
 			endpoint := &service.Endpoints[0]
@@ -323,7 +340,7 @@ func TestHTTPHandler_TokenInvalidationMultipleStatusCodes(t *testing.T) {
 			ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 			// Execute the handler
-			result, err := handler.Handle(ctx, map[string]interface{}{})
+			result, err := handler.Handle(ctx, map[string]any{})
 
 			// For status codes >= 400, we return the error body as result with no error
 			if tt.statusCode >= 400 && err == nil {
@@ -344,7 +361,7 @@ func TestHTTPHandler_PrepareAuthConfig(t *testing.T) {
 				BaseURL: "https://api.example.com",
 				Auth: AuthConfig{
 					Type: AuthTypeBearer,
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"token": "test_token",
 						"scope": "read:data",
 					},
@@ -364,7 +381,10 @@ func TestHTTPHandler_PrepareAuthConfig(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -444,7 +464,9 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 	// Test that InvalidateToken handles nil multiTenantAuth gracefully
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -455,7 +477,7 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: false,
@@ -476,7 +498,10 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -493,7 +518,7 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// This should not panic even with nil multiTenantAuth
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]any{})
 
 	// We expect an error due to no auth being configured
 	if err == nil {
@@ -504,7 +529,9 @@ func TestHTTPHandler_NilMultiTenantAuth(t *testing.T) {
 func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -515,7 +542,7 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: true,
@@ -536,7 +563,10 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -554,7 +584,7 @@ func TestHTTPHandler_ContextCancellationBeforeRetry(t *testing.T) {
 	ctx = context.WithValue(ctx, global.TenantContextKey, tenantContext)
 
 	// Execute the handler with cancelled context
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]any{})
 
 	// Should get context cancelled error
 	if err == nil {
@@ -569,7 +599,9 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 		callCount++
 		// Both calls return 401
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "unauthorized"}`))
+		if _, err := w.Write([]byte(`{"error": "unauthorized"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer mockServer.Close()
 
@@ -580,7 +612,7 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 				BaseURL: mockServer.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test_token"},
+					Config: map[string]any{"token": "test_token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: true,
@@ -602,7 +634,10 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 		},
 	}
 
-	fusion := New(WithConfig(config))
+	fusion, err := New(WithConfig(config))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := config.Services["test_service"]
 	endpoint := &service.Endpoints[0]
@@ -616,7 +651,7 @@ func TestHTTPHandler_RetryAlsoReturns401(t *testing.T) {
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenantContext)
 
 	// Execute the handler
-	result, err := handler.Handle(ctx, map[string]interface{}{})
+	result, err := handler.Handle(ctx, map[string]any{})
 
 	// Should return error body as result for 401 status
 	if err == nil && result == "" {
@@ -651,7 +686,7 @@ func TestTokenInvalidationConfig_RetryDelay(t *testing.T) {
 				"statusCodes": [401],
 				"retryOnInvalidation": true
 			}`,
-			wantRetryDelay: 0, // Will be set to default by GetEffectiveTokenInvalidationConfig
+			wantRetryDelay: 0, // Will be set to default by EffectiveTokenInvalidationConfig
 			wantError:      false,
 		},
 		{

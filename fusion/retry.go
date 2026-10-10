@@ -44,7 +44,8 @@ type RetryExecutor struct {
 }
 
 // NewRetryExecutor creates a new retry executor
-func NewRetryExecutor(config *RetryConfig, logger global.Logger) *RetryExecutor {
+func NewRetryExecutor(config *RetryConfig, opts ...ComponentOption) *RetryExecutor {
+	logger := newComponentOptions(opts).logger
 	return &RetryExecutor{
 		config: config,
 		logger: logger,
@@ -394,7 +395,8 @@ type CircuitBreaker struct {
 }
 
 // NewCircuitBreaker creates a new circuit breaker
-func NewCircuitBreaker(config *CircuitBreakerConfig, logger global.Logger) *CircuitBreaker {
+func NewCircuitBreaker(config *CircuitBreakerConfig, opts ...ComponentOption) *CircuitBreaker {
+	logger := newComponentOptions(opts).logger
 	return &CircuitBreaker{
 		config: config,
 		logger: logger,
@@ -538,15 +540,15 @@ func (cb *CircuitBreaker) recordSuccess() {
 	}
 }
 
-// GetState returns the current circuit breaker state
-func (cb *CircuitBreaker) GetState() CircuitBreakerState {
+// State returns the current circuit breaker state
+func (cb *CircuitBreaker) State() CircuitBreakerState {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 	return cb.state
 }
 
-// GetMetrics returns circuit breaker metrics
-func (cb *CircuitBreaker) GetMetrics() CircuitBreakerMetrics {
+// Metrics returns circuit breaker metrics
+func (cb *CircuitBreaker) Metrics() CircuitBreakerMetrics {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 

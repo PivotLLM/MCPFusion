@@ -17,7 +17,7 @@ import (
 type Manager struct {
 	configFiles    []string                              // List of config files to load
 	services       map[string]*fusion.ServiceConfig      // Merged services from all files
-	commands       map[string]*fusion.CommandGroupConfig  // Merged commands from all files
+	commands       map[string]*fusion.CommandGroupConfig // Merged commands from all files
 	nativePrefixes map[string]bool                       // Prefixes for native (non-config) tools
 	logger         global.Logger
 	mu             sync.RWMutex
@@ -150,8 +150,8 @@ func (m *Manager) loadAndMergeConfig(configFile string) error {
 	return nil
 }
 
-// GetService returns a specific service configuration by name
-func (m *Manager) GetService(name string) (*fusion.ServiceConfig, error) {
+// Service returns a specific service configuration by name
+func (m *Manager) Service(name string) (*fusion.ServiceConfig, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -163,8 +163,8 @@ func (m *Manager) GetService(name string) (*fusion.ServiceConfig, error) {
 	return service, nil
 }
 
-// GetAllServices returns all loaded service configurations
-func (m *Manager) GetAllServices() map[string]*fusion.ServiceConfig {
+// Services returns all loaded service configurations
+func (m *Manager) Services() map[string]*fusion.ServiceConfig {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -177,8 +177,8 @@ func (m *Manager) GetAllServices() map[string]*fusion.ServiceConfig {
 	return services
 }
 
-// GetServiceNames returns a list of all loaded service names
-func (m *Manager) GetServiceNames() []string {
+// ServiceNames returns a list of all loaded service names
+func (m *Manager) ServiceNames() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -190,9 +190,9 @@ func (m *Manager) GetServiceNames() []string {
 	return names
 }
 
-// GetAvailableServices returns a list of all available service names including
+// AvailableServices returns a list of all available service names including
 // registered native tool prefixes (e.g. "knowledge", "command").
-func (m *Manager) GetAvailableServices() []string {
+func (m *Manager) AvailableServices() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -221,9 +221,9 @@ func (m *Manager) IsNativeToolPrefix(prefix string) bool {
 	return m.nativePrefixes[prefix]
 }
 
-// GetServiceAuthConfig returns the auth configuration for a specific service
-func (m *Manager) GetServiceAuthConfig(name string) (*fusion.AuthConfig, error) {
-	service, err := m.GetService(name)
+// ServiceAuthConfig returns the auth configuration for a specific service
+func (m *Manager) ServiceAuthConfig(name string) (*fusion.AuthConfig, error) {
+	service, err := m.Service(name)
 	if err != nil {
 		return nil, err
 	}
@@ -247,9 +247,9 @@ func (m *Manager) ServiceCount() int {
 	return len(m.services)
 }
 
-// GetConfig returns a full Config object with all services and commands
+// Config returns a full Config object with all services and commands
 // This is useful for Fusion which expects a Config structure
-func (m *Manager) GetConfig() *fusion.Config {
+func (m *Manager) Config() *fusion.Config {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -259,8 +259,8 @@ func (m *Manager) GetConfig() *fusion.Config {
 	}
 }
 
-// GetCommand returns a specific command group configuration by name
-func (m *Manager) GetCommand(name string) (*fusion.CommandGroupConfig, error) {
+// Command returns a specific command group configuration by name
+func (m *Manager) Command(name string) (*fusion.CommandGroupConfig, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -272,8 +272,8 @@ func (m *Manager) GetCommand(name string) (*fusion.CommandGroupConfig, error) {
 	return commandGroup, nil
 }
 
-// GetAllCommands returns all loaded command group configurations
-func (m *Manager) GetAllCommands() map[string]*fusion.CommandGroupConfig {
+// Commands returns all loaded command group configurations
+func (m *Manager) Commands() map[string]*fusion.CommandGroupConfig {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -286,8 +286,8 @@ func (m *Manager) GetAllCommands() map[string]*fusion.CommandGroupConfig {
 	return commands
 }
 
-// GetCommandGroupNames returns a list of all loaded command group names
-func (m *Manager) GetCommandGroupNames() []string {
+// CommandGroupNames returns a list of all loaded command group names
+func (m *Manager) CommandGroupNames() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

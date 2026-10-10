@@ -16,11 +16,11 @@ import (
 
 func TestTimeTokenProcessor_ProcessValue(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tests := []struct {
 		name         string
-		input        interface{}
+		input        any
 		expectRegex  string // Use regex to match because exact time will vary
 		expectChange bool
 	}{
@@ -230,7 +230,7 @@ func TestTimeTokenProcessor_ProcessValue(t *testing.T) {
 
 func TestTimeTokenProcessor_HasTimeTokens(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tests := []struct {
 		name     string
@@ -263,7 +263,7 @@ func TestTimeTokenProcessor_HasTimeTokens(t *testing.T) {
 
 func TestTimeTokenProcessor_ValidateTimeTokens(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tests := []struct {
 		name      string
@@ -308,23 +308,23 @@ func TestTimeTokenProcessor_ValidateTimeTokens(t *testing.T) {
 
 func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	tests := []struct {
 		name     string
-		input    map[string]interface{}
-		validate func(t *testing.T, result map[string]interface{})
+		input    map[string]any
+		validate func(t *testing.T, result map[string]any)
 	}{
 		{
 			name: "Mix of token and non-token parameters",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"startDate": "#DAYS-7",
 				"endDate":   "#DAYS-0",
 				"count":     10,
 				"name":      "test",
 				"timestamp": "#HOURS-1",
 			},
-			validate: func(t *testing.T, result map[string]interface{}) {
+			validate: func(t *testing.T, result map[string]any) {
 				// Check that startDate was processed
 				startDate, ok := result["startDate"].(string)
 				if !ok {
@@ -347,7 +347,7 @@ func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 		{
 			name:  "Nil input",
 			input: nil,
-			validate: func(t *testing.T, result map[string]interface{}) {
+			validate: func(t *testing.T, result map[string]any) {
 				if result != nil {
 					t.Error("Result should be nil for nil input")
 				}
@@ -355,8 +355,8 @@ func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 		},
 		{
 			name:  "Empty map",
-			input: map[string]interface{}{},
-			validate: func(t *testing.T, result map[string]interface{}) {
+			input: map[string]any{},
+			validate: func(t *testing.T, result map[string]any) {
 				if len(result) != 0 {
 					t.Error("Result should be empty for empty input")
 				}
@@ -374,7 +374,7 @@ func TestTimeTokenProcessor_ProcessParameterArgs(t *testing.T) {
 
 func TestTimeTokenSubstitution_ActualTimeCalculation(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	// Test that DAYS tokens produce times at midnight
 	result := processor.ProcessValue("#DAYS-0")
@@ -442,7 +442,7 @@ func TestTimeTokenSubstitution_ActualTimeCalculation(t *testing.T) {
 
 func TestTimeTokenSubstitution_FutureTimeCalculation(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
 	// Test that DAYS+ tokens produce times at midnight in the future
 	result := processor.ProcessValue("#DAYS+0")
@@ -527,11 +527,11 @@ func TestTimeTokenSubstitution_FutureTimeCalculation(t *testing.T) {
 	}
 }
 
-func TestTimeTokenProcessor_GetSupportedTokens(t *testing.T) {
+func TestTimeTokenProcessor_SupportedTokens(t *testing.T) {
 	logger, _ := mlogger.New(mlogger.WithDebug(false))
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 
-	tokens := processor.GetSupportedTokens()
+	tokens := processor.SupportedTokens()
 
 	// Check that we have all expected token types
 	expectedTokens := []string{"#DAYS-N", "#HOURS-N", "#MINS-N", "#DAYS+N", "#HOURS+N", "#MINS+N"}

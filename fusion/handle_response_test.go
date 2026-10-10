@@ -38,7 +38,7 @@ func newHandleResponseHandler(t *testing.T, responseType ResponseType) *HTTPHand
 				BaseURL: "http://localhost",
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test-token"},
+					Config: map[string]any{"token": "test-token"},
 				},
 				Endpoints: []EndpointConfig{
 					{
@@ -54,7 +54,10 @@ func newHandleResponseHandler(t *testing.T, responseType ResponseType) *HTTPHand
 			},
 		},
 	}
-	f := New(WithConfig(config), WithLogger(mlogger.NewMemoryLogger()))
+	f, err := New(WithConfig(config), WithLogger(mlogger.NewMemoryLogger()))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	svc := config.Services["testsvc"]
 	ep := &svc.Endpoints[0]
 	return NewHTTPHandler(f, svc, ep)
@@ -141,7 +144,7 @@ func TestHandleResponse_TokenInvalidationRetry(t *testing.T) {
 				BaseURL: server.URL,
 				Auth: AuthConfig{
 					Type:   AuthTypeBearer,
-					Config: map[string]interface{}{"token": "test-token"},
+					Config: map[string]any{"token": "test-token"},
 					TokenInvalidation: &TokenInvalidationConfig{
 						StatusCodes:         []int{401},
 						RetryOnInvalidation: true,
@@ -162,7 +165,10 @@ func TestHandleResponse_TokenInvalidationRetry(t *testing.T) {
 		},
 	}
 
-	f := New(WithConfig(config), WithLogger(mlogger.NewMemoryLogger()))
+	f, err := New(WithConfig(config), WithLogger(mlogger.NewMemoryLogger()))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "retrysvc_ep")
 

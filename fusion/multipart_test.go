@@ -35,7 +35,7 @@ func TestHasFileParams_NoFileParams(t *testing.T) {
 		makeParam("cardId", ParameterLocationPath, "", ""),
 		makeParam("url", ParameterLocationQuery, "", ""),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"cardId": "abc123",
 		"url":    "https://example.com",
 	}
@@ -49,7 +49,7 @@ func TestHasFileParams_FileParamNotInArgs(t *testing.T) {
 		makeParam("cardId", ParameterLocationPath, "", ""),
 		makeParam("file_content", ParameterLocationFile, "file", "file_name"),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"cardId": "abc123",
 		// file_content not provided
 	}
@@ -63,7 +63,7 @@ func TestHasFileParams_FileParamInArgs(t *testing.T) {
 		makeParam("cardId", ParameterLocationPath, "", ""),
 		makeParam("file_content", ParameterLocationFile, "file", "file_name"),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"cardId":       "abc123",
 		"file_content": "hello world",
 	}
@@ -120,7 +120,9 @@ func parseMultipartBody(t *testing.T, body string, contentType string) map[strin
 			content:  sb.String(),
 			header:   part.Header,
 		}
-		part.Close()
+		if err := part.Close(); err != nil {
+			t.Fatalf("failed to close part %q: %v", name, err)
+		}
 	}
 
 	return parts
@@ -130,7 +132,7 @@ func TestBuildMultipartBody_FileFieldNameAndContent(t *testing.T) {
 	params := []ParameterConfig{
 		makeParam("file_content", ParameterLocationFile, "file", ""),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"file_content": "hello world",
 	}
 
@@ -167,7 +169,7 @@ func TestBuildMultipartBody_FileNameParamUsed(t *testing.T) {
 	params := []ParameterConfig{
 		makeParam("file_content", ParameterLocationFile, "file", "file_name"),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"file_content": "data",
 		"file_name":    "report.md",
 	}
@@ -204,7 +206,7 @@ func TestBuildMultipartBody_FallbackFileName(t *testing.T) {
 	params := []ParameterConfig{
 		makeParam("file_content", ParameterLocationFile, "file", "file_name"),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"file_content": "data",
 		// file_name intentionally absent
 	}
@@ -241,7 +243,7 @@ func TestBuildMultipartBody_FallbackFileName_NoFileNameParam(t *testing.T) {
 	params := []ParameterConfig{
 		makeParam("file_content", ParameterLocationFile, "file", ""),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"file_content": "data",
 	}
 
@@ -278,7 +280,7 @@ func TestBuildMultipartBody_BodyParamsAsFormFields(t *testing.T) {
 		makeParam("description", ParameterLocationBody, "", ""),
 		makeParam("tag", ParameterLocationBody, "label", ""),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"file_content": "content here",
 		"description":  "my description",
 		"tag":          "urgent",
@@ -337,7 +339,7 @@ func TestBuildMultipartBody_FilePath(t *testing.T) {
 	params := []ParameterConfig{
 		makeParam("file_path", ParameterLocationFilePath, "file", ""),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"file_path": tmpFile,
 	}
 
@@ -384,7 +386,7 @@ func TestBuildMultipartBody_FilePath_NameOverride(t *testing.T) {
 	params := []ParameterConfig{
 		makeParam("file_path", ParameterLocationFilePath, "file", "file_name"),
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"file_path": tmpFile,
 		"file_name": "report.xlsx",
 	}

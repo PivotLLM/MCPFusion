@@ -8,16 +8,16 @@ package fusion
 import (
 	"testing"
 
-	"github.com/tenebris-tech/mlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tenebris-tech/mlogger"
 )
 
 func TestValidator_AutoConvertISOToYYYYMMDD(t *testing.T) {
 	logger, err := mlogger.New(mlogger.WithDebug(true))
 	require.NoError(t, err)
 
-	validator := NewValidator(logger)
+	validator := NewValidator(WithLogger(logger))
 
 	// Test parameter configuration for YYYYMMDD format
 	params := []ParameterConfig{
@@ -74,7 +74,7 @@ func TestValidator_AutoConvertISOToYYYYMMDD(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create args map with test value
-			args := map[string]interface{}{
+			args := map[string]any{
 				"startDate": tt.inputValue,
 			}
 
@@ -99,7 +99,7 @@ func TestValidator_tryConvertISOToYYYYMMDD(t *testing.T) {
 	logger, err := mlogger.New(mlogger.WithDebug(false))
 	require.NoError(t, err)
 
-	validator := NewValidator(logger)
+	validator := NewValidator(WithLogger(logger))
 
 	tests := []struct {
 		name        string
@@ -157,7 +157,7 @@ func TestValidator_NoConversionForNonDatePatterns(t *testing.T) {
 	logger, err := mlogger.New(mlogger.WithDebug(false))
 	require.NoError(t, err)
 
-	validator := NewValidator(logger)
+	validator := NewValidator(WithLogger(logger))
 
 	// Test parameter configuration for non-YYYYMMDD pattern
 	params := []ParameterConfig{
@@ -174,7 +174,7 @@ func TestValidator_NoConversionForNonDatePatterns(t *testing.T) {
 	}
 
 	// Create args map with ISO date (should not be converted for non-date fields)
-	args := map[string]interface{}{
+	args := map[string]any{
 		"emailField": "2025-08-19T00:00:00Z",
 	}
 

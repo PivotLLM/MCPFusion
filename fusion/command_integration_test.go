@@ -22,7 +22,7 @@ func newTestLogger(t *testing.T) *testlogger.Logger {
 
 func TestKaliConfig_Nmap(t *testing.T) {
 	// Skip if nmap not installed
-	executor := NewCommandExecutor(nil)
+	executor := NewCommandExecutor()
 	checkResult := executor.Execute(context.Background(), ExecutionConfig{
 		Executable:    "/usr/bin/which",
 		Args:          []string{"nmap"},
@@ -36,10 +36,13 @@ func TestKaliConfig_Nmap(t *testing.T) {
 
 	// Load config and test
 	logger := newTestLogger(t)
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/kali.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -56,7 +59,7 @@ func TestKaliConfig_Nmap(t *testing.T) {
 	}
 
 	// Test with basic scan
-	result, err := nmapTool.Handler(map[string]interface{}{
+	result, err := nmapTool.Handler(map[string]any{
 		"target": "127.0.0.1",
 		"ports":  "22",
 	})

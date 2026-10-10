@@ -73,7 +73,7 @@ func (p *Provider) RegisterTools() []global.ToolDefinition {
 
 // extractContext pulls the MCP context from the args map.  If no context is
 // present, it returns context.Background().
-func extractContext(args map[string]interface{}) context.Context {
+func extractContext(args map[string]any) context.Context {
 	if v, ok := args["__mcp_context"]; ok {
 		if ctx, ok := v.(context.Context); ok {
 			return ctx
@@ -95,7 +95,7 @@ func (p *Provider) echoTool() global.ToolDefinition {
 				Type:        "string",
 			},
 		},
-		Handler: func(args map[string]interface{}) (string, error) {
+		Handler: func(args map[string]any) (string, error) {
 			message, _ := args["message"].(string)
 
 			if p.logger != nil {
@@ -130,7 +130,7 @@ func (p *Provider) delayTool() global.ToolDefinition {
 				Type:        "number",
 			},
 		},
-		Handler: func(args map[string]interface{}) (string, error) {
+		Handler: func(args map[string]any) (string, error) {
 			ctx := extractContext(args)
 
 			rawSeconds, _ := args["seconds"].(float64)
@@ -185,7 +185,7 @@ func (p *Provider) randomDataTool() global.ToolDefinition {
 				Type:        "integer",
 			},
 		},
-		Handler: func(args map[string]interface{}) (string, error) {
+		Handler: func(args map[string]any) (string, error) {
 			var n int
 			switch v := args["bytes"].(type) {
 			case float64:
@@ -213,7 +213,7 @@ func (p *Provider) randomDataTool() global.ToolDefinition {
 			_, _ = rng.Read(buf)
 			rngMu.Unlock()
 
-			out, err := json.Marshal(map[string]interface{}{
+			out, err := json.Marshal(map[string]any{
 				"bytes": n,
 				"data":  hex.EncodeToString(buf),
 			})
@@ -244,7 +244,7 @@ func (p *Provider) errorTool() global.ToolDefinition {
 				Type:        "string",
 			},
 		},
-		Handler: func(args map[string]interface{}) (string, error) {
+		Handler: func(args map[string]any) (string, error) {
 			message, _ := args["message"].(string)
 			if message == "" {
 				message = "perf provider error"
@@ -266,7 +266,7 @@ func (p *Provider) counterTool() global.ToolDefinition {
 		Name:        "perf_counter",
 		Description: "Atomically increments and returns a monotonically increasing counter. Useful for testing concurrency.",
 		Parameters:  []global.Parameter{},
-		Handler: func(args map[string]interface{}) (string, error) {
+		Handler: func(args map[string]any) (string, error) {
 			n := p.counter.Add(1)
 			out, err := json.Marshal(map[string]int64{"count": n})
 			if err != nil {

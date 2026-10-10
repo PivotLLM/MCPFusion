@@ -21,39 +21,39 @@ This is intended for services that do not allow or limit device authentication f
 
 ```bash
 # From the MCPFusion project root
-cd cmd/fusion-oauth
-go build -o fusion-oauth .
+cd cmd/auth
+go build -o fusion-auth .
 ```
 
 ## Quick Start
 
 1. **List available providers:**
 ```bash
-./fusion-oauth -list
+./fusion-auth -list
 ```
 
 2. **Authenticate with Google:**
 ```bash
-./fusion-oauth -service google -fusion http://10.0.0.1:8080 -token <your-mcp-token>
+./fusion-auth -service google -fusion http://10.0.0.1:8080 -token <your-mcp-token>
 ```
 
 3. **Authenticate with GitHub:**
 ```bash
-./fusion-oauth -service github -fusion https://mcp.example.com -token <your-mcp-token>
+./fusion-auth -service github -fusion https://mcp.example.com -token <your-mcp-token>
 ```
 
 ## Command Line Options
 
 ```bash
-Usage: fusion-oauth [OPTIONS]
+Usage: fusion-auth <auth-code-blob>
+   or: fusion-auth -service <name> -fusion <url> -token <token>
 
 Options:
   -service string        OAuth service provider (e.g., google, github, dropbox)
   -fusion string         MCPFusion server URL (e.g., http://10.0.0.1:8080)
   -token string          MCPFusion API token for authentication
-  -config string         Configuration file path
-  -timeout duration      OAuth flow timeout (default 10m0s)
   -verbose               Enable verbose logging
+  -debug                 Enable debug logging (includes HTTP request/response details)
   -version               Show version information
   -list                  List available OAuth providers
 ```
@@ -101,7 +101,7 @@ Create a `config.json` file based on the provided `config.example.json`:
 
 Use the configuration file:
 ```bash
-./fusion-oauth -config config.json -service google -fusion http://10.0.0.1:8080 -token <token>
+./fusion-auth -config config.json -service google -fusion http://10.0.0.1:8080 -token <token>
 ```
 
 ## OAuth Flows
@@ -129,7 +129,7 @@ To add a new OAuth provider:
 
 1. **Create provider package:**
 ```bash
-mkdir cmd/fusion-oauth/providers/newservice
+mkdir cmd/auth/providers/newservice
 ```
 
 2. **Implement provider interface:**
@@ -206,7 +206,7 @@ The tool integrates with MCPFusion through several API endpoints:
 
 Enable verbose logging for detailed information:
 ```bash
-./fusion-oauth -verbose -service google -fusion http://10.0.0.1:8080 -token <token>
+./fusion-auth -verbose -service google -fusion http://10.0.0.1:8080 -token <token>
 ```
 
 ## Development
@@ -228,14 +228,14 @@ go test -integration ./...
 
 ```bash
 # Build for current platform
-go build -o fusion-oauth .
+go build -o fusion-auth .
 
 # Build for multiple platforms
-GOOS=linux GOARCH=amd64 go build -o fusion-oauth-linux-amd64 .
-GOOS=windows GOARCH=amd64 go build -o fusion-oauth-windows-amd64.exe .
-GOOS=darwin GOARCH=amd64 go build -o fusion-oauth-darwin-amd64 .
+GOOS=linux GOARCH=amd64 go build -o fusion-auth-linux-amd64 .
+GOOS=windows GOARCH=amd64 go build -o fusion-auth-windows-amd64.exe .
+GOOS=darwin GOARCH=amd64 go build -o fusion-auth-darwin-amd64 .
 ```
 
 ## License
 
-Copyright (c) 2025 Tenebris Technologies Inc. All rights reserved.
+Copyright (c) 2025-2026 Tenebris Technologies Inc. Please see LICENSE file for details.

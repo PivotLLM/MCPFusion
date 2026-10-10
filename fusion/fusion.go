@@ -21,8 +21,8 @@
 //
 // Example usage:
 //
-//	multiTenantAuth := fusion.NewMultiTenantAuthManager(db, logger)
-//	fusionProvider := fusion.New(
+//	multiTenantAuth := fusion.NewMultiTenantAuthManager(db, cache, fusion.WithLogger(logger))
+//	fusionProvider, err := fusion.New(
 //		fusion.WithJSONConfig("configs/microsoft365.json"),
 //		fusion.WithLogger(logger),
 //	)
@@ -33,6 +33,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -134,17 +135,22 @@ type NativeToolPrefixRegistrar interface {
 	RegisterNativeToolPrefix(prefix string)
 }
 
-// Option defines a functional option type for configuring Fusion instances.
-// This pattern allows for flexible and extensible configuration while maintaining
-// backward compatibility. Options are applied during Fusion initialization.
+// Option configures a Fusion instance. Options are applied during New.
 //
 // Example usage:
 //
-//	fusion := New(
+//	fusion, err := New(
 //		WithJSONConfig("config.json"),
 //		WithLogger(logger),
 //	)
-type Option func(*Fusion)
+type Option interface {
+	applyToFusion(*Fusion)
+}
+
+// optionFunc adapts a function to the Option interface.
+type optionFunc func(*Fusion)
+
+func (o optionFunc) applyToFusion(f *Fusion) { o(f) }
 
 // WithJSONConfig loads API service configuration from a JSON file.
 // This is the primary way to configure API endpoints, authentication, and service settings.
@@ -160,12 +166,12 @@ type Option func(*Fusion)
 //
 // Example:
 //
-//	fusion := New(WithJSONConfig("configs/microsoft365.json"))
+//	fusion, err := New(WithJSONConfig("configs/microsoft365.json"))
 //
 // If the file cannot be loaded or contains invalid configuration, the error will be
 // logged and the Fusion instance will be created without that configuration.
 func WithJSONConfig(configPath string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if f.logger != nil {
 			f.logger.Infof("Loading configuration from file: %s", configPath)
 		}
@@ -186,12 +192,12 @@ func WithJSONConfig(configPath string) Option {
 			return
 		}
 		f.config = config
-	}
+	})
 }
 
 // WithJSONConfigData loads configuration from JSON data
 func WithJSONConfigData(jsonData []byte, configPath string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if f.logger != nil {
 			f.logger.Infof("Loading configuration from JSON data (path: %s)", configPath)
 		}
@@ -204,23 +210,23 @@ func WithJSONConfigData(jsonData []byte, configPath string) Option {
 			return
 		}
 		f.config = config
-	}
+	})
 }
 
 // WithConfig sets the configuration directly
 func WithConfig(config *Config) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.config = config
-	}
+	})
 }
 
 // WithConfigManager sets the configuration from a config manager.
 // If the config manager also implements NativeToolPrefixRegistrar, the reference
 // is stored so that native tool prefixes can be registered during RegisterTools().
-func WithConfigManager(configManager interface{ GetConfig() *Config }) Option {
-	return func(f *Fusion) {
+func WithConfigManager(configManager interface{ Config() *Config }) Option {
+	return optionFunc(func(f *Fusion) {
 		if configManager != nil {
-			f.config = configManager.GetConfig()
+			f.config = configManager.Config()
 			if f.logger != nil && f.config != nil {
 				f.logger.Infof("Loaded configuration from config manager with %d services", len(f.config.Services))
 			}
@@ -228,23 +234,16 @@ func WithConfigManager(configManager interface{ GetConfig() *Config }) Option {
 				f.nativeToolPrefixRegistrar = registrar
 			}
 		}
-	}
-}
-
-// WithLogger sets the logger
-func WithLogger(logger global.Logger) Option {
-	return func(f *Fusion) {
-		f.logger = logger
-	}
+	})
 }
 
 // WithHTTPClient sets a custom HTTP client
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithHTTPClient(client *http.Client) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.httpClient = client
-	}
+	})
 }
 
 // Cache is managed exclusively by the multi-tenant auth manager
@@ -254,71 +253,71 @@ func WithHTTPClient(client *http.Client) Option {
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithTimeout(timeout time.Duration) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if f.httpClient == nil {
 			f.httpClient = &http.Client{}
 		}
 		f.httpClient.Timeout = timeout
-	}
+	})
 }
 
 // WithMetrics enables or disables metrics collection
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithMetrics(enabled bool) Option {
-	return func(f *Fusion) {
-		f.metricsCollector = NewMetricsCollector(f.logger, enabled)
-	}
+	return optionFunc(func(f *Fusion) {
+		f.metricsCollector = NewMetricsCollector(enabled, WithLogger(f.logger))
+	})
 }
 
 // WithMetricsCollector sets a custom metrics collector
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithMetricsCollector(collector *MetricsCollector) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.metricsCollector = collector
-	}
+	})
 }
 
 // WithCorrelationIDGenerator sets a custom correlation ID generator
 //
 //goland:noinspection GoUnusedExportedFunction
 func WithCorrelationIDGenerator(generator *CorrelationIDGenerator) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.correlationIDGenerator = generator
-	}
+	})
 }
 
 // WithMultiTenantAuth sets a custom multi-tenant authentication manager
 // NOTE: This is optional - if not provided, a default auth manager will be auto-created
 func WithMultiTenantAuth(multiTenantAuth *MultiTenantAuthManager) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.multiTenantAuth = multiTenantAuth
-	}
+	})
 }
 
 // WithExternalURL sets the externally-accessible URL of this server.
 // Used by auth setup tools to generate auth code blobs for fusion-auth.
 // Typically set from the MCP_FUSION_EXTERNAL_URL environment variable.
 func WithExternalURL(url string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.externalURL = url
-	}
+	})
 }
 
 // WithDownloadDir sets the directory where binary responses (e.g. DOCX files) are saved.
 // If the directory does not exist, Fusion will attempt to create it.
 func WithDownloadDir(dir string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.downloadDir = dir
-	}
+	})
 }
 
 // WithDatabase sets the database for native tool operations such as the knowledge store.
 func WithDatabase(database db.Database) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.database = database
-	}
+	})
 }
 
 // WithDataStore wires stateful multi-tenant auth on top of a generic
@@ -330,17 +329,17 @@ func WithDatabase(database db.Database) Option {
 // stateless manager). Place after WithLogger so the manager and cache share the
 // configured logger.
 func WithDataStore(ds toolspec.DataStore) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if ds == nil {
 			return
 		}
-		store := NewDataStoreTokenStore(ds, f.logger)
-		dbCache := NewDatabaseCache(store, f.logger)
-		f.multiTenantAuth = NewMultiTenantAuthManager(store, dbCache, f.logger)
+		store := NewDataStoreTokenStore(ds, WithLogger(f.logger))
+		dbCache := NewDatabaseCache(store, WithLogger(f.logger))
+		f.multiTenantAuth = NewMultiTenantAuthManager(store, dbCache, WithLogger(f.logger))
 		if f.logger != nil {
 			f.logger.Info("Configured multi-tenant auth from DataStore-backed TokenStore")
 		}
-	}
+	})
 }
 
 // WithConfigDir loads configuration from a host-provided directory: it first
@@ -350,7 +349,7 @@ func WithDataStore(ds toolspec.DataStore) Option {
 // a single Config. Later files overwrite earlier ones on name collision, matching
 // the standalone config manager. Place after WithLogger for load logging.
 func WithConfigDir(dir string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if dir == "" {
 			return
 		}
@@ -416,43 +415,43 @@ func WithConfigDir(dir string) Option {
 			f.logger.Infof("Loaded %d services and %d command groups from %s",
 				len(merged.Services), len(merged.Commands), dir)
 		}
-	}
+	})
 }
 
 // WithSharedCollector sets the cross-package metrics collector used by the health tool
 // to report request/error counts for all services (API, hub, knowledge, etc.).
 func WithSharedCollector(c *metrics.Collector) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.sharedCollector = c
-	}
+	})
 }
 
 // WithMaxResponseBytes sets a limit on the size of responses returned to callers.
 // Responses exceeding this limit are replaced with an informational message.
 // A value of 0 disables the limit. Default is global.DefaultMaxResponseBytes (1 MB).
 func WithMaxResponseBytes(n int) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.maxResponseBytes = n
-	}
+	})
 }
 
 // WithAllowDestructive enables destructive tools (e.g. DELETE operations) for this instance.
 // This option overrides the MCP_FUSION_ALLOW_DESTRUCTIVE environment variable.
 func WithAllowDestructive(allow bool) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		f.allowDestructive = allow
-	}
+	})
 }
 
 // WithAuthCommandName sets the CLI command name shown in auth setup instructions
 // (default "fusion-auth"). Embedding hosts override it, e.g. "claw-auth", so the
 // generated command matches the utility they ship. An empty name is ignored.
 func WithAuthCommandName(name string) Option {
-	return func(f *Fusion) {
+	return optionFunc(func(f *Fusion) {
 		if name != "" {
 			f.authCommandName = name
 		}
-	}
+	})
 }
 
 // New creates a new production-ready Fusion instance with the provided configuration options.
@@ -478,14 +477,15 @@ func WithAuthCommandName(name string) Option {
 //
 // Returns:
 //   - *Fusion: Configured Fusion instance ready for use as an MCP provider
+//   - error: non-nil if the multi-tenant auth manager has no cache
 //
 // Example Basic Usage:
 //
-//	fusion := New()  // Creates instance with defaults
+//	fusion, err := New()  // Creates instance with defaults
 //
 // Example Production Usage:
 //
-//	fusion := New(
+//	fusion, err := New(
 //		WithJSONConfig("configs/microsoft365.json"),
 //		WithJSONConfig("configs/google.json"),
 //		WithLogger(logger),
@@ -497,7 +497,7 @@ func WithAuthCommandName(name string) Option {
 // Thread Safety:
 // The returned Fusion instance is thread-safe and can handle concurrent requests
 // from multiple goroutines without additional synchronization.
-func New(options ...Option) *Fusion {
+func New(options ...Option) (*Fusion, error) {
 	// Create custom HTTP transport with optimized connection pooling
 	transport := &http.Transport{
 		// Connection pooling settings
@@ -528,8 +528,8 @@ func New(options ...Option) *Fusion {
 			Transport: transport,
 			Timeout:   global.HTTPDefaultClientTimeout,
 		},
-		cache:                  nil,                            // Cache will be set by multi-tenant auth manager
-		metricsCollector:       NewMetricsCollector(nil, true), // Enable metrics by default
+		cache:                  nil,                       // Cache will be set by multi-tenant auth manager
+		metricsCollector:       NewMetricsCollector(true), // Enable metrics by default
 		correlationIDGenerator: NewCorrelationIDGenerator(),
 		circuitBreakers:        make(map[string]*CircuitBreaker),
 		maxResponseBytes:       global.DefaultMaxResponseBytes,
@@ -538,7 +538,7 @@ func New(options ...Option) *Fusion {
 
 	// Apply all options
 	for _, opt := range options {
-		opt(fusion)
+		opt.applyToFusion(fusion)
 	}
 
 	// Parse MCP_FUSION_ALLOW_DESTRUCTIVE environment variable
@@ -558,8 +558,8 @@ func New(options ...Option) *Fusion {
 	// Automatically create multi-tenant auth manager if not provided
 	if fusion.multiTenantAuth == nil {
 		// Create database cache for multi-tenant authentication
-		dbCache := NewDatabaseCache(nil, fusion.logger)
-		fusion.multiTenantAuth = NewMultiTenantAuthManager(nil, dbCache, fusion.logger)
+		dbCache := NewDatabaseCache(nil, WithLogger(fusion.logger))
+		fusion.multiTenantAuth = NewMultiTenantAuthManager(nil, dbCache, WithLogger(fusion.logger))
 
 		if fusion.logger != nil {
 			fusion.logger.Info("Auto-created multi-tenant authentication manager")
@@ -573,7 +573,7 @@ func New(options ...Option) *Fusion {
 			fusion.logger.Info("Using database-backed cache for persistent token storage")
 		}
 	} else {
-		panic("Multi-tenant auth manager must have a valid database cache")
+		return nil, errors.New("multi-tenant auth manager has no cache")
 	}
 
 	// Update metrics collector with logger
@@ -615,30 +615,30 @@ func New(options ...Option) *Fusion {
 		fusion.logger.Info("Fusion instance initialization completed")
 	}
 
-	return fusion
+	return fusion, nil
 }
 
 // Legacy authentication strategies removed - only multi-tenant auth is supported
 
-// GetConfig returns the current configuration
-func (f *Fusion) GetConfig() *Config {
+// Config returns the current configuration
+func (f *Fusion) Config() *Config {
 	return f.config
 }
 
 // Legacy GetAuthManager removed - use multi-tenant auth manager
 
-// GetHTTPClient returns the HTTP client
-func (f *Fusion) GetHTTPClient() *http.Client {
+// HTTPClient returns the HTTP client
+func (f *Fusion) HTTPClient() *http.Client {
 	return f.httpClient
 }
 
-// GetCache returns the cache
-func (f *Fusion) GetCache() Cache {
+// Cache returns the cache
+func (f *Fusion) Cache() Cache {
 	return f.cache
 }
 
-// GetLogger returns the logger
-func (f *Fusion) GetLogger() global.Logger {
+// Logger returns the logger
+func (f *Fusion) Logger() global.Logger {
 	return f.logger
 }
 
@@ -771,7 +771,7 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 		}
 
 		// Use MCP-compliant name (alias or sanitized)
-		mcpName := GetMCPParameterName(&param)
+		mcpName := MCPParameterName(&param)
 
 		// Log the mapping if different from original
 		if f.logger != nil && mcpName != param.Name {
@@ -847,9 +847,9 @@ func (f *Fusion) createToolDefinition(serviceName string, service *ServiceConfig
 	// Gate destructive tools when MCP_FUSION_ALLOW_DESTRUCTIVE is not enabled
 	if hints.Destructive != nil && *hints.Destructive && !f.allowDestructive {
 		originalHandler := handler
-		handler = func(args map[string]interface{}) (string, error) {
+		handler = func(args map[string]any) (string, error) {
 			_ = originalHandler // preserve reference
-			return "", fmt.Errorf("this tool performs a destructive operation and is currently disabled. Set the MCP_FUSION_ALLOW_DESTRUCTIVE environment variable to 'true' to enable destructive tools")
+			return "", fmt.Errorf("destructive operations are disabled (set MCP_FUSION_ALLOW_DESTRUCTIVE=true to allow)")
 		}
 	}
 
@@ -947,7 +947,7 @@ func (f *Fusion) createCommandToolDefinition(groupName string, commandGroup *Com
 
 // createCommandToolHandler creates a handler for command execution
 func (f *Fusion) createCommandToolHandler(commandGroup *CommandGroupConfig, command *CommandConfig) global.ToolHandler {
-	return func(args map[string]interface{}) (string, error) {
+	return func(args map[string]any) (string, error) {
 		// Create command handler
 		handler := NewCommandHandler(f, commandGroup, command)
 
@@ -995,23 +995,6 @@ func (h *contextAwareHandler) CallWithContext(ctx context.Context, options map[s
 	}
 
 	return result, nil
-}
-
-// extractTenantContextFromOptions attempts to extract tenant context for multi-tenant operations
-// This is a placeholder for proper tenant context extraction once the MCP interface supports context passing
-func (f *Fusion) extractTenantContextFromOptions(serviceName string, _ map[string]any) *TenantContext {
-	// In a proper implementation, this would extract the tenant context from the HTTP request context
-	// For now, we'll create a basic tenant context that can be used for authentication
-
-	// TODO: This is a temporary workaround. The proper solution is to modify the MCP server
-	// to pass the HTTP request context through to tool handlers.
-
-	return &TenantContext{
-		TenantHash:  "unknown", // Will be resolved by auth middleware
-		ServiceName: serviceName,
-		RequestID:   f.correlationIDGenerator.Generate(),
-		CreatedAt:   time.Now(),
-	}
 }
 
 // RegisterResources implements the global.ResourceProvider interface
@@ -1066,8 +1049,8 @@ func (f *Fusion) ReloadConfig() error {
 	return nil
 }
 
-// GetServiceNames returns a list of configured service names
-func (f *Fusion) GetServiceNames() []string {
+// ServiceNames returns a list of configured service names
+func (f *Fusion) ServiceNames() []string {
 	if f.config == nil {
 		return []string{}
 	}
@@ -1079,8 +1062,8 @@ func (f *Fusion) GetServiceNames() []string {
 	return names
 }
 
-// GetService returns a service configuration by name
-func (f *Fusion) GetService(name string) *ServiceConfig {
+// Service returns a service configuration by name
+func (f *Fusion) Service(name string) *ServiceConfig {
 	if f.config == nil {
 		return nil
 	}
@@ -1098,14 +1081,14 @@ func (f *Fusion) HasService(name string) bool {
 	return exists
 }
 
-// GetEndpoint returns an endpoint configuration by service and endpoint ID
-func (f *Fusion) GetEndpoint(serviceName, endpointID string) *EndpointConfig {
-	service := f.GetService(serviceName)
+// Endpoint returns an endpoint configuration by service and endpoint ID
+func (f *Fusion) Endpoint(serviceName, endpointID string) *EndpointConfig {
+	service := f.Service(serviceName)
 	if service == nil {
 		return nil
 	}
 
-	return service.GetEndpointByID(endpointID)
+	return service.EndpointByID(endpointID)
 }
 
 // Legacy authentication methods removed - use multi-tenant auth manager
@@ -1133,10 +1116,10 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 
 	// Prepare request body and query parameters
 	queryParams := parsedURL.Query()
-	var requestBody interface{}
-	bodyParameters := make(map[string]interface{})
-	pathParams := make(map[string]interface{})
-	headerParams := make(map[string]interface{})
+	var requestBody any
+	bodyParameters := make(map[string]any)
+	pathParams := make(map[string]any)
+	headerParams := make(map[string]any)
 
 	if f.logger != nil {
 		f.logger.Debugf("Processing %d parameters for endpoint %s", len(endpoint.Parameters), endpoint.ID)
@@ -1203,25 +1186,25 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 		// Apply parameter to appropriate location
 		switch param.Location {
 		case ParameterLocationPath:
-			pathParams[param.GetTransformedParameterName()] = transformedValue
+			pathParams[param.TransformedParameterName()] = transformedValue
 			// Replace path parameter
-			placeholder := "{" + param.GetTransformedParameterName() + "}"
+			placeholder := "{" + param.TransformedParameterName() + "}"
 			parsedURL.Path = strings.ReplaceAll(parsedURL.Path, placeholder, fmt.Sprintf("%v", transformedValue))
 			if f.logger != nil {
 				f.logger.Debugf("Applied path parameter %s: %v", param.Name, transformedValue)
 			}
 		case ParameterLocationQuery:
-			queryParams.Set(param.GetTransformedParameterName(), fmt.Sprintf("%v", transformedValue))
+			queryParams.Set(param.TransformedParameterName(), fmt.Sprintf("%v", transformedValue))
 			if f.logger != nil {
 				f.logger.Debugf("Applied query parameter %s: %v", param.Name, transformedValue)
 			}
 		case ParameterLocationHeader:
-			headerParams[param.GetTransformedParameterName()] = transformedValue
+			headerParams[param.TransformedParameterName()] = transformedValue
 			if f.logger != nil {
 				f.logger.Debugf("Prepared header parameter %s: %v", param.Name, transformedValue)
 			}
 		case ParameterLocationBody:
-			bodyParameters[param.GetTransformedParameterName()] = transformedValue
+			bodyParameters[param.TransformedParameterName()] = transformedValue
 			if f.logger != nil {
 				f.logger.Debugf("Applied body parameter %s: %v", param.Name, transformedValue)
 			}
@@ -1287,7 +1270,7 @@ func (f *Fusion) buildRequest(ctx context.Context, serviceName string, service *
 	for _, param := range endpoint.Parameters {
 		if param.Location == ParameterLocationHeader {
 			if value, exists := options[param.Name]; exists {
-				headerName := param.GetTransformedParameterName()
+				headerName := param.TransformedParameterName()
 				headerValue := fmt.Sprintf("%v", value)
 				req.Header.Set(headerName, headerValue)
 				headerCount++
@@ -1373,7 +1356,7 @@ func (f *Fusion) processResponse(resp *http.Response, endpoint *EndpointConfig, 
 // processJSONResponse processes JSON responses with optional transformation
 func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig, _ string) (string, error) {
 	// Parse JSON
-	var responseData interface{}
+	var responseData any
 	if err := json.Unmarshal(bodyBytes, &responseData); err != nil {
 		return "", NewTransformationError("response", "json", "json.Unmarshal", string(bodyBytes), "failed to parse JSON response", err)
 	}
@@ -1397,7 +1380,7 @@ func (f *Fusion) processJSONResponse(bodyBytes []byte, endpoint *EndpointConfig,
 }
 
 // validateParameter validates a parameter value according to its configuration
-func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) error {
+func (f *Fusion) validateParameter(param *ParameterConfig, value any) error {
 	if f.logger != nil {
 		f.logger.Debugf("Validating parameter %s (type: %s, value: %v)", param.Name, param.Type, value)
 	}
@@ -1547,7 +1530,7 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value interface{}) er
 }
 
 // transformParameter applies parameter transformation if configured
-func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (interface{}, error) {
+func (f *Fusion) transformParameter(param *ParameterConfig, value any) (any, error) {
 	if param.Transform == nil || param.Transform.Expression == "" {
 		return value, nil
 	}
@@ -1683,7 +1666,7 @@ func (f *Fusion) transformParameter(param *ParameterConfig, value interface{}) (
 }
 
 // applyResponseTransform applies transformation to response data
-func (f *Fusion) applyResponseTransform(data interface{}, transform string) (interface{}, error) {
+func (f *Fusion) applyResponseTransform(data any, transform string) (any, error) {
 	// For now, implement basic JSON path extraction
 	// This can be extended with a full transformation engine
 
@@ -1697,7 +1680,7 @@ func (f *Fusion) applyResponseTransform(data interface{}, transform string) (int
 }
 
 // extractJSONPath performs simple JSON path extraction
-func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, error) {
+func (f *Fusion) extractJSONPath(data any, path string) (any, error) {
 	// Remove the leading "$."
 	path = strings.TrimPrefix(path, "$.")
 
@@ -1711,7 +1694,7 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 		}
 
 		switch v := current.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			current = v[part]
 		default:
 			return nil, NewTransformationError("response", "json_path", path, data, fmt.Sprintf("cannot navigate to '%s' in non-object", part), nil)
@@ -1725,64 +1708,10 @@ func (f *Fusion) extractJSONPath(data interface{}, path string) (interface{}, er
 	return current, nil
 }
 
-// sanitizeHeaders removes or masks sensitive information from HTTP headers for logging
-func (f *Fusion) sanitizeHeaders(headers http.Header) map[string]string {
-	sensitiveHeaders := map[string]bool{
-		"authorization":  true,
-		"x-api-key":      true,
-		"api-key":        true,
-		"apikey":         true,
-		"token":          true,
-		"bearer":         true,
-		"x-auth-token":   true,
-		"x-access-token": true,
-		"cookie":         true,
-		"set-cookie":     true,
-	}
-
-	sanitized := make(map[string]string)
-	for key, values := range headers {
-		lowerKey := strings.ToLower(key)
-		if sensitiveHeaders[lowerKey] {
-			sanitized[key] = "[REDACTED]"
-		} else {
-			sanitized[key] = strings.Join(values, ", ")
-		}
-	}
-	return sanitized
-}
-
-// sanitizeQueryParams removes or masks sensitive information from query parameters for logging
-func (f *Fusion) sanitizeQueryParams(params url.Values) map[string]string {
-	sensitiveParams := map[string]bool{
-		"token":         true,
-		"access_token":  true,
-		"api_key":       true,
-		"apikey":        true,
-		"key":           true,
-		"secret":        true,
-		"password":      true,
-		"pwd":           true,
-		"auth":          true,
-		"authorization": true,
-	}
-
-	sanitized := make(map[string]string)
-	for key, values := range params {
-		lowerKey := strings.ToLower(key)
-		if sensitiveParams[lowerKey] {
-			sanitized[key] = "[REDACTED]"
-		} else {
-			sanitized[key] = strings.Join(values, ", ")
-		}
-	}
-	return sanitized
-}
-
 // sanitizeRequestBody removes or masks sensitive information from request body for logging
 func (f *Fusion) sanitizeRequestBody(body []byte) string {
 	// Try to parse as JSON first
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 	if err := json.Unmarshal(body, &jsonData); err != nil {
 		// If not JSON, check if it contains sensitive keywords and truncate/mask if needed
 		bodyStr := string(body)
@@ -1803,7 +1732,7 @@ func (f *Fusion) sanitizeRequestBody(body []byte) string {
 }
 
 // sanitizeJSONData recursively sanitizes JSON data by masking sensitive fields
-func (f *Fusion) sanitizeJSONData(data interface{}) interface{} {
+func (f *Fusion) sanitizeJSONData(data any) any {
 	sensitiveFields := map[string]bool{
 		"password":      true,
 		"token":         true,
@@ -1820,8 +1749,8 @@ func (f *Fusion) sanitizeJSONData(data interface{}) interface{} {
 	}
 
 	switch v := data.(type) {
-	case map[string]interface{}:
-		result := make(map[string]interface{})
+	case map[string]any:
+		result := make(map[string]any)
 		for key, value := range v {
 			lowerKey := strings.ToLower(key)
 			if sensitiveFields[lowerKey] {
@@ -1831,8 +1760,8 @@ func (f *Fusion) sanitizeJSONData(data interface{}) interface{} {
 			}
 		}
 		return result
-	case []interface{}:
-		result := make([]interface{}, len(v))
+	case []any:
+		result := make([]any, len(v))
 		for i, item := range v {
 			result[i] = f.sanitizeJSONData(item)
 		}
@@ -1865,7 +1794,7 @@ func (f *Fusion) sanitizeResponseBody(body []byte, maxLength int) string {
 	}
 
 	// Try to parse as JSON first
-	var jsonData interface{}
+	var jsonData any
 	if err := json.Unmarshal(body, &jsonData); err != nil {
 		// If not JSON, check for sensitive data and truncate
 		bodyStr := string(body)
@@ -1914,58 +1843,58 @@ func (f *Fusion) getOrCreateCircuitBreaker(serviceName string, config *CircuitBr
 		f.logger.Infof("Creating circuit breaker for service '%s'", serviceName)
 	}
 
-	cb := NewCircuitBreaker(config, f.logger)
+	cb := NewCircuitBreaker(config, WithLogger(f.logger))
 	f.circuitBreakers[serviceName] = cb
 	return cb
 }
 
-// GetCircuitBreakerMetrics returns circuit breaker metrics for a service
-func (f *Fusion) GetCircuitBreakerMetrics(serviceName string) *CircuitBreakerMetrics {
+// CircuitBreakerMetrics returns circuit breaker metrics for a service
+func (f *Fusion) CircuitBreakerMetrics(serviceName string) *CircuitBreakerMetrics {
 	f.circuitBreakersMutex.RLock()
 	defer f.circuitBreakersMutex.RUnlock()
 
 	if cb, exists := f.circuitBreakers[serviceName]; exists {
-		metrics := cb.GetMetrics()
+		metrics := cb.Metrics()
 		return &metrics
 	}
 	return nil
 }
 
-// GetAllCircuitBreakerMetrics returns circuit breaker metrics for all services
-func (f *Fusion) GetAllCircuitBreakerMetrics() map[string]*CircuitBreakerMetrics {
+// AllCircuitBreakerMetrics returns circuit breaker metrics for all services
+func (f *Fusion) AllCircuitBreakerMetrics() map[string]*CircuitBreakerMetrics {
 	f.circuitBreakersMutex.RLock()
 	defer f.circuitBreakersMutex.RUnlock()
 
 	result := make(map[string]*CircuitBreakerMetrics)
 	for serviceName, cb := range f.circuitBreakers {
-		metrics := cb.GetMetrics()
+		metrics := cb.Metrics()
 		result[serviceName] = &metrics
 	}
 	return result
 }
 
-// GetMetrics returns metrics for all services
-func (f *Fusion) GetMetrics() map[string]*ServiceMetrics {
+// Metrics returns metrics for all services
+func (f *Fusion) Metrics() map[string]*ServiceMetrics {
 	if f.metricsCollector == nil {
 		return nil
 	}
-	return f.metricsCollector.GetAllMetrics()
+	return f.metricsCollector.AllMetrics()
 }
 
-// GetServiceMetrics returns metrics for a specific service
-func (f *Fusion) GetServiceMetrics(serviceName string) *ServiceMetrics {
+// ServiceMetrics returns metrics for a specific service
+func (f *Fusion) ServiceMetrics(serviceName string) *ServiceMetrics {
 	if f.metricsCollector == nil {
 		return nil
 	}
-	return f.metricsCollector.GetServiceMetrics(serviceName)
+	return f.metricsCollector.ServiceMetrics(serviceName)
 }
 
-// GetGlobalMetrics returns global system metrics
-func (f *Fusion) GetGlobalMetrics() *GlobalMetrics {
+// GlobalMetrics returns global system metrics
+func (f *Fusion) GlobalMetrics() *GlobalMetrics {
 	if f.metricsCollector == nil {
 		return nil
 	}
-	metrics := f.metricsCollector.GetGlobalMetrics()
+	metrics := f.metricsCollector.GlobalMetrics()
 	return &metrics
 }
 
@@ -2060,9 +1989,9 @@ type circuitBreakerSourceAdapter struct {
 	fusion *Fusion
 }
 
-// GetAllCircuitBreakerMetrics implements health.CircuitBreakerSource.
-func (a *circuitBreakerSourceAdapter) GetAllCircuitBreakerMetrics() map[string]health.CircuitBreakerInfo {
-	raw := a.fusion.GetAllCircuitBreakerMetrics()
+// AllCircuitBreakerMetrics implements health.CircuitBreakerSource.
+func (a *circuitBreakerSourceAdapter) AllCircuitBreakerMetrics() map[string]health.CircuitBreakerInfo {
+	raw := a.fusion.AllCircuitBreakerMetrics()
 	result := make(map[string]health.CircuitBreakerInfo, len(raw))
 	for name, m := range raw {
 		result[name] = health.CircuitBreakerInfo{
@@ -2073,8 +2002,8 @@ func (a *circuitBreakerSourceAdapter) GetAllCircuitBreakerMetrics() map[string]h
 	return result
 }
 
-// GetCircuitBreakerSource returns a health.CircuitBreakerSource that exposes the
+// CircuitBreakerSource returns a health.CircuitBreakerSource that exposes the
 // circuit-breaker state of all services managed by this Fusion instance.
-func (f *Fusion) GetCircuitBreakerSource() health.CircuitBreakerSource {
+func (f *Fusion) CircuitBreakerSource() health.CircuitBreakerSource {
 	return &circuitBreakerSourceAdapter{fusion: f}
 }

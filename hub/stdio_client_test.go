@@ -198,7 +198,7 @@ func TestStdioClient_Connect_InvalidCommand(t *testing.T) {
 		Command:    "/nonexistent/binary/xyz",
 	}
 
-	sc := NewStdioClient(cfg, logger)
+	sc := NewStdioClient(cfg, WithLogger(logger))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -218,7 +218,7 @@ func TestStdioClient_Close_Unconnected(t *testing.T) {
 		Command:    "/bin/cat",
 	}
 
-	sc := NewStdioClient(cfg, logger)
+	sc := NewStdioClient(cfg, WithLogger(logger))
 
 	assert.NotPanics(t, func() {
 		_ = sc.Close()
@@ -241,7 +241,7 @@ func TestStdioClient_RunWithReconnect_ContextCancellation(t *testing.T) {
 		Command:    "/nonexistent/binary/xyz_reconnect_test",
 	}
 
-	sc := NewStdioClient(cfg, logger)
+	sc := NewStdioClient(cfg, WithLogger(logger))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

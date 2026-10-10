@@ -29,7 +29,8 @@ type StdioClient struct {
 }
 
 // NewStdioClient creates a new stdio client for the given service config
-func NewStdioClient(config *fusion.ServiceConfig, logger global.Logger) *StdioClient {
+func NewStdioClient(config *fusion.ServiceConfig, opts ...ClientOption) *StdioClient {
+	logger := newClientOptions(opts).logger
 	// Use retry config if provided, otherwise defaults
 	baseDelay := time.Second
 	maxDelay := 60 * time.Second
@@ -51,10 +52,12 @@ func NewStdioClient(config *fusion.ServiceConfig, logger global.Logger) *StdioCl
 	// stable for the lifetime of this client and test-friendly (t.Setenv works).
 	addPath := os.Getenv("MCP_FUSION_ADD_PATH")
 	if addPath != "" {
-		logger.Debugf("MCP_FUSION_ADD_PATH: %s", addPath)
+		if logger != nil {
+			logger.Debugf("MCP_FUSION_ADD_PATH: %s", addPath)
+		}
 	}
 
-	manager := NewMCPClientManager(config.ServiceKey, logger)
+	manager := NewMCPClientManager(config.ServiceKey, WithLogger(logger))
 	manager.SetCallTimeout(config.CallTimeout)
 
 	return &StdioClient{
@@ -130,7 +133,9 @@ func (s *StdioClient) Connect(ctx context.Context) error {
 	// Resolve the command to an absolute path
 	command := resolveCommand(s.config.Command, s.addPath, s.logger)
 
-	s.logger.Infof("Hub service '%s': starting stdio process: %s %v", s.config.ServiceKey, command, s.config.Args)
+	if s.logger != nil {
+		s.logger.Infof("Hub service '%s': starting stdio process: %s %v", s.config.ServiceKey, command, s.config.Args)
+	}
 
 	// Create the stdio MCP client
 	c, err := client.NewStdioMCPClient(command, env, s.config.Args...)
@@ -145,7 +150,9 @@ func (s *StdioClient) Connect(ctx context.Context) error {
 
 	// Register connection loss handler
 	c.OnConnectionLost(func(err error) {
-		s.logger.Errorf("Hub service '%s': connection lost: %v", s.config.ServiceKey, err)
+		if s.logger != nil {
+			s.logger.Errorf("Hub service '%s': connection lost: %v", s.config.ServiceKey, err)
+		}
 		s.manager.SetConnected(false)
 	})
 
@@ -153,12 +160,18 @@ func (s *StdioClient) Connect(ctx context.Context) error {
 	// first so concurrent callers cannot use the client while it is closing.
 	if err := s.manager.Connect(ctx); err != nil {
 		s.manager.SetClient(nil)
-		c.Close()
+		if closeErr := c.Close(); closeErr != nil {
+			if s.logger != nil {
+				s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, closeErr)
+			}
+		}
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
 	s.backoff.Reset()
-	s.logger.Infof("Hub service '%s': stdio connection established", s.config.ServiceKey)
+	if s.logger != nil {
+		s.logger.Infof("Hub service '%s': stdio connection established", s.config.ServiceKey)
+	}
 	return nil
 }
 
@@ -174,8 +187,10 @@ func (s *StdioClient) RunWithReconnect(ctx context.Context, onConnected func(), 
 		// Try to connect
 		err := s.Connect(ctx)
 		if err != nil {
-			s.logger.Errorf("Hub service '%s': connection failed: %v (retrying in %v)",
-				s.config.ServiceKey, err, s.backoff.CurrentDelay())
+			if s.logger != nil {
+				s.logger.Errorf("Hub service '%s': connection failed: %v (retrying in %v)",
+					s.config.ServiceKey, err, s.backoff.CurrentDelay())
+			}
 
 			if onDisconnected != nil {
 				onDisconnected()
@@ -201,14 +216,20 @@ func (s *StdioClient) RunWithReconnect(ctx context.Context, onConnected func(), 
 		}
 
 		// Connection lost, clean up and retry
-		s.logger.Warningf("Hub service '%s': disconnected, will reconnect in %v",
-			s.config.ServiceKey, s.backoff.CurrentDelay())
+		if s.logger != nil {
+			s.logger.Warningf("Hub service '%s': disconnected, will reconnect in %v",
+				s.config.ServiceKey, s.backoff.CurrentDelay())
+		}
 
 		if onDisconnected != nil {
 			onDisconnected()
 		}
 
-		s.manager.Disconnect()
+		if err := s.manager.Disconnect(); err != nil {
+			if s.logger != nil {
+				s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, err)
+			}
+		}
 
 		if waitErr := s.backoff.Wait(ctx); waitErr != nil {
 			return // context cancelled
@@ -256,7 +277,9 @@ func resolveCommand(command string, addPath string, logger global.Logger) string
 
 	// Try the current process PATH first
 	if resolved, err := exec.LookPath(command); err == nil {
-		logger.Debugf("Resolved command '%s' to '%s' via process PATH", command, resolved)
+		if logger != nil {
+			logger.Debugf("Resolved command '%s' to '%s' via process PATH", command, resolved)
+		}
 		return resolved
 	}
 
@@ -265,13 +288,17 @@ func resolveCommand(command string, addPath string, logger global.Logger) string
 		for _, dir := range strings.Split(addPath, string(filepath.ListSeparator)) {
 			candidate := filepath.Join(dir, command)
 			if info, err := os.Stat(candidate); err == nil && !info.IsDir() && info.Mode().Perm()&0111 != 0 {
-				logger.Debugf("Resolved command '%s' to '%s' via MCP_FUSION_ADD_PATH", command, candidate)
+				if logger != nil {
+					logger.Debugf("Resolved command '%s' to '%s' via MCP_FUSION_ADD_PATH", command, candidate)
+				}
 				return candidate
 			}
 		}
 	}
 
 	// Could not resolve — return as-is and let the caller report the error
-	logger.Debugf("Could not resolve command '%s' in any PATH", command)
+	if logger != nil {
+		logger.Debugf("Could not resolve command '%s' in any PATH", command)
+	}
 	return command
 }

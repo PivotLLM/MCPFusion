@@ -109,13 +109,13 @@ func (p *Provider) RegisterTools() []global.ToolDefinition {
 // tenant resolution.
 type toolHandler struct {
 	provider *Provider
-	handler  func(ctx context.Context, userID string, args map[string]interface{}) (string, error)
+	handler  func(ctx context.Context, userID string, args map[string]any) (string, error)
 }
 
 // call implements the global.ToolHandler signature.
-func (h *toolHandler) call(args map[string]interface{}) (string, error) {
+func (h *toolHandler) call(args map[string]any) (string, error) {
 	ctx := context.Background()
-	filteredArgs := make(map[string]interface{})
+	filteredArgs := make(map[string]any)
 
 	for k, v := range args {
 		if k == "__mcp_context" {
@@ -180,7 +180,7 @@ func (p *Provider) knowledgeSetTool() global.ToolDefinition {
 		},
 		Handler: (&toolHandler{
 			provider: p,
-			handler: func(_ context.Context, userID string, args map[string]interface{}) (string, error) {
+			handler: func(_ context.Context, userID string, args map[string]any) (string, error) {
 				domain, _ := args["domain"].(string)
 				key, _ := args["key"].(string)
 				content, _ := args["content"].(string)
@@ -232,7 +232,7 @@ func (p *Provider) knowledgeGetTool() global.ToolDefinition {
 		},
 		Handler: (&toolHandler{
 			provider: p,
-			handler: func(_ context.Context, userID string, args map[string]interface{}) (string, error) {
+			handler: func(_ context.Context, userID string, args map[string]any) (string, error) {
 				domain, _ := args["domain"].(string)
 				key, _ := args["key"].(string)
 
@@ -245,7 +245,7 @@ func (p *Provider) knowledgeGetTool() global.ToolDefinition {
 				if domain != "" && key != "" {
 					// system/readme: always prepend the embedded header.
 					if domain == "system" && key == "readme" {
-						entry, err := p.database.GetKnowledge(userID, domain, key)
+						entry, err := p.database.LoadKnowledge(userID, domain, key)
 						if err != nil {
 							// No user content yet — return just the embedded header.
 							return knowledgeReadme, nil
@@ -254,7 +254,7 @@ func (p *Provider) knowledgeGetTool() global.ToolDefinition {
 						return knowledgeReadme + entry.Content, nil
 					}
 
-					entry, err := p.database.GetKnowledge(userID, domain, key)
+					entry, err := p.database.LoadKnowledge(userID, domain, key)
 					if err != nil {
 						return "", fmt.Errorf("failed to get knowledge: %w", err)
 					}
@@ -315,7 +315,7 @@ func (p *Provider) knowledgeDeleteTool() global.ToolDefinition {
 		},
 		Handler: (&toolHandler{
 			provider: p,
-			handler: func(_ context.Context, userID string, args map[string]interface{}) (string, error) {
+			handler: func(_ context.Context, userID string, args map[string]any) (string, error) {
 				domain, _ := args["domain"].(string)
 				key, _ := args["key"].(string)
 
@@ -362,7 +362,7 @@ func (p *Provider) knowledgeRenameTool() global.ToolDefinition {
 		},
 		Handler: (&toolHandler{
 			provider: p,
-			handler: func(_ context.Context, userID string, args map[string]interface{}) (string, error) {
+			handler: func(_ context.Context, userID string, args map[string]any) (string, error) {
 				domain, _ := args["domain"].(string)
 				oldKey, _ := args["old_key"].(string)
 				newKey, _ := args["new_key"].(string)
@@ -399,7 +399,7 @@ func (p *Provider) knowledgeSearchTool() global.ToolDefinition {
 		},
 		Handler: (&toolHandler{
 			provider: p,
-			handler: func(_ context.Context, userID string, args map[string]interface{}) (string, error) {
+			handler: func(_ context.Context, userID string, args map[string]any) (string, error) {
 				query, _ := args["query"].(string)
 
 				entries, err := p.database.SearchKnowledge(userID, query)

@@ -22,13 +22,13 @@ import (
 type TokenStore interface {
 	// OAuth token management
 	StoreOAuthToken(tenantHash, serviceName string, tokenData *db.OAuthTokenData) error
-	GetOAuthToken(tenantHash, serviceName string) (*db.OAuthTokenData, error)
+	LoadOAuthToken(tenantHash, serviceName string) (*db.OAuthTokenData, error)
 	DeleteOAuthToken(tenantHash, serviceName string) error
 	ListOAuthTokens(tenantHash string) (map[string]*db.OAuthTokenData, error)
 
 	// Service credentials management
 	StoreCredentials(tenantHash, serviceName string, credentials *db.ServiceCredentials) error
-	GetCredentials(tenantHash, serviceName string) (*db.ServiceCredentials, error)
+	LoadCredentials(tenantHash, serviceName string) (*db.ServiceCredentials, error)
 	DeleteCredentials(tenantHash, serviceName string) error
 	ListCredentials(tenantHash string) (map[string]*db.ServiceCredentials, error)
 

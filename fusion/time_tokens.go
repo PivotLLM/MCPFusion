@@ -26,7 +26,8 @@ type TimeTokenProcessor struct {
 }
 
 // NewTimeTokenProcessor creates a new time token processor
-func NewTimeTokenProcessor(logger global.Logger) *TimeTokenProcessor {
+func NewTimeTokenProcessor(opts ...ComponentOption) *TimeTokenProcessor {
+	logger := newComponentOptions(opts).logger
 	return &TimeTokenProcessor{
 		logger:         logger,
 		daysRegex:      regexp.MustCompile(`#DAYS-(\d+)`),
@@ -39,7 +40,7 @@ func NewTimeTokenProcessor(logger global.Logger) *TimeTokenProcessor {
 }
 
 // ProcessValue processes a parameter value and replaces any time tokens
-func (ttp *TimeTokenProcessor) ProcessValue(value interface{}) interface{} {
+func (ttp *TimeTokenProcessor) ProcessValue(value any) any {
 	// Only process string values
 	if strValue, ok := value.(string); ok {
 		processed := ttp.substituteTimeTokens(strValue)
@@ -338,8 +339,8 @@ func (ttp *TimeTokenProcessor) ValidateTimeTokens(value string) error {
 	return nil
 }
 
-// GetSupportedTokens returns information about supported time token patterns
-func (ttp *TimeTokenProcessor) GetSupportedTokens() map[string]string {
+// SupportedTokens returns information about supported time token patterns
+func (ttp *TimeTokenProcessor) SupportedTokens() map[string]string {
 	return map[string]string{
 		"#DAYS-N":  "N days ago at 00:00:00 UTC (e.g., #DAYS-0 = today at midnight, #DAYS-3 = 3 days ago at midnight)",
 		"#HOURS-N": "N hours ago from current time (e.g., #HOURS-6 = 6 hours ago, #HOURS-24 = 24 hours ago)",
@@ -351,12 +352,12 @@ func (ttp *TimeTokenProcessor) GetSupportedTokens() map[string]string {
 }
 
 // ProcessParameterArgs processes all parameter arguments and substitutes time tokens
-func (ttp *TimeTokenProcessor) ProcessParameterArgs(args map[string]interface{}) map[string]interface{} {
+func (ttp *TimeTokenProcessor) ProcessParameterArgs(args map[string]any) map[string]any {
 	if args == nil {
 		return nil
 	}
 
-	processed := make(map[string]interface{})
+	processed := make(map[string]any)
 	hasTokens := false
 
 	for key, value := range args {
@@ -378,14 +379,14 @@ func (ttp *TimeTokenProcessor) ProcessParameterArgs(args map[string]interface{})
 
 // SubstituteTimeTokensInParameterValue is a convenience function for processing individual parameter values
 // This can be used when processing parameters in different locations (path, query, body, header)
-func SubstituteTimeTokensInParameterValue(value interface{}, logger global.Logger) interface{} {
-	processor := NewTimeTokenProcessor(logger)
+func SubstituteTimeTokensInParameterValue(value any, logger global.Logger) any {
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 	return processor.ProcessValue(value)
 }
 
 // SubstituteTimeTokensInString is a convenience function for processing string values
 func SubstituteTimeTokensInString(value string, logger global.Logger) string {
-	processor := NewTimeTokenProcessor(logger)
+	processor := NewTimeTokenProcessor(WithLogger(logger))
 	result := processor.ProcessValue(value)
 	if strResult, ok := result.(string); ok {
 		return strResult

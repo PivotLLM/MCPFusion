@@ -88,7 +88,7 @@ type fakeUEM struct {
 	*httptest.Server
 	mu            sync.Mutex
 	loginCount    int
-	lastLogin     map[string]interface{}
+	lastLogin     map[string]any
 	lastLoginPath string
 	lastHeaders   http.Header
 	acceptedToken string
@@ -113,7 +113,7 @@ func newFakeUEM(t *testing.T) *fakeUEM {
 		_, _ = w.Write([]byte(`{"status":"ok","code":200,"details":"pong"}`))
 	})
 	f.Server = httptest.NewServer(mux)
-	t.Cleanup(f.Server.Close)
+	t.Cleanup(f.Close)
 	return f
 }
 
@@ -123,7 +123,7 @@ func (f *fakeUEM) login(w http.ResponseWriter, r *http.Request) {
 	f.loginCount++
 	f.lastLoginPath = r.URL.Path
 	f.lastHeaders = r.Header.Clone()
-	var body map[string]interface{}
+	var body map[string]any
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	f.lastLogin = body
 	if body["username"] != testUser || body["password"] != testPassword {
@@ -150,7 +150,7 @@ func (f *fakeUEM) revoke() {
 // sessionService builds a UnifyEM-like service config pointing at the fake server.
 func sessionService(baseURL, store string) *ServiceConfig {
 	cfg := sessionCredsConfig(store)
-	cfg["loginHeaders"] = map[string]interface{}{"X-Client": "{{credentials.username}}-client"}
+	cfg["loginHeaders"] = map[string]any{"X-Client": "{{credentials.username}}-client"}
 	cfg["headerFormat"] = "Bearer {token}"
 	return &ServiceConfig{
 		Name:       "UnifyEM",
@@ -181,14 +181,14 @@ func newBoltTokenStore(t *testing.T, logger global.Logger) TokenStore {
 
 func newAuthManager(t *testing.T, store TokenStore, logger global.Logger) *MultiTenantAuthManager {
 	t.Helper()
-	return NewMultiTenantAuthManager(store, NewDatabaseCache(store, logger), logger)
+	return NewMultiTenantAuthManager(store, NewDatabaseCache(store, WithLogger(logger)), WithLogger(logger))
 }
 
 func tenant(service string) *TenantContext {
 	return &TenantContext{TenantHash: testTenantHash, ServiceName: service}
 }
 
-func TestGetToken_CredentialsMode_LoginCacheAndRelogin(t *testing.T) {
+func TestAcquireToken_CredentialsMode_LoginCacheAndRelogin(t *testing.T) {
 	logger := newCaptureLogger(t)
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
@@ -201,7 +201,7 @@ func TestGetToken_CredentialsMode_LoginCacheAndRelogin(t *testing.T) {
 	}))
 
 	// First call logs in with the stored values substituted into body and headers.
-	tok, err := mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	tok, err := mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok.AccessToken)
 	assert.Equal(t, 1, uem.logins())
@@ -219,25 +219,25 @@ func TestGetToken_CredentialsMode_LoginCacheAndRelogin(t *testing.T) {
 	assert.False(t, hasRuntime)
 
 	// Second call is served from the cached token.
-	tok2, err := mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	tok2, err := mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok2.AccessToken)
 	assert.Equal(t, 1, uem.logins())
 
 	// Invalidating the token (what a 401 does) keeps the credentials, so the next call logs in again.
 	mtam.InvalidateToken(tc)
-	tok3, err := mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	tok3, err := mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-2", tok3.AccessToken)
 	assert.Equal(t, 2, uem.logins())
-	creds, err := mtam.GetUserCredentials(testTenantHash, "uem")
+	creds, err := mtam.LoadUserCredentials(testTenantHash, "uem")
 	require.NoError(t, err)
 	assert.Equal(t, testUser, creds["username"])
 
 	// Removing the credentials sends the tenant back to auth_setup.
 	mtam.InvalidateCredentials(tc)
 	mtam.InvalidateToken(tc)
-	_, err = mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	_, err = mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.Error(t, err)
 	authErr, ok := AsAuthenticationError(err)
 	require.True(t, ok, "expected AuthenticationError, got %T", err)
@@ -248,7 +248,7 @@ func TestGetToken_CredentialsMode_LoginCacheAndRelogin(t *testing.T) {
 	assert.False(t, logger.contains(testPassword), "password appeared in logs")
 }
 
-func TestGetToken_CredentialsMode_OtherTenantIsolated(t *testing.T) {
+func TestAcquireToken_CredentialsMode_OtherTenantIsolated(t *testing.T) {
 	logger := testlogger.New(t)
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
@@ -257,14 +257,14 @@ func TestGetToken_CredentialsMode_OtherTenantIsolated(t *testing.T) {
 	require.NoError(t, mtam.StoreUserCredentials(testTenantHash, "uem", map[string]string{
 		"username": testUser, "password": testPassword,
 	}))
-	_, err := mtam.GetToken(context.Background(), &TenantContext{TenantHash: otherTenantHash, ServiceName: "uem"},
+	_, err := mtam.AcquireToken(context.Background(), &TenantContext{TenantHash: otherTenantHash, ServiceName: "uem"},
 		service.AuthConfigForRequest())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uem_auth_setup")
 	assert.Equal(t, 0, uem.logins())
 }
 
-func TestGetToken_CredentialsMode_WrongPassword(t *testing.T) {
+func TestAcquireToken_CredentialsMode_WrongPassword(t *testing.T) {
 	logger := newCaptureLogger(t)
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
@@ -273,7 +273,7 @@ func TestGetToken_CredentialsMode_WrongPassword(t *testing.T) {
 	require.NoError(t, mtam.StoreUserCredentials(testTenantHash, "uem", map[string]string{
 		"username": testUser, "password": "wrong-pass",
 	}))
-	_, err := mtam.GetToken(context.Background(), tenant("uem"), service.AuthConfigForRequest())
+	_, err := mtam.AcquireToken(context.Background(), tenant("uem"), service.AuthConfigForRequest())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "401")
 	assert.NotContains(t, err.Error(), "wrong-pass")
@@ -281,13 +281,13 @@ func TestGetToken_CredentialsMode_WrongPassword(t *testing.T) {
 	assert.False(t, logger.contains("wrong-pass"))
 
 	// Credentials remain so the user can fix them via auth_setup; no token was stored.
-	_, err = mtam.GetUserCredentials(testTenantHash, "uem")
+	_, err = mtam.LoadUserCredentials(testTenantHash, "uem")
 	assert.NoError(t, err)
-	_, err = mtam.db.GetOAuthToken(testTenantHash, "uem")
+	_, err = mtam.db.LoadOAuthToken(testTenantHash, "uem")
 	assert.Error(t, err)
 }
 
-func TestGetToken_CredentialsMode_PlaceholderInLoginURL(t *testing.T) {
+func TestAcquireToken_CredentialsMode_PlaceholderInLoginURL(t *testing.T) {
 	logger := testlogger.New(t)
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
@@ -297,7 +297,7 @@ func TestGetToken_CredentialsMode_PlaceholderInLoginURL(t *testing.T) {
 	require.NoError(t, mtam.StoreUserCredentials(testTenantHash, "uem", map[string]string{
 		"username": testUser, "password": testPassword,
 	}))
-	tok, err := mtam.GetToken(context.Background(), tenant("uem"), service.AuthConfigForRequest())
+	tok, err := mtam.AcquireToken(context.Background(), tenant("uem"), service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok.AccessToken)
 	assert.Equal(t, "/api/v1/login/"+testUser, uem.lastLoginPath)
@@ -314,7 +314,7 @@ func TestTokenMode_ExchangeStoresOnlyToken(t *testing.T) {
 	tc := tenant("uem")
 
 	// Nothing stored yet: the tenant is told to run auth_setup and no login happens.
-	_, err := mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	_, err := mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uem_auth_setup")
 	assert.Equal(t, 0, uem.logins())
@@ -327,18 +327,18 @@ func TestTokenMode_ExchangeStoresOnlyToken(t *testing.T) {
 	assert.Equal(t, "tok-1", tok.AccessToken)
 	assert.Equal(t, 1, uem.logins())
 
-	_, err = mtam.GetUserCredentials(testTenantHash, "uem")
+	_, err = mtam.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err, "token mode must not persist credentials")
 
 	// Subsequent calls use the stored token without logging in.
-	tok2, err := mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	tok2, err := mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok2.AccessToken)
 	assert.Equal(t, 1, uem.logins())
 
 	// Once the token is gone (401 invalidation), there is nothing to log in with.
 	mtam.InvalidateToken(tc)
-	_, err = mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	_, err = mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uem_auth_setup")
 	assert.Equal(t, 1, uem.logins())
@@ -356,7 +356,7 @@ func TestTokenMode_ExpiredTokenWithoutRefreshRequiresSetup(t *testing.T) {
 	require.NoError(t, mtam.StoreOAuthToken(testTenantHash, "uem", &db.OAuthTokenData{
 		AccessToken: "stale", TokenType: "Bearer", ExpiresAt: &past,
 	}))
-	_, err := mtam.GetToken(context.Background(), tenant("uem"), service.AuthConfigForRequest())
+	_, err := mtam.AcquireToken(context.Background(), tenant("uem"), service.AuthConfigForRequest())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uem_auth_setup")
 	assert.Equal(t, 0, uem.logins())
@@ -375,9 +375,9 @@ func TestTokenMode_FailedExchangeStoresNothing(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "login failed", authErr.Message)
 	assert.Equal(t, 1, uem.logins())
-	_, err = mtam.db.GetOAuthToken(testTenantHash, "uem")
+	_, err = mtam.db.LoadOAuthToken(testTenantHash, "uem")
 	assert.Error(t, err, "no token must be stored after a failed exchange")
-	_, err = mtam.GetUserCredentials(testTenantHash, "uem")
+	_, err = mtam.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err)
 }
 
@@ -391,9 +391,9 @@ func TestAuthenticateWithCredentials_Guards(t *testing.T) {
 }
 
 func TestCredentialStore_WithoutDatabase(t *testing.T) {
-	mtam := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil, nil), nil)
+	mtam := NewMultiTenantAuthManager(nil, NewDatabaseCache(nil))
 	assert.Error(t, mtam.StoreUserCredentials(testTenantHash, "uem", map[string]string{"a": "b"}))
-	_, err := mtam.GetUserCredentials(testTenantHash, "uem")
+	_, err := mtam.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err)
 	mtam.InvalidateCredentials(tenant("uem")) // must not panic
 	mtam.InvalidateCredentials(nil)
@@ -406,8 +406,11 @@ func TestHTTPHandler_SessionCredentials_ReloginOn401(t *testing.T) {
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
 	mtam := newAuthManager(t, newBoltTokenStore(t, logger), logger)
-	f := New(WithLogger(logger), WithMultiTenantAuth(mtam),
+	f, err := New(WithLogger(logger), WithMultiTenantAuth(mtam),
 		WithConfig(&Config{Services: map[string]*ServiceConfig{"uem": service}}))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	handler := NewHTTPHandler(f, service, &service.Endpoints[0])
 
 	require.NoError(t, mtam.StoreUserCredentials(testTenantHash, "uem", map[string]string{
@@ -415,14 +418,14 @@ func TestHTTPHandler_SessionCredentials_ReloginOn401(t *testing.T) {
 	}))
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenant("uem"))
 
-	result, err := handler.Handle(ctx, map[string]interface{}{})
+	result, err := handler.Handle(ctx, map[string]any{})
 	require.NoError(t, err)
 	assert.Contains(t, result, "pong")
 	assert.Equal(t, 1, uem.logins())
 
 	// The upstream session dies; the next call gets a 401, re-logs-in and succeeds.
 	uem.revoke()
-	result, err = handler.Handle(ctx, map[string]interface{}{})
+	result, err = handler.Handle(ctx, map[string]any{})
 	require.NoError(t, err)
 	assert.Contains(t, result, "pong")
 	assert.Equal(t, 2, uem.logins())
@@ -434,12 +437,15 @@ func TestHTTPHandler_SessionCredentials_NoCredentials(t *testing.T) {
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
 	mtam := newAuthManager(t, newBoltTokenStore(t, logger), logger)
-	f := New(WithLogger(logger), WithMultiTenantAuth(mtam),
+	f, err := New(WithLogger(logger), WithMultiTenantAuth(mtam),
 		WithConfig(&Config{Services: map[string]*ServiceConfig{"uem": service}}))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	handler := NewHTTPHandler(f, service, &service.Endpoints[0])
 
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenant("uem"))
-	_, err := handler.Handle(ctx, map[string]interface{}{})
+	_, err = handler.Handle(ctx, map[string]any{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uem_auth_setup")
 	assert.Equal(t, 0, uem.logins())
@@ -449,7 +455,7 @@ func TestHTTPHandler_SessionCredentials_NoCredentials(t *testing.T) {
 // Library embedding: the same flow through a generic DataStore-backed token
 // store, which is how hosts that embed fusion (rather than running the
 // standalone server) persist tokens and credentials.
-func TestGetToken_CredentialsMode_DataStoreBacked(t *testing.T) {
+func TestAcquireToken_CredentialsMode_DataStoreBacked(t *testing.T) {
 	logger := testlogger.New(t)
 	uem := newFakeUEM(t)
 	service := sessionService(uem.URL, CredentialStoreCredentials)
@@ -458,24 +464,24 @@ func TestGetToken_CredentialsMode_DataStoreBacked(t *testing.T) {
 	ctx := context.Background()
 	tc := tenant("uem")
 
-	_, err := mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	_, err := mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uem_auth_setup")
 
 	require.NoError(t, mtam.StoreUserCredentials(testTenantHash, "uem", map[string]string{
 		"username": testUser, "password": testPassword,
 	}))
-	tok, err := mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	tok, err := mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok.AccessToken)
 
 	mtam.InvalidateToken(tc)
-	tok, err = mtam.GetToken(ctx, tc, service.AuthConfigForRequest())
+	tok, err = mtam.AcquireToken(ctx, tc, service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-2", tok.AccessToken)
 
 	mtam.InvalidateCredentials(tc)
-	_, err = mtam.GetUserCredentials(testTenantHash, "uem")
+	_, err = mtam.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err)
 }
 
@@ -490,25 +496,25 @@ func TestTokenMode_DataStoreBacked(t *testing.T) {
 	_, err := mtam.AuthenticateWithCredentials(context.Background(), tc, service.AuthConfigForRequest(),
 		map[string]string{"username": testUser, "password": testPassword})
 	require.NoError(t, err)
-	tok, err := mtam.GetToken(context.Background(), tc, service.AuthConfigForRequest())
+	tok, err := mtam.AcquireToken(context.Background(), tc, service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok.AccessToken)
 	assert.Empty(t, ds.data[dsCollectionCreds], "token mode must not write credentials")
 }
 
 // A session_jwt service without a credentials block keeps its env-driven behaviour.
-func TestGetToken_PlainSessionJWT_Unchanged(t *testing.T) {
+func TestAcquireToken_PlainSessionJWT_Unchanged(t *testing.T) {
 	logger := testlogger.New(t)
 	uem := newFakeUEM(t)
 	service := &ServiceConfig{
 		Name: "UEM", ServiceKey: "uem", BaseURL: uem.URL,
-		Auth: AuthConfig{Type: AuthTypeSessionJWT, Config: map[string]interface{}{
+		Auth: AuthConfig{Type: AuthTypeSessionJWT, Config: map[string]any{
 			"loginURL": "/api/v1/login", "tokenPath": "access_token", "tokenLocation": "header",
-			"loginBody": map[string]interface{}{"username": testUser, "password": testPassword},
+			"loginBody": map[string]any{"username": testUser, "password": testPassword},
 		}},
 	}
 	mtam := newAuthManager(t, newBoltTokenStore(t, logger), logger)
-	tok, err := mtam.GetToken(context.Background(), tenant("uem"), service.AuthConfigForRequest())
+	tok, err := mtam.AcquireToken(context.Background(), tenant("uem"), service.AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok.AccessToken)
 }

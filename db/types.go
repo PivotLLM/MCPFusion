@@ -71,10 +71,10 @@ const (
 
 // ServiceCredentials represents other service authentication data
 type ServiceCredentials struct {
-	Type      CredentialType         `json:"type"` // Type of credential
-	Data      map[string]interface{} `json:"data"` // Service-specific credential data
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
+	Type      CredentialType `json:"type"` // Type of credential
+	Data      map[string]any `json:"data"` // Service-specific credential data
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 }
 
 // TenantInfo represents information about a tenant
@@ -89,17 +89,17 @@ type TenantInfo struct {
 
 // UserMetadata represents a user account that can have multiple API keys
 type UserMetadata struct {
-	UserID      string    `json:"user_id"`      // UUID, immutable after creation
-	Description string    `json:"description"`  // Human-readable label
+	UserID      string    `json:"user_id"`     // UUID, immutable after creation
+	Description string    `json:"description"` // Human-readable label
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // KnowledgeEntry represents a piece of knowledge stored for a user
 type KnowledgeEntry struct {
-	Domain    string    `json:"domain"`     // e.g., "email", "calendar", "contacts", "general"
-	Key       string    `json:"key"`        // e.g., "dymon-packages", "meeting-preferences"
-	Content   string    `json:"content"`    // Natural language or lightly structured text
+	Domain    string    `json:"domain"`  // e.g., "email", "calendar", "contacts", "general"
+	Key       string    `json:"key"`     // e.g., "dymon-packages", "meeting-preferences"
+	Content   string    `json:"content"` // Natural language or lightly structured text
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

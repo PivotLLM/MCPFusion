@@ -66,9 +66,13 @@ func promptCredentialFields(fields []mcp.CredentialField, in *bufio.Reader, out 
 			label = field.Name
 		}
 		if field.Description != "" {
-			fmt.Fprintf(out, "%s: %s\n", label, field.Description)
+			if _, err := fmt.Fprintf(out, "%s: %s\n", label, field.Description); err != nil {
+				return nil, fmt.Errorf("failed to write prompt for '%s': %w", field.Name, err)
+			}
 		}
-		fmt.Fprintf(out, "Enter %s: ", label)
+		if _, err := fmt.Fprintf(out, "Enter %s: ", label); err != nil {
+			return nil, fmt.Errorf("failed to write prompt for '%s': %w", field.Name, err)
+		}
 
 		var (
 			value string

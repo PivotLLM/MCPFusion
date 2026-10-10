@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PivotLLM/MCPFusion/cmd/auth/app"
 	"github.com/PivotLLM/MCPFusion/cmd/auth/config"
 	"github.com/PivotLLM/MCPFusion/cmd/auth/debug"
 	"github.com/PivotLLM/MCPFusion/cmd/auth/mcp"
@@ -41,10 +42,18 @@ type authCodeBlob struct {
 	Service string `json:"s"`
 }
 
-const (
-	defaultTimeout = 10 * time.Minute
-	version        = "1.0.0"
-)
+const defaultTimeout = 10 * time.Minute
+
+// guidanceError is an error with advice for the person running the command.
+// The CLI prints the guidance after the error; the error string stays plain.
+type guidanceError struct {
+	err      error
+	guidance string
+}
+
+func (e *guidanceError) Error() string { return e.err.Error() }
+
+func (e *guidanceError) Unwrap() error { return e.err }
 
 type cliFlags struct {
 	service   string
@@ -64,7 +73,7 @@ func main() {
 	debug.Debug = flags.debug
 
 	if flags.version {
-		fmt.Printf("fusion-auth version %s\n", version)
+		printVersion()
 		return
 	}
 
@@ -96,8 +105,24 @@ func main() {
 	defer cancel()
 
 	if err := executeOAuthFlow(ctx, cfg, &flags, registry); err != nil {
-		log.Fatalf("OAuth flow failed: %v", err)
+		cancel()
+		log.Printf("OAuth flow failed: %v", err)
+		var ge *guidanceError
+		if errors.As(err, &ge) {
+			_, _ = fmt.Fprintf(os.Stderr, "\n%s\n", ge.guidance)
+		}
+		os.Exit(1)
 	}
+}
+
+// printVersion prints the application identity and build details.
+func printVersion() {
+	fmt.Printf("%s %s\n%s\n%s\n", app.Name(), app.Version(), app.TagLine(), app.Copyright())
+	buildTime, goVersion := app.BuildInfo()
+	if buildTime != "" {
+		fmt.Printf("Built: %s\n", buildTime)
+	}
+	fmt.Printf("Go:    %s\n", goVersion)
 }
 
 func parseFlags(flags *cliFlags) {
@@ -112,7 +137,7 @@ func parseFlags(flags *cliFlags) {
 	flag.Usage = func() {
 		_, _ = fmt.Fprintf(os.Stderr, "Usage: %s <auth-code-blob>\n", os.Args[0])
 		_, _ = fmt.Fprintf(os.Stderr, "   or: %s -service <name> -fusion <url> -token <token>\n\n", os.Args[0])
-		_, _ = fmt.Fprintf(os.Stderr, "fusion-auth is a generic authentication helper for MCPFusion.\n\n")
+		_, _ = fmt.Fprintf(os.Stderr, "%s is a generic authentication helper for MCPFusion.\n\n", app.Name())
 		_, _ = fmt.Fprintf(os.Stderr, "Auth Code Mode (recommended):\n")
 		_, _ = fmt.Fprintf(os.Stderr, "  Generate an auth code on the server: mcpfusion -auth-code google -auth-url http://host:port\n")
 		_, _ = fmt.Fprintf(os.Stderr, "  Then run: %s <auth-code-blob>\n\n", os.Args[0])
@@ -239,7 +264,11 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 
 	pingResp, err := mcpClient.Ping(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to connect to MCPFusion server: %w\n\nPlease verify:\n1. The MCPFusion server URL is correct: %s\n2. The API token is valid\n3. The server is running and accessible", err, cfg.FusionURL)
+		return &guidanceError{
+			err: fmt.Errorf("failed to connect to MCPFusion server: %w", err),
+			guidance: fmt.Sprintf("Please verify:\n1. The MCPFusion server URL is correct: %s\n"+
+				"2. The API token is valid\n3. The server is running and accessible", cfg.FusionURL),
+		}
 	}
 
 	if flags.verbose {
@@ -302,7 +331,11 @@ func executeOAuthFlow(ctx context.Context, cfg *config.Config, flags *cliFlags, 
 		Scopes:       strings.Join(provider.GetRequiredScopes(), " "),
 	}
 	if err := provider.ValidateConfiguration(serviceConfig); err != nil {
-		return fmt.Errorf("configuration validation failed: %w\n\nThe server may not have OAuth credentials configured.\nCheck GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables on the server.", err)
+		return &guidanceError{
+			err: fmt.Errorf("configuration validation failed: %w", err),
+			guidance: "The server may not have OAuth credentials configured.\n" +
+				"Check GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables on the server",
+		}
 	}
 
 	if flags.verbose {
@@ -577,10 +610,11 @@ func (e *OAuthFlowExecutor) buildAuthorizationURL(config *providers.ServiceConfi
 	params.Set("code_challenge_method", "S256")
 
 	// Add service-specific parameters
-	if config.ServiceName == "google" {
+	switch config.ServiceName {
+	case "google":
 		params.Set("access_type", "offline")
 		params.Set("prompt", "consent")
-	} else if config.ServiceName == "microsoft365" {
+	case "microsoft365":
 		params.Set("prompt", "consent")
 	}
 
@@ -708,7 +742,7 @@ func (e *OAuthFlowExecutor) exchangeCodeForTokens(code, redirectURI, codeVerifie
 	}
 
 	// Parse token response
-	var tokenResponse map[string]interface{}
+	var tokenResponse map[string]any
 	if err := json.Unmarshal(body, &tokenResponse); err != nil {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}

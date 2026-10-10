@@ -22,7 +22,8 @@ type CommandExecutor struct {
 }
 
 // NewCommandExecutor creates a new command executor
-func NewCommandExecutor(logger global.Logger) *CommandExecutor {
+func NewCommandExecutor(opts ...ComponentOption) *CommandExecutor {
+	logger := newComponentOptions(opts).logger
 	return &CommandExecutor{
 		logger: logger,
 	}
@@ -178,8 +179,8 @@ func (e *CommandExecutor) FormatResponse(result ExecutionResult) string {
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString(fmt.Sprintf("Exit Code: %d\n", result.ExitCode))
-	sb.WriteString(fmt.Sprintf("Execution Time: %.3fs\n", result.Duration.Seconds()))
+	_, _ = fmt.Fprintf(&sb, "Exit Code: %d\n", result.ExitCode)
+	_, _ = fmt.Fprintf(&sb, "Execution Time: %.3fs\n", result.Duration.Seconds())
 
 	// Status
 	if result.TimedOut {
@@ -192,7 +193,7 @@ func (e *CommandExecutor) FormatResponse(result ExecutionResult) string {
 
 	// Error if present
 	if result.Error != nil && !result.TimedOut {
-		sb.WriteString(fmt.Sprintf("Error: %v\n", result.Error))
+		_, _ = fmt.Fprintf(&sb, "Error: %v\n", result.Error)
 	}
 
 	// Always show stdout section

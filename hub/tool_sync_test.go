@@ -22,7 +22,7 @@ func TestConvertDownstreamTool(t *testing.T) {
 		mcp.WithDestructiveHintAnnotation(false),
 	)
 
-	mockCallFunc := func(_ context.Context, _ string, _ map[string]interface{}, _ *mcp.Meta) (*mcp.CallToolResult, error) {
+	mockCallFunc := func(_ context.Context, _ string, _ map[string]any, _ *mcp.Meta) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultText("ok"), nil
 	}
 
@@ -62,9 +62,9 @@ func TestConvertDownstreamTool(t *testing.T) {
 
 func TestConvertDownstreamTool_Handler(t *testing.T) {
 	var receivedName string
-	var receivedArgs map[string]interface{}
+	var receivedArgs map[string]any
 
-	mockCallFunc := func(_ context.Context, toolName string, args map[string]interface{}, _ *mcp.Meta) (*mcp.CallToolResult, error) {
+	mockCallFunc := func(_ context.Context, toolName string, args map[string]any, _ *mcp.Meta) (*mcp.CallToolResult, error) {
 		receivedName = toolName
 		receivedArgs = args
 		return mcp.NewToolResultText("done"), nil
@@ -85,7 +85,7 @@ func TestConvertDownstreamTool_Handler(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "done", result)
 	assert.Equal(t, "send", receivedName, "handler should forward the original unprefixed tool name")
-	assert.Equal(t, map[string]interface{}{"msg": "hello"}, receivedArgs, "handler should strip __mcp_context from args")
+	assert.Equal(t, map[string]any{"msg": "hello"}, receivedArgs, "handler should strip __mcp_context from args")
 }
 
 func TestConvertDownstreamTool_NoHints(t *testing.T) {
@@ -100,7 +100,7 @@ func TestConvertDownstreamTool_NoHints(t *testing.T) {
 		},
 	}
 
-	mockCallFunc := func(_ context.Context, _ string, _ map[string]interface{}, _ *mcp.Meta) (*mcp.CallToolResult, error) {
+	mockCallFunc := func(_ context.Context, _ string, _ map[string]any, _ *mcp.Meta) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultText("ok"), nil
 	}
 

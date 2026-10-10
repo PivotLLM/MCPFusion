@@ -12,7 +12,7 @@ import (
 )
 
 func TestCommandExecutor_SimpleCommand(t *testing.T) {
-	executor := NewCommandExecutor(nil)
+	executor := NewCommandExecutor()
 
 	config := ExecutionConfig{
 		Executable:    "/bin/echo",
@@ -81,7 +81,7 @@ func TestCommandExecutor_BooleanFlag(t *testing.T) {
 }
 
 func TestCommandExecutor_Environment(t *testing.T) {
-	executor := NewCommandExecutor(nil)
+	executor := NewCommandExecutor()
 
 	config := ExecutionConfig{
 		Executable:    "/bin/sh",
@@ -103,7 +103,7 @@ func TestCommandExecutor_Environment(t *testing.T) {
 }
 
 func TestCommandExecutor_Timeout(t *testing.T) {
-	executor := NewCommandExecutor(nil)
+	executor := NewCommandExecutor()
 
 	config := ExecutionConfig{
 		Executable:    "/bin/sleep",

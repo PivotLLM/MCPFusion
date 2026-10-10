@@ -14,7 +14,7 @@ import (
 // BodyEncoder encodes a set of flat parameters into a single encoded string.
 // Implementations transform key-value parameter maps into API-specific formats.
 type BodyEncoder interface {
-	Encode(params map[string]interface{}) (string, error)
+	Encode(params map[string]any) (string, error)
 }
 
 // bodyEncoders is the registry of available body encoders. Read-only after init.
@@ -22,8 +22,8 @@ var bodyEncoders = map[string]BodyEncoder{
 	"rfc2822_base64url": &RFC2822Base64URLEncoder{},
 }
 
-// GetBodyEncoder returns the encoder registered under the given name.
-func GetBodyEncoder(name string) (BodyEncoder, bool) {
+// LookupBodyEncoder returns the encoder registered under the given name.
+func LookupBodyEncoder(name string) (BodyEncoder, bool) {
 	enc, ok := bodyEncoders[name]
 	return enc, ok
 }
@@ -42,7 +42,7 @@ func sanitizeHeader(value string) string {
 }
 
 // Encode assembles an RFC 2822 message and base64url-encodes it.
-func (e *RFC2822Base64URLEncoder) Encode(params map[string]interface{}) (string, error) {
+func (e *RFC2822Base64URLEncoder) Encode(params map[string]any) (string, error) {
 	toString := func(key string) string {
 		v, ok := params[key]
 		if !ok || v == nil {

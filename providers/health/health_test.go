@@ -26,12 +26,12 @@ func TestHandleHealth_NoDeps_ReturnsValidJSON(t *testing.T) {
 	tools := p.RegisterTools()
 	require.Len(t, tools, 1)
 
-	result, err := tools[0].Handler(map[string]interface{}{})
+	result, err := tools[0].Handler(map[string]any{})
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 
 	// Must be valid JSON.
-	var out map[string]interface{}
+	var out map[string]any
 	require.NoError(t, json.Unmarshal([]byte(result), &out))
 
 	// Top-level keys must exist.

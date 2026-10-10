@@ -33,10 +33,10 @@ func newOAuthAPITestFusion(t *testing.T, uemURL, store string) (*Fusion, *oauthA
 			"uem": sessionService(uemURL, store),
 			"trello": {Name: "Trello", ServiceKey: "trello", Auth: AuthConfig{
 				Type: AuthTypeUserCredentials,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"instructions": "Get a key.",
-					"fields": []interface{}{
-						map[string]interface{}{"name": "key", "location": "query"},
+					"fields": []any{
+						map[string]any{"name": "key", "location": "query"},
 					},
 				},
 			}},
@@ -48,7 +48,7 @@ func newOAuthAPITestFusion(t *testing.T, uemURL, store string) (*Fusion, *oauthA
 	return f, &oauthAPIHandler{engine: f, logger: logger}
 }
 
-func postTokens(t *testing.T, h *oauthAPIHandler, service string, body map[string]interface{}) (*httptest.ResponseRecorder, map[string]interface{}) {
+func postTokens(t *testing.T, h *oauthAPIHandler, service string, body map[string]any) (*httptest.ResponseRecorder, map[string]any) {
 	t.Helper()
 	payload, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -57,13 +57,13 @@ func postTokens(t *testing.T, h *oauthAPIHandler, service string, body map[strin
 		&TenantContext{TenantHash: testTenantHash, ServiceName: service}))
 	rec := httptest.NewRecorder()
 	h.handleOAuthTokens(rec, req)
-	var decoded map[string]interface{}
+	var decoded map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &decoded), "response must be JSON: %s", rec.Body.String())
 	return rec, decoded
 }
 
-func credentialPayload(username, password string) map[string]interface{} {
-	return map[string]interface{}{
+func credentialPayload(username, password string) map[string]any {
+	return map[string]any{
 		"service":      "uem",
 		"access_token": "user_credentials:uem",
 		"metadata":     map[string]string{"username": username, "password": password},
@@ -82,10 +82,10 @@ func TestHandleOAuthTokens_CredentialsMode_Stores(t *testing.T) {
 	assert.Equal(t, true, body["success"])
 	assert.Equal(t, "Credentials stored successfully", body["message"])
 
-	creds, err := f.multiTenantAuth.GetUserCredentials(testTenantHash, "uem")
+	creds, err := f.multiTenantAuth.LoadUserCredentials(testTenantHash, "uem")
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"username": testUser, "password": testPassword}, creds)
-	_, err = f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "uem")
+	_, err = f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "uem")
 	assert.Error(t, err, "stale token must be removed")
 	assert.Equal(t, 0, uem.logins(), "credentials mode does not log in at storage time")
 }
@@ -97,7 +97,7 @@ func TestHandleOAuthTokens_CredentialsMode_IgnoresUndeclaredFields(t *testing.T)
 	payload["metadata"] = map[string]string{"username": testUser, "password": testPassword, "extra": "x"}
 	rec, _ := postTokens(t, h, "uem", payload)
 	require.Equal(t, http.StatusCreated, rec.Code)
-	creds, err := f.multiTenantAuth.GetUserCredentials(testTenantHash, "uem")
+	creds, err := f.multiTenantAuth.LoadUserCredentials(testTenantHash, "uem")
 	require.NoError(t, err)
 	_, hasExtra := creds["extra"]
 	assert.False(t, hasExtra)
@@ -109,8 +109,8 @@ func TestHandleOAuthTokens_MissingField(t *testing.T) {
 	payload := credentialPayload(testUser, "   ")
 	rec, body := postTokens(t, h, "uem", payload)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
-	assert.Contains(t, body["error"].(map[string]interface{})["message"], "credential field 'password'")
-	_, err := f.multiTenantAuth.GetUserCredentials(testTenantHash, "uem")
+	assert.Contains(t, body["error"].(map[string]any)["message"], "credential field 'password'")
+	_, err := f.multiTenantAuth.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err)
 }
 
@@ -123,14 +123,14 @@ func TestHandleOAuthTokens_TokenMode_ExchangesAndStoresToken(t *testing.T) {
 	assert.Contains(t, body["message"], "exchanged")
 	assert.Equal(t, 1, uem.logins())
 
-	tok, err := f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "uem")
+	tok, err := f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "uem")
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", tok.AccessToken)
-	_, err = f.multiTenantAuth.GetUserCredentials(testTenantHash, "uem")
+	_, err = f.multiTenantAuth.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err, "token mode must not persist credentials")
 
 	// The stored token serves tool calls without another login.
-	got, err := f.multiTenantAuth.GetToken(context.Background(), tenant("uem"),
+	got, err := f.multiTenantAuth.AcquireToken(context.Background(), tenant("uem"),
 		f.config.Services["uem"].AuthConfigForRequest())
 	require.NoError(t, err)
 	assert.Equal(t, "tok-1", got.AccessToken)
@@ -143,24 +143,24 @@ func TestHandleOAuthTokens_TokenMode_FailedExchange(t *testing.T) {
 
 	rec, body := postTokens(t, h, "uem", credentialPayload(testUser, "wrong"))
 	assert.Equal(t, http.StatusBadGateway, rec.Code)
-	msg := body["error"].(map[string]interface{})["message"].(string)
+	msg := body["error"].(map[string]any)["message"].(string)
 	assert.Contains(t, msg, "Login to UnifyEM failed")
 	assert.NotContains(t, msg, "wrong", "error must not echo the password")
-	_, err := f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "uem")
+	_, err := f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "uem")
 	assert.Error(t, err)
 }
 
 func TestHandleOAuthTokens_UserCredentialsServiceUnchanged(t *testing.T) {
 	uem := newFakeUEM(t)
 	f, h := newOAuthAPITestFusion(t, uem.URL, CredentialStoreCredentials)
-	rec, body := postTokens(t, h, "trello", map[string]interface{}{
+	rec, body := postTokens(t, h, "trello", map[string]any{
 		"service":      "trello",
 		"access_token": "user_credentials:trello",
 		"metadata":     map[string]string{"key": "k123"},
 	})
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, "Tokens stored successfully", body["message"])
-	tok, err := f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "trello")
+	tok, err := f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "trello")
 	require.NoError(t, err)
 	assert.Equal(t, "k123", tok.Metadata["key"])
 }
@@ -168,24 +168,24 @@ func TestHandleOAuthTokens_UserCredentialsServiceUnchanged(t *testing.T) {
 func TestHandleOAuthTokens_ExpiresInStillHonouredForPlainTokens(t *testing.T) {
 	uem := newFakeUEM(t)
 	f, h := newOAuthAPITestFusion(t, uem.URL, CredentialStoreCredentials)
-	rec, _ := postTokens(t, h, "trello", map[string]interface{}{
+	rec, _ := postTokens(t, h, "trello", map[string]any{
 		"service": "trello", "access_token": "abc", "expires_in": 60,
 	})
 	require.Equal(t, http.StatusCreated, rec.Code)
-	tok, err := f.multiTenantAuth.db.GetOAuthToken(testTenantHash, "trello")
+	tok, err := f.multiTenantAuth.db.LoadOAuthToken(testTenantHash, "trello")
 	require.NoError(t, err)
 	require.NotNil(t, tok.ExpiresAt)
 	assert.WithinDuration(t, time.Now().Add(time.Minute), *tok.ExpiresAt, 5*time.Second)
 }
 
-func getServiceConfig(t *testing.T, h *oauthAPIHandler, service string) map[string]interface{} {
+func getServiceConfig(t *testing.T, h *oauthAPIHandler, service string) map[string]any {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/services/"+service+"/config", nil)
 	rec := httptest.NewRecorder()
 	h.handleServiceConfig(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	var decoded struct {
-		Config map[string]interface{} `json:"config"`
+		Config map[string]any `json:"config"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &decoded))
 	return decoded.Config
@@ -198,19 +198,19 @@ func TestHandleServiceConfig_LiftsSessionCredentials(t *testing.T) {
 	cfg := getServiceConfig(t, h, "uem")
 	assert.Equal(t, "session_jwt", cfg["auth_type"])
 	assert.Equal(t, "Enter your UnifyEM administrator credentials.", cfg["instructions"])
-	fields, ok := cfg["fields"].([]interface{})
+	fields, ok := cfg["fields"].([]any)
 	require.True(t, ok, "fields should be an array: %v", cfg["fields"])
 	require.Len(t, fields, 2)
-	assert.Equal(t, map[string]interface{}{"name": "username", "label": "Username"}, fields[0])
-	assert.Equal(t, map[string]interface{}{"name": "password", "label": "Password", "secret": true}, fields[1])
+	assert.Equal(t, map[string]any{"name": "username", "label": "Username"}, fields[0])
+	assert.Equal(t, map[string]any{"name": "password", "label": "Password", "secret": true}, fields[1])
 	_, leaksBody := cfg["loginBody"]
 	assert.False(t, leaksBody, "login template is not part of the client-facing config")
 
 	trello := getServiceConfig(t, h, "trello")
 	assert.Equal(t, "user_credentials", trello["auth_type"])
 	assert.Equal(t, "Get a key.", trello["instructions"])
-	tf := trello["fields"].([]interface{})
-	assert.Equal(t, "query", tf[0].(map[string]interface{})["location"])
+	tf := trello["fields"].([]any)
+	assert.Equal(t, "query", tf[0].(map[string]any)["location"])
 }
 
 func TestHandleOAuthTokens_RequestValidation(t *testing.T) {
@@ -237,17 +237,17 @@ func TestHandleOAuthTokens_RequestValidation(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("missing service", func(t *testing.T) {
-		rec, _ := postTokens(t, h, "uem", map[string]interface{}{"access_token": "x"})
+		rec, _ := postTokens(t, h, "uem", map[string]any{"access_token": "x"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("missing token and metadata", func(t *testing.T) {
-		rec, _ := postTokens(t, h, "uem", map[string]interface{}{"service": "uem"})
+		rec, _ := postTokens(t, h, "uem", map[string]any{"service": "uem"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("unknown service", func(t *testing.T) {
-		rec, body := postTokens(t, h, "nope", map[string]interface{}{"service": "nope", "access_token": "x"})
+		rec, body := postTokens(t, h, "nope", map[string]any{"service": "nope", "access_token": "x"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
-		assert.Contains(t, body["error"].(map[string]interface{})["message"], "Unknown service")
+		assert.Contains(t, body["error"].(map[string]any)["message"], "Unknown service")
 	})
 }
 

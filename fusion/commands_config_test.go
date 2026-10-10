@@ -17,10 +17,13 @@ func TestCommandsConfig_ShellExec(t *testing.T) {
 	logger := newTestLogger(t)
 
 	// Load commands.json config
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/commands.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	if fusion.config == nil {
 		t.Fatal("Failed to load commands.json config")
@@ -43,7 +46,7 @@ func TestCommandsConfig_ShellExec(t *testing.T) {
 	}
 
 	// Test basic execution
-	result, err := execTool.Handler(map[string]interface{}{
+	result, err := execTool.Handler(map[string]any{
 		"command": "echo 'test123'",
 	})
 
@@ -63,10 +66,13 @@ func TestCommandsConfig_ShellExec(t *testing.T) {
 func TestCommandsConfig_DirectExec(t *testing.T) {
 	logger := newTestLogger(t)
 
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/commands.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -84,9 +90,9 @@ func TestCommandsConfig_DirectExec(t *testing.T) {
 	}
 
 	// Test execution with arguments
-	result, err := execTool.Handler(map[string]interface{}{
+	result, err := execTool.Handler(map[string]any{
 		"executable": "/bin/echo",
-		"arguments":  []interface{}{"hello", "world"},
+		"arguments":  []any{"hello", "world"},
 	})
 
 	if err != nil {
@@ -105,10 +111,13 @@ func TestCommandsConfig_DirectExec(t *testing.T) {
 func TestCommandsConfig_WithEnvironment(t *testing.T) {
 	logger := newTestLogger(t)
 
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/commands.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -125,9 +134,9 @@ func TestCommandsConfig_WithEnvironment(t *testing.T) {
 	}
 
 	// Test with environment variables
-	result, err := execTool.Handler(map[string]interface{}{
+	result, err := execTool.Handler(map[string]any{
 		"command": "echo $TEST_VAR",
-		"environment": map[string]interface{}{
+		"environment": map[string]any{
 			"TEST_VAR": "hello_env",
 		},
 	})
@@ -148,10 +157,13 @@ func TestCommandsConfig_WithEnvironment(t *testing.T) {
 func TestCommandsConfig_DirectExecWithStdin(t *testing.T) {
 	logger := newTestLogger(t)
 
-	fusion := New(
+	fusion, err := New(
 		WithLogger(logger),
 		WithJSONConfig("../configs/commands.json"),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -168,7 +180,7 @@ func TestCommandsConfig_DirectExecWithStdin(t *testing.T) {
 	}
 
 	// Test with stdin
-	result, err := execTool.Handler(map[string]interface{}{
+	result, err := execTool.Handler(map[string]any{
 		"executable": "/bin/cat",
 		"stdin":      "stdin test data",
 	})

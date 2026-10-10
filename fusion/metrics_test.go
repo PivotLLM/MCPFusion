@@ -18,7 +18,7 @@ func TestMetricsCollector(t *testing.T) {
 	logger, _ := mlogger.New()
 
 	t.Run("basic metrics collection", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		// Record some requests
 		req1 := RequestMetrics{
@@ -53,7 +53,7 @@ func TestMetricsCollector(t *testing.T) {
 		collector.RecordRequest(req2)
 
 		// Check service metrics
-		serviceMetrics := collector.GetServiceMetrics("test-service")
+		serviceMetrics := collector.ServiceMetrics("test-service")
 		if serviceMetrics == nil {
 			t.Fatal("Expected service metrics but got nil")
 		}
@@ -100,7 +100,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("global metrics", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		// Record requests for multiple services
 		req1 := RequestMetrics{
@@ -119,7 +119,7 @@ func TestMetricsCollector(t *testing.T) {
 		}
 		collector.RecordRequest(req2)
 
-		globalMetrics := collector.GetGlobalMetrics()
+		globalMetrics := collector.GlobalMetrics()
 		if globalMetrics.RequestCount != 2 {
 			t.Errorf("Expected 2 total requests, got %d", globalMetrics.RequestCount)
 		}
@@ -135,7 +135,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("cache hit tracking", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		cacheHitReq := RequestMetrics{
 			ServiceName: "test-service",
@@ -146,7 +146,7 @@ func TestMetricsCollector(t *testing.T) {
 		}
 		collector.RecordRequest(cacheHitReq)
 
-		serviceMetrics := collector.GetServiceMetrics("test-service")
+		serviceMetrics := collector.ServiceMetrics("test-service")
 		endpointStats := serviceMetrics.EndpointStats["test-endpoint"]
 
 		if endpointStats.CacheHitCount != 1 {
@@ -155,7 +155,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("error rate calculation", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		// Record 8 successes and 2 failures
 		for i := 0; i < 8; i++ {
@@ -178,7 +178,7 @@ func TestMetricsCollector(t *testing.T) {
 			collector.RecordRequest(req)
 		}
 
-		errorRate := collector.GetErrorRate("test-service", 5*time.Minute)
+		errorRate := collector.ErrorRate("test-service", 5*time.Minute)
 		expectedRate := 20.0 // 2 errors out of 10 requests = 20%
 		if errorRate != expectedRate {
 			t.Errorf("Expected error rate %.1f%%, got %.1f%%", expectedRate, errorRate)
@@ -194,7 +194,7 @@ func TestMetricsCollector(t *testing.T) {
 	})
 
 	t.Run("disabled metrics", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, false)
+		collector := NewMetricsCollector(false, WithLogger(logger))
 
 		req := RequestMetrics{
 			ServiceName: "test-service",
@@ -205,19 +205,19 @@ func TestMetricsCollector(t *testing.T) {
 		collector.RecordRequest(req)
 
 		// Should not record anything when disabled
-		serviceMetrics := collector.GetServiceMetrics("test-service")
+		serviceMetrics := collector.ServiceMetrics("test-service")
 		if serviceMetrics != nil {
 			t.Error("Expected nil metrics when disabled")
 		}
 
-		allMetrics := collector.GetAllMetrics()
+		allMetrics := collector.AllMetrics()
 		if allMetrics != nil {
 			t.Error("Expected nil metrics when disabled")
 		}
 	})
 
 	t.Run("metrics reset", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		req := RequestMetrics{
 			ServiceName: "test-service",
@@ -228,7 +228,7 @@ func TestMetricsCollector(t *testing.T) {
 		collector.RecordRequest(req)
 
 		// Verify metrics are recorded
-		global := collector.GetGlobalMetrics()
+		global := collector.GlobalMetrics()
 		if global.RequestCount != 1 {
 			t.Errorf("Expected 1 request before reset, got %d", global.RequestCount)
 		}
@@ -237,19 +237,19 @@ func TestMetricsCollector(t *testing.T) {
 		collector.Reset()
 
 		// Verify metrics are cleared
-		global = collector.GetGlobalMetrics()
+		global = collector.GlobalMetrics()
 		if global.RequestCount != 0 {
 			t.Errorf("Expected 0 requests after reset, got %d", global.RequestCount)
 		}
 
-		serviceMetrics := collector.GetServiceMetrics("test-service")
+		serviceMetrics := collector.ServiceMetrics("test-service")
 		if serviceMetrics != nil {
 			t.Error("Expected nil service metrics after reset")
 		}
 	})
 
 	t.Run("periodic logging", func(t *testing.T) {
-		collector := NewMetricsCollector(logger, true)
+		collector := NewMetricsCollector(true, WithLogger(logger))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()

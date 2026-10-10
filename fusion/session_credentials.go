@@ -64,7 +64,7 @@ func (a *AuthConfig) SessionCredentials() (*SessionCredentialsConfig, bool) {
 	if a == nil || a.Type != AuthTypeSessionJWT || a.Config == nil {
 		return nil, false
 	}
-	raw, ok := a.Config[sessionCredentialsConfigKey].(map[string]interface{})
+	raw, ok := a.Config[sessionCredentialsConfigKey].(map[string]any)
 	if !ok {
 		return nil, false
 	}
@@ -73,9 +73,9 @@ func (a *AuthConfig) SessionCredentials() (*SessionCredentialsConfig, bool) {
 		cfg.Store = store
 	}
 	cfg.Instructions, _ = raw["instructions"].(string)
-	if fields, ok := raw["fields"].([]interface{}); ok {
+	if fields, ok := raw["fields"].([]any); ok {
 		for _, entry := range fields {
-			fm, ok := entry.(map[string]interface{})
+			fm, ok := entry.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -130,11 +130,11 @@ func (a *AuthConfig) SetupInstructions() string {
 
 // SetupFields returns the field definitions fusion-auth prompts for, in the
 // generic form served by the service config API, or nil when there are none.
-func (a *AuthConfig) SetupFields() interface{} {
+func (a *AuthConfig) SetupFields() any {
 	if sc, ok := a.SessionCredentials(); ok {
-		out := make([]map[string]interface{}, 0, len(sc.Fields))
+		out := make([]map[string]any, 0, len(sc.Fields))
 		for _, f := range sc.Fields {
-			m := map[string]interface{}{"name": f.Name}
+			m := map[string]any{"name": f.Name}
 			if f.Label != "" {
 				m["label"] = f.Label
 			}
@@ -162,7 +162,7 @@ func (a *AuthConfig) SetupFields() interface{} {
 // The copy is shallow: nested maps are shared and must not be mutated.
 func (s *ServiceConfig) AuthConfigForRequest() AuthConfig {
 	authConfig := s.Auth
-	configCopy := make(map[string]interface{}, len(authConfig.Config)+1)
+	configCopy := make(map[string]any, len(authConfig.Config)+1)
 	for k, v := range authConfig.Config {
 		configCopy[k] = v
 	}
@@ -173,9 +173,9 @@ func (s *ServiceConfig) AuthConfigForRequest() AuthConfig {
 
 // validateSessionCredentials checks the credentials block, loginHeaders and
 // placeholder usage of a session_jwt auth config.
-func validateSessionCredentials(config map[string]interface{}) error {
+func validateSessionCredentials(config map[string]any) error {
 	if headers, ok := config["loginHeaders"]; ok {
-		hm, ok := headers.(map[string]interface{})
+		hm, ok := headers.(map[string]any)
 		if !ok {
 			return fmt.Errorf("session_jwt loginHeaders must be an object")
 		}
@@ -195,7 +195,7 @@ func validateSessionCredentials(config map[string]interface{}) error {
 		return nil
 	}
 
-	block, ok := raw.(map[string]interface{})
+	block, ok := raw.(map[string]any)
 	if !ok {
 		return fmt.Errorf("session_jwt credentials must be an object")
 	}
@@ -209,13 +209,13 @@ func validateSessionCredentials(config map[string]interface{}) error {
 	if !ok {
 		return fmt.Errorf("session_jwt credentials requires 'fields'")
 	}
-	fields, ok := fieldsRaw.([]interface{})
+	fields, ok := fieldsRaw.([]any)
 	if !ok || len(fields) == 0 {
 		return fmt.Errorf("session_jwt credentials 'fields' must be a non-empty array")
 	}
 	names := make(map[string]bool, len(fields))
 	for i, entry := range fields {
-		fm, ok := entry.(map[string]interface{})
+		fm, ok := entry.(map[string]any)
 		if !ok {
 			return fmt.Errorf("session_jwt credentials field %d must be an object", i)
 		}
@@ -246,20 +246,20 @@ func validateSessionCredentials(config map[string]interface{}) error {
 
 // credentialPlaceholdersIn returns the sorted, de-duplicated field names
 // referenced by {{credentials.<name>}} placeholders in the login template keys.
-func credentialPlaceholdersIn(config map[string]interface{}) []string {
+func credentialPlaceholdersIn(config map[string]any) []string {
 	seen := make(map[string]bool)
-	var walk func(v interface{})
-	walk = func(v interface{}) {
+	var walk func(v any)
+	walk = func(v any) {
 		switch t := v.(type) {
 		case string:
 			for _, m := range credentialPlaceholderRegex.FindAllStringSubmatch(t, -1) {
 				seen[m[1]] = true
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			for _, x := range t {
 				walk(x)
 			}
-		case []interface{}:
+		case []any:
 			for _, x := range t {
 				walk(x)
 			}
@@ -282,7 +282,7 @@ func credentialPlaceholdersIn(config map[string]interface{}) []string {
 // {{credentials.<name>}} placeholder replaced from creds. Strings are
 // replaced; maps and slices are walked and copied, never mutated in place.
 // It fails on the first placeholder that has no value.
-func substituteCredentialPlaceholders(v interface{}, creds map[string]string) (interface{}, error) {
+func substituteCredentialPlaceholders(v any, creds map[string]string) (any, error) {
 	switch t := v.(type) {
 	case string:
 		var firstErr error
@@ -301,8 +301,8 @@ func substituteCredentialPlaceholders(v interface{}, creds map[string]string) (i
 			return nil, firstErr
 		}
 		return out, nil
-	case map[string]interface{}:
-		out := make(map[string]interface{}, len(t))
+	case map[string]any:
+		out := make(map[string]any, len(t))
 		for k, x := range t {
 			replaced, err := substituteCredentialPlaceholders(x, creds)
 			if err != nil {
@@ -311,8 +311,8 @@ func substituteCredentialPlaceholders(v interface{}, creds map[string]string) (i
 			out[k] = replaced
 		}
 		return out, nil
-	case []interface{}:
-		out := make([]interface{}, len(t))
+	case []any:
+		out := make([]any, len(t))
 		for i, x := range t {
 			replaced, err := substituteCredentialPlaceholders(x, creds)
 			if err != nil {
@@ -328,8 +328,8 @@ func substituteCredentialPlaceholders(v interface{}, creds map[string]string) (i
 
 // withRuntimeCredentials returns a shallow copy of config carrying creds under
 // the reserved runtime key that SessionJWTStrategy.Authenticate reads.
-func withRuntimeCredentials(config map[string]interface{}, creds map[string]string) map[string]interface{} {
-	out := make(map[string]interface{}, len(config)+1)
+func withRuntimeCredentials(config map[string]any, creds map[string]string) map[string]any {
+	out := make(map[string]any, len(config)+1)
 	for k, v := range config {
 		out[k] = v
 	}
@@ -350,7 +350,7 @@ func (mtam *MultiTenantAuthManager) StoreUserCredentials(tenantHash, serviceName
 	if mtam.db == nil {
 		return fmt.Errorf("token store not available")
 	}
-	data := make(map[string]interface{}, len(values))
+	data := make(map[string]any, len(values))
 	for k, v := range values {
 		data[k] = v
 	}
@@ -360,13 +360,13 @@ func (mtam *MultiTenantAuthManager) StoreUserCredentials(tenantHash, serviceName
 	})
 }
 
-// GetUserCredentials returns the field values a tenant supplied for a service.
+// LoadUserCredentials returns the field values a tenant supplied for a service.
 // Non-string values in the stored record are ignored.
-func (mtam *MultiTenantAuthManager) GetUserCredentials(tenantHash, serviceName string) (map[string]string, error) {
+func (mtam *MultiTenantAuthManager) LoadUserCredentials(tenantHash, serviceName string) (map[string]string, error) {
 	if mtam.db == nil {
 		return nil, fmt.Errorf("token store not available")
 	}
-	record, err := mtam.db.GetCredentials(tenantHash, serviceName)
+	record, err := mtam.db.LoadCredentials(tenantHash, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,7 @@ func (mtam *MultiTenantAuthManager) AuthenticateWithCredentials(ctx context.Cont
 // stored values (credentials mode) or reports that the user must re-run
 // fusion-auth (token mode, or nothing stored).
 func (mtam *MultiTenantAuthManager) loginConfigForTenant(tenantContext *TenantContext,
-	authConfig AuthConfig) (map[string]interface{}, error) {
+	authConfig AuthConfig) (map[string]any, error) {
 	sc, ok := authConfig.SessionCredentials()
 	if !ok {
 		return authConfig.Config, nil
@@ -443,7 +443,7 @@ func (mtam *MultiTenantAuthManager) loginConfigForTenant(tenantContext *TenantCo
 	if sc.Store == CredentialStoreToken {
 		return nil, credentialsRequiredError(authConfig.Type, tenantContext.ServiceName)
 	}
-	creds, err := mtam.GetUserCredentials(tenantContext.TenantHash, tenantContext.ServiceName)
+	creds, err := mtam.LoadUserCredentials(tenantContext.TenantHash, tenantContext.ServiceName)
 	if err != nil || len(creds) == 0 {
 		if mtam.logger != nil {
 			mtam.logger.Debugf("No stored credentials for tenant %s service %s: %v",

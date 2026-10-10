@@ -27,14 +27,15 @@ type OAuth2ExternalStrategy struct {
 }
 
 // NewOAuth2ExternalStrategy creates a new OAuth2 external strategy
-func NewOAuth2ExternalStrategy(httpClient *http.Client, logger global.Logger) *OAuth2ExternalStrategy {
+func NewOAuth2ExternalStrategy(httpClient *http.Client, opts ...ComponentOption) *OAuth2ExternalStrategy {
+	logger := newComponentOptions(opts).logger
 	return &OAuth2ExternalStrategy{
 		httpClient: httpClient,
 		logger:     logger,
 	}
 }
 
-func (s *OAuth2ExternalStrategy) GetAuthType() AuthType {
+func (s *OAuth2ExternalStrategy) Type() AuthType {
 	return AuthTypeOAuth2External
 }
 
@@ -42,19 +43,19 @@ func (s *OAuth2ExternalStrategy) SupportsRefresh() bool {
 	return true
 }
 
-func (s *OAuth2ExternalStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
-	return nil, fmt.Errorf("no stored token found for this service. Please run fusion-auth to authenticate.")
+func (s *OAuth2ExternalStrategy) Authenticate(_ context.Context, _ map[string]any) (*TokenInfo, error) {
+	return nil, fmt.Errorf("no stored token for this service (authenticate with fusion-auth)")
 }
 
-func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
+func (s *OAuth2ExternalStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
-	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
+	req.Header.Set("Authorization", tokenInfo.AuthorizationHeader())
 	return nil
 }
 
-func (s *OAuth2ExternalStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+func (s *OAuth2ExternalStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]any) (*TokenInfo, error) {
 	if tokenInfo == nil {
 		return nil, fmt.Errorf("token info is nil")
 	}
@@ -129,11 +130,7 @@ func (s *OAuth2ExternalStrategy) RefreshToken(ctx context.Context, tokenInfo *To
 	if err != nil {
 		return nil, fmt.Errorf("failed to send token refresh request: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-		}
-	}(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
 
 	if s.logger != nil {
 		s.logger.Debugf("Token refresh response status: %d", resp.StatusCode)

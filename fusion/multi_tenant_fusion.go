@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
 )
 
@@ -22,7 +21,6 @@ type MultiTenantFusion struct {
 	databaseCache *DatabaseCache
 	httpClient    *http.Client
 	logger        global.Logger
-	db            *db.DB
 
 	// Fusion instances per tenant (for caching configurations)
 	tenantFusions map[string]*Fusion
@@ -35,8 +33,8 @@ type MultiTenantFusion struct {
 // MultiTenantFusionOption represents configuration options for MultiTenantFusion
 type MultiTenantFusionOption func(*MultiTenantFusion)
 
-// GetFusionForTenant returns a Fusion instance configured for a specific tenant and service
-func (mtf *MultiTenantFusion) GetFusionForTenant(tenantContext *TenantContext) (*Fusion, error) {
+// FusionForTenant returns a Fusion instance configured for a specific tenant and service
+func (mtf *MultiTenantFusion) FusionForTenant(tenantContext *TenantContext) (*Fusion, error) {
 	if tenantContext == nil {
 		return nil, fmt.Errorf("tenant context is required")
 	}
@@ -87,19 +85,19 @@ func (mtf *MultiTenantFusion) GetFusionForTenant(tenantContext *TenantContext) (
 
 // CallTool calls a tool for a specific tenant
 func (mtf *MultiTenantFusion) CallTool(_ context.Context, tenantContext *TenantContext,
-	toolName string, args map[string]interface{}) (string, error) {
+	toolName string, args map[string]any) (string, error) {
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Calling tool %s for tenant %s service %s",
 			toolName, tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
-	fusion, err := mtf.GetFusionForTenant(tenantContext)
+	fusion, err := mtf.FusionForTenant(tenantContext)
 	if err != nil {
 		return "", fmt.Errorf("failed to get fusion for tenant: %w", err)
 	}
 
-	// Since fusion doesn't have CallTool method, we need to call the tool handler directly
+	// Since fusion doesn't have CallTool method, so call the tool handler directly
 	tools := fusion.RegisterTools()
 	for _, tool := range tools {
 		if tool.Name == toolName {
@@ -109,8 +107,8 @@ func (mtf *MultiTenantFusion) CallTool(_ context.Context, tenantContext *TenantC
 	return "", fmt.Errorf("tool not found: %s", toolName)
 }
 
-// GetResource gets a resource for a specific tenant
-func (mtf *MultiTenantFusion) GetResource(_ context.Context, tenantContext *TenantContext,
+// ReadResource reads a resource for a specific tenant
+func (mtf *MultiTenantFusion) ReadResource(_ context.Context, tenantContext *TenantContext,
 	resourceURI string) (string, error) {
 
 	if mtf.logger != nil {
@@ -118,16 +116,16 @@ func (mtf *MultiTenantFusion) GetResource(_ context.Context, tenantContext *Tena
 			resourceURI, tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
-	fusion, err := mtf.GetFusionForTenant(tenantContext)
+	fusion, err := mtf.FusionForTenant(tenantContext)
 	if err != nil {
 		return "", fmt.Errorf("failed to get fusion for tenant: %w", err)
 	}
 
-	// Since fusion doesn't have GetResource method, we need to call the resource handler directly
+	// Fusion has no method to read a resource, so call the resource handler directly
 	resources := fusion.RegisterResources()
 	for _, resource := range resources {
 		if resource.URI == resourceURI {
-			response, err := resource.Handler(resourceURI, make(map[string]interface{}))
+			response, err := resource.Handler(resourceURI, make(map[string]any))
 			//goland:noinspection GoDfaErrorMayBeNotNil
 			return response.Content, err
 		}
@@ -137,7 +135,7 @@ func (mtf *MultiTenantFusion) GetResource(_ context.Context, tenantContext *Tena
 	for _, template := range templates {
 		// Simple URI matching - in a real implementation you'd do proper template matching
 		if strings.Contains(resourceURI, template.Name) {
-			response, err := template.Handler(resourceURI, make(map[string]interface{}))
+			response, err := template.Handler(resourceURI, make(map[string]any))
 			//goland:noinspection GoDfaErrorMayBeNotNil
 			return response.Content, err
 		}
@@ -145,21 +143,21 @@ func (mtf *MultiTenantFusion) GetResource(_ context.Context, tenantContext *Tena
 	return "", fmt.Errorf("resource not found: %s", resourceURI)
 }
 
-// GetPrompt gets a prompt for a specific tenant
-func (mtf *MultiTenantFusion) GetPrompt(_ context.Context, tenantContext *TenantContext,
-	promptName string, args map[string]interface{}) (string, global.Messages, error) {
+// RenderPrompt renders a prompt for a specific tenant
+func (mtf *MultiTenantFusion) RenderPrompt(_ context.Context, tenantContext *TenantContext,
+	promptName string, args map[string]any) (string, global.Messages, error) {
 
 	if mtf.logger != nil {
 		mtf.logger.Debugf("Getting prompt %s for tenant %s service %s",
 			promptName, tenantContext.ShortHash(), tenantContext.ServiceName)
 	}
 
-	fusion, err := mtf.GetFusionForTenant(tenantContext)
+	fusion, err := mtf.FusionForTenant(tenantContext)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to get fusion for tenant: %w", err)
 	}
 
-	// Since fusion doesn't have GetPrompt method, we need to call the prompt handler directly
+	// Fusion has no method to render a prompt, so call the prompt handler directly
 	prompts := fusion.RegisterPrompts()
 	for _, prompt := range prompts {
 		if prompt.Name == promptName {
@@ -190,13 +188,13 @@ func (mtf *MultiTenantFusion) InvalidateTenantCache(tenantContext *TenantContext
 	}
 }
 
-// GetAuthManager returns the multi-tenant authentication manager
-func (mtf *MultiTenantFusion) GetAuthManager() *MultiTenantAuthManager {
+// AuthManager returns the multi-tenant authentication manager
+func (mtf *MultiTenantFusion) AuthManager() *MultiTenantAuthManager {
 	return mtf.authManager
 }
 
-// GetDatabaseCache returns the database cache
-func (mtf *MultiTenantFusion) GetDatabaseCache() *DatabaseCache {
+// DatabaseCache returns the database cache
+func (mtf *MultiTenantFusion) DatabaseCache() *DatabaseCache {
 	return mtf.databaseCache
 }
 
@@ -208,7 +206,7 @@ func (mtf *MultiTenantFusion) createTenantFusion(tenantContext *TenantContext) (
 
 	// Fall back to default configuration if available
 	if mtf.defaultConfig != nil {
-		serviceConfig = mtf.defaultConfig.GetServiceByName(tenantContext.ServiceName)
+		serviceConfig = mtf.defaultConfig.ServiceByName(tenantContext.ServiceName)
 		if serviceConfig == nil && len(mtf.defaultConfig.Services) > 0 {
 			// Use the first available service as fallback
 			for _, service := range mtf.defaultConfig.Services {
@@ -236,11 +234,11 @@ func (mtf *MultiTenantFusion) createTenantFusion(tenantContext *TenantContext) (
 	// The fusion instance will use its own auth manager instead of tenant-specific wrapper
 
 	// Create the fusion instance
-	fusion := New(
+	fusion, err := New(
 		WithConfig(config),
 	)
-	if fusion == nil {
-		return nil, fmt.Errorf("failed to create fusion instance")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fusion instance: %w", err)
 	}
 
 	if mtf.logger != nil {
@@ -249,19 +247,6 @@ func (mtf *MultiTenantFusion) createTenantFusion(tenantContext *TenantContext) (
 	}
 
 	return fusion, nil
-}
-
-// registerDefaultAuthStrategies registers the default authentication strategies
-// from the shared canonical set (see defaultStrategies).
-func (mtf *MultiTenantFusion) registerDefaultAuthStrategies() {
-	for _, strategy := range defaultStrategies(mtf.httpClient, mtf.logger) {
-		mtf.authManager.RegisterStrategy(strategy)
-	}
-
-	if mtf.logger != nil {
-		strategies := mtf.authManager.GetRegisteredStrategies()
-		mtf.logger.Infof("Registered authentication strategies: %v", strategies)
-	}
 }
 
 // Close closes the multi-tenant fusion and cleans up resources
@@ -287,22 +272,22 @@ func (mtf *MultiTenantFusion) Close() error {
 	return nil
 }
 
-// GetStats returns statistics about the multi-tenant fusion
-func (mtf *MultiTenantFusion) GetStats() map[string]interface{} {
+// Stats returns statistics about the multi-tenant fusion
+func (mtf *MultiTenantFusion) Stats() map[string]any {
 	mtf.mu.RLock()
 	tenantCount := len(mtf.tenantFusions)
 	mtf.mu.RUnlock()
 
-	stats := map[string]interface{}{
+	stats := map[string]any{
 		"active_tenants":           tenantCount,
 		"database_cache_available": mtf.databaseCache != nil,
-		"auth_strategies":          mtf.authManager.GetRegisteredStrategies(),
+		"auth_strategies":          mtf.authManager.RegisteredStrategies(),
 	}
 
 	// TODO: Add service resolver stats when we update to use config.Manager
 
 	if mtf.databaseCache != nil {
-		stats["database_cache"] = mtf.databaseCache.GetStats()
+		stats["database_cache"] = mtf.databaseCache.Stats()
 	}
 
 	return stats

@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tenebris-tech/mlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tenebris-tech/mlogger"
 )
 
 // Test helper functions
@@ -160,7 +160,7 @@ func TestAPITokenDeletion(t *testing.T) {
 	assert.False(t, valid)
 
 	// Verify metadata is gone
-	_, err = db.GetAPITokenMetadata(hash1)
+	_, err = db.LoadAPITokenMetadata(hash1)
 	assert.True(t, IsNotFound(err))
 
 	// Verify second token still exists
@@ -272,7 +272,7 @@ func TestOAuthTokenStoragePerTenantService(t *testing.T) {
 				require.NoError(t, err)
 
 				// Verify retrieval
-				retrieved, err := db.GetOAuthToken(tt.tenantHash, tt.serviceName)
+				retrieved, err := db.LoadOAuthToken(tt.tenantHash, tt.serviceName)
 				require.NoError(t, err)
 
 				assert.Equal(t, tokenData.AccessToken, retrieved.AccessToken)
@@ -347,7 +347,7 @@ func TestOAuthTokenRetrievalAndExpiration(t *testing.T) {
 			err := db.StoreOAuthToken(tenantHash, serviceName, tt.tokenData)
 			require.NoError(t, err)
 
-			retrieved, err := db.GetOAuthToken(tenantHash, serviceName)
+			retrieved, err := db.LoadOAuthToken(tenantHash, serviceName)
 			require.NoError(t, err)
 
 			tt.checkFunc(t, retrieved)
@@ -383,7 +383,7 @@ func TestOAuthTokenDeletion(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify deleted token is gone
-	_, err = db.GetOAuthToken(tenantHash, "microsoft365")
+	_, err = db.LoadOAuthToken(tenantHash, "microsoft365")
 	assert.True(t, IsNotFound(err))
 
 	// Verify other tokens still exist
@@ -475,7 +475,7 @@ func TestMultiTenantIsolation(t *testing.T) {
 	// Add credentials to each tenant
 	credData := &ServiceCredentials{
 		Type: CredentialTypeAPIKey,
-		Data: map[string]interface{}{"key": "value"},
+		Data: map[string]any{"key": "value"},
 	}
 
 	err = db.StoreCredentials(tenant1, "service2", credData)
@@ -485,25 +485,25 @@ func TestMultiTenantIsolation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify isolation - tenant1 cannot access tenant2's data
-	_, err = db.GetOAuthToken(tenant1, "service1")
+	_, err = db.LoadOAuthToken(tenant1, "service1")
 	require.NoError(t, err)
 
 	// Cross-tenant access should work (same service name, different tenants)
-	oauth1, err := db.GetOAuthToken(tenant1, "service1")
+	oauth1, err := db.LoadOAuthToken(tenant1, "service1")
 	require.NoError(t, err)
 
-	oauth2, err := db.GetOAuthToken(tenant2, "service1")
+	oauth2, err := db.LoadOAuthToken(tenant2, "service1")
 	require.NoError(t, err)
 
 	assert.Equal(t, oauth1.AccessToken, oauth2.AccessToken) // Same data stored
 
 	// Verify tenant info shows correct counts
-	info1, err := db.GetTenantInfo(tenant1)
+	info1, err := db.LoadTenantInfo(tenant1)
 	require.NoError(t, err)
 	assert.Equal(t, 1, info1.OAuthCount)
 	assert.Equal(t, 1, info1.CredCount)
 
-	info2, err := db.GetTenantInfo(tenant2)
+	info2, err := db.LoadTenantInfo(tenant2)
 	require.NoError(t, err)
 	assert.Equal(t, 1, info2.OAuthCount)
 	assert.Equal(t, 1, info2.CredCount)
@@ -532,7 +532,7 @@ func TestTenantInfoRetrieval(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now get tenant info - should work as tenant bucket exists
-	info, err := db.GetTenantInfo(tenantHash)
+	info, err := db.LoadTenantInfo(tenantHash)
 	require.NoError(t, err)
 
 	assert.Equal(t, tenantHash, info.Hash)
@@ -555,14 +555,14 @@ func TestTenantInfoRetrieval(t *testing.T) {
 
 	credData := &ServiceCredentials{
 		Type: CredentialTypeAPIKey,
-		Data: map[string]interface{}{"key": "value"},
+		Data: map[string]any{"key": "value"},
 	}
 
 	err = db.StoreCredentials(tenantHash, "service3", credData)
 	require.NoError(t, err)
 
 	// Verify updated counts
-	info, err = db.GetTenantInfo(tenantHash)
+	info, err = db.LoadTenantInfo(tenantHash)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, info.OAuthCount)
@@ -592,7 +592,7 @@ func TestCrossTenantDataSeparation(t *testing.T) {
 
 	cred1 := &ServiceCredentials{
 		Type: CredentialTypeAPIKey,
-		Data: map[string]interface{}{"tenant": "1", "secret": "tenant1-secret"},
+		Data: map[string]any{"tenant": "1", "secret": "tenant1-secret"},
 	}
 	err = db.StoreCredentials(tenant1, serviceName, cred1)
 	require.NoError(t, err)
@@ -608,37 +608,37 @@ func TestCrossTenantDataSeparation(t *testing.T) {
 
 	cred2 := &ServiceCredentials{
 		Type: CredentialTypeBearer,
-		Data: map[string]interface{}{"tenant": "2", "token": "tenant2-token"},
+		Data: map[string]any{"tenant": "2", "token": "tenant2-token"},
 	}
 	err = db.StoreCredentials(tenant2, serviceName, cred2)
 	require.NoError(t, err)
 
 	// Verify each tenant gets their own data
-	retrievedOAuth1, err := db.GetOAuthToken(tenant1, serviceName)
+	retrievedOAuth1, err := db.LoadOAuthToken(tenant1, serviceName)
 	require.NoError(t, err)
 	assert.Equal(t, "tenant1-oauth", retrievedOAuth1.AccessToken)
 	assert.Equal(t, []string{"tenant1"}, retrievedOAuth1.Scope)
 
-	retrievedOAuth2, err := db.GetOAuthToken(tenant2, serviceName)
+	retrievedOAuth2, err := db.LoadOAuthToken(tenant2, serviceName)
 	require.NoError(t, err)
 	assert.Equal(t, "tenant2-oauth", retrievedOAuth2.AccessToken)
 	assert.Equal(t, []string{"tenant2"}, retrievedOAuth2.Scope)
 
-	retrievedCred1, err := db.GetCredentials(tenant1, serviceName)
+	retrievedCred1, err := db.LoadCredentials(tenant1, serviceName)
 	require.NoError(t, err)
 	assert.Equal(t, CredentialTypeAPIKey, retrievedCred1.Type)
 	assert.Equal(t, "tenant1-secret", retrievedCred1.Data["secret"])
 
-	retrievedCred2, err := db.GetCredentials(tenant2, serviceName)
+	retrievedCred2, err := db.LoadCredentials(tenant2, serviceName)
 	require.NoError(t, err)
 	assert.Equal(t, CredentialTypeBearer, retrievedCred2.Type)
 	assert.Equal(t, "tenant2-token", retrievedCred2.Data["token"])
 
 	// Verify tenant3 has no data
-	_, err = db.GetOAuthToken(tenant3, serviceName)
+	_, err = db.LoadOAuthToken(tenant3, serviceName)
 	assert.True(t, IsNotFound(err))
 
-	_, err = db.GetCredentials(tenant3, serviceName)
+	_, err = db.LoadCredentials(tenant3, serviceName)
 	assert.True(t, IsNotFound(err))
 }
 
@@ -676,7 +676,7 @@ func TestNonExistentTenantsTokens(t *testing.T) {
 	nonExistentHash := "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
 
 	// Test OAuth operations on non-existent tenant
-	_, err := db.GetOAuthToken(nonExistentTenant, "service")
+	_, err := db.LoadOAuthToken(nonExistentTenant, "service")
 	assert.Error(t, err)
 	assert.True(t, IsNotFound(err))
 
@@ -685,7 +685,7 @@ func TestNonExistentTenantsTokens(t *testing.T) {
 	assert.True(t, IsNotFound(err))
 
 	// Test credential operations on non-existent tenant
-	_, err = db.GetCredentials(nonExistentTenant, "service")
+	_, err = db.LoadCredentials(nonExistentTenant, "service")
 	assert.Error(t, err)
 	assert.True(t, IsNotFound(err))
 
@@ -694,7 +694,7 @@ func TestNonExistentTenantsTokens(t *testing.T) {
 	assert.True(t, IsNotFound(err))
 
 	// Test API token operations on non-existent hash
-	_, err = db.GetAPITokenMetadata(nonExistentHash)
+	_, err = db.LoadAPITokenMetadata(nonExistentHash)
 	assert.Error(t, err)
 	assert.True(t, IsNotFound(err))
 
@@ -703,7 +703,7 @@ func TestNonExistentTenantsTokens(t *testing.T) {
 	assert.True(t, IsNotFound(err))
 
 	// Test tenant info for non-existent tenant
-	_, err = db.GetTenantInfo(nonExistentTenant)
+	_, err = db.LoadTenantInfo(nonExistentTenant)
 	assert.Error(t, err)
 	assert.True(t, IsNotFound(err))
 }
@@ -733,7 +733,7 @@ func TestDatabaseErrors(t *testing.T) {
 	err = db.StoreOAuthToken("hash", "service", tokenData)
 	assert.Equal(t, ErrDatabaseClosed, err)
 
-	_, err = db.GetOAuthToken("hash", "service")
+	_, err = db.LoadOAuthToken("hash", "service")
 	assert.Equal(t, ErrDatabaseClosed, err)
 
 	// Multiple closes should not cause issues
@@ -840,14 +840,14 @@ func TestConcurrentOAuthOperations(t *testing.T) {
 				// Store token
 				err := db.StoreOAuthToken(tenantHash, serviceName, tokenData)
 				if err != nil {
-					errorChan <- fmt.Errorf("store failed: %v", err)
+					errorChan <- fmt.Errorf("store failed: %w", err)
 					return
 				}
 
 				// Immediately retrieve and verify
-				retrieved, err := db.GetOAuthToken(tenantHash, serviceName)
+				retrieved, err := db.LoadOAuthToken(tenantHash, serviceName)
 				if err != nil {
-					errorChan <- fmt.Errorf("retrieve failed: %v", err)
+					errorChan <- fmt.Errorf("retrieve failed: %w", err)
 					return
 				}
 

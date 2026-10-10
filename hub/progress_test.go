@@ -29,7 +29,7 @@ func newTestForwarder(token mcp.ProgressToken) *progressForwarder {
 
 func TestProgressForwarder_RegisterAndLoad(t *testing.T) {
 	logger := newTestLogger(t)
-	mgr := NewMCPClientManager("test-service", logger)
+	mgr := NewMCPClientManager("test-service", WithLogger(logger))
 
 	fwd := newTestForwarder("upstream-1")
 	mgr.RegisterProgressForwarder("downstream-1", fwd)
@@ -41,7 +41,7 @@ func TestProgressForwarder_RegisterAndLoad(t *testing.T) {
 
 func TestProgressForwarder_UnregisterRemoves(t *testing.T) {
 	logger := newTestLogger(t)
-	mgr := NewMCPClientManager("test-service", logger)
+	mgr := NewMCPClientManager("test-service", WithLogger(logger))
 
 	fwd := newTestForwarder("upstream-1")
 	mgr.RegisterProgressForwarder("downstream-1", fwd)
@@ -54,7 +54,7 @@ func TestProgressForwarder_UnregisterRemoves(t *testing.T) {
 
 func TestProgressForwarder_MultipleTokensLifecycle(t *testing.T) {
 	logger := newTestLogger(t)
-	mgr := NewMCPClientManager("test-service", logger)
+	mgr := NewMCPClientManager("test-service", WithLogger(logger))
 
 	fwdA := newTestForwarder("upstream-A")
 	fwdB := newTestForwarder("upstream-B")
@@ -84,7 +84,7 @@ func TestProgressForwarder_MultipleTokensLifecycle(t *testing.T) {
 
 func TestProgressForwarder_UnregisterNonExistent(t *testing.T) {
 	logger := newTestLogger(t)
-	mgr := NewMCPClientManager("test-service", logger)
+	mgr := NewMCPClientManager("test-service", WithLogger(logger))
 
 	assert.NotPanics(t, func() {
 		mgr.UnregisterProgressForwarder("does-not-exist")
@@ -93,7 +93,7 @@ func TestProgressForwarder_UnregisterNonExistent(t *testing.T) {
 
 func TestProgressForwarder_ConcurrentAccess(t *testing.T) {
 	logger := newTestLogger(t)
-	mgr := NewMCPClientManager("test-service", logger)
+	mgr := NewMCPClientManager("test-service", WithLogger(logger))
 
 	const goroutines = 50
 	const opsPerGoroutine = 100
@@ -122,7 +122,7 @@ func TestProgressForwarder_ConcurrentAccess(t *testing.T) {
 
 	// Verify all forwarders have been cleaned up
 	count := 0
-	mgr.progressForwarders.Range(func(_, _ interface{}) bool {
+	mgr.progressForwarders.Range(func(_, _ any) bool {
 		count++
 		return true
 	})

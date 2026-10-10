@@ -38,9 +38,9 @@ func SanitizeParameterName(name string) string {
 	return sanitized
 }
 
-// GetMCPParameterName returns the MCP-compliant name for a parameter
+// MCPParameterName returns the MCP-compliant name for a parameter
 // It uses the alias if provided, otherwise sanitizes the original name
-func GetMCPParameterName(param *ParameterConfig) string {
+func MCPParameterName(param *ParameterConfig) string {
 	if param.Alias != "" {
 		return param.Alias
 	}
@@ -79,8 +79,8 @@ func (m *ParameterNameMapper) AddMapping(mcpName, originalName string) error {
 	return nil
 }
 
-// GetOriginalName returns the original API parameter name for an MCP name
-func (m *ParameterNameMapper) GetOriginalName(mcpName string) string {
+// OriginalName returns the original API parameter name for an MCP name
+func (m *ParameterNameMapper) OriginalName(mcpName string) string {
 	if original, exists := m.mcpToOriginal[mcpName]; exists {
 		return original
 	}
@@ -88,8 +88,8 @@ func (m *ParameterNameMapper) GetOriginalName(mcpName string) string {
 	return mcpName
 }
 
-// GetMCPName returns the MCP-compliant name for an original parameter name
-func (m *ParameterNameMapper) GetMCPName(originalName string) string {
+// MCPName returns the MCP-compliant name for an original parameter name
+func (m *ParameterNameMapper) MCPName(originalName string) string {
 	if mcpName, exists := m.originalToMCP[originalName]; exists {
 		return mcpName
 	}
@@ -98,10 +98,10 @@ func (m *ParameterNameMapper) GetMCPName(originalName string) string {
 }
 
 // MapArgsToOriginal converts MCP parameter names in args to original API names
-func (m *ParameterNameMapper) MapArgsToOriginal(args map[string]interface{}) map[string]interface{} {
-	mapped := make(map[string]interface{})
+func (m *ParameterNameMapper) MapArgsToOriginal(args map[string]any) map[string]any {
+	mapped := make(map[string]any)
 	for mcpName, value := range args {
-		originalName := m.GetOriginalName(mcpName)
+		originalName := m.OriginalName(mcpName)
 		mapped[originalName] = value
 	}
 	return mapped
@@ -112,7 +112,7 @@ func BuildParameterMappings(params []ParameterConfig, logger global.Logger) (*Pa
 	mapper := NewParameterNameMapper()
 
 	for _, param := range params {
-		mcpName := GetMCPParameterName(&param)
+		mcpName := MCPParameterName(&param)
 		originalName := param.Name
 
 		// Log the mapping
@@ -139,7 +139,7 @@ func ValidateParameterNames(params []ParameterConfig) error {
 	seen := make(map[string]string) // MCP name -> original name
 
 	for _, param := range params {
-		mcpName := GetMCPParameterName(&param)
+		mcpName := MCPParameterName(&param)
 
 		// Check if MCP name is valid
 		if !IsValidMCPParameterName(mcpName) {

@@ -18,7 +18,7 @@ import (
 )
 
 // helpers to find tools by name from RegisterTools output.
-func findTool(t *testing.T, p *perf.Provider, name string) func(map[string]interface{}) (string, error) {
+func findTool(t *testing.T, p *perf.Provider, name string) func(map[string]any) (string, error) {
 	t.Helper()
 	for _, tool := range p.RegisterTools() {
 		if tool.Name == name {
@@ -34,7 +34,7 @@ func TestEcho(t *testing.T) {
 	p := perf.New()
 	handler := findTool(t, p, "perf_echo")
 
-	result, err := handler(map[string]interface{}{"message": "hello world"})
+	result, err := handler(map[string]any{"message": "hello world"})
 	require.NoError(t, err)
 
 	var out map[string]string
@@ -50,7 +50,7 @@ func TestDelay_ContextCancel(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := handler(map[string]interface{}{
+	_, err := handler(map[string]any{
 		"seconds":       30.0,
 		"__mcp_context": ctx,
 	})
@@ -63,7 +63,7 @@ func TestDelay_Completes(t *testing.T) {
 	p := perf.New()
 	handler := findTool(t, p, "perf_delay")
 
-	result, err := handler(map[string]interface{}{"seconds": 0.0})
+	result, err := handler(map[string]any{"seconds": 0.0})
 	require.NoError(t, err)
 
 	var out map[string]float64
@@ -77,10 +77,10 @@ func TestRandomData_Cap(t *testing.T) {
 	handler := findTool(t, p, "perf_random_data")
 
 	// Request more than 1 MiB — should be capped.
-	result, err := handler(map[string]interface{}{"bytes": float64(2_000_000)})
+	result, err := handler(map[string]any{"bytes": float64(2_000_000)})
 	require.NoError(t, err)
 
-	var out map[string]interface{}
+	var out map[string]any
 	require.NoError(t, json.Unmarshal([]byte(result), &out))
 	bytesVal, ok := out["bytes"].(float64)
 	require.True(t, ok)
@@ -97,7 +97,7 @@ func TestError_DefaultMessage(t *testing.T) {
 	p := perf.New()
 	handler := findTool(t, p, "perf_error")
 
-	_, err := handler(map[string]interface{}{})
+	_, err := handler(map[string]any{})
 	require.Error(t, err)
 	require.Equal(t, "perf provider error", err.Error())
 }
@@ -106,7 +106,7 @@ func TestError_CustomMessage(t *testing.T) {
 	p := perf.New()
 	handler := findTool(t, p, "perf_error")
 
-	_, err := handler(map[string]interface{}{"message": "boom"})
+	_, err := handler(map[string]any{"message": "boom"})
 	require.Error(t, err)
 	require.Equal(t, "boom", err.Error())
 }
@@ -125,7 +125,7 @@ func TestCounter_Concurrent(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			result, err := handler(map[string]interface{}{})
+			result, err := handler(map[string]any{})
 			if err != nil {
 				t.Errorf("counter error: %v", err)
 				return
@@ -149,7 +149,7 @@ func TestCounter_Concurrent(t *testing.T) {
 	}
 
 	// Values must span 1..100 (a fresh provider starts at 0).
-	var min, max int64 = results[0], results[0]
+	min, max := results[0], results[0]
 	for _, v := range results {
 		if v < min {
 			min = v

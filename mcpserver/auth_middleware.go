@@ -23,9 +23,9 @@ import (
 
 // ServiceProvider interface for getting available services
 type ServiceProvider interface {
-	GetAvailableServices() []string
-	GetService(name string) (*fusion.ServiceConfig, error)
-	GetServiceAuthConfig(name string) (*fusion.AuthConfig, error)
+	AvailableServices() []string
+	Service(name string) (*fusion.ServiceConfig, error)
+	ServiceAuthConfig(name string) (*fusion.AuthConfig, error)
 }
 
 // AuthMiddleware provides bearer token authentication and tenant context extraction
@@ -301,7 +301,7 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, _ *fusion.TenantCo
 
 		// Validate that this service exists in our configuration
 		if am.serviceProvider != nil {
-			availableServices := am.serviceProvider.GetAvailableServices()
+			availableServices := am.serviceProvider.AvailableServices()
 			serviceFound := false
 			for _, availableService := range availableServices {
 				if availableService == serviceName {
@@ -343,7 +343,7 @@ func (am *AuthMiddleware) resolveServiceName(r *http.Request, _ *fusion.TenantCo
 	// Strategy 4: Check if there's only one available service for this tenant
 	// This is only used when there's no tool name and no explicit service specification
 	if am.serviceProvider != nil {
-		availableServices := am.serviceProvider.GetAvailableServices()
+		availableServices := am.serviceProvider.AvailableServices()
 		if len(availableServices) == 1 {
 			serviceName := availableServices[0]
 			if am.logger != nil {
@@ -375,8 +375,8 @@ func (am *AuthMiddleware) writeErrorResponse(w http.ResponseWriter, statusCode i
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
-	errorResponse := map[string]interface{}{
-		"error": map[string]interface{}{
+	errorResponse := map[string]any{
+		"error": map[string]any{
 			"code":    statusCode,
 			"message": message,
 			"type":    "authentication_error",
@@ -388,7 +388,7 @@ func (am *AuthMiddleware) writeErrorResponse(w http.ResponseWriter, statusCode i
 	if jsonBytes, err := json.Marshal(errorResponse); err == nil {
 		_, _ = w.Write(jsonBytes)
 	} else {
-		_, _ = w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
+		_, _ = fmt.Fprintf(w, `{"error":{"code":%d,"message":"%s"}}`, statusCode, message)
 	}
 }
 
@@ -451,7 +451,7 @@ func (avm *AuthValidationMiddleware) Middleware(next http.Handler) http.Handler 
 func (avm *AuthValidationMiddleware) writeError(w http.ResponseWriter, statusCode int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	_, _ = w.Write([]byte(fmt.Sprintf(`{"error":{"code":%d,"message":"%s"}}`, statusCode, message)))
+	_, _ = fmt.Fprintf(w, `{"error":{"code":%d,"message":"%s"}}`, statusCode, message)
 }
 
 // SimpleMiddleware provides a simplified middleware that ONLY validates bearer tokens

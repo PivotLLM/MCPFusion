@@ -58,7 +58,7 @@ func (s *MCPServer) AddTools() {
 				case "object":
 					// Add additionalProperties for object parameters to satisfy strict JSON Schema validators
 					// Environment variables and similar objects typically accept string key-value pairs
-					options = append(options, mcp.AdditionalProperties(map[string]interface{}{
+					options = append(options, mcp.AdditionalProperties(map[string]any{
 						"type": "string",
 					}))
 					toolOption = mcp.WithObject(param.Name, options...)

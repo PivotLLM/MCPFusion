@@ -8,12 +8,12 @@ package fusion
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	crand "crypto/rand"
 	"mime"
 	"mime/multipart"
 	"net"
@@ -59,7 +59,7 @@ func (h *HTTPHandler) prepareAuthConfig() AuthConfig {
 }
 
 // Handle processes an HTTP request based on the endpoint configuration
-func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (string, error) {
+func (h *HTTPHandler) Handle(ctx context.Context, args map[string]any) (string, error) {
 	// Generate correlation ID for request tracking
 	correlationID := ""
 	if h.fusion.correlationIDGenerator != nil {
@@ -87,7 +87,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Process time tokens in parameter values
-	timeTokenProcessor := NewTimeTokenProcessor(h.fusion.logger)
+	timeTokenProcessor := NewTimeTokenProcessor(WithLogger(h.fusion.logger))
 	args = timeTokenProcessor.ProcessParameterArgs(args)
 
 	// Coerce JSON-encoded string values to native array/object types.
@@ -103,7 +103,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}
 
 	// Validate parameters
-	validator := NewValidator(h.fusion.logger)
+	validator := NewValidator(WithLogger(h.fusion.logger))
 	if err := validator.ValidateParameters(h.endpoint.Parameters, args); err != nil {
 		if h.fusion.logger != nil {
 			h.fusion.logger.Errorf("Parameter validation failed [%s]: %v", correlationID, err)
@@ -266,7 +266,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 	}()
 
 	// Check for token invalidation status codes (only retry once to prevent infinite loops)
-	tokenInvalidationConfig := h.service.Auth.GetEffectiveTokenInvalidationConfig()
+	tokenInvalidationConfig := h.service.Auth.EffectiveTokenInvalidationConfig()
 	shouldInvalidate := false
 	for _, code := range tokenInvalidationConfig.StatusCodes {
 		if resp.StatusCode == code {
@@ -401,7 +401,7 @@ func (h *HTTPHandler) Handle(ctx context.Context, args map[string]interface{}) (
 }
 
 // hasFileParams returns true if any parameter with location "file" or "filepath" has a value in args.
-func hasFileParams(params []ParameterConfig, args map[string]interface{}) bool {
+func hasFileParams(params []ParameterConfig, args map[string]any) bool {
 	for _, p := range params {
 		if p.Location == ParameterLocationFile || p.Location == ParameterLocationFilePath {
 			if _, ok := args[p.Name]; ok {
@@ -415,7 +415,7 @@ func hasFileParams(params []ParameterConfig, args map[string]interface{}) bool {
 // buildMultipartBody constructs a multipart/form-data body from file and body parameters.
 // File parameters (location: "file") become file parts; body parameters become form fields.
 // Returns the body reader, the Content-Type header value (including boundary), and any error.
-func buildMultipartBody(params []ParameterConfig, args map[string]interface{}) (io.Reader, string, error) {
+func buildMultipartBody(params []ParameterConfig, args map[string]any) (io.Reader, string, error) {
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 
@@ -495,15 +495,15 @@ func buildMultipartBody(params []ParameterConfig, args map[string]interface{}) (
 }
 
 // buildRequest constructs an HTTP request based on the endpoint configuration
-func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interface{}) (*http.Request, error) {
-	mapper := NewMapper(h.fusion.logger)
+func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]any) (*http.Request, error) {
+	mapper := NewMapper(WithLogger(h.fusion.logger))
 
 	// Build URL with path parameters, using endpoint-level baseURL override if set
 	baseURL := h.service.BaseURL
 	if h.endpoint.BaseURL != "" {
 		baseURL = h.endpoint.BaseURL
 	}
-	requestUrl, err := mapper.BuildURL(baseURL, h.endpoint.Path, h.endpoint.Parameters, args)
+	requestURL, err := mapper.BuildURL(baseURL, h.endpoint.Path, h.endpoint.Parameters, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build URL: %w", err)
 	}
@@ -536,7 +536,7 @@ func (h *HTTPHandler) buildRequest(ctx context.Context, args map[string]interfac
 	}
 
 	// Create request
-	req, err := http.NewRequestWithContext(ctx, h.endpoint.Method, requestUrl, body)
+	req, err := http.NewRequestWithContext(ctx, h.endpoint.Method, requestURL, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -575,10 +575,10 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 	}
 
 	// Get effective retry configuration
-	retryConfig := h.endpoint.GetEffectiveRetryConfig(h.service)
+	retryConfig := h.endpoint.EffectiveRetryConfig(h.service)
 
 	// Check if circuit breaker is enabled for this service
-	circuitBreakerConfig := h.service.GetEffectiveCircuitBreakerConfig()
+	circuitBreakerConfig := h.service.EffectiveCircuitBreakerConfig()
 	var circuitBreaker *CircuitBreaker
 	if circuitBreakerConfig.Enabled {
 		// Get or create circuit breaker for this service
@@ -645,7 +645,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 				h.fusion.logger.Debugf("Executing HTTP request with retry (max %d attempts): %s %s [%s]",
 					retryConfig.MaxAttempts, req.Method, req.URL.String(), correlationID)
 			}
-			retryExecutor := NewRetryExecutor(retryConfig, h.fusion.logger)
+			retryExecutor := NewRetryExecutor(retryConfig, WithLogger(h.fusion.logger))
 			resp, err = retryExecutor.Execute(ctx, httpClient, req)
 			if err != nil && resp == nil {
 				// Count retry attempts from the error context
@@ -739,7 +739,7 @@ func (h *HTTPHandler) executeRequest(ctx context.Context, req *http.Request, cor
 }
 
 // handleResponse processes the HTTP response
-func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, correlationID string, args map[string]interface{}) (string, error) {
+func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, correlationID string, args map[string]any) (string, error) {
 	// Read response body, capped at MaxResponseBodyReadBytes to prevent a
 	// misbehaving upstream from exhausting server memory.
 	body, err := io.ReadAll(io.LimitReader(resp.Body, global.MaxResponseBodyReadBytes))
@@ -780,7 +780,7 @@ func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, c
 	switch h.endpoint.Response.Type {
 	case "json":
 		// Parse JSON response
-		var data interface{}
+		var data any
 		if err := json.Unmarshal(body, &data); err != nil {
 			return "", fmt.Errorf("failed to parse JSON response: %w", err)
 		}
@@ -793,7 +793,7 @@ func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, c
 			h.endpoint.Response.Transform == "" {
 			dataPath := h.endpoint.Response.PaginationConfig.DataPath
 			if dataPath != "" {
-				if obj, ok := data.(map[string]interface{}); ok {
+				if obj, ok := data.(map[string]any); ok {
 					if pageData, exists := obj[dataPath]; exists {
 						data = pageData
 					}
@@ -804,7 +804,7 @@ func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, c
 		// Apply transformation if specified before enforcing the size limit,
 		// so that transforms can reduce an oversized response to a valid one.
 		if h.endpoint.Response.Transform != "" {
-			mapper := NewMapper(h.fusion.logger)
+			mapper := NewMapper(WithLogger(h.fusion.logger))
 			transformed, err := mapper.TransformResponse(data, h.endpoint.Response.Transform, args)
 			if err != nil {
 				return "", fmt.Errorf("failed to transform response: %w", err)
@@ -982,7 +982,7 @@ func sanitizeFilename(s string) string {
 // array and object parameters. Some MCP clients serialize arrays/objects as
 // JSON-encoded strings rather than native JSON types; this coercion ensures
 // MCPFusion handles both representations uniformly.
-func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}, logger global.Logger) {
+func coerceArgumentTypes(params []ParameterConfig, args map[string]any, logger global.Logger) {
 	for _, param := range params {
 		if param.Type != ParameterTypeArray && param.Type != ParameterTypeObject {
 			continue
@@ -995,7 +995,7 @@ func coerceArgumentTypes(params []ParameterConfig, args map[string]interface{}, 
 		if !ok {
 			continue // already the right type
 		}
-		var parsed interface{}
+		var parsed any
 		if err := json.Unmarshal([]byte(str), &parsed); err == nil {
 			args[param.Name] = parsed
 			if logger != nil {
@@ -1030,7 +1030,7 @@ var interElementWhitespace = regexp.MustCompile(`>[ \t]*[\r\n]+[ \t\r\n]*<`)
 //   - "validate_object_fields:<field1>,<field2>,...": for array-of-object parameters, validates
 //     that each specified dot-path field exists and is non-empty in every element. Returns an
 //     error describing the first missing or empty field found.
-func applyParameterTransforms(params []ParameterConfig, args map[string]interface{}, logger global.Logger) error {
+func applyParameterTransforms(params []ParameterConfig, args map[string]any, logger global.Logger) error {
 	for _, param := range params {
 		if len(param.Transforms) == 0 {
 			continue
@@ -1065,7 +1065,7 @@ func applyParameterTransforms(params []ParameterConfig, args map[string]interfac
 					continue
 				}
 				fieldNames := strings.Split(strings.TrimPrefix(transform, "html_compact_fields:"), ",")
-				arr, ok := val.([]interface{})
+				arr, ok := val.([]any)
 				if !ok {
 					if logger != nil {
 						logger.Warningf("transform html_compact_fields: parameter %q is not []interface{} — skipping", param.Name)
@@ -1073,7 +1073,7 @@ func applyParameterTransforms(params []ParameterConfig, args map[string]interfac
 					continue
 				}
 				for i, elem := range arr {
-					obj, ok := elem.(map[string]interface{})
+					obj, ok := elem.(map[string]any)
 					if !ok {
 						if logger != nil {
 							logger.Warningf("transform html_compact_fields: element %d in parameter %q is not a map — skipping", i, param.Name)
@@ -1107,7 +1107,7 @@ func applyParameterTransforms(params []ParameterConfig, args map[string]interfac
 					continue
 				}
 				fieldPaths := strings.Split(strings.TrimPrefix(transform, "validate_object_fields:"), ",")
-				arr, ok := val.([]interface{})
+				arr, ok := val.([]any)
 				if !ok {
 					if logger != nil {
 						logger.Warningf("transform validate_object_fields: parameter %q is not []interface{} — skipping", param.Name)
@@ -1115,7 +1115,7 @@ func applyParameterTransforms(params []ParameterConfig, args map[string]interfac
 					continue
 				}
 				for i, elem := range arr {
-					obj, ok := elem.(map[string]interface{})
+					obj, ok := elem.(map[string]any)
 					if !ok {
 						if logger != nil {
 							logger.Warningf("transform validate_object_fields: element %d in parameter %q is not a map — skipping", i, param.Name)
@@ -1152,7 +1152,7 @@ func applyParameterTransforms(params []ParameterConfig, args map[string]interfac
 // getNestedField retrieves a value from obj using a dot-separated path.
 // Splits on the first dot only, supporting two-level paths like "customField._id".
 // Returns (value, true) if found at every level, (nil, false) if any key is missing.
-func getNestedField(obj map[string]interface{}, dotPath string) (interface{}, bool) {
+func getNestedField(obj map[string]any, dotPath string) (any, bool) {
 	dotIdx := strings.Index(dotPath, ".")
 	if dotIdx < 0 {
 		val, ok := obj[dotPath]
@@ -1164,7 +1164,7 @@ func getNestedField(obj map[string]interface{}, dotPath string) (interface{}, bo
 	if !ok {
 		return nil, false
 	}
-	parentMap, ok := parentVal.(map[string]interface{})
+	parentMap, ok := parentVal.(map[string]any)
 	if !ok {
 		return nil, false
 	}
@@ -1212,4 +1212,3 @@ func (h *HTTPHandler) wrapNetworkError(err error, req *http.Request) error {
 	message := err.Error()
 	return NewNetworkError(req.URL.String(), req.Method, message, err, timeout, retryable)
 }
-

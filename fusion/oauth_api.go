@@ -46,10 +46,10 @@ type tokenResponse struct {
 
 // serviceConfigResponse represents the response from getting service config.
 type serviceConfigResponse struct {
-	Success     bool        `json:"success"`
-	Message     string      `json:"message"`
-	ServiceName string      `json:"service_name,omitempty"`
-	Config      interface{} `json:"config,omitempty"`
+	Success     bool   `json:"success"`
+	Message     string `json:"message"`
+	ServiceName string `json:"service_name,omitempty"`
+	Config      any    `json:"config,omitempty"`
 }
 
 // authVerifyResponse represents the response from auth verification.
@@ -156,7 +156,7 @@ func (h *oauthAPIHandler) handlePing(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return simple success response
-	response := map[string]interface{}{
+	response := map[string]any{
 		"success":   true,
 		"message":   "pong",
 		"tenant_id": tenantContext.TenantHash,
@@ -220,7 +220,7 @@ func (h *oauthAPIHandler) handleOAuthTokens(w http.ResponseWriter, r *http.Reque
 
 	// session_jwt services with a credentials block receive field values, not
 	// a token: either persist them, or exchange them for a token right now.
-	if service := h.engine.GetService(req.Service); service != nil {
+	if service := h.engine.Service(req.Service); service != nil {
 		if sc, ok := service.Auth.SessionCredentials(); ok {
 			h.storeSessionCredentials(w, r, tenantContext, req.Service, service, sc, req.Metadata)
 			return
@@ -377,7 +377,7 @@ func (h *oauthAPIHandler) handleServiceConfig(w http.ResponseWriter, r *http.Req
 	}
 
 	// Retrieve the service configuration from the engine
-	service := h.engine.GetService(serviceName)
+	service := h.engine.Service(serviceName)
 	if service == nil {
 		h.writeErrorResponse(w, http.StatusNotFound, fmt.Sprintf("Service '%s' not found", serviceName))
 		return
@@ -386,7 +386,7 @@ func (h *oauthAPIHandler) handleServiceConfig(w http.ResponseWriter, r *http.Req
 	// Build the OAuth config response from the service's auth configuration.
 	// The JSON keys match the providers.ServiceConfig struct tags in cmd/auth
 	// so fusion-auth can unmarshal this directly.
-	oauthConfig := map[string]interface{}{
+	oauthConfig := map[string]any{
 		"service_name": serviceName,
 	}
 
@@ -450,7 +450,7 @@ func (h *oauthAPIHandler) handleOAuthSuccess(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Parse notification (we don't need to store it, just log it)
-	var notification map[string]interface{}
+	var notification map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&notification); err != nil {
 		if h.logger != nil {
 			h.logger.Errorf("Failed to decode success notification: %v", err)
@@ -465,7 +465,7 @@ func (h *oauthAPIHandler) handleOAuthSuccess(w http.ResponseWriter, r *http.Requ
 			tenantContext.ShortHash(), serviceName)
 	}
 
-	h.writeJSONResponse(w, http.StatusOK, map[string]interface{}{
+	h.writeJSONResponse(w, http.StatusOK, map[string]any{
 		"success": true,
 		"message": "Success notification received",
 	})
@@ -486,7 +486,7 @@ func (h *oauthAPIHandler) handleOAuthError(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Parse notification (we don't need to store it, just log it)
-	var notification map[string]interface{}
+	var notification map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&notification); err != nil {
 		if h.logger != nil {
 			h.logger.Errorf("Failed to decode error notification: %v", err)
@@ -502,14 +502,14 @@ func (h *oauthAPIHandler) handleOAuthError(w http.ResponseWriter, r *http.Reques
 			tenantContext.ShortHash(), serviceName, errorMsg)
 	}
 
-	h.writeJSONResponse(w, http.StatusOK, map[string]interface{}{
+	h.writeJSONResponse(w, http.StatusOK, map[string]any{
 		"success": true,
 		"message": "Error notification received",
 	})
 }
 
 // writeJSONResponse writes a JSON response
-func (h *oauthAPIHandler) writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
+func (h *oauthAPIHandler) writeJSONResponse(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
@@ -525,9 +525,9 @@ func (h *oauthAPIHandler) writeErrorResponse(w http.ResponseWriter, statusCode i
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
-	errorResponse := map[string]interface{}{
+	errorResponse := map[string]any{
 		"success": false,
-		"error": map[string]interface{}{
+		"error": map[string]any{
 			"code":    statusCode,
 			"message": message,
 			"type":    "api_error",

@@ -158,7 +158,7 @@ func TestRetryExecutor(t *testing.T) {
 			server := httptest.NewServer(tt.serverResponse(&attempts))
 			defer server.Close()
 
-			retryExecutor := NewRetryExecutor(tt.config, logger)
+			retryExecutor := NewRetryExecutor(tt.config, WithLogger(logger))
 			client := &http.Client{Timeout: 5 * time.Second}
 
 			req, err := http.NewRequest("GET", server.URL, nil)
@@ -241,7 +241,7 @@ func TestRetryStrategies(t *testing.T) {
 				BackoffFactor: 2.0,
 			}
 
-			executor := NewRetryExecutor(config, logger)
+			executor := NewRetryExecutor(config, WithLogger(logger))
 
 			for _, attempt := range tt.attempts {
 				delay := executor.calculateDelay(attempt)
@@ -285,11 +285,11 @@ func TestCircuitBreaker(t *testing.T) {
 			ResetTimeout:     100 * time.Millisecond,
 		}
 
-		cb := NewCircuitBreaker(config, logger)
+		cb := NewCircuitBreaker(config, WithLogger(logger))
 
 		// Initially closed
-		if cb.GetState() != CircuitBreakerClosed {
-			t.Errorf("Expected initial state CLOSED, got %v", cb.GetState())
+		if cb.State() != CircuitBreakerClosed {
+			t.Errorf("Expected initial state CLOSED, got %v", cb.State())
 		}
 
 		// Test failures - should transition to OPEN after threshold
@@ -304,8 +304,8 @@ func TestCircuitBreaker(t *testing.T) {
 		}
 
 		// Should be OPEN now
-		if cb.GetState() != CircuitBreakerOpen {
-			t.Errorf("Expected state OPEN after failures, got %v", cb.GetState())
+		if cb.State() != CircuitBreakerOpen {
+			t.Errorf("Expected state OPEN after failures, got %v", cb.State())
 		}
 
 		// Calls should be rejected immediately
@@ -324,8 +324,8 @@ func TestCircuitBreaker(t *testing.T) {
 			return nil // Success
 		})
 
-		if cb.GetState() != CircuitBreakerHalfOpen {
-			t.Errorf("Expected state HALF_OPEN after reset timeout, got %v", cb.GetState())
+		if cb.State() != CircuitBreakerHalfOpen {
+			t.Errorf("Expected state HALF_OPEN after reset timeout, got %v", cb.State())
 		}
 
 		// One more success should close the circuit
@@ -333,8 +333,8 @@ func TestCircuitBreaker(t *testing.T) {
 			return nil // Success
 		})
 
-		if cb.GetState() != CircuitBreakerClosed {
-			t.Errorf("Expected state CLOSED after successes, got %v", cb.GetState())
+		if cb.State() != CircuitBreakerClosed {
+			t.Errorf("Expected state CLOSED after successes, got %v", cb.State())
 		}
 	})
 
@@ -348,14 +348,14 @@ func TestCircuitBreaker(t *testing.T) {
 			ResetTimeout:     100 * time.Millisecond,
 		}
 
-		cb := NewCircuitBreaker(config, logger)
+		cb := NewCircuitBreaker(config, WithLogger(logger))
 		ctx := context.Background()
 
 		// Test some failures
 		_ = cb.Execute(ctx, func() error { return errors.New("fail") })
 		_ = cb.Execute(ctx, func() error { return errors.New("fail") })
 
-		metrics := cb.GetMetrics()
+		metrics := cb.Metrics()
 		if metrics.FailureCount != 2 {
 			t.Errorf("Expected 2 failures, got %d", metrics.FailureCount)
 		}
@@ -369,7 +369,7 @@ func TestCircuitBreaker(t *testing.T) {
 			Enabled: false,
 		}
 
-		cb := NewCircuitBreaker(config, logger)
+		cb := NewCircuitBreaker(config, WithLogger(logger))
 		ctx := context.Background()
 
 		// Should execute directly without protection
@@ -502,7 +502,7 @@ func TestCircuitBreaker_HalfOpenFailureReopens(t *testing.T) {
 		ResetTimeout:     20 * time.Millisecond, // short timeout to trigger HALF_OPEN quickly
 	}
 
-	cb := NewCircuitBreaker(config, logger)
+	cb := NewCircuitBreaker(config, WithLogger(logger))
 	ctx := context.Background()
 
 	// Open the circuit breaker by recording enough failures.
@@ -512,8 +512,8 @@ func TestCircuitBreaker_HalfOpenFailureReopens(t *testing.T) {
 		})
 	}
 
-	if cb.GetState() != CircuitBreakerOpen {
-		t.Fatalf("expected OPEN state after %d failures, got %v", config.FailureThreshold, cb.GetState())
+	if cb.State() != CircuitBreakerOpen {
+		t.Fatalf("expected OPEN state after %d failures, got %v", config.FailureThreshold, cb.State())
 	}
 
 	// Verify calls are rejected while OPEN.
@@ -540,8 +540,8 @@ func TestCircuitBreaker_HalfOpenFailureReopens(t *testing.T) {
 	}
 
 	// Circuit breaker must be OPEN again after a failure in HALF_OPEN.
-	if cb.GetState() != CircuitBreakerOpen {
-		t.Errorf("expected OPEN state after HALF_OPEN failure, got %v", cb.GetState())
+	if cb.State() != CircuitBreakerOpen {
+		t.Errorf("expected OPEN state after HALF_OPEN failure, got %v", cb.State())
 	}
 
 	// Subsequent requests must be rejected immediately (circuit is OPEN again).

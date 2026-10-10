@@ -21,14 +21,17 @@ func TestRegisterTools_AuthSetupForSessionCredentialsOnly(t *testing.T) {
 	uem := newFakeUEM(t)
 	plain := &ServiceConfig{
 		Name: "Plain", ServiceKey: "plain", BaseURL: uem.URL,
-		Auth: AuthConfig{Type: AuthTypeSessionJWT, Config: map[string]interface{}{
+		Auth: AuthConfig{Type: AuthTypeSessionJWT, Config: map[string]any{
 			"loginURL": "/api/v1/login", "tokenPath": "access_token", "tokenLocation": "header",
 		}},
 	}
-	f := New(WithLogger(logger), WithConfig(&Config{Services: map[string]*ServiceConfig{
+	f, err := New(WithLogger(logger), WithConfig(&Config{Services: map[string]*ServiceConfig{
 		"uem":   sessionService(uem.URL, CredentialStoreCredentials),
 		"plain": plain,
 	}}))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	names := map[string]global.ToolDefinition{}
 	for _, tool := range f.RegisterTools() {
@@ -66,9 +69,9 @@ func TestAuthSetupHandler_SessionCredentials_ClearsStoredValues(t *testing.T) {
 	assert.Contains(t, result, "fusion-auth ")
 	assert.NotContains(t, result, "web browser")
 
-	_, err = mtam.GetUserCredentials(testTenantHash, "uem")
+	_, err = mtam.LoadUserCredentials(testTenantHash, "uem")
 	assert.Error(t, err, "old credentials must be cleared before the user enters new ones")
-	_, err = mtam.db.GetOAuthToken(testTenantHash, "uem")
+	_, err = mtam.db.LoadOAuthToken(testTenantHash, "uem")
 	assert.Error(t, err, "old token must be cleared")
 }
 
@@ -83,6 +86,6 @@ func TestAuthSetupHandler_UserCredentials_DoesNotTouchCredentialStore(t *testing
 	ctx := context.WithValue(context.Background(), global.TenantContextKey, tenant("trello"))
 	_, err := handler(map[string]any{"__mcp_context": ctx})
 	require.NoError(t, err)
-	_, err = mtam.GetUserCredentials(testTenantHash, "trello")
+	_, err = mtam.LoadUserCredentials(testTenantHash, "trello")
 	assert.NoError(t, err)
 }

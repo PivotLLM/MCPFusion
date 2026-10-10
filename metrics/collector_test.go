@@ -28,7 +28,7 @@ func TestRegisterService(t *testing.T) {
 	tools := 5
 	c.RegisterService("svc1", global.TransportAPI, &tools)
 
-	s := c.GetServiceStats("svc1")
+	s := c.ServiceStats("svc1")
 	if s == nil {
 		t.Fatal("expected service stats, got nil")
 	}
@@ -53,7 +53,7 @@ func TestRegisterServiceNilTools(t *testing.T) {
 	c := New()
 	c.RegisterService("internal", global.TransportInternal, nil)
 
-	s := c.GetServiceStats("internal")
+	s := c.ServiceStats("internal")
 	if s == nil {
 		t.Fatal("expected service stats, got nil")
 	}
@@ -73,7 +73,7 @@ func TestRegisterServiceUpdate(t *testing.T) {
 	// Re-register with updated transport and tools
 	c.RegisterService("svc", global.TransportMCPStdio, &tools7)
 
-	s := c.GetServiceStats("svc")
+	s := c.ServiceStats("svc")
 	if s.Transport != global.TransportMCPStdio {
 		t.Errorf("expected transport '%s', got '%s'", global.TransportMCPStdio, s.Transport)
 	}
@@ -98,7 +98,7 @@ func TestRecordRequest(t *testing.T) {
 	c.RecordRequest("svc", false)
 	c.RecordRequest("svc", true)
 
-	s := c.GetServiceStats("svc")
+	s := c.ServiceStats("svc")
 	if s.Requests != 3 {
 		t.Errorf("expected 3 requests, got %d", s.Requests)
 	}
@@ -120,7 +120,7 @@ func TestSetStatus(t *testing.T) {
 	c.RegisterService("svc", global.TransportAPI, &tools)
 
 	c.SetStatus("svc", global.StatusDegraded)
-	s := c.GetServiceStats("svc")
+	s := c.ServiceStats("svc")
 	if s.Status != global.StatusDegraded {
 		t.Errorf("expected status '%s', got '%s'", global.StatusDegraded, s.Status)
 	}
@@ -136,13 +136,13 @@ func TestSetToolCount(t *testing.T) {
 
 	newCount := 10
 	c.SetToolCount("svc", &newCount)
-	s := c.GetServiceStats("svc")
+	s := c.ServiceStats("svc")
 	if s.Tools == nil || *s.Tools != 10 {
 		t.Errorf("expected tools=10, got %v", s.Tools)
 	}
 
 	c.SetToolCount("svc", nil)
-	s = c.GetServiceStats("svc")
+	s = c.ServiceStats("svc")
 	if s.Tools != nil {
 		t.Errorf("expected nil tools, got %v", s.Tools)
 	}
@@ -151,37 +151,37 @@ func TestSetToolCount(t *testing.T) {
 	c.SetToolCount("unknown", &newCount)
 }
 
-func TestGetServiceStatsNotFound(t *testing.T) {
+func TestServiceStatsNotFound(t *testing.T) {
 	c := New()
-	s := c.GetServiceStats("nonexistent")
+	s := c.ServiceStats("nonexistent")
 	if s != nil {
 		t.Errorf("expected nil, got %v", s)
 	}
 }
 
-func TestGetServiceStatsSnapshot(t *testing.T) {
+func TestServiceStatsSnapshot(t *testing.T) {
 	c := New()
 	tools := 1
 	c.RegisterService("svc", global.TransportAPI, &tools)
 	c.RecordRequest("svc", false)
 
-	s := c.GetServiceStats("svc")
+	s := c.ServiceStats("svc")
 	// Mutating the snapshot should not affect the collector
 	s.Requests = 999
-	s2 := c.GetServiceStats("svc")
+	s2 := c.ServiceStats("svc")
 	if s2.Requests != 1 {
 		t.Errorf("snapshot mutation affected collector: got %d", s2.Requests)
 	}
 
 	// Mutating the Tools pointer in the snapshot should not affect the collector
 	*s.Tools = 999
-	s3 := c.GetServiceStats("svc")
+	s3 := c.ServiceStats("svc")
 	if s3.Tools == nil || *s3.Tools != 1 {
 		t.Errorf("Tools pointer mutation affected collector: got %v", s3.Tools)
 	}
 }
 
-func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
+func TestServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 	c := New()
 	tools := 1
 	c.RegisterService("svc", global.TransportAPI, &tools)
@@ -211,15 +211,15 @@ func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 		}(i)
 	}
 
-	// Readers via GetServiceStats: verify snapshot isolation
+	// Readers via ServiceStats: verify snapshot isolation
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < iterations; j++ {
-				s := c.GetServiceStats("svc")
+				s := c.ServiceStats("svc")
 				if s == nil {
-					t.Error("GetServiceStats returned nil for registered service")
+					t.Error("ServiceStats returned nil for registered service")
 					return
 				}
 
@@ -237,9 +237,9 @@ func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 				}
 
 				// A fresh snapshot must not reflect our mutations
-				s2 := c.GetServiceStats("svc")
+				s2 := c.ServiceStats("svc")
 				if s2 == nil {
-					t.Error("GetServiceStats returned nil for registered service")
+					t.Error("ServiceStats returned nil for registered service")
 					return
 				}
 				if s2.Requests < 0 {
@@ -259,15 +259,15 @@ func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 		}()
 	}
 
-	// Readers via GetAllServiceStats: verify snapshot isolation
+	// Readers via AllServiceStats: verify snapshot isolation
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < iterations; j++ {
-				all := c.GetAllServiceStats()
+				all := c.AllServiceStats()
 				if len(all) == 0 {
-					t.Error("GetAllServiceStats returned empty slice for registered service")
+					t.Error("AllServiceStats returned empty slice for registered service")
 					return
 				}
 
@@ -285,13 +285,13 @@ func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 				}
 
 				// A fresh read must not reflect our mutations
-				all2 := c.GetAllServiceStats()
+				all2 := c.AllServiceStats()
 				if len(all2) > 0 {
 					if all2[0].Requests < 0 {
-						t.Error("GetAllServiceStats snapshot mutation leaked (Requests)")
+						t.Error("AllServiceStats snapshot mutation leaked (Requests)")
 					}
 					if all2[0].Tools != nil && *all2[0].Tools < 0 {
-						t.Error("GetAllServiceStats snapshot mutation leaked (Tools pointer)")
+						t.Error("AllServiceStats snapshot mutation leaked (Tools pointer)")
 					}
 				}
 			}
@@ -301,7 +301,7 @@ func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 	wg.Wait()
 
 	// After all goroutines finish, verify final request counts are consistent
-	s := c.GetServiceStats("svc")
+	s := c.ServiceStats("svc")
 	expectedRequests := int64(numGoroutines * iterations)
 	if s.Requests != expectedRequests {
 		t.Errorf("expected %d requests, got %d", expectedRequests, s.Requests)
@@ -312,14 +312,14 @@ func TestGetServiceStatsSnapshotUnderConcurrency(t *testing.T) {
 	}
 }
 
-func TestGetAllServiceStats(t *testing.T) {
+func TestAllServiceStats(t *testing.T) {
 	c := New()
 	tools1 := 3
 	tools2 := 5
 	c.RegisterService("beta", global.TransportAPI, &tools1)
 	c.RegisterService("alpha", global.TransportMCPStdio, &tools2)
 
-	all := c.GetAllServiceStats()
+	all := c.AllServiceStats()
 	if len(all) != 2 {
 		t.Fatalf("expected 2 services, got %d", len(all))
 	}
@@ -332,18 +332,18 @@ func TestGetAllServiceStats(t *testing.T) {
 	}
 }
 
-func TestGetAllServiceStatsEmpty(t *testing.T) {
+func TestAllServiceStatsEmpty(t *testing.T) {
 	c := New()
-	all := c.GetAllServiceStats()
+	all := c.AllServiceStats()
 	if len(all) != 0 {
 		t.Errorf("expected 0 services, got %d", len(all))
 	}
 }
 
-func TestGetUptime(t *testing.T) {
+func TestUptime(t *testing.T) {
 	c := New()
 	time.Sleep(10 * time.Millisecond)
-	uptime := c.GetUptime()
+	uptime := c.Uptime()
 	if uptime < 10*time.Millisecond {
 		t.Errorf("expected uptime >= 10ms, got %v", uptime)
 	}
@@ -372,7 +372,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 
-	s := c.GetServiceStats("svc")
+	s := c.ServiceStats("svc")
 	expectedRequests := int64(goroutines * requestsPerGoroutine)
 	if s.Requests != expectedRequests {
 		t.Errorf("expected %d requests, got %d", expectedRequests, s.Requests)
@@ -419,9 +419,9 @@ func TestConcurrentMixedOperations(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 50; i++ {
-			_ = c.GetServiceStats("svc")
-			_ = c.GetAllServiceStats()
-			_ = c.GetUptime()
+			_ = c.ServiceStats("svc")
+			_ = c.AllServiceStats()
+			_ = c.Uptime()
 		}
 	}()
 

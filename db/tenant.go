@@ -14,8 +14,8 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-// GetTenantInfo retrieves information about a specific tenant
-func (d *DB) GetTenantInfo(hash string) (*TenantInfo, error) {
+// LoadTenantInfo retrieves information about a specific tenant
+func (d *DB) LoadTenantInfo(hash string) (*TenantInfo, error) {
 	if err := d.checkClosed(); err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (d *DB) GetTenantInfo(hash string) (*TenantInfo, error) {
 		// Check for tenant metadata (if exists)
 		metadataBytes := tenantBucket.Get([]byte(internal.KeyMetadata))
 		if metadataBytes != nil {
-			var metadata map[string]interface{}
+			var metadata map[string]any
 			if err := json.Unmarshal(metadataBytes, &metadata); err == nil {
 				if desc, ok := metadata["description"].(string); ok {
 					tenantInfo.Description = desc
@@ -171,7 +171,7 @@ func (d *DB) ListTenants() ([]TenantInfo, error) {
 			// Get tenant metadata if available
 			metadataBytes := tenantBucket.Get([]byte(internal.KeyMetadata))
 			if metadataBytes != nil {
-				var metadata map[string]interface{}
+				var metadata map[string]any
 				if err := json.Unmarshal(metadataBytes, &metadata); err == nil {
 					if desc, ok := metadata["description"].(string); ok {
 						tenantInfo.Description = desc
@@ -282,15 +282,15 @@ func (d *DB) UpdateTenantMetadata(tenantHash, description string) error {
 		}
 
 		// Get existing metadata or create new
-		var metadata map[string]interface{}
+		var metadata map[string]any
 		metadataBytes := tenantBucket.Get([]byte(internal.KeyMetadata))
 		if metadataBytes != nil {
 			if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
 				// If unmarshal fails, start with fresh metadata
-				metadata = make(map[string]interface{})
+				metadata = make(map[string]any)
 			}
 		} else {
-			metadata = make(map[string]interface{})
+			metadata = make(map[string]any)
 		}
 
 		// Update metadata
@@ -351,14 +351,14 @@ func (d *DB) UpdateTenantLastUsed(tenantHash string) error {
 			}
 
 			// Get existing metadata or create new
-			var metadata map[string]interface{}
+			var metadata map[string]any
 			metadataBytes := tenantBucket.Get([]byte(internal.KeyMetadata))
 			if metadataBytes != nil {
 				if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
-					metadata = make(map[string]interface{})
+					metadata = make(map[string]any)
 				}
 			} else {
-				metadata = make(map[string]interface{})
+				metadata = make(map[string]any)
 			}
 
 			// Update last used timestamp
@@ -485,8 +485,8 @@ func (d *DB) TenantExists(tenantHash string) (bool, error) {
 	return exists, nil
 }
 
-// GetTenantResourceCount returns the total count of resources for a tenant
-func (d *DB) GetTenantResourceCount(tenantHash string) (int, int, error) {
+// CountTenantResources returns the total count of resources for a tenant
+func (d *DB) CountTenantResources(tenantHash string) (int, int, error) {
 	if err := d.checkClosed(); err != nil {
 		return 0, 0, err
 	}

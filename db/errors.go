@@ -14,19 +14,19 @@ import (
 //
 //goland:noinspection GoUnusedGlobalVariable
 var (
-	ErrTenantNotFound   = errors.New("tenant not found")
-	ErrTokenNotFound    = errors.New("token not found")
-	ErrServiceNotFound  = errors.New("service not found")
-	ErrInvalidToken     = errors.New("invalid token")
-	ErrInvalidHash      = errors.New("invalid hash")
-	ErrDuplicateToken   = errors.New("duplicate token")
-	ErrDatabaseClosed   = errors.New("database is closed")
-	ErrInvalidBucket    = errors.New("invalid bucket structure")
-	ErrCorruptedData    = errors.New("corrupted data")
-	ErrPermissionDenied = errors.New("permission denied")
-	ErrUserNotFound     = errors.New("user not found")
-	ErrUserExists       = errors.New("user already exists")
-	ErrKeyAlreadyLinked = errors.New("API key already linked to a user")
+	ErrTenantNotFound    = errors.New("tenant not found")
+	ErrTokenNotFound     = errors.New("token not found")
+	ErrServiceNotFound   = errors.New("service not found")
+	ErrInvalidToken      = errors.New("invalid token")
+	ErrInvalidHash       = errors.New("invalid hash")
+	ErrDuplicateToken    = errors.New("duplicate token")
+	ErrDatabaseClosed    = errors.New("database is closed")
+	ErrInvalidBucket     = errors.New("invalid bucket structure")
+	ErrCorruptedData     = errors.New("corrupted data")
+	ErrPermissionDenied  = errors.New("permission denied")
+	ErrUserNotFound      = errors.New("user not found")
+	ErrUserExists        = errors.New("user already exists")
+	ErrKeyAlreadyLinked  = errors.New("API key already linked to a user")
 	ErrKnowledgeNotFound = errors.New("knowledge entry not found")
 )
 
@@ -55,7 +55,7 @@ func (e *DatabaseError) Unwrap() error {
 // ValidationError represents a data validation error
 type ValidationError struct {
 	Field   string
-	Value   interface{}
+	Value   any
 	Message string
 }
 
@@ -99,7 +99,7 @@ func NewDatabaseErrorWithContext(op string, err error, tenantID, service string)
 }
 
 // NewValidationError creates a new ValidationError
-func NewValidationError(field string, value interface{}, message string) *ValidationError {
+func NewValidationError(field string, value any, message string) *ValidationError {
 	return &ValidationError{
 		Field:   field,
 		Value:   value,

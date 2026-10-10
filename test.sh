@@ -6,13 +6,14 @@
 
 # MCPFusion Regression Test Suite
 #
-# Runs the full Go unit-test suite under the race detector, then optionally
-# runs the live MCP integration tests (requires a running server + credentials).
+# Builds, vets and runs the Go unit tests under the race detector for every
+# module in the repository (the root module and cmd/auth). The live MCP
+# integration tests need a running server and run separately via
+# `make test-integration`.
 #
 # Usage:
 #   ./test.sh          Full regression suite (race detector on, recommended)
 #   ./test.sh -f       Fast mode — disables race detector (local iteration only)
-#   ./test.sh -i       Also run MCP integration tests (requires running server)
 #   ./test.sh -x       Preserve test artifacts on completion
 #   ./test.sh -n       No-color output (also honoured via NO_COLOR env var)
 #
@@ -21,9 +22,8 @@
 #   1   One or more tests failed
 #
 # Test phases:
-#   0.x  Pre-flight: build verification
+#   0.x  Pre-flight: build, vet, format and lint
 #   1.x  Unit tests (go test -race -count=1 ./...)
-#   2.x  Integration tests (optional, -i flag)
 
 set -euo pipefail
 
@@ -35,20 +35,17 @@ cd "$SCRIPT_DIR"
 ################################################################################
 
 FAST_MODE=false
-INTEGRATION=false
 PRESERVE_ARTIFACTS=false
 NO_COLOR_FLAG=false
 
-while getopts "finx" opt; do
+while getopts "fnx" opt; do
     case $opt in
         f) FAST_MODE=true ;;
-        i) INTEGRATION=true ;;
         n) NO_COLOR_FLAG=true ;;
         x) PRESERVE_ARTIFACTS=true ;;
         *)
-            echo "Usage: $0 [-f] [-i] [-n] [-x]"
+            echo "Usage: $0 [-f] [-n] [-x]"
             echo "  -f  Fast mode (no race detector)"
-            echo "  -i  Run integration tests (requires running server + credentials)"
             echo "  -n  No-color output"
             echo "  -x  Preserve test artifacts after completion"
             exit 1
@@ -61,16 +58,22 @@ done
 ################################################################################
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "$NO_COLOR_FLAG" = false ]; then
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[1;33m'
-    BLUE='\033[0;34m'
-    CYAN='\033[0;36m'
-    BOLD='\033[1m'
-    NC='\033[0m'
+    RED=$'\033[0;31m'
+    GREEN=$'\033[0;32m'
+    YELLOW=$'\033[1;33m'
+    BLUE=$'\033[0;34m'
+    CYAN=$'\033[0;36m'
+    BOLD=$'\033[1m'
+    NC=$'\033[0m'
 else
     RED='' GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' NC=''
 fi
+
+################################################################################
+# Go modules in this repository
+################################################################################
+
+MODULES=(. cmd/auth)
 
 ################################################################################
 # Counters
@@ -126,25 +129,50 @@ if ! command -v go &>/dev/null; then
 fi
 GO_VERSION=$(go version)
 echo "  ${GO_VERSION}"
-echo ""
 
-echo "  0.1  Build check (go build ./...)"
-if go build ./... 2>&1; then
-    pass "Build succeeded"
-else
-    fail "Build failed — fix compilation errors before running tests"
-    echo ""
-    echo "${RED}Build failed. Aborting.${NC}"
+if ! command -v golangci-lint &>/dev/null; then
+    echo "${RED}ERROR: 'golangci-lint' not found in PATH (https://golangci-lint.run)${NC}"
     exit 1
 fi
-
+echo "  $(golangci-lint version 2>&1 | head -1)"
 echo ""
-echo "  0.2  Vet check (go vet ./...)"
-if go vet ./... 2>&1; then
-    pass "go vet clean"
-else
-    fail "go vet reported issues"
-fi
+
+for mod in "${MODULES[@]}"; do
+    echo "  0.1  Build check: $mod (go build ./...)"
+    if (cd "$mod" && go build ./...) 2>&1; then
+        pass "Build succeeded: $mod"
+    else
+        fail "Build failed: $mod"
+        echo ""
+        echo "${RED}Build failed. Aborting.${NC}"
+        exit 1
+    fi
+
+    echo ""
+    echo "  0.2  Vet check: $mod (go vet ./...)"
+    if (cd "$mod" && go vet ./...) 2>&1; then
+        pass "go vet clean: $mod"
+    else
+        fail "go vet reported issues: $mod"
+    fi
+
+    echo ""
+    echo "  0.3  Format check: $mod (golangci-lint fmt --diff)"
+    if (cd "$mod" && golangci-lint fmt --diff) 2>&1; then
+        pass "Formatting clean: $mod"
+    else
+        fail "Formatting differs (run make fmt): $mod"
+    fi
+
+    echo ""
+    echo "  0.4  Lint: $mod (golangci-lint run ./...)"
+    if (cd "$mod" && golangci-lint run ./...) 2>&1; then
+        pass "Lint clean: $mod"
+    else
+        fail "Lint reported issues: $mod"
+    fi
+    echo ""
+done
 
 ################################################################################
 # Phase 1: Unit tests
@@ -165,10 +193,14 @@ echo ""
 TMPOUT=$(mktemp)
 trap 'rm -f "$TMPOUT"' EXIT
 
-set +e
-go test $GO_TEST_FLAGS ./... 2>&1 | tee "$TMPOUT"
-GO_TEST_EXIT=${PIPESTATUS[0]}
-set -e
+GO_TEST_EXIT=0
+for mod in "${MODULES[@]}"; do
+    set +e
+    (cd "$mod" && go test $GO_TEST_FLAGS ./...) 2>&1 | tee -a "$TMPOUT"
+    rc=${PIPESTATUS[0]}
+    set -e
+    if [ "$rc" -ne 0 ]; then GO_TEST_EXIT=$rc; fi
+done
 
 echo ""
 
@@ -185,33 +217,6 @@ while IFS= read -r line; do
         skip "$pkg  [no test files]"
     fi
 done < "$TMPOUT"
-
-################################################################################
-# Phase 2: Integration tests (optional)
-################################################################################
-
-if [ "$INTEGRATION" = true ]; then
-    print_section "2.x  Integration Tests"
-
-    TESTS_DIR="$SCRIPT_DIR/tests"
-
-    if [ ! -f "$TESTS_DIR/run_all_tests.sh" ]; then
-        warn "tests/run_all_tests.sh not found — skipping integration tests"
-    else
-        echo "  Running: tests/run_all_tests.sh"
-        echo "  (Requires a running MCPFusion server and APIKEY env var)"
-        echo ""
-        if bash "$TESTS_DIR/run_all_tests.sh"; then
-            pass "Integration tests (tests/run_all_tests.sh)"
-        else
-            fail "Integration tests (tests/run_all_tests.sh)"
-        fi
-    fi
-else
-    echo ""
-    echo "  ${CYAN}Integration tests skipped (pass -i to enable).${NC}"
-    echo "  ${CYAN}Requires a running server and APIKEY env var.${NC}"
-fi
 
 ################################################################################
 # Summary

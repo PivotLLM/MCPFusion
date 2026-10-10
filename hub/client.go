@@ -50,7 +50,7 @@ type MCPClientManager struct {
 	logger             global.Logger
 	onToolsChanged     func(serviceName string, added, removed []string)
 	callTimeout        time.Duration // per-tool-call timeout for this service
-	progressForwarders sync.Map // downstream token string → *progressForwarder
+	progressForwarders sync.Map      // downstream token string → *progressForwarder
 	cbMu               sync.Mutex
 	cbFailures         int
 	cbOpenUntil        time.Time
@@ -58,7 +58,8 @@ type MCPClientManager struct {
 }
 
 // NewMCPClientManager creates a new client manager for the named service.
-func NewMCPClientManager(serviceName string, logger global.Logger) *MCPClientManager {
+func NewMCPClientManager(serviceName string, opts ...ClientOption) *MCPClientManager {
+	logger := newClientOptions(opts).logger
 	return &MCPClientManager{
 		serviceName: serviceName,
 		tools:       make(map[string]mcp.Tool),
@@ -282,8 +283,8 @@ func (m *MCPClientManager) RefreshTools(ctx context.Context) error {
 	return nil
 }
 
-// GetCachedTools returns a copy of the cached tool set.
-func (m *MCPClientManager) GetCachedTools() map[string]mcp.Tool {
+// CachedTools returns a copy of the cached tool set.
+func (m *MCPClientManager) CachedTools() map[string]mcp.Tool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	result := make(map[string]mcp.Tool, len(m.tools))
@@ -308,7 +309,7 @@ func (m *MCPClientManager) SetCachedTools(tools map[string]mcp.Tool) {
 // If a transport error is detected (e.g. the upstream server restarted and
 // invalidated the session without dropping the TCP connection), CallTool
 // triggers the reconnect loop and retries the call once after reconnection.
-func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args map[string]interface{}, meta *mcp.Meta) (*mcp.CallToolResult, error) {
+func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args map[string]any, meta *mcp.Meta) (*mcp.CallToolResult, error) {
 	m.mu.RLock()
 	c := m.client
 	connected := m.connected
@@ -316,8 +317,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 	m.mu.RUnlock()
 
 	if !connected || c == nil {
-		return nil, fmt.Errorf("hub service '%s' is currently unavailable. The server will automatically reconnect",
-			m.serviceName)
+		return nil, fmt.Errorf("hub service '%s' is unavailable (reconnecting automatically)", m.serviceName)
 	}
 
 	if m.isCircuitOpen() {
@@ -337,7 +337,7 @@ func (m *MCPClientManager) CallTool(ctx context.Context, toolName string, args m
 		m.logger.Debugf("Hub service '%s': calling tool '%s' (timeout %v) [ctx deadline: %v]",
 			m.serviceName, toolName, callTimeout, func() string {
 				if d, ok := callCtx.Deadline(); ok {
-					return d.Sub(time.Now()).Round(time.Second).String()
+					return time.Until(d).Round(time.Second).String()
 				}
 				return "none"
 			}())

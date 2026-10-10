@@ -14,24 +14,24 @@ import (
 	"testing"
 )
 
-func TestOAuth2ExternalStrategy_GetAuthType(t *testing.T) {
-	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
-	if strategy.GetAuthType() != AuthTypeOAuth2External {
-		t.Errorf("GetAuthType() = %v, want %v", strategy.GetAuthType(), AuthTypeOAuth2External)
+func TestOAuth2ExternalStrategy_Type(t *testing.T) {
+	strategy := NewOAuth2ExternalStrategy(&http.Client{})
+	if strategy.Type() != AuthTypeOAuth2External {
+		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeOAuth2External)
 	}
 }
 
 func TestOAuth2ExternalStrategy_SupportsRefresh(t *testing.T) {
-	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
+	strategy := NewOAuth2ExternalStrategy(&http.Client{})
 	if !strategy.SupportsRefresh() {
 		t.Error("SupportsRefresh() should return true")
 	}
 }
 
 func TestOAuth2ExternalStrategy_Authenticate(t *testing.T) {
-	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
+	strategy := NewOAuth2ExternalStrategy(&http.Client{})
 
-	_, err := strategy.Authenticate(context.Background(), map[string]interface{}{})
+	_, err := strategy.Authenticate(context.Background(), map[string]any{})
 	if err == nil {
 		t.Error("Authenticate() expected error, got nil")
 		return
@@ -42,7 +42,7 @@ func TestOAuth2ExternalStrategy_Authenticate(t *testing.T) {
 }
 
 func TestOAuth2ExternalStrategy_ApplyAuth(t *testing.T) {
-	strategy := NewOAuth2ExternalStrategy(&http.Client{}, nil)
+	strategy := NewOAuth2ExternalStrategy(&http.Client{})
 
 	tests := []struct {
 		name      string
@@ -112,19 +112,19 @@ func TestOAuth2ExternalStrategy_ApplyAuth(t *testing.T) {
 
 func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 	tests := []struct {
-		name           string
-		tokenInfo      *TokenInfo
-		config         map[string]interface{}
-		serverHandler  http.HandlerFunc
-		wantError      bool
-		errorMsg       string
-		wantToken      string
-		wantRefresh    string
-		wantExpiry     bool
-		checkSecret    bool
-		checkScope     bool
-		wantScope      string
-		wantSecretVal  string
+		name          string
+		tokenInfo     *TokenInfo
+		config        map[string]any
+		serverHandler http.HandlerFunc
+		wantError     bool
+		errorMsg      string
+		wantToken     string
+		wantRefresh   string
+		wantExpiry    bool
+		checkSecret   bool
+		checkScope    bool
+		wantScope     string
+		wantSecretVal string
 	}{
 		{
 			name: "successful refresh",
@@ -132,7 +132,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "", // will be replaced with server URL
 			},
@@ -165,7 +165,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 					Scope:        "openid email",
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					t.Errorf("failed to encode response: %v", err)
+				}
 			},
 			wantToken:   "new_access_token",
 			wantRefresh: "new_refresh_token",
@@ -177,7 +179,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId":     "test-client-id",
 				"clientSecret": "test-secret",
 				"tokenURL":     "", // will be replaced with server URL
@@ -204,7 +206,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 					Scope:        "openid profile",
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					t.Errorf("failed to encode response: %v", err)
+				}
 			},
 			wantToken:   "refreshed_token",
 			wantRefresh: "refresh_token_123", // old refresh token kept since server returned empty
@@ -216,9 +220,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
-				"client_id":     "test-client-id",
-				"client_secret": "test-secret-snake",
+			config: map[string]any{
+				"client_id":      "test-client-id",
+				"client_secret":  "test-secret-snake",
 				"token_endpoint": "", // will be replaced with server URL
 			},
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -240,7 +244,9 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 					ExpiresIn:   3600,
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					t.Errorf("failed to encode response: %v", err)
+				}
 			},
 			wantToken:   "refreshed_token_snake",
 			wantRefresh: "refresh_token_123",
@@ -249,7 +255,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 		{
 			name:      "nil token info",
 			tokenInfo: nil,
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "http://example.com/token",
 			},
@@ -262,7 +268,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "http://example.com/token",
 			},
@@ -285,7 +291,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"tokenURL": "http://example.com/token",
 			},
 			wantError: true,
@@ -297,7 +303,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 			},
 			wantError: true,
@@ -309,13 +315,15 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "", // will be replaced with server URL
 			},
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error": "server_error"}`))
+				if _, err := w.Write([]byte(`{"error": "server_error"}`)); err != nil {
+					t.Errorf("failed to write response: %v", err)
+				}
 			},
 			wantError: true,
 			errorMsg:  "token refresh request failed with status 500",
@@ -326,13 +334,15 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				AccessToken:  "old_token",
 				RefreshToken: "refresh_token_123",
 			},
-			config: map[string]interface{}{
+			config: map[string]any{
 				"clientId": "test-client-id",
 				"tokenURL": "", // will be replaced with server URL
 			},
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`not valid json`))
+				if _, err := w.Write([]byte(`not valid json`)); err != nil {
+					t.Errorf("failed to write response: %v", err)
+				}
 			},
 			wantError: true,
 			errorMsg:  "failed to parse token refresh response",
@@ -362,7 +372,7 @@ func TestOAuth2ExternalStrategy_RefreshToken(t *testing.T) {
 				httpClient = &http.Client{}
 			}
 
-			strategy := NewOAuth2ExternalStrategy(httpClient, nil)
+			strategy := NewOAuth2ExternalStrategy(httpClient)
 			newTokenInfo, err := strategy.RefreshToken(context.Background(), tt.tokenInfo, tt.config)
 
 			if tt.wantError {
@@ -414,17 +424,19 @@ func TestOAuth2ExternalStrategy_RefreshToken_NoScope(t *testing.T) {
 			ExpiresIn:   3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
-	strategy := NewOAuth2ExternalStrategy(server.Client(), nil)
+	strategy := NewOAuth2ExternalStrategy(server.Client())
 
 	tokenInfo := &TokenInfo{
 		AccessToken:  "old_token",
 		RefreshToken: "refresh_token_123",
 	}
-	config := map[string]interface{}{
+	config := map[string]any{
 		"clientId": "test-client-id",
 		"tokenURL": server.URL + "/token",
 		// No scope configured
@@ -452,17 +464,19 @@ func TestOAuth2ExternalStrategy_RefreshToken_UsesTokenURLDirectly(t *testing.T) 
 			ExpiresIn:   3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
-	strategy := NewOAuth2ExternalStrategy(server.Client(), nil)
+	strategy := NewOAuth2ExternalStrategy(server.Client())
 
 	tokenInfo := &TokenInfo{
 		AccessToken:  "old_token",
 		RefreshToken: "refresh_token_123",
 	}
-	config := map[string]interface{}{
+	config := map[string]any{
 		"clientId": "test-client-id",
 		"tokenURL": server.URL + "/oauth2/v4/token",
 	}

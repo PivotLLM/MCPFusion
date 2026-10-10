@@ -14,33 +14,33 @@ import (
 	"testing"
 )
 
-func TestSessionJWTStrategy_GetAuthType(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
-	if strategy.GetAuthType() != AuthTypeSessionJWT {
-		t.Errorf("GetAuthType() = %v, want %v", strategy.GetAuthType(), AuthTypeSessionJWT)
+func TestSessionJWTStrategy_Type(t *testing.T) {
+	strategy := NewSessionJWTStrategy(&http.Client{})
+	if strategy.Type() != AuthTypeSessionJWT {
+		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeSessionJWT)
 	}
 }
 
 func TestSessionJWTStrategy_SupportsRefresh(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 	if !strategy.SupportsRefresh() {
 		t.Error("SupportsRefresh() should return true")
 	}
 }
 
 func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name      string
-		data      map[string]interface{}
+		data      map[string]any
 		path      string
-		want      interface{}
+		want      any
 		wantError bool
 	}{
 		{
 			name: "simple path",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"token": "abc123",
 			},
 			path: "token",
@@ -48,8 +48,8 @@ func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
 		},
 		{
 			name: "nested path",
-			data: map[string]interface{}{
-				"datas": map[string]interface{}{
+			data: map[string]any{
+				"datas": map[string]any{
 					"token": "xyz789",
 				},
 			},
@@ -58,10 +58,10 @@ func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
 		},
 		{
 			name: "deeply nested path",
-			data: map[string]interface{}{
-				"response": map[string]interface{}{
-					"data": map[string]interface{}{
-						"auth": map[string]interface{}{
+			data: map[string]any{
+				"response": map[string]any{
+					"data": map[string]any{
+						"auth": map[string]any{
 							"token": "deep_token",
 						},
 					},
@@ -72,7 +72,7 @@ func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
 		},
 		{
 			name: "numeric value",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"expires_in": float64(3600),
 			},
 			path: "expires_in",
@@ -80,7 +80,7 @@ func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
 		},
 		{
 			name: "key not found",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"other": "value",
 			},
 			path:      "token",
@@ -88,8 +88,8 @@ func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
 		},
 		{
 			name: "nested key not found",
-			data: map[string]interface{}{
-				"datas": map[string]interface{}{
+			data: map[string]any{
+				"datas": map[string]any{
 					"other": "value",
 				},
 			},
@@ -98,7 +98,7 @@ func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
 		},
 		{
 			name: "path through non-object",
-			data: map[string]interface{}{
+			data: map[string]any{
 				"token": "string_value",
 			},
 			path:      "token.nested",
@@ -121,7 +121,7 @@ func TestSessionJWTStrategy_extractValueByPath(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_ApplyAuth_Header(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name           string
@@ -198,7 +198,7 @@ func TestSessionJWTStrategy_ApplyAuth_Header(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_ApplyAuth_Cookie(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name           string
@@ -281,7 +281,7 @@ func TestSessionJWTStrategy_ApplyAuth_Cookie(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_ApplyAuth_Query(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name           string
@@ -332,7 +332,7 @@ func TestSessionJWTStrategy_ApplyAuth_Query(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_ApplyAuth_Errors(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name      string
@@ -384,23 +384,25 @@ func TestSessionJWTStrategy_Authenticate(t *testing.T) {
 		}
 
 		// Return a mock token response
-		response := map[string]interface{}{
+		response := map[string]any{
 			"status": "success",
-			"datas": map[string]interface{}{
+			"datas": map[string]any{
 				"token": "mock_jwt_token_12345",
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"loginURL":  server.URL + "/api/users/token",
 		"tokenPath": "datas.token",
-		"loginBody": map[string]interface{}{
+		"loginBody": map[string]any{
 			"username": "testuser",
 			"password": "testpass",
 		},
@@ -429,21 +431,21 @@ func TestSessionJWTStrategy_Authenticate(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_Authenticate_Errors(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
 	tests := []struct {
 		name      string
-		config    map[string]interface{}
+		config    map[string]any
 		wantError string
 	}{
 		{
 			name:      "missing loginURL",
-			config:    map[string]interface{}{},
+			config:    map[string]any{},
 			wantError: "loginURL is required",
 		},
 		{
 			name: "missing tokenPath",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"loginURL": "http://example.com/login",
 			},
 			wantError: "tokenPath is required",
@@ -466,20 +468,22 @@ func TestSessionJWTStrategy_Authenticate_Errors(t *testing.T) {
 
 func TestSessionJWTStrategy_Authenticate_WithExpiration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := map[string]interface{}{
-			"datas": map[string]interface{}{
+		response := map[string]any{
+			"datas": map[string]any{
 				"token":      "token_with_expiry",
 				"expires_in": float64(3600),
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"loginURL":      server.URL + "/login",
 		"tokenPath":     "datas.token",
 		"expiresInPath": "datas.expires_in",
@@ -499,20 +503,22 @@ func TestSessionJWTStrategy_Authenticate_WithExpiration(t *testing.T) {
 
 func TestSessionJWTStrategy_Authenticate_WithRefreshToken(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := map[string]interface{}{
-			"datas": map[string]interface{}{
+		response := map[string]any{
+			"datas": map[string]any{
 				"token":        "access_token_here",
 				"refreshToken": "refresh_token_here",
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"loginURL":         server.URL + "/login",
 		"tokenPath":        "datas.token",
 		"refreshTokenPath": "datas.refreshToken",
@@ -533,13 +539,15 @@ func TestSessionJWTStrategy_Authenticate_WithRefreshToken(t *testing.T) {
 func TestSessionJWTStrategy_Authenticate_LoginFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "invalid credentials"}`))
+		if _, err := w.Write([]byte(`{"error": "invalid credentials"}`)); err != nil {
+			t.Errorf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"loginURL":      server.URL + "/login",
 		"tokenPath":     "datas.token",
 		"tokenLocation": "header",
@@ -562,19 +570,21 @@ func TestSessionJWTStrategy_RefreshToken(t *testing.T) {
 			return
 		}
 
-		response := map[string]interface{}{
-			"datas": map[string]interface{}{
+		response := map[string]any{
+			"datas": map[string]any{
 				"token": "new_access_token",
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
-	strategy := NewSessionJWTStrategy(server.Client(), nil)
+	strategy := NewSessionJWTStrategy(server.Client())
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"refreshURL":    server.URL + "/refresh",
 		"tokenPath":     "datas.token",
 		"tokenLocation": "header",
@@ -606,9 +616,9 @@ func TestSessionJWTStrategy_RefreshToken(t *testing.T) {
 }
 
 func TestSessionJWTStrategy_RefreshToken_NoRefreshURL(t *testing.T) {
-	strategy := NewSessionJWTStrategy(&http.Client{}, nil)
+	strategy := NewSessionJWTStrategy(&http.Client{})
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"tokenPath": "datas.token",
 	}
 

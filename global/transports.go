@@ -10,11 +10,11 @@ package global
 // identifying transport types in metrics, health status, and logging.
 // These values are also used as transport identifiers in JSON configuration files.
 const (
-	TransportAPI       = "api"        // Standard HTTP/REST API services
-	TransportMCPStdio  = "mcp_stdio"  // MCP over stdio transport
-	TransportMCPSSE    = "mcp_sse"    // MCP over Server-Sent Events
-	TransportMCPHTTP   = "mcp_http"   // MCP over HTTP transport
-	TransportInternal  = "internal"   // Internal services (e.g., knowledge store)
+	TransportAPI      = "api"       // Standard HTTP/REST API services
+	TransportMCPStdio = "mcp_stdio" // MCP over stdio transport
+	TransportMCPSSE   = "mcp_sse"   // MCP over Server-Sent Events
+	TransportMCPHTTP  = "mcp_http"  // MCP over HTTP transport
+	TransportInternal = "internal"  // Internal services (e.g., knowledge store)
 )
 
 // Service and server status values for health reporting.

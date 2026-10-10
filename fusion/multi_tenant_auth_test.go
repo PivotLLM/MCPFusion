@@ -18,16 +18,16 @@ import (
 // mockCache implements the Cache interface for testing
 type mockCache struct {
 	mu    sync.RWMutex
-	items map[string]interface{}
+	items map[string]any
 }
 
 func newMockCache() *mockCache {
 	return &mockCache{
-		items: make(map[string]interface{}),
+		items: make(map[string]any),
 	}
 }
 
-func (c *mockCache) Get(key string) (interface{}, error) {
+func (c *mockCache) Get(key string) (any, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -38,7 +38,7 @@ func (c *mockCache) Get(key string) (interface{}, error) {
 	return val, nil
 }
 
-func (c *mockCache) Set(key string, value interface{}, ttl time.Duration) error {
+func (c *mockCache) Set(key string, value any, ttl time.Duration) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -58,7 +58,7 @@ func (c *mockCache) Clear() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.items = make(map[string]interface{})
+	c.items = make(map[string]any)
 	return nil
 }
 
@@ -74,21 +74,21 @@ func (c *mockCache) Has(key string) bool {
 type mockStrategy struct {
 	authType        AuthType
 	supportsRefresh bool
-	refreshFunc     func(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error)
+	refreshFunc     func(ctx context.Context, tokenInfo *TokenInfo, config map[string]any) (*TokenInfo, error)
 }
 
-func (s *mockStrategy) Authenticate(_ context.Context, _ map[string]interface{}) (*TokenInfo, error) {
+func (s *mockStrategy) Authenticate(_ context.Context, _ map[string]any) (*TokenInfo, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *mockStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error) {
+func (s *mockStrategy) RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]any) (*TokenInfo, error) {
 	if s.refreshFunc != nil {
 		return s.refreshFunc(ctx, tokenInfo, config)
 	}
 	return nil, fmt.Errorf("refresh not implemented")
 }
 
-func (s *mockStrategy) GetAuthType() AuthType {
+func (s *mockStrategy) Type() AuthType {
 	return s.authType
 }
 
@@ -96,21 +96,21 @@ func (s *mockStrategy) SupportsRefresh() bool {
 	return s.supportsRefresh
 }
 
-func (s *mockStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]interface{}) error {
+func (s *mockStrategy) ApplyAuth(req *http.Request, tokenInfo *TokenInfo, _ map[string]any) error {
 	if tokenInfo == nil {
 		return fmt.Errorf("token info is nil")
 	}
-	req.Header.Set("Authorization", tokenInfo.GetAuthorizationHeader())
+	req.Header.Set("Authorization", tokenInfo.AuthorizationHeader())
 	return nil
 }
 
 func TestRefreshIfPossible_NilTenantContext(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	_, err := manager.RefreshIfPossible(context.Background(), nil, authConfig)
@@ -125,7 +125,7 @@ func TestRefreshIfPossible_NilTenantContext(t *testing.T) {
 
 func TestRefreshIfPossible_NoToken(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	tenantCtx := &TenantContext{
 		TenantHash:  "abc123def456",
@@ -135,7 +135,7 @@ func TestRefreshIfPossible_NoToken(t *testing.T) {
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	_, err := manager.RefreshIfPossible(context.Background(), tenantCtx, authConfig)
@@ -150,7 +150,7 @@ func TestRefreshIfPossible_NoToken(t *testing.T) {
 
 func TestRefreshIfPossible_UnsupportedStrategy(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	tenantCtx := &TenantContext{
 		TenantHash:  "abc123def456",
@@ -160,15 +160,17 @@ func TestRefreshIfPossible_UnsupportedStrategy(t *testing.T) {
 
 	// Store a token in the cache so getCachedToken finds it
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "some_token",
 		RefreshToken: "some_refresh",
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	// Use an auth type with no registered strategy
 	authConfig := AuthConfig{
 		Type:   AuthType("nonexistent_auth_type"),
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	_, err := manager.RefreshIfPossible(context.Background(), tenantCtx, authConfig)
@@ -183,7 +185,7 @@ func TestRefreshIfPossible_UnsupportedStrategy(t *testing.T) {
 
 func TestRefreshIfPossible_StrategyDoesNotSupportRefresh(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	// Register a strategy that does not support refresh
 	strategy := &mockStrategy{
@@ -199,14 +201,16 @@ func TestRefreshIfPossible_StrategyDoesNotSupportRefresh(t *testing.T) {
 	}
 
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "some_token",
 		RefreshToken: "some_refresh",
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	_, err := manager.RefreshIfPossible(context.Background(), tenantCtx, authConfig)
@@ -221,7 +225,7 @@ func TestRefreshIfPossible_StrategyDoesNotSupportRefresh(t *testing.T) {
 
 func TestRefreshIfPossible_NoRefreshToken(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	strategy := &mockStrategy{
 		authType:        AuthTypeOAuth2External,
@@ -237,14 +241,16 @@ func TestRefreshIfPossible_NoRefreshToken(t *testing.T) {
 
 	// Store a token without a refresh token
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "some_token",
 		RefreshToken: "", // no refresh token
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	_, err := manager.RefreshIfPossible(context.Background(), tenantCtx, authConfig)
@@ -259,13 +265,13 @@ func TestRefreshIfPossible_NoRefreshToken(t *testing.T) {
 
 func TestRefreshIfPossible_RefreshFails(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	refreshErr := fmt.Errorf("upstream token endpoint unavailable")
 	strategy := &mockStrategy{
 		authType:        AuthTypeOAuth2External,
 		supportsRefresh: true,
-		refreshFunc: func(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
+		refreshFunc: func(_ context.Context, _ *TokenInfo, _ map[string]any) (*TokenInfo, error) {
 			return nil, refreshErr
 		},
 	}
@@ -278,14 +284,16 @@ func TestRefreshIfPossible_RefreshFails(t *testing.T) {
 	}
 
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "old_access_token",
 		RefreshToken: "valid_refresh_token",
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	_, err := manager.RefreshIfPossible(context.Background(), tenantCtx, authConfig)
@@ -301,7 +309,7 @@ func TestRefreshIfPossible_RefreshFails(t *testing.T) {
 
 func TestRefreshIfPossible_Success(t *testing.T) {
 	cache := newMockCache()
-	manager := NewMultiTenantAuthManager(nil, cache, nil)
+	manager := NewMultiTenantAuthManager(nil, cache)
 
 	newExpiry := time.Now().Add(1 * time.Hour)
 	refreshedToken := &TokenInfo{
@@ -316,7 +324,7 @@ func TestRefreshIfPossible_Success(t *testing.T) {
 	strategy := &mockStrategy{
 		authType:        AuthTypeOAuth2External,
 		supportsRefresh: true,
-		refreshFunc: func(_ context.Context, _ *TokenInfo, _ map[string]interface{}) (*TokenInfo, error) {
+		refreshFunc: func(_ context.Context, _ *TokenInfo, _ map[string]any) (*TokenInfo, error) {
 			return refreshedToken, nil
 		},
 	}
@@ -329,15 +337,17 @@ func TestRefreshIfPossible_Success(t *testing.T) {
 	}
 
 	cacheKey := fmt.Sprintf("tenant:%s:token:%s", tenantCtx.TenantHash, tenantCtx.ServiceName)
-	cache.Set(cacheKey, &TokenInfo{
+	if err := cache.Set(cacheKey, &TokenInfo{
 		AccessToken:  "old_access_token",
 		RefreshToken: "old_refresh_token",
 		TokenType:    "Bearer",
-	}, time.Hour)
+	}, time.Hour); err != nil {
+		t.Fatalf("failed to seed cache: %v", err)
+	}
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeOAuth2External,
-		Config: map[string]interface{}{"clientId": "test-client"},
+		Config: map[string]any{"clientId": "test-client"},
 	}
 
 	result, err := manager.RefreshIfPossible(context.Background(), tenantCtx, authConfig)
@@ -386,7 +396,7 @@ func TestRefreshIfPossible_Success(t *testing.T) {
 // With nil database and nil cache, no I/O occurs but the per-key mutex logic
 // in invalidationLocks (sync.Map with *sync.Mutex values) is fully exercised.
 func TestInvalidateToken_ConcurrentSameKey(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 
 	const goroutines = 50
 	var wg sync.WaitGroup
@@ -412,7 +422,7 @@ func TestInvalidateToken_ConcurrentSameKey(t *testing.T) {
 // Each goroutine targets a unique key, exercising concurrent LoadOrStore calls
 // on the invalidationLocks sync.Map.
 func TestInvalidateToken_ConcurrentDifferentKeys(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 
 	const goroutines = 50
 	var wg sync.WaitGroup
@@ -438,7 +448,7 @@ func TestInvalidateToken_ConcurrentDifferentKeys(t *testing.T) {
 // LoadOrStore contention path (same key) and the concurrent creation path
 // (different keys) simultaneously.
 func TestInvalidateToken_ConcurrentMixed(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 
 	const goroutinesPerKey = 20
 	const uniqueKeys = 10
@@ -466,7 +476,7 @@ func TestInvalidateToken_ConcurrentMixed(t *testing.T) {
 // TestInvalidateToken_NilTenantContext verifies that InvalidateToken returns
 // immediately without panicking when given a nil TenantContext.
 func TestInvalidateToken_NilTenantContext(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 	// Must not panic
 	manager.InvalidateToken(nil)
 }
@@ -477,7 +487,7 @@ func TestInvalidateToken_NilTenantContext(t *testing.T) {
 // them with "unsupported authentication type". The embedded manager must expose
 // the full canonical strategy set.
 func TestNewMultiTenantAuthManager_RegistersAllDefaultStrategies(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, nil, nil)
+	manager := NewMultiTenantAuthManager(nil, nil)
 
 	want := []AuthType{
 		AuthTypeOAuth2Device,
@@ -490,7 +500,7 @@ func TestNewMultiTenantAuthManager_RegistersAllDefaultStrategies(t *testing.T) {
 	}
 
 	got := make(map[AuthType]bool)
-	for _, at := range manager.GetRegisteredStrategies() {
+	for _, at := range manager.RegisteredStrategies() {
 		got[at] = true
 	}
 

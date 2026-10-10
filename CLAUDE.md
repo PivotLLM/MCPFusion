@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 When working on this codebase, Claude Code will proactively use specialized sub-agents for different tasks:
 
 - **golang-architect**: Used for designing new application architectures, planning package structures, making architectural decisions, or adding new packages
-- **golang-developer**: Used for implementing Go code including writing functions, methods, structs, interfaces, business logic, data processing, utilities, tests, and features
+- **golang-engineer**: Used for Go implementation that needs engineering judgement (multi-file changes, debugging, refactoring)
+- **golang-coder**: Used for implementing a single, fully specified function, method or test
 - **code-quality-inspector**: Used for code review and quality assurance of recently written or modified code
 
 These sub-agents will be automatically engaged based on the nature of your request to ensure high-quality code and architectural decisions.
@@ -15,6 +16,19 @@ These sub-agents will be automatically engaged based on the nature of your reque
 ## Project Overview
 
 MCPFusion is a Model Context Protocol (MCP) server implementation in Go that enables AI clients to interact with APIs and services through a standardized interface. It provides tools, resources, and prompts to MCP clients.
+
+## Release Status
+
+MCPFusion is **released**. It is used only by our own applications, but they
+import its packages: any change to an exported identifier, signature or
+behaviour is a breaking change. Ask before making one, and record it in
+`CHANGELOG.md` so the dependent applications can be updated.
+
+## Makefile
+
+There is deliberately no `make install` / `make uninstall`, and the binary has
+no `install` / `uninstall` subcommands. Deployment uses `mcpfusion.service` by
+hand (see README). Do not add them unless asked.
 
 ## Key Commands
 
@@ -29,22 +43,25 @@ go run . -port 8081
 # Run with debug logging
 go run . -debug
 
-# Build the binary
-go build -o mcpfusion
+# Build the binary (test first with plain `make`)
+make build
 ```
 
 **Note**: Both SSE and Streamable HTTP transports are always available simultaneously.
 
 ### Testing
 ```bash
-# Run all Go unit tests
-go test ./...
+# Full regression suite (both modules, race detector) — the one gate
+make test
+
+# Test, then build mcpfusion and cmd/auth/fusion-auth
+make
 
 # Run tests with coverage
 go test -cover ./...
 
-# Run MCP function tests (requires running server)
-cd tests && ./run_all_tests.sh
+# Run MCP function tests (requires running server, APIKEY and probe)
+make test-integration
 
 # Run individual MCP function tests
 cd tests && ./test_profile.sh > profile_output.log
@@ -59,7 +76,7 @@ cd tests && ./test_profile.sh > profile_output.log
    - Manages SSE and HTTP transports
    - Routes tool/resource/prompt calls to providers
 
-2. **Provider Interfaces** (`globalMetrics/`)
+2. **Provider Interfaces** (`global/`)
    - `ToolProvider`: Implements tools (functions AI can call)
    - `ResourceProvider`: Implements resources (data AI can read)
    - `PromptProvider`: Implements prompts (templates for AI)
@@ -72,19 +89,11 @@ cd tests && ./test_profile.sh > profile_output.log
 
 ### Handler Patterns
 
-Tool handlers follow this signature:
+Handler types are defined in `global/interfaces.go`:
 ```go
-func(args map[string]interface{}) (string, error)
-```
-
-Resource handlers follow:
-```go
-func(uri string) (string, error)
-```
-
-Prompt handlers follow:
-```go
-func(args map[string]interface{}) (*globalMetrics.PromptResponse, error)
+type ToolHandler func(options map[string]any) (string, error)
+type ResourceHandler func(uri string, options map[string]any) (ResourceResponse, error)
+type PromptHandler func(options map[string]any) (string, Messages, error)
 ```
 
 ## Configuration
@@ -118,8 +127,8 @@ MS365_TENANT_ID=your-tenant-id
 
 Before committing any code changes:
 
-1. **Compilation Check**: Run `go build ./...` to ensure all packages compile
-2. **Test Execution**: Run `go test ./...` to ensure all tests pass
+1. **Compilation Check**: Run `make build` to ensure everything compiles
+2. **Test Execution**: Run `make test` (build, vet, format, lint and race-enabled tests for both modules) and ensure it passes
 3. **Type Safety**: Verify all function calls match their signatures
 4. **Variable Declarations**: Ensure all variables are properly declared before use
 5. **Live Tool Testing**: When adding or modifying MCP tools, call the tool via the MCP connection (using the `mcp__fusion__*` tools) to verify it works end-to-end before committing. Compilation and unit tests alone are not sufficient — the tool must be invoked on a running server to catch routing, auth middleware, and integration issues.
@@ -127,7 +136,7 @@ Before committing any code changes:
 
 ### Common Issues to Avoid
 
-- **Function Signature Mismatches**: Always check the actual return values of functions (e.g., `New()` returns `*Fusion`, not `(*Fusion, error)`)
+- **Function Signature Mismatches**: Always check the actual return values of functions (e.g., `fusion.New()` returns `(*Fusion, error)`, not `*Fusion`)
 - **Type Mismatches**: Verify field types match struct definitions (e.g., `TenantHash` is `string`, not `[]byte`)
 - **Undefined Variables**: Use `:=` for new variable declarations, `=` for assignments to existing variables
 - **Nil Checks**: Add nil checks for optional dependencies like `multiTenantAuth` before calling methods
@@ -165,7 +174,7 @@ MCPFusion provides multi-tenant authentication (keyed to the user's API key) wit
 ./mcpfusion -token-list
 
 # Delete token
-./mcpfusion -token-delete abc12345
+./mcpfusion -token-del abc12345
 ```
 
 ## Testing Requirements

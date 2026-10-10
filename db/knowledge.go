@@ -110,8 +110,8 @@ func (d *DB) SetKnowledge(userID string, entry *KnowledgeEntry) error {
 	return nil
 }
 
-// GetKnowledge retrieves a single knowledge entry for a user by domain and key
-func (d *DB) GetKnowledge(userID, domain, key string) (*KnowledgeEntry, error) {
+// LoadKnowledge retrieves a single knowledge entry for a user by domain and key
+func (d *DB) LoadKnowledge(userID, domain, key string) (*KnowledgeEntry, error) {
 	if err := d.checkClosed(); err != nil {
 		return nil, err
 	}

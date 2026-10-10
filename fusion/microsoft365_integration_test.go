@@ -53,10 +53,13 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 	// Create fusion instance
 	logger := mlogger.NewMemoryLogger()
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(config), "test-config.json"),
 		WithLogger(logger),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Get the tools
 	tools := fusion.RegisterTools()
@@ -90,12 +93,12 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Profile tool not found")
 		}
 
-		result, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
+		result, err := profileTool.Handler(withTestContext(map[string]any{}))
 		if err != nil {
 			t.Fatalf("Profile request failed: %v", err)
 		}
 
-		var profile map[string]interface{}
+		var profile map[string]any
 		if err := json.Unmarshal([]byte(result), &profile); err != nil {
 			t.Fatalf("Failed to parse profile response: %v", err)
 		}
@@ -111,7 +114,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Calendar summary tool not found")
 		}
 
-		result, err := calendarSummaryTool.Handler(withTestContext(map[string]interface{}{
+		result, err := calendarSummaryTool.Handler(withTestContext(map[string]any{
 			"startDate": "20250101",
 			"endDate":   "20250131",
 		}))
@@ -120,7 +123,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 		}
 
 		// Calendar response includes .value transformation
-		var events []interface{}
+		var events []any
 		if err := json.Unmarshal([]byte(result), &events); err != nil {
 			t.Fatalf("Failed to parse calendar response: %v", err)
 		}
@@ -136,7 +139,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Calendar details tool not found")
 		}
 
-		result, err := calendarDetailsTool.Handler(withTestContext(map[string]interface{}{
+		result, err := calendarDetailsTool.Handler(withTestContext(map[string]any{
 			"startDate": "20250101",
 			"endDate":   "20250131",
 		}))
@@ -144,7 +147,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatalf("Calendar details request failed: %v", err)
 		}
 
-		var events []interface{}
+		var events []any
 		if err := json.Unmarshal([]byte(result), &events); err != nil {
 			t.Fatalf("Failed to parse calendar response: %v", err)
 		}
@@ -161,7 +164,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Mail tool not found")
 		}
 
-		result, err := mailTool.Handler(withTestContext(map[string]interface{}{
+		result, err := mailTool.Handler(withTestContext(map[string]any{
 			"$top": 10,
 		}))
 		if err != nil {
@@ -169,7 +172,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 		}
 
 		// For paginated responses, we get the data array directly
-		var messages []interface{}
+		var messages []any
 		if err := json.Unmarshal([]byte(result), &messages); err != nil {
 			t.Fatalf("Failed to parse messages response: %v", err)
 		}
@@ -185,7 +188,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 			t.Fatal("Contacts tool not found")
 		}
 
-		result, err := contactsTool.Handler(withTestContext(map[string]interface{}{
+		result, err := contactsTool.Handler(withTestContext(map[string]any{
 			"$top": 25,
 		}))
 		if err != nil {
@@ -193,12 +196,12 @@ func TestMicrosoft365Integration(t *testing.T) {
 		}
 
 		// Contacts response is not paginated, so it's returned as a regular object
-		var contactsResponse map[string]interface{}
+		var contactsResponse map[string]any
 		if err := json.Unmarshal([]byte(result), &contactsResponse); err != nil {
 			t.Fatalf("Failed to parse contacts response: %v", err)
 		}
 
-		if contactsValue, ok := contactsResponse["value"].([]interface{}); ok {
+		if contactsValue, ok := contactsResponse["value"].([]any); ok {
 			if len(contactsValue) == 0 {
 				t.Error("Expected contacts, got empty array")
 			}
@@ -215,7 +218,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 		// First request - should hit the server
 		start := time.Now()
-		result1, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
+		result1, err := profileTool.Handler(withTestContext(map[string]any{}))
 		if err != nil {
 			t.Fatalf("First profile request failed: %v", err)
 		}
@@ -223,7 +226,7 @@ func TestMicrosoft365Integration(t *testing.T) {
 
 		// Second request - should be cached
 		start = time.Now()
-		result2, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
+		result2, err := profileTool.Handler(withTestContext(map[string]any{}))
 		if err != nil {
 			t.Fatalf("Second profile request failed: %v", err)
 		}
@@ -261,10 +264,13 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 	config := createTestMicrosoft365Config(server.URL)
 	logger := mlogger.NewMemoryLogger()
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(config), "test-oauth-config.json"),
 		WithLogger(logger),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Get the tools
 	tools := fusion.RegisterTools()
@@ -286,7 +292,7 @@ func TestMicrosoft365OAuth2DeviceFlow(t *testing.T) {
 
 		// This test simulates what happens when authentication is required
 		// The device code error should be returned with user instructions
-		result, err := profileTool.Handler(withTestContext(map[string]interface{}{}))
+		result, err := profileTool.Handler(withTestContext(map[string]any{}))
 
 		// For a real device flow, this would return instructions for the user
 		// In our mock, we'll simulate a successful flow
@@ -305,7 +311,7 @@ func handleDeviceCodeRequest(w http.ResponseWriter, r *http.Request, t *testing.
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"device_code":      "mockdevicecode123",
 		"user_code":        "A1B2C3",
 		"verification_uri": "https://microsoft.com/devicelogin",
@@ -324,7 +330,7 @@ func handleTokenRequest(w http.ResponseWriter, r *http.Request, t *testing.T) {
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"access_token":  "mock_access_token_12345",
 		"token_type":    "Bearer",
 		"expires_in":    3600,
@@ -343,7 +349,7 @@ func handleProfileRequest(w http.ResponseWriter, r *http.Request, t *testing.T) 
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"displayName":       "Test User",
 		"mail":              "test.user@contoso.com",
 		"userPrincipalName": "test.user@contoso.com",
@@ -367,17 +373,17 @@ func handleCalendarRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 	isPaginated := strings.Contains(r.URL.RawQuery, "startDateTime") &&
 		!strings.Contains(r.URL.RawQuery, "skiptoken")
 
-	var response map[string]interface{}
+	var response map[string]any
 
 	if isPaginated {
 		// First page of results
-		response = map[string]interface{}{
-			"value": []map[string]interface{}{
+		response = map[string]any{
+			"value": []map[string]any{
 				{
 					"subject": "Team Meeting",
 					"start":   map[string]string{"dateTime": "2025-01-15T09:00:00Z"},
 					"end":     map[string]string{"dateTime": "2025-01-15T10:00:00Z"},
-					"organizer": map[string]interface{}{
+					"organizer": map[string]any{
 						"emailAddress": map[string]string{"address": "organizer@contoso.com"},
 					},
 				},
@@ -385,7 +391,7 @@ func handleCalendarRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 					"subject": "Project Review",
 					"start":   map[string]string{"dateTime": "2025-01-16T14:00:00Z"},
 					"end":     map[string]string{"dateTime": "2025-01-16T15:00:00Z"},
-					"organizer": map[string]interface{}{
+					"organizer": map[string]any{
 						"emailAddress": map[string]string{"address": "pm@contoso.com"},
 					},
 				},
@@ -394,13 +400,13 @@ func handleCalendarRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 		}
 	} else if strings.Contains(r.URL.RawQuery, "skiptoken=page2") {
 		// Second page of results
-		response = map[string]interface{}{
-			"value": []map[string]interface{}{
+		response = map[string]any{
+			"value": []map[string]any{
 				{
 					"subject": "Client Call",
 					"start":   map[string]string{"dateTime": "2025-01-17T11:00:00Z"},
 					"end":     map[string]string{"dateTime": "2025-01-17T12:00:00Z"},
-					"organizer": map[string]interface{}{
+					"organizer": map[string]any{
 						"emailAddress": map[string]string{"address": "sales@contoso.com"},
 					},
 				},
@@ -408,8 +414,8 @@ func handleCalendarRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 		}
 	} else {
 		// Single page for summary view - should also have the same structure for transformation
-		response = map[string]interface{}{
-			"value": []map[string]interface{}{
+		response = map[string]any{
+			"value": []map[string]any{
 				{
 					"subject": "Team Meeting",
 					"start":   map[string]string{"dateTime": "2025-01-15T09:00:00Z"},
@@ -435,18 +441,18 @@ func handleMessagesRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 		return
 	}
 
-	response := map[string]interface{}{
-		"value": []map[string]interface{}{
+	response := map[string]any{
+		"value": []map[string]any{
 			{
 				"subject":          "Project Update",
-				"from":             map[string]interface{}{"emailAddress": map[string]string{"address": "manager@contoso.com"}},
+				"from":             map[string]any{"emailAddress": map[string]string{"address": "manager@contoso.com"}},
 				"receivedDateTime": "2025-01-10T10:30:00Z",
 				"bodyPreview":      "Here's the latest update on the project...",
 				"isRead":           false,
 			},
 			{
 				"subject":          "Meeting Reminder",
-				"from":             map[string]interface{}{"emailAddress": map[string]string{"address": "calendar@contoso.com"}},
+				"from":             map[string]any{"emailAddress": map[string]string{"address": "calendar@contoso.com"}},
 				"receivedDateTime": "2025-01-09T08:00:00Z",
 				"bodyPreview":      "Don't forget about the team meeting tomorrow...",
 				"isRead":           true,
@@ -466,11 +472,11 @@ func handleContactsRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 		return
 	}
 
-	response := map[string]interface{}{
-		"value": []map[string]interface{}{
+	response := map[string]any{
+		"value": []map[string]any{
 			{
 				"displayName": "John Smith",
-				"emailAddresses": []map[string]interface{}{
+				"emailAddresses": []map[string]any{
 					{"address": "john.smith@contoso.com"},
 				},
 				"businessPhones": []string{"+1-555-0123"},
@@ -479,7 +485,7 @@ func handleContactsRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 			},
 			{
 				"displayName": "Jane Doe",
-				"emailAddresses": []map[string]interface{}{
+				"emailAddresses": []map[string]any{
 					{"address": "jane.doe@contoso.com"},
 				},
 				"businessPhones": []string{"+1-555-0124"},
@@ -494,14 +500,14 @@ func handleContactsRequest(w http.ResponseWriter, r *http.Request, t *testing.T)
 }
 
 func createTestMicrosoft365Config(baseURL string) string {
-	config := map[string]interface{}{
-		"services": map[string]interface{}{
-			"microsoft365": map[string]interface{}{
+	config := map[string]any{
+		"services": map[string]any{
+			"microsoft365": map[string]any{
 				"name":    "Microsoft 365",
 				"baseURL": baseURL + "/v1.0",
-				"auth": map[string]interface{}{
+				"auth": map[string]any{
 					"type": "oauth2_device",
-					"config": map[string]interface{}{
+					"config": map[string]any{
 						"clientId":         "test-client-id",
 						"tenantId":         "test-tenant-id",
 						"scope":            []string{"https://graph.microsoft.com/Calendars.Read", "https://graph.microsoft.com/Mail.Read"},
@@ -509,15 +515,15 @@ func createTestMicrosoft365Config(baseURL string) string {
 						"tokenURL":         baseURL + "/v1.0/oauth2/v2.0/token",
 					},
 				},
-				"endpoints": []interface{}{
-					map[string]interface{}{
+				"endpoints": []any{
+					map[string]any{
 						"id":          "profile_get",
 						"name":        "Get User Profile",
 						"description": "Get the current user's profile information",
 						"method":      "GET",
 						"path":        "/me",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "$select",
 								"description": "Fields to include in response",
 								"type":        "string",
@@ -526,113 +532,113 @@ func createTestMicrosoft365Config(baseURL string) string {
 								"default":     "displayName,mail,userPrincipalName,jobTitle,department,companyName",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "30m",
 							},
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_read_summary",
 						"name":        "Read Calendar Summary",
 						"description": "Get calendar events with basic information",
 						"method":      "GET",
 						"path":        "/me/calendarView",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "startDate",
 								"description": "Start date in YYYYMMDD format",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "startDateTime",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "endDate",
 								"description": "End date in YYYYMMDD format",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "endDateTime",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"transform": ".value | map({subject: .subject, start: .start.dateTime, end: .end.dateTime})",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_read_details",
 						"name":        "Read Calendar Details",
 						"description": "Get calendar events with full details",
 						"method":      "GET",
 						"path":        "/me/calendarView",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "startDate",
 								"description": "Start date in YYYYMMDD format",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "startDateTime",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "endDate",
 								"description": "End date in YYYYMMDD format",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "endDateTime",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"paginated": true,
-							"paginationConfig": map[string]interface{}{
+							"paginationConfig": map[string]any{
 								"nextPageTokenPath": "@odata.nextLink",
 								"dataPath":          "value",
 								"pageSize":          50,
 							},
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "10m",
 							},
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "mail_read_inbox",
 						"name":        "Read Inbox Messages",
 						"description": "Get inbox messages with basic information",
 						"method":      "GET",
 						"path":        "/me/messages",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "$top",
 								"description": "Number of messages to retrieve",
 								"type":        "number",
@@ -641,24 +647,24 @@ func createTestMicrosoft365Config(baseURL string) string {
 								"default":     10,
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"paginated": true,
-							"paginationConfig": map[string]interface{}{
+							"paginationConfig": map[string]any{
 								"nextPageTokenPath": "@odata.nextLink",
 								"dataPath":          "value",
 								"pageSize":          50,
 							},
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "contacts_list",
 						"name":        "List Contacts",
 						"description": "Get contacts from the user's address book",
 						"method":      "GET",
 						"path":        "/me/contacts",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "$top",
 								"description": "Number of contacts to retrieve",
 								"type":        "number",
@@ -667,7 +673,7 @@ func createTestMicrosoft365Config(baseURL string) string {
 								"default":     25,
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},
@@ -681,26 +687,26 @@ func createTestMicrosoft365Config(baseURL string) string {
 }
 
 func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
-	config := map[string]interface{}{
-		"services": map[string]interface{}{
-			"microsoft365": map[string]interface{}{
+	config := map[string]any{
+		"services": map[string]any{
+			"microsoft365": map[string]any{
 				"name":    "Microsoft 365",
 				"baseURL": baseURL + "/v1.0",
-				"auth": map[string]interface{}{
+				"auth": map[string]any{
 					"type": "bearer",
-					"config": map[string]interface{}{
+					"config": map[string]any{
 						"token": "mock_access_token_12345",
 					},
 				},
-				"endpoints": []interface{}{
-					map[string]interface{}{
+				"endpoints": []any{
+					map[string]any{
 						"id":          "profile_get",
 						"name":        "Get User Profile",
 						"description": "Get the current user's profile information",
 						"method":      "GET",
 						"path":        "/me",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "$select",
 								"description": "Fields to include in response",
 								"type":        "string",
@@ -709,114 +715,114 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 								"default":     "displayName,mail,userPrincipalName,jobTitle,department,companyName",
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "30m",
 							},
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_read_summary",
 						"name":        "Read Calendar Summary",
 						"description": "Get calendar events with basic information",
 						"method":      "GET",
 						"path":        "/me/calendarView",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "startDate",
 								"description": "Start date in YYYYMMDD format",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "startDateTime",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "endDate",
 								"description": "End date in YYYYMMDD format",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "endDateTime",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 							// Skip complex transformation for testing
 							"transform": ".value",
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "calendar_read_details",
 						"name":        "Read Calendar Details",
 						"description": "Get calendar events with full details",
 						"method":      "GET",
 						"path":        "/me/calendarView",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "startDate",
 								"description": "Start date in YYYYMMDD format",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "startDateTime",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T00:00:00Z')",
 								},
 							},
-							map[string]interface{}{
+							map[string]any{
 								"name":        "endDate",
 								"description": "End date in YYYYMMDD format",
 								"type":        "string",
 								"required":    true,
 								"location":    "query",
-								"validation": map[string]interface{}{
+								"validation": map[string]any{
 									"pattern": "^\\d{8}$",
 								},
-								"transform": map[string]interface{}{
+								"transform": map[string]any{
 									"targetName": "endDateTime",
 									"expression": "concat(slice(0,4), '-', slice(4,6), '-', slice(6,8), 'T23:59:59Z')",
 								},
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"paginated": true,
-							"paginationConfig": map[string]interface{}{
+							"paginationConfig": map[string]any{
 								"nextPageTokenPath": "@odata.nextLink",
 								"dataPath":          "value",
 								"pageSize":          50,
 							},
-							"caching": map[string]interface{}{
+							"caching": map[string]any{
 								"enabled": true,
 								"ttl":     "10m",
 							},
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "mail_read_inbox",
 						"name":        "Read Inbox Messages",
 						"description": "Get inbox messages with basic information",
 						"method":      "GET",
 						"path":        "/me/messages",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "$top",
 								"description": "Number of messages to retrieve",
 								"type":        "number",
@@ -825,24 +831,24 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 								"default":     10,
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type":      "json",
 							"paginated": true,
-							"paginationConfig": map[string]interface{}{
+							"paginationConfig": map[string]any{
 								"nextPageTokenPath": "@odata.nextLink",
 								"dataPath":          "value",
 								"pageSize":          50,
 							},
 						},
 					},
-					map[string]interface{}{
+					map[string]any{
 						"id":          "contacts_list",
 						"name":        "List Contacts",
 						"description": "Get contacts from the user's address book",
 						"method":      "GET",
 						"path":        "/me/contacts",
-						"parameters": []interface{}{
-							map[string]interface{}{
+						"parameters": []any{
+							map[string]any{
 								"name":        "$top",
 								"description": "Number of contacts to retrieve",
 								"type":        "number",
@@ -851,7 +857,7 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 								"default":     25,
 							},
 						},
-						"response": map[string]interface{}{
+						"response": map[string]any{
 							"type": "json",
 						},
 					},
@@ -863,4 +869,3 @@ func createTestMicrosoft365ConfigWithBearer(baseURL string) string {
 	configBytes, _ := json.Marshal(config)
 	return string(configBytes)
 }
-

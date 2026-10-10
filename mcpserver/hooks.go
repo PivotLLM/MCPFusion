@@ -19,14 +19,14 @@ func (s *MCPServer) hookAfterListPrompts(ctx context.Context, id any, request *m
 		count = len(result.Prompts)
 	}
 	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
-		rec.MCPMethod = string(request.Request.Method)
+		rec.MCPMethod = string(request.Method)
 		rec.Bytes = count
 		rec.IsList = true
 		rec.Status = "ok"
 	} else if s.debug {
-		s.logger.Debugf("%s: %v", request.Request.Method, result.Prompts)
+		s.logger.Debugf("%s: %v", request.Method, result.Prompts)
 	} else {
-		s.logger.Infof("%s: %d items returned", request.Request.Method, count)
+		s.logger.Infof("%s: %d items returned", request.Method, count)
 	}
 }
 
@@ -37,14 +37,14 @@ func (s *MCPServer) hookAfterListResources(ctx context.Context, id any, request 
 		count = len(result.Resources)
 	}
 	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
-		rec.MCPMethod = string(request.Request.Method)
+		rec.MCPMethod = string(request.Method)
 		rec.Bytes = count
 		rec.IsList = true
 		rec.Status = "ok"
 	} else if s.debug {
-		s.logger.Debugf("%s: %v", request.Request.Method, result.Resources)
+		s.logger.Debugf("%s: %v", request.Method, result.Resources)
 	} else {
-		s.logger.Infof("%s: %d items returned", request.Request.Method, count)
+		s.logger.Infof("%s: %d items returned", request.Method, count)
 	}
 }
 
@@ -55,14 +55,14 @@ func (s *MCPServer) hookAfterListResourceTemplates(ctx context.Context, id any, 
 		count = len(result.ResourceTemplates)
 	}
 	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
-		rec.MCPMethod = string(request.Request.Method)
+		rec.MCPMethod = string(request.Method)
 		rec.Bytes = count
 		rec.IsList = true
 		rec.Status = "ok"
 	} else if s.debug {
-		s.logger.Debugf("%s: %v", request.Request.Method, result.ResourceTemplates)
+		s.logger.Debugf("%s: %v", request.Method, result.ResourceTemplates)
 	} else {
-		s.logger.Infof("%s: %d items returned", request.Request.Method, count)
+		s.logger.Infof("%s: %d items returned", request.Method, count)
 	}
 }
 
@@ -73,15 +73,15 @@ func (s *MCPServer) hookAfterListTools(ctx context.Context, id any, request *mcp
 		count = len(result.Tools)
 	}
 	if rec, ok := ctx.Value(global.RequestRecordKey).(*global.RequestRecord); ok && rec != nil {
-		rec.MCPMethod = string(request.Request.Method)
+		rec.MCPMethod = string(request.Method)
 		rec.Bytes = count
 		rec.IsList = true
 		rec.Status = "ok"
 	} else if //goland:noinspection GoBoolExpressions
 	global.DumpTools && s.debug {
-		s.logger.Debugf("%s: %v", request.Request.Method, result.Tools)
+		s.logger.Debugf("%s: %v", request.Method, result.Tools)
 	} else {
-		s.logger.Infof("%s: %d tools returned", request.Request.Method, count)
+		s.logger.Infof("%s: %d tools returned", request.Method, count)
 	}
 }
 

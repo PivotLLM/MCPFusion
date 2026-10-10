@@ -3,10 +3,6 @@
  * Please see LICENSE file for details.                                       *
  ******************************************************************************/
 
-package global
-
-// Version information
-const (
-	AppName    = "MCPFusion"
-	AppVersion = "0.4.3"
-)
+// Package admin implements the mcpfusion command-line administration
+// commands: API tokens, users and auth codes for fusion-auth.
+package admin

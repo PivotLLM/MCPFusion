@@ -223,7 +223,7 @@ func (t *TokenInvalidationConfig) UnmarshalJSON(data []byte) error {
 // AuthConfig represents authentication configuration
 type AuthConfig struct {
 	Type              AuthType                 `json:"type"`
-	Config            map[string]interface{}   `json:"config"`
+	Config            map[string]any           `json:"config"`
 	TokenInvalidation *TokenInvalidationConfig `json:"tokenInvalidation,omitempty"`
 }
 
@@ -271,37 +271,37 @@ type HintsConfig struct {
 
 // ParameterConfig represents configuration for a parameter
 type ParameterConfig struct {
-	Name        string            `json:"name"`
-	Alias       string            `json:"alias,omitempty"`  // MCP-compliant name alias
-	Prefix      string            `json:"prefix,omitempty"` // Prefix for argument location (e.g., "-p", "--port")
-	Description string            `json:"description"`
-	Type        ParameterType     `json:"type"`
-	Items       ParameterType     `json:"items,omitempty"`  // Item type for array parameters: "string" or "object"
-	Required    bool              `json:"required"`
-	Location    ParameterLocation `json:"location"`
-	Default     interface{}       `json:"default,omitempty"`
-	Examples    []interface{}     `json:"examples,omitempty"`
-	Validation  *ValidationConfig `json:"validation,omitempty"`
-	Transform   *TransformConfig  `json:"transform,omitempty"`
-	Transforms  []string          `json:"transforms,omitempty"` // Named value transforms to apply (e.g. "html_compact")
-	Quoted        bool              `json:"quoted,omitempty"` // Whether to quote the parameter value
-	Static        bool              `json:"static,omitempty"` // Whether this is a static parameter (not exposed to MCP, always uses default)
+	Name          string            `json:"name"`
+	Alias         string            `json:"alias,omitempty"`  // MCP-compliant name alias
+	Prefix        string            `json:"prefix,omitempty"` // Prefix for argument location (e.g., "-p", "--port")
+	Description   string            `json:"description"`
+	Type          ParameterType     `json:"type"`
+	Items         ParameterType     `json:"items,omitempty"` // Item type for array parameters: "string" or "object"
+	Required      bool              `json:"required"`
+	Location      ParameterLocation `json:"location"`
+	Default       any               `json:"default,omitempty"`
+	Examples      []any             `json:"examples,omitempty"`
+	Validation    *ValidationConfig `json:"validation,omitempty"`
+	Transform     *TransformConfig  `json:"transform,omitempty"`
+	Transforms    []string          `json:"transforms,omitempty"`    // Named value transforms to apply (e.g. "html_compact")
+	Quoted        bool              `json:"quoted,omitempty"`        // Whether to quote the parameter value
+	Static        bool              `json:"static,omitempty"`        // Whether this is a static parameter (not exposed to MCP, always uses default)
 	FileNameParam string            `json:"fileNameParam,omitempty"` // For file-location params: name of another param that provides the Content-Disposition filename
 }
 
 // ValidationConfig represents validation rules for a parameter
 type ValidationConfig struct {
-	Pattern   string        `json:"pattern,omitempty"`
-	MinLength *int          `json:"minLength,omitempty"`
-	MaxLength *int          `json:"maxLength,omitempty"`
-	Minimum   *float64      `json:"minimum,omitempty"`
-	Maximum   *float64      `json:"maximum,omitempty"`
-	Enum      []interface{} `json:"enum,omitempty"`
-	Format    string        `json:"format,omitempty"`
+	Pattern   string   `json:"pattern,omitempty"`
+	MinLength *int     `json:"minLength,omitempty"`
+	MaxLength *int     `json:"maxLength,omitempty"`
+	Minimum   *float64 `json:"minimum,omitempty"`
+	Maximum   *float64 `json:"maximum,omitempty"`
+	Enum      []any    `json:"enum,omitempty"`
+	Format    string   `json:"format,omitempty"`
 }
 
 // IsValidEnumValue checks if a value is valid according to the enum constraints
-func (v *ValidationConfig) IsValidEnumValue(value interface{}) bool {
+func (v *ValidationConfig) IsValidEnumValue(value any) bool {
 	if len(v.Enum) == 0 {
 		return true // No enum constraints
 	}
@@ -900,7 +900,7 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 			}
 			return fmt.Errorf("user_credentials auth requires 'fields' in config")
 		}
-		fields, ok := fieldsRaw.([]interface{})
+		fields, ok := fieldsRaw.([]any)
 		if !ok || len(fields) == 0 {
 			if logger != nil {
 				logger.Errorf("Service %s: user_credentials 'fields' must be a non-empty array", serviceName)
@@ -919,7 +919,7 @@ func (a *AuthConfig) ValidateWithLogger(serviceName string, logger global.Logger
 
 		validLocations := map[string]bool{"query": true, "header": true, "cookie": true}
 		for i, fieldRaw := range fields {
-			field, ok := fieldRaw.(map[string]interface{})
+			field, ok := fieldRaw.(map[string]any)
 			if !ok {
 				return fmt.Errorf("user_credentials field %d must be an object", i)
 			}
@@ -962,9 +962,9 @@ func (a *AuthConfig) Validate() error {
 	return a.ValidateWithLogger("", nil)
 }
 
-// GetEffectiveTokenInvalidationConfig returns the effective token invalidation configuration
+// EffectiveTokenInvalidationConfig returns the effective token invalidation configuration
 // Returns configured values with defaults for missing fields, or defaults if not configured
-func (a *AuthConfig) GetEffectiveTokenInvalidationConfig() *TokenInvalidationConfig {
+func (a *AuthConfig) EffectiveTokenInvalidationConfig() *TokenInvalidationConfig {
 	if a.TokenInvalidation != nil {
 		// Use configured values, with defaults for missing fields
 		config := *a.TokenInvalidation
@@ -1062,7 +1062,7 @@ func (e *EndpointConfig) ValidateWithLogger(serviceName string, logger global.Lo
 			}
 			return fmt.Errorf("requestBody.wrapperPath is required")
 		}
-		if _, ok := GetBodyEncoder(e.RequestBody.Encoding); !ok {
+		if _, ok := LookupBodyEncoder(e.RequestBody.Encoding); !ok {
 			if logger != nil {
 				logger.Errorf("Service %s: endpoint %s unknown requestBody encoding: %s", serviceName, e.ID, e.RequestBody.Encoding)
 			}
@@ -1356,8 +1356,8 @@ func expandEnvironmentVariables(data []byte) ([]byte, error) {
 	return []byte(result), nil
 }
 
-// GetEndpointByID finds an endpoint by ID within a service
-func (s *ServiceConfig) GetEndpointByID(id string) *EndpointConfig {
+// EndpointByID finds an endpoint by ID within a service
+func (s *ServiceConfig) EndpointByID(id string) *EndpointConfig {
 	for i := range s.Endpoints {
 		if s.Endpoints[i].ID == id {
 			return &s.Endpoints[i]
@@ -1366,8 +1366,8 @@ func (s *ServiceConfig) GetEndpointByID(id string) *EndpointConfig {
 	return nil
 }
 
-// GetRequiredParameters returns all required parameters for an endpoint
-func (e *EndpointConfig) GetRequiredParameters() []ParameterConfig {
+// RequiredParameters returns all required parameters for an endpoint
+func (e *EndpointConfig) RequiredParameters() []ParameterConfig {
 	var required []ParameterConfig
 	for _, param := range e.Parameters {
 		if param.Required {
@@ -1377,8 +1377,8 @@ func (e *EndpointConfig) GetRequiredParameters() []ParameterConfig {
 	return required
 }
 
-// GetParameterByName finds a parameter by name
-func (e *EndpointConfig) GetParameterByName(name string) *ParameterConfig {
+// ParameterByName finds a parameter by name
+func (e *EndpointConfig) ParameterByName(name string) *ParameterConfig {
 	for i := range e.Parameters {
 		if e.Parameters[i].Name == name {
 			return &e.Parameters[i]
@@ -1387,8 +1387,8 @@ func (e *EndpointConfig) GetParameterByName(name string) *ParameterConfig {
 	return nil
 }
 
-// GetTransformedParameterName returns the target name if transform is configured, otherwise the original name
-func (p *ParameterConfig) GetTransformedParameterName() string {
+// TransformedParameterName returns the target name if transform is configured, otherwise the original name
+func (p *ParameterConfig) TransformedParameterName() string {
 	if p.Transform != nil && p.Transform.TargetName != "" {
 		return p.Transform.TargetName
 	}
@@ -1424,8 +1424,8 @@ func (v *ValidationConfig) IsValidLength(value string) bool {
 	return true
 }
 
-// GetServiceByName returns a service configuration by name
-func (c *Config) GetServiceByName(name string) *ServiceConfig {
+// ServiceByName returns a service configuration by name
+func (c *Config) ServiceByName(name string) *ServiceConfig {
 	for _, service := range c.Services {
 		if service.Name == name {
 			return service
@@ -1434,8 +1434,8 @@ func (c *Config) GetServiceByName(name string) *ServiceConfig {
 	return nil
 }
 
-// GetAllEndpoints returns all endpoints from all services with their service context
-func (c *Config) GetAllEndpoints() []EndpointWithService {
+// AllEndpoints returns all endpoints from all services with their service context
+func (c *Config) AllEndpoints() []EndpointWithService {
 	var endpoints []EndpointWithService
 	for serviceName, service := range c.Services {
 		for _, endpoint := range service.Endpoints {
@@ -1467,8 +1467,8 @@ func (c *Config) ValidateServiceConfig(serviceName string) error {
 	return service.Validate()
 }
 
-// GetRequiredEnvironmentVariables scans the configuration and returns all environment variables that are referenced
-func (c *Config) GetRequiredEnvironmentVariables() []string {
+// RequiredEnvironmentVariables scans the configuration and returns all environment variables that are referenced
+func (c *Config) RequiredEnvironmentVariables() []string {
 	content, _ := json.Marshal(c.Services)
 	return extractEnvironmentVariables(content)
 }
@@ -1535,9 +1535,9 @@ func (c *Config) MergeConfig(other *Config) error {
 	return c.Validate()
 }
 
-// GetEffectiveRetryConfig returns the effective retry configuration for an endpoint
+// EffectiveRetryConfig returns the effective retry configuration for an endpoint
 // Endpoint-level config overrides service-level config, which overrides global defaults
-func (e *EndpointConfig) GetEffectiveRetryConfig(service *ServiceConfig) *RetryConfig {
+func (e *EndpointConfig) EffectiveRetryConfig(service *ServiceConfig) *RetryConfig {
 	// Endpoint-level override takes precedence
 	if e.Retry != nil {
 		return e.Retry
@@ -1563,8 +1563,8 @@ func (e *EndpointConfig) GetEffectiveRetryConfig(service *ServiceConfig) *RetryC
 	}
 }
 
-// GetEffectiveCircuitBreakerConfig returns the effective circuit breaker configuration for a service
-func (s *ServiceConfig) GetEffectiveCircuitBreakerConfig() *CircuitBreakerConfig {
+// EffectiveCircuitBreakerConfig returns the effective circuit breaker configuration for a service
+func (s *ServiceConfig) EffectiveCircuitBreakerConfig() *CircuitBreakerConfig {
 	if s.CircuitBreaker != nil {
 		return s.CircuitBreaker
 	}
@@ -1582,12 +1582,12 @@ func (s *ServiceConfig) GetEffectiveCircuitBreakerConfig() *CircuitBreakerConfig
 
 // IsRetryEnabled checks if retry is enabled for this endpoint
 func (e *EndpointConfig) IsRetryEnabled(service *ServiceConfig) bool {
-	config := e.GetEffectiveRetryConfig(service)
+	config := e.EffectiveRetryConfig(service)
 	return config.Enabled
 }
 
 // IsCircuitBreakerEnabled checks if circuit breaker is enabled for this service
 func (s *ServiceConfig) IsCircuitBreakerEnabled() bool {
-	config := s.GetEffectiveCircuitBreakerConfig()
+	config := s.EffectiveCircuitBreakerConfig()
 	return config.Enabled
 }

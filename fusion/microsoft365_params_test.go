@@ -53,9 +53,12 @@ func TestMicrosoft365ToolGeneration(t *testing.T) {
 	}
 
 	// Create a Fusion instance with Microsoft365 config
-	fusion := New(
+	fusion, err := New(
 		WithConfig(config),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Get the registered tools
 	tools := fusion.RegisterTools()

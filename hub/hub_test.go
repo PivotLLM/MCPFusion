@@ -45,7 +45,7 @@ func TestHubProvider_RegisterTools_ReturnsEmpty(t *testing.T) {
 	logger := testlogger.New(t)
 	configs := newTestConfigs()
 
-	provider := NewHubProvider(configs, logger)
+	provider := NewHubProvider(configs, WithLogger(logger))
 	require.NotNil(t, provider)
 
 	tools := provider.RegisterTools()
@@ -58,7 +58,7 @@ func TestHubProvider_NewHubProvider(t *testing.T) {
 	logger := testlogger.New(t)
 	configs := newTestConfigs()
 
-	provider := NewHubProvider(configs, logger)
+	provider := NewHubProvider(configs, WithLogger(logger))
 	require.NotNil(t, provider, "NewHubProvider should return a non-nil provider")
 
 	assert.Len(t, provider.configs, 2, "provider should store both configs")
@@ -74,7 +74,7 @@ func TestHubProvider_Shutdown_NoStart(t *testing.T) {
 	logger := testlogger.New(t)
 	configs := newTestConfigs()
 
-	provider := NewHubProvider(configs, logger)
+	provider := NewHubProvider(configs, WithLogger(logger))
 	require.NotNil(t, provider)
 
 	// Shutdown without Start should not panic.

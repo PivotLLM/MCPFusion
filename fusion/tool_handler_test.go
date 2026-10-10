@@ -20,7 +20,10 @@ func intPtr(i int) *int {
 }
 
 func TestBuildRequest_BasicGET(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -60,7 +63,10 @@ func TestBuildRequest_BasicGET(t *testing.T) {
 }
 
 func TestBuildRequest_POSTWithBody(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -105,7 +111,7 @@ func TestBuildRequest_POSTWithBody(t *testing.T) {
 	}
 
 	// Verify body content
-	var bodyData map[string]interface{}
+	var bodyData map[string]any
 	if err := json.NewDecoder(req.Body).Decode(&bodyData); err != nil {
 		t.Fatalf("Failed to decode request body: %v", err)
 	}
@@ -120,7 +126,10 @@ func TestBuildRequest_POSTWithBody(t *testing.T) {
 }
 
 func TestBuildRequest_PathParameters(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -156,7 +165,10 @@ func TestBuildRequest_PathParameters(t *testing.T) {
 }
 
 func TestBuildRequest_HeaderParameters(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -191,7 +203,10 @@ func TestBuildRequest_HeaderParameters(t *testing.T) {
 }
 
 func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -213,7 +228,7 @@ func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
 	options := map[string]any{} // Missing required parameter
 
 	ctx := context.Background()
-	_, err := fusion.buildRequest(ctx, "test", service, endpoint, options)
+	_, err = fusion.buildRequest(ctx, "test", service, endpoint, options)
 	if err == nil {
 		t.Fatal("Expected error for missing required parameter")
 	}
@@ -227,7 +242,10 @@ func TestBuildRequest_RequiredParameterMissing(t *testing.T) {
 }
 
 func TestBuildRequest_DefaultValue(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	service := &ServiceConfig{
 		BaseURL: "https://api.example.com",
@@ -262,7 +280,10 @@ func TestBuildRequest_DefaultValue(t *testing.T) {
 }
 
 func TestProcessResponse_JSON(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	endpoint := &EndpointConfig{
 		Response: ResponseConfig{
@@ -271,7 +292,7 @@ func TestProcessResponse_JSON(t *testing.T) {
 	}
 
 	// Create a mock response
-	responseData := map[string]interface{}{
+	responseData := map[string]any{
 		"id":   123,
 		"name": "John Doe",
 	}
@@ -296,7 +317,7 @@ func TestProcessResponse_JSON(t *testing.T) {
 	}
 
 	// Parse the result to verify it's valid JSON
-	var parsedResult map[string]interface{}
+	var parsedResult map[string]any
 	if err := json.Unmarshal([]byte(result), &parsedResult); err != nil {
 		t.Fatalf("Result is not valid JSON: %v", err)
 	}
@@ -311,7 +332,10 @@ func TestProcessResponse_JSON(t *testing.T) {
 }
 
 func TestProcessResponse_Text(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	endpoint := &EndpointConfig{
 		Response: ResponseConfig{
@@ -343,7 +367,10 @@ func TestProcessResponse_Text(t *testing.T) {
 }
 
 func TestProcessResponse_HTTPError(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	endpoint := &EndpointConfig{
 		ID: "test_endpoint",
@@ -363,7 +390,7 @@ func TestProcessResponse_HTTPError(t *testing.T) {
 		_ = Body.Close()
 	}(resp.Body)
 
-	_, err := fusion.processResponse(resp, endpoint, "test")
+	_, err = fusion.processResponse(resp, endpoint, "test")
 	if err == nil {
 		t.Fatal("Expected error for 404 response")
 	}
@@ -385,7 +412,10 @@ func TestProcessResponse_HTTPError(t *testing.T) {
 }
 
 func TestValidateParameter_String(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	param := &ParameterConfig{
 		Name: "test",
@@ -424,7 +454,10 @@ func TestValidateParameter_String(t *testing.T) {
 }
 
 func TestValidateParameter_Number(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	param := &ParameterConfig{
 		Name: "test",
@@ -456,13 +489,16 @@ func TestValidateParameter_Number(t *testing.T) {
 }
 
 func TestValidateParameter_Enum(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	param := &ParameterConfig{
 		Name: "test",
 		Type: ParameterTypeString,
 		Validation: &ValidationConfig{
-			Enum: []interface{}{"red", "green", "blue"},
+			Enum: []any{"red", "green", "blue"},
 		},
 	}
 
@@ -478,13 +514,16 @@ func TestValidateParameter_Enum(t *testing.T) {
 }
 
 func TestTransformParameter_BasicTransforms(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tests := []struct {
 		name       string
 		transform  string
-		input      interface{}
-		expected   interface{}
+		input      any
+		expected   any
 		shouldFail bool
 	}{
 		{"toString", "toString", 123, "123", false},
@@ -526,16 +565,19 @@ func TestTransformParameter_BasicTransforms(t *testing.T) {
 }
 
 func TestExtractJSONPath(t *testing.T) {
-	fusion := New()
+	fusion, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
-	data := map[string]interface{}{
-		"user": map[string]interface{}{
+	data := map[string]any{
+		"user": map[string]any{
 			"name": "John Doe",
 			"age":  30,
 		},
-		"items": []interface{}{
-			map[string]interface{}{"id": 1, "name": "Item 1"},
-			map[string]interface{}{"id": 2, "name": "Item 2"},
+		"items": []any{
+			map[string]any{"id": 1, "name": "Item 1"},
+			map[string]any{"id": 2, "name": "Item 2"},
 		},
 	}
 
@@ -555,7 +597,7 @@ func TestExtractJSONPath(t *testing.T) {
 		t.Fatalf("extractJSONPath failed: %v", err)
 	}
 
-	user := userObj.(map[string]interface{})
+	user := userObj.(map[string]any)
 	if user["name"] != "John Doe" {
 		t.Errorf("Expected user name 'John Doe', got %v", user["name"])
 	}

@@ -15,9 +15,9 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/tenebris-tech/mlogger/testlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tenebris-tech/mlogger/testlogger"
 )
 
 // newAuthSetupTestFusion creates a Fusion instance with a real database and MultiTenantAuthManager
@@ -29,13 +29,13 @@ func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 
 	tempDir, err := os.MkdirTemp("", "auth-setup-test-*")
 	require.NoError(t, err, "failed to create temp directory")
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	t.Cleanup(func() { assert.NoError(t, os.RemoveAll(tempDir)) })
 
 	database, err := db.New(db.WithLogger(logger), db.WithDataDir(tempDir))
 	require.NoError(t, err, "failed to create database")
-	t.Cleanup(func() { database.Close() })
+	t.Cleanup(func() { assert.NoError(t, database.Close()) })
 
-	mtam := NewMultiTenantAuthManager(database.(*db.DB), nil, logger)
+	mtam := NewMultiTenantAuthManager(database.(*db.DB), nil, WithLogger(logger))
 
 	return &Fusion{
 		config: &Config{
@@ -43,7 +43,7 @@ func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 				"google": {Name: "Google Workspace", Auth: AuthConfig{Type: AuthTypeOAuth2External}},
 				"trello": {Name: "Trello", Auth: AuthConfig{
 					Type: AuthTypeUserCredentials,
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"instructions": "To use Trello with MCPFusion, you need a Trello API Key and Token.\n\n" +
 							"1. Visit https://trello.com/power-ups/admin/ to get your API Key\n" +
 							"2. Click 'Generate a Token' link on that page to get your Token\n" +
@@ -52,7 +52,7 @@ func newAuthSetupTestFusion(t *testing.T, externalURL string) *Fusion {
 				}},
 				"basic_creds": {Name: "Basic Service", Auth: AuthConfig{
 					Type:   AuthTypeUserCredentials,
-					Config: map[string]interface{}{},
+					Config: map[string]any{},
 				}},
 			},
 		},

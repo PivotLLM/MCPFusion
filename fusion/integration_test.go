@@ -38,10 +38,11 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/users":
-			if r.Method == "GET" {
+			switch r.Method {
+			case "GET":
 				// Handle GET /users?limit=X
 				limit := r.URL.Query().Get("limit")
-				users := []map[string]interface{}{
+				users := []map[string]any{
 					{"id": 1, "name": "John Doe", "email": "john@example.com"},
 					{"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
 				}
@@ -51,13 +52,13 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				}
 
 				w.Header().Set("Content-Type", "application/json")
-				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]any{
 					"users": users,
 					"total": len(users),
 				})
-			} else if r.Method == "POST" {
+			case "POST":
 				// Handle POST /users
-				var requestBody map[string]interface{}
+				var requestBody map[string]any
 				_ = json.NewDecoder(r.Body).Decode(&requestBody)
 
 				// Verify auth header
@@ -68,7 +69,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					return
 				}
 
-				user := map[string]interface{}{
+				user := map[string]any{
 					"id":    3,
 					"name":  requestBody["name"],
 					"email": requestBody["email"],
@@ -82,7 +83,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 		case "/users/123":
 			if r.Method == "GET" {
 				// Handle GET /users/{id}
-				user := map[string]interface{}{
+				user := map[string]any{
 					"id":    123,
 					"name":  "Specific User",
 					"email": "specific@example.com",
@@ -191,10 +192,13 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 	}`
 
 	// Create Fusion instance
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	// Verify configuration loaded
 	if fusion.config == nil {
@@ -229,7 +233,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 				}
 
 				// Parse result
-				var users []map[string]interface{}
+				var users []map[string]any
 				if err := json.Unmarshal([]byte(result), &users); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}
@@ -244,7 +248,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					t.Fatalf("Tool execution with limit failed: %v", err)
 				}
 
-				var limitedUsers []map[string]interface{}
+				var limitedUsers []map[string]any
 				if err := json.Unmarshal([]byte(result), &limitedUsers); err != nil {
 					t.Fatalf("Failed to parse limited result: %v", err)
 				}
@@ -261,7 +265,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
 
-				var user map[string]interface{}
+				var user map[string]any
 				if err := json.Unmarshal([]byte(result), &user); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}
@@ -291,7 +295,7 @@ func TestFusionIntegration_EndToEnd(t *testing.T) {
 					t.Fatalf("Tool execution failed: %v", err)
 				}
 
-				var user map[string]interface{}
+				var user map[string]any
 				if err := json.Unmarshal([]byte(result), &user); err != nil {
 					t.Fatalf("Failed to parse result: %v", err)
 				}
@@ -369,10 +373,13 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 		}
 	}`
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -389,7 +396,7 @@ func TestFusionIntegration_AuthenticationError(t *testing.T) {
 	}
 
 	// Execute the tool - should get an API error
-	_, err := targetTool.Handler(withTestContext(map[string]any{}))
+	_, err = targetTool.Handler(withTestContext(map[string]any{}))
 	if err == nil {
 		t.Fatal("Expected API error for invalid authentication")
 	}
@@ -431,10 +438,13 @@ func TestFusionIntegration_NetworkError(t *testing.T) {
 		}
 	}`
 
-	fusion := New(
+	fusion, err := New(
 		WithJSONConfigData([]byte(configJSON), "test-config.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 
 	tools := fusion.RegisterTools()
 
@@ -451,7 +461,7 @@ func TestFusionIntegration_NetworkError(t *testing.T) {
 	}
 
 	// Execute the tool - should get a network error
-	_, err := targetTool.Handler(withTestContext(map[string]any{}))
+	_, err = targetTool.Handler(withTestContext(map[string]any{}))
 	if err == nil {
 		t.Fatal("Expected network error for invalid host")
 	}

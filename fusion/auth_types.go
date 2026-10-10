@@ -43,8 +43,8 @@ func (t *TokenInfo) HasRefreshToken() bool {
 	return t.RefreshToken != ""
 }
 
-// GetAuthorizationHeader returns the authorization header value
-func (t *TokenInfo) GetAuthorizationHeader() string {
+// AuthorizationHeader returns the authorization header value
+func (t *TokenInfo) AuthorizationHeader() string {
 	if t.TokenType != "" {
 		return t.TokenType + " " + t.AccessToken
 	}
@@ -93,19 +93,19 @@ func (t *TokenInfo) String() string {
 // AuthStrategy defines the interface for authentication strategies
 type AuthStrategy interface {
 	// Authenticate performs the initial authentication and returns token info
-	Authenticate(ctx context.Context, config map[string]interface{}) (*TokenInfo, error)
+	Authenticate(ctx context.Context, config map[string]any) (*TokenInfo, error)
 
 	// RefreshToken refreshes an existing token
-	RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]interface{}) (*TokenInfo, error)
+	RefreshToken(ctx context.Context, tokenInfo *TokenInfo, config map[string]any) (*TokenInfo, error)
 
-	// GetAuthType returns the authentication type this strategy handles
-	GetAuthType() AuthType
+	// Type returns the authentication type this strategy handles
+	Type() AuthType
 
 	// SupportsRefresh returns true if this strategy supports token refresh
 	SupportsRefresh() bool
 
 	// ApplyAuth applies authentication to an HTTP request
-	ApplyAuth(req *http.Request, tokenInfo *TokenInfo, config map[string]interface{}) error
+	ApplyAuth(req *http.Request, tokenInfo *TokenInfo, config map[string]any) error
 }
 
 // AuthType and AuthConfig are defined in config.go

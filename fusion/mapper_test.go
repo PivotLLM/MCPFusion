@@ -17,39 +17,39 @@ import (
 func Test_setNestedValue(t *testing.T) {
 	tests := []struct {
 		name     string
-		initial  map[string]interface{}
+		initial  map[string]any
 		key      string
-		value    interface{}
-		expected map[string]interface{}
+		value    any
+		expected map[string]any
 	}{
 		{
 			name:    "single key flat assignment",
-			initial: map[string]interface{}{},
+			initial: map[string]any{},
 			key:     "subject",
 			value:   "Meeting",
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"subject": "Meeting",
 			},
 		},
 		{
 			name:    "two-level nesting",
-			initial: map[string]interface{}{},
+			initial: map[string]any{},
 			key:     "start.dateTime",
 			value:   "2025-01-15T10:00:00Z",
-			expected: map[string]interface{}{
-				"start": map[string]interface{}{
+			expected: map[string]any{
+				"start": map[string]any{
 					"dateTime": "2025-01-15T10:00:00Z",
 				},
 			},
 		},
 		{
 			name:    "three-level nesting",
-			initial: map[string]interface{}{},
+			initial: map[string]any{},
 			key:     "a.b.c",
 			value:   42,
-			expected: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			expected: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": 42,
 					},
 				},
@@ -57,15 +57,15 @@ func Test_setNestedValue(t *testing.T) {
 		},
 		{
 			name: "shared prefix merges into one object",
-			initial: func() map[string]interface{} {
-				m := map[string]interface{}{}
+			initial: func() map[string]any {
+				m := map[string]any{}
 				setNestedValue(m, "start.dateTime", "2025-01-15T10:00:00Z")
 				return m
 			}(),
 			key:   "start.timeZone",
 			value: "America/New_York",
-			expected: map[string]interface{}{
-				"start": map[string]interface{}{
+			expected: map[string]any{
+				"start": map[string]any{
 					"dateTime": "2025-01-15T10:00:00Z",
 					"timeZone": "America/New_York",
 				},
@@ -73,13 +73,13 @@ func Test_setNestedValue(t *testing.T) {
 		},
 		{
 			name: "overwrite non-map existing key",
-			initial: map[string]interface{}{
+			initial: map[string]any{
 				"start": "scalar-value",
 			},
 			key:   "start.dateTime",
 			value: "2025-01-15T10:00:00Z",
-			expected: map[string]interface{}{
-				"start": map[string]interface{}{
+			expected: map[string]any{
+				"start": map[string]any{
 					"dateTime": "2025-01-15T10:00:00Z",
 				},
 			},
@@ -95,7 +95,7 @@ func Test_setNestedValue(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_DotNotation(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{
@@ -126,7 +126,7 @@ func TestMapper_BuildRequestBody_DotNotation(t *testing.T) {
 		},
 	}
 
-	args := map[string]interface{}{
+	args := map[string]any{
 		"startDateTime": "2025-07-01T10:00:00Z",
 		"startTimeZone": "America/New_York",
 		"subject":       "Team Meeting",
@@ -140,14 +140,14 @@ func TestMapper_BuildRequestBody_DotNotation(t *testing.T) {
 	assert.Equal(t, "Team Meeting", body["subject"])
 
 	// Verify the nested structure
-	startObj, ok := body["start"].(map[string]interface{})
+	startObj, ok := body["start"].(map[string]any)
 	require.True(t, ok, "start should be a nested map")
 	assert.Equal(t, "2025-07-01T10:00:00Z", startObj["dateTime"])
 	assert.Equal(t, "America/New_York", startObj["timeZone"])
 }
 
 func TestMapper_BuildRequestBody_IdentityPassthrough(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{
@@ -162,7 +162,7 @@ func TestMapper_BuildRequestBody_IdentityPassthrough(t *testing.T) {
 		},
 	}
 
-	args := map[string]interface{}{
+	args := map[string]any{
 		"description": "A simple test value",
 	}
 
@@ -175,14 +175,14 @@ func TestMapper_BuildRequestBody_IdentityPassthrough(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_WithEncoding(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{Name: "to", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
 		{Name: "subject", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
 		{Name: "body", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"to":      "alice@example.com",
 		"subject": "Test",
 		"body":    "Hello",
@@ -202,7 +202,7 @@ func TestMapper_BuildRequestBody_WithEncoding(t *testing.T) {
 	assert.Nil(t, result["body"])
 
 	// Encoded value should be at message.raw
-	msgObj, ok := result["message"].(map[string]interface{})
+	msgObj, ok := result["message"].(map[string]any)
 	require.True(t, ok, "message should be a nested map")
 	rawStr, ok := msgObj["raw"].(string)
 	require.True(t, ok, "raw should be a string")
@@ -215,7 +215,7 @@ func TestMapper_BuildRequestBody_WithEncoding(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_WithEncoding_MixedParams(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{
@@ -232,7 +232,7 @@ func TestMapper_BuildRequestBody_WithEncoding_MixedParams(t *testing.T) {
 		{Name: "subject", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
 		{Name: "body", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"messageId": "thread123",
 		"to":        "bob@example.com",
 		"subject":   "Reply",
@@ -248,7 +248,7 @@ func TestMapper_BuildRequestBody_WithEncoding_MixedParams(t *testing.T) {
 	require.NotNil(t, result)
 
 	// messageId with targetName should bypass encoding → message.threadId
-	msgObj, ok := result["message"].(map[string]interface{})
+	msgObj, ok := result["message"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "thread123", msgObj["threadId"])
 
@@ -267,13 +267,13 @@ func TestMapper_BuildRequestBody_WithEncoding_MixedParams(t *testing.T) {
 }
 
 func TestMapper_BuildRequestBody_NoEncoding_FlatParams(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	params := []ParameterConfig{
 		{Name: "to", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
 		{Name: "subject", Type: ParameterTypeString, Required: true, Location: ParameterLocationBody},
 	}
-	args := map[string]interface{}{
+	args := map[string]any{
 		"to":      "alice@example.com",
 		"subject": "Test",
 	}

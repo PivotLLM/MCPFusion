@@ -15,9 +15,13 @@ import (
 // ExampleNew demonstrates how to create a new Fusion instance
 func ExampleNew() {
 	// Create a Fusion instance with multi-tenant auth (automatically enabled)
-	fusionProvider := fusion.New()
+	fusionProvider, err := fusion.New()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	fmt.Printf("Fusion provider created with %d configured services\n", len(fusionProvider.GetServiceNames()))
+	fmt.Printf("Fusion provider created with %d configured services\n", len(fusionProvider.ServiceNames()))
 	// Output: Fusion provider created with 0 configured services
 }
 
@@ -61,14 +65,18 @@ func ExampleNew_withConfig() {
 	}`
 
 	// Create Fusion instance with configuration
-	fusionProvider := fusion.New(
+	fusionProvider, err := fusion.New(
 		fusion.WithJSONConfigData([]byte(configJSON), "example-config.json"),
 	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	// Get tools that would be registered
 	tools := fusionProvider.RegisterTools()
 
-	fmt.Printf("Loaded %d services\n", len(fusionProvider.GetServiceNames()))
+	fmt.Printf("Loaded %d services\n", len(fusionProvider.ServiceNames()))
 	fmt.Printf("Generated %d tools\n", len(tools))
 	if len(tools) > 0 {
 		fmt.Printf("First tool: %s\n", tools[0].Name)
@@ -83,7 +91,10 @@ func ExampleNew_withConfig() {
 // ExampleNew_withMultiTenantAuth demonstrates multi-tenant auth requirement
 func ExampleNew_withMultiTenantAuth() {
 	// Multi-tenant auth manager handles all authentication (automatically enabled)
-	_ = fusion.New()
+	if _, err := fusion.New(); err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	fmt.Printf("Fusion created with multi-tenant authentication\n")
 	// Output: Fusion created with multi-tenant authentication

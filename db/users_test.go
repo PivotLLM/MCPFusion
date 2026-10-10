@@ -30,8 +30,8 @@ func isValidUUID(s string) bool {
 // with all metadata fields populated.
 func TestCreateUser(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	user, err := database.CreateUser("Test user")
 	require.NoError(t, err)
@@ -53,8 +53,8 @@ func TestCreateUser(t *testing.T) {
 // with a validation error.
 func TestCreateUser_EmptyDescription(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	user, err := database.CreateUser("")
 	assert.Error(t, err)
@@ -63,15 +63,15 @@ func TestCreateUser_EmptyDescription(t *testing.T) {
 }
 
 // TestGetUser verifies that a created user can be retrieved and all fields match.
-func TestGetUser(t *testing.T) {
+func TestLoadUser(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	created, err := database.CreateUser("Retrievable user")
 	require.NoError(t, err)
 
-	retrieved, err := database.GetUser(created.UserID)
+	retrieved, err := database.LoadUser(created.UserID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
@@ -83,12 +83,12 @@ func TestGetUser(t *testing.T) {
 
 // TestGetUser_NotFound verifies that retrieving a nonexistent user returns
 // ErrUserNotFound.
-func TestGetUser_NotFound(t *testing.T) {
+func TestLoadUser_NotFound(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
-	user, err := database.GetUser("00000000-0000-0000-0000-000000000000")
+	user, err := database.LoadUser("00000000-0000-0000-0000-000000000000")
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.ErrorIs(t, err, ErrUserNotFound)
@@ -97,8 +97,8 @@ func TestGetUser_NotFound(t *testing.T) {
 // TestListUsers creates multiple users and verifies ListUsers returns all of them.
 func TestListUsers(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	descriptions := []string{"User A", "User B", "User C"}
 	createdIDs := make(map[string]string) // userID -> description
@@ -125,8 +125,8 @@ func TestListUsers(t *testing.T) {
 // users exist.
 func TestListUsers_Empty(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	users, err := database.ListUsers()
 	require.NoError(t, err)
@@ -137,8 +137,8 @@ func TestListUsers_Empty(t *testing.T) {
 // retrievable.
 func TestDeleteUser(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	user, err := database.CreateUser("Doomed user")
 	require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestDeleteUser(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the user is gone
-	retrieved, err := database.GetUser(user.UserID)
+	retrieved, err := database.LoadUser(user.UserID)
 	assert.Error(t, err)
 	assert.Nil(t, retrieved)
 	assert.ErrorIs(t, err, ErrUserNotFound)
@@ -162,8 +162,8 @@ func TestDeleteUser(t *testing.T) {
 // ErrUserNotFound.
 func TestDeleteUser_NotFound(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	err := database.DeleteUser("00000000-0000-0000-0000-000000000000")
 	assert.Error(t, err)
@@ -174,8 +174,8 @@ func TestDeleteUser_NotFound(t *testing.T) {
 // user, and verifies the key_to_user reverse index entry is cleaned up.
 func TestDeleteUser_CleansUpKeyLinks(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	// Create a user
 	user, err := database.CreateUser("User with key")
@@ -190,7 +190,7 @@ func TestDeleteUser_CleansUpKeyLinks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Sanity check: lookup should work before deletion
-	foundUserID, err := database.GetUserByAPIKey(hash)
+	foundUserID, err := database.LookupUserByAPIKey(hash)
 	require.NoError(t, err)
 	assert.Equal(t, user.UserID, foundUserID)
 
@@ -199,7 +199,7 @@ func TestDeleteUser_CleansUpKeyLinks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify key_to_user mapping is cleaned up
-	_, err = database.GetUserByAPIKey(hash)
+	_, err = database.LookupUserByAPIKey(hash)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrUserNotFound)
 }
@@ -208,8 +208,8 @@ func TestDeleteUser_CleansUpKeyLinks(t *testing.T) {
 // link works in both directions.
 func TestLinkAPIKey(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	// Create user and token
 	user, err := database.CreateUser("Linkable user")
@@ -223,7 +223,7 @@ func TestLinkAPIKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify forward lookup: key -> user
-	foundUserID, err := database.GetUserByAPIKey(hash)
+	foundUserID, err := database.LookupUserByAPIKey(hash)
 	require.NoError(t, err)
 	assert.Equal(t, user.UserID, foundUserID)
 }
@@ -232,8 +232,8 @@ func TestLinkAPIKey(t *testing.T) {
 // returns ErrUserNotFound.
 func TestLinkAPIKey_UserNotFound(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	// Create a real API token
 	_, hash, err := database.AddAPIToken("orphan token")
@@ -248,8 +248,8 @@ func TestLinkAPIKey_UserNotFound(t *testing.T) {
 // returns ErrKeyAlreadyLinked.
 func TestLinkAPIKey_AlreadyLinked(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	user1, err := database.CreateUser("First user")
 	require.NoError(t, err)
@@ -274,8 +274,8 @@ func TestLinkAPIKey_AlreadyLinked(t *testing.T) {
 // returns an error wrapping ErrTokenNotFound.
 func TestLinkAPIKey_TokenNotFound(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	user, err := database.CreateUser("User without key")
 	require.NoError(t, err)
@@ -290,8 +290,8 @@ func TestLinkAPIKey_TokenNotFound(t *testing.T) {
 // returns ErrUserNotFound.
 func TestUnlinkAPIKey(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	user, err := database.CreateUser("Unlinkable user")
 	require.NoError(t, err)
@@ -307,7 +307,7 @@ func TestUnlinkAPIKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify lookup returns not found
-	_, err = database.GetUserByAPIKey(hash)
+	_, err = database.LookupUserByAPIKey(hash)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrUserNotFound)
 }
@@ -316,8 +316,8 @@ func TestUnlinkAPIKey(t *testing.T) {
 // returns ErrUserNotFound.
 func TestUnlinkAPIKey_NotLinked(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	_, hash, err := database.AddAPIToken("never linked token")
 	require.NoError(t, err)
@@ -327,12 +327,12 @@ func TestUnlinkAPIKey_NotLinked(t *testing.T) {
 	assert.ErrorIs(t, err, ErrUserNotFound)
 }
 
-// TestGetUserByAPIKey creates a user, links a key, and verifies GetUserByAPIKey
+// TestGetUserByAPIKey creates a user, links a key, and verifies LookupUserByAPIKey
 // returns the correct user ID.
-func TestGetUserByAPIKey(t *testing.T) {
+func TestLookupUserByAPIKey(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	user, err := database.CreateUser("Lookup user")
 	require.NoError(t, err)
@@ -343,22 +343,22 @@ func TestGetUserByAPIKey(t *testing.T) {
 	err = database.LinkAPIKey(user.UserID, hash)
 	require.NoError(t, err)
 
-	foundUserID, err := database.GetUserByAPIKey(hash)
+	foundUserID, err := database.LookupUserByAPIKey(hash)
 	require.NoError(t, err)
 	assert.Equal(t, user.UserID, foundUserID)
 }
 
 // TestGetUserByAPIKey_NotLinked verifies that looking up a key that has no user
 // link returns ErrUserNotFound.
-func TestGetUserByAPIKey_NotLinked(t *testing.T) {
+func TestLookupUserByAPIKey_NotLinked(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	_, hash, err := database.AddAPIToken("unlinked token")
 	require.NoError(t, err)
 
-	_, err = database.GetUserByAPIKey(hash)
+	_, err = database.LookupUserByAPIKey(hash)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrUserNotFound)
 }
@@ -367,8 +367,8 @@ func TestGetUserByAPIKey_NotLinked(t *testing.T) {
 // that users were created and keys were linked.
 func TestAutoMigrateKeys(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	// Create API tokens without any user links
 	_, hash1, err := database.AddAPIToken("migrate me 1")
@@ -392,11 +392,11 @@ func TestAutoMigrateKeys(t *testing.T) {
 	assert.Len(t, users, 2)
 
 	// Verify both keys are linked to users
-	userID1, err := database.GetUserByAPIKey(hash1)
+	userID1, err := database.LookupUserByAPIKey(hash1)
 	require.NoError(t, err)
 	assert.True(t, isValidUUID(userID1))
 
-	userID2, err := database.GetUserByAPIKey(hash2)
+	userID2, err := database.LookupUserByAPIKey(hash2)
 	require.NoError(t, err)
 	assert.True(t, isValidUUID(userID2))
 
@@ -408,8 +408,8 @@ func TestAutoMigrateKeys(t *testing.T) {
 // then calls AutoMigrateKeys and verifies no duplicate migration occurs.
 func TestAutoMigrateKeys_AlreadyLinked(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	// Create a token and manually link it
 	_, hash, err := database.AddAPIToken("already linked")
@@ -432,7 +432,7 @@ func TestAutoMigrateKeys_AlreadyLinked(t *testing.T) {
 	assert.Equal(t, user.UserID, users[0].UserID)
 
 	// Verify the key is still linked to the original user
-	foundUserID, err := database.GetUserByAPIKey(hash)
+	foundUserID, err := database.LookupUserByAPIKey(hash)
 	require.NoError(t, err)
 	assert.Equal(t, user.UserID, foundUserID)
 }
@@ -441,8 +441,8 @@ func TestAutoMigrateKeys_AlreadyLinked(t *testing.T) {
 // database and verifies no error is returned.
 func TestAutoMigrateKeys_NoTokens(t *testing.T) {
 	database, tempDir, _ := setupTestDB(t)
-	defer os.RemoveAll(tempDir)
-	defer database.Close()
+	defer func() { assert.NoError(t, os.RemoveAll(tempDir)) }()
+	defer func() { assert.NoError(t, database.Close()) }()
 
 	err := database.AutoMigrateKeys()
 	require.NoError(t, err)

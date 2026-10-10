@@ -12,10 +12,10 @@ import (
 
 func TestEndpointConfig_BaseURL_JSONSerialization(t *testing.T) {
 	tests := []struct {
-		name           string
-		endpoint       EndpointConfig
-		expectInJSON   bool   // whether "baseURL" should appear in the serialized JSON
-		expectedURL    string // expected BaseURL value after round-trip
+		name         string
+		endpoint     EndpointConfig
+		expectInJSON bool   // whether "baseURL" should appear in the serialized JSON
+		expectedURL  string // expected BaseURL value after round-trip
 	}{
 		{
 			name: "without baseURL omits field from JSON",
@@ -54,7 +54,7 @@ func TestEndpointConfig_BaseURL_JSONSerialization(t *testing.T) {
 			}
 
 			// Check whether the raw JSON contains the "baseURL" key
-			var raw map[string]interface{}
+			var raw map[string]any
 			if err := json.Unmarshal(data, &raw); err != nil {
 				t.Fatalf("Failed to unmarshal raw JSON: %v", err)
 			}
@@ -138,14 +138,14 @@ func TestEndpointConfig_BaseURL_DeserializeFromJSON(t *testing.T) {
 }
 
 func TestMapper_BuildURL_EndpointBaseURLOverride(t *testing.T) {
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	tests := []struct {
 		name        string
 		baseURL     string
 		path        string
 		params      []ParameterConfig
-		args        map[string]interface{}
+		args        map[string]any
 		expectedURL string
 		expectError bool
 	}{
@@ -197,16 +197,16 @@ func TestMapper_BuildURL_EndpointBaseURLOverride(t *testing.T) {
 					Required: true,
 				},
 			},
-			args:        map[string]interface{}{"userId": "abc123"},
+			args:        map[string]any{"userId": "abc123"},
 			expectedURL: "https://override.example.com/api/users/abc123/items",
 			expectError: false,
 		},
 		{
-			name:    "different baseURLs produce different URLs for same path",
-			baseURL: "https://people.googleapis.com",
-			path:    "/v1/people/me/connections",
-			params:  nil,
-			args:    nil,
+			name:        "different baseURLs produce different URLs for same path",
+			baseURL:     "https://people.googleapis.com",
+			path:        "/v1/people/me/connections",
+			params:      nil,
+			args:        nil,
 			expectedURL: "https://people.googleapis.com/v1/people/me/connections",
 			expectError: false,
 		},
@@ -236,7 +236,7 @@ func TestMapper_BuildURL_EndpointBaseURLOverride(t *testing.T) {
 func TestBuildURL_ServiceVsEndpointBaseURL(t *testing.T) {
 	// This test simulates the logic in handler.go buildRequest(), verifying that
 	// the endpoint-level baseURL takes precedence over the service-level baseURL.
-	mapper := NewMapper(nil)
+	mapper := NewMapper()
 
 	serviceBaseURL := "https://www.googleapis.com"
 	endpointBaseURL := "https://people.googleapis.com"
@@ -332,7 +332,7 @@ func TestLoadConfigFromJSON_EndpointBaseURLOverride(t *testing.T) {
 	}
 
 	// First endpoint should have no BaseURL override
-	defaultEP := service.GetEndpointByID("default_base")
+	defaultEP := service.EndpointByID("default_base")
 	if defaultEP == nil {
 		t.Fatal("Expected 'default_base' endpoint to exist")
 	}
@@ -341,7 +341,7 @@ func TestLoadConfigFromJSON_EndpointBaseURLOverride(t *testing.T) {
 	}
 
 	// Second endpoint should have the override
-	customEP := service.GetEndpointByID("custom_base")
+	customEP := service.EndpointByID("custom_base")
 	if customEP == nil {
 		t.Fatal("Expected 'custom_base' endpoint to exist")
 	}

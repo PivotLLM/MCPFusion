@@ -26,7 +26,8 @@ type SSEClient struct {
 }
 
 // NewSSEClient creates a new SSE client for the given service config
-func NewSSEClient(config *fusion.ServiceConfig, logger global.Logger) *SSEClient {
+func NewSSEClient(config *fusion.ServiceConfig, opts ...ClientOption) *SSEClient {
+	logger := newClientOptions(opts).logger
 	baseDelay := time.Second
 	maxDelay := 60 * time.Second
 	factor := 2.0
@@ -43,7 +44,7 @@ func NewSSEClient(config *fusion.ServiceConfig, logger global.Logger) *SSEClient
 		}
 	}
 
-	manager := NewMCPClientManager(config.ServiceKey, logger)
+	manager := NewMCPClientManager(config.ServiceKey, WithLogger(logger))
 	manager.SetCallTimeout(config.CallTimeout)
 
 	return &SSEClient{
@@ -61,7 +62,9 @@ func (s *SSEClient) Manager() *MCPClientManager {
 
 // Connect creates and connects the SSE MCP client
 func (s *SSEClient) Connect(ctx context.Context) error {
-	s.logger.Infof("Hub service '%s': connecting to SSE endpoint: %s", s.config.ServiceKey, s.config.BaseURL)
+	if s.logger != nil {
+		s.logger.Infof("Hub service '%s': connecting to SSE endpoint: %s", s.config.ServiceKey, s.config.BaseURL)
+	}
 
 	// Build transport options
 	var opts []transport.ClientOption
@@ -80,7 +83,11 @@ func (s *SSEClient) Connect(ctx context.Context) error {
 
 	// Start the SSE transport (establishes the event stream)
 	if err := c.Start(ctx); err != nil {
-		c.Close()
+		if closeErr := c.Close(); closeErr != nil {
+			if s.logger != nil {
+				s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, closeErr)
+			}
+		}
 		return fmt.Errorf("failed to start SSE transport: %w", err)
 	}
 
@@ -91,7 +98,9 @@ func (s *SSEClient) Connect(ctx context.Context) error {
 
 	// Register connection loss handler
 	c.OnConnectionLost(func(err error) {
-		s.logger.Errorf("Hub service '%s': connection lost: %v", s.config.ServiceKey, err)
+		if s.logger != nil {
+			s.logger.Errorf("Hub service '%s': connection lost: %v", s.config.ServiceKey, err)
+		}
 		s.manager.SetConnected(false)
 	})
 
@@ -99,12 +108,18 @@ func (s *SSEClient) Connect(ctx context.Context) error {
 	// first so concurrent callers cannot use the client while it is closing.
 	if err := s.manager.Connect(ctx); err != nil {
 		s.manager.SetClient(nil)
-		c.Close()
+		if closeErr := c.Close(); closeErr != nil {
+			if s.logger != nil {
+				s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, closeErr)
+			}
+		}
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
 	s.backoff.Reset()
-	s.logger.Infof("Hub service '%s': SSE connection established", s.config.ServiceKey)
+	if s.logger != nil {
+		s.logger.Infof("Hub service '%s': SSE connection established", s.config.ServiceKey)
+	}
 	return nil
 }
 
@@ -149,8 +164,10 @@ func (s *SSEClient) RunWithReconnect(ctx context.Context, onConnected func(), on
 
 		err := s.Connect(ctx)
 		if err != nil {
-			s.logger.Errorf("Hub service '%s': connection failed: %v (retrying in %v)",
-				s.config.ServiceKey, err, s.backoff.CurrentDelay())
+			if s.logger != nil {
+				s.logger.Errorf("Hub service '%s': connection failed: %v (retrying in %v)",
+					s.config.ServiceKey, err, s.backoff.CurrentDelay())
+			}
 
 			if onDisconnected != nil {
 				onDisconnected()
@@ -173,14 +190,20 @@ func (s *SSEClient) RunWithReconnect(ctx context.Context, onConnected func(), on
 			return
 		}
 
-		s.logger.Warningf("Hub service '%s': disconnected, will reconnect in %v",
-			s.config.ServiceKey, s.backoff.CurrentDelay())
+		if s.logger != nil {
+			s.logger.Warningf("Hub service '%s': disconnected, will reconnect in %v",
+				s.config.ServiceKey, s.backoff.CurrentDelay())
+		}
 
 		if onDisconnected != nil {
 			onDisconnected()
 		}
 
-		s.manager.Disconnect()
+		if err := s.manager.Disconnect(); err != nil {
+			if s.logger != nil {
+				s.logger.Warningf("Hub service '%s': failed to close client: %v", s.config.ServiceKey, err)
+			}
+		}
 
 		if waitErr := s.backoff.Wait(ctx); waitErr != nil {
 			return

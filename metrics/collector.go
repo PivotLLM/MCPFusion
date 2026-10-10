@@ -28,8 +28,8 @@ type Collector struct {
 type ServiceStats struct {
 	Name      string `json:"name"`
 	Transport string `json:"transport"`       // "api", "mcp_stdio", "mcp_sse", "mcp_http", "internal"
-	Status    string `json:"status"`           // "operational", "degraded", "disconnected"
-	Tools     *int   `json:"tools,omitempty"`  // nil for non-tool services
+	Status    string `json:"status"`          // "operational", "degraded", "disconnected"
+	Tools     *int   `json:"tools,omitempty"` // nil for non-tool services
 	Requests  int64  `json:"requests"`
 	Errors    int64  `json:"errors"`
 }
@@ -102,8 +102,8 @@ func (c *Collector) SetToolCount(service string, count *int) {
 	}
 }
 
-// GetServiceStats returns a snapshot of a single service's stats, or nil if not found.
-func (c *Collector) GetServiceStats(service string) *ServiceStats {
+// ServiceStats returns a snapshot of a single service's stats, or nil if not found.
+func (c *Collector) ServiceStats(service string) *ServiceStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -114,8 +114,8 @@ func (c *Collector) GetServiceStats(service string) *ServiceStats {
 	return s.snapshot()
 }
 
-// GetAllServiceStats returns snapshots of all registered services, sorted by name.
-func (c *Collector) GetAllServiceStats() []ServiceStats {
+// AllServiceStats returns snapshots of all registered services, sorted by name.
+func (c *Collector) AllServiceStats() []ServiceStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -139,7 +139,7 @@ func (s *ServiceStats) snapshot() *ServiceStats {
 	return &cpy
 }
 
-// GetUptime returns the duration since the collector was created.
-func (c *Collector) GetUptime() time.Duration {
+// Uptime returns the duration since the collector was created.
+func (c *Collector) Uptime() time.Duration {
 	return time.Since(c.start)
 }

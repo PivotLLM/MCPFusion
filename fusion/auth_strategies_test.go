@@ -20,23 +20,23 @@ import (
 // P0-3: BearerTokenStrategy unit tests
 // ---------------------------------------------------------------------------
 
-func TestBearerTokenStrategy_GetAuthType(t *testing.T) {
-	s := NewBearerTokenStrategy(nil)
-	if s.GetAuthType() != AuthTypeBearer {
-		t.Errorf("GetAuthType() = %v, want %v", s.GetAuthType(), AuthTypeBearer)
+func TestBearerTokenStrategy_Type(t *testing.T) {
+	s := NewBearerTokenStrategy()
+	if s.Type() != AuthTypeBearer {
+		t.Errorf("Type() = %v, want %v", s.Type(), AuthTypeBearer)
 	}
 }
 
 func TestBearerTokenStrategy_SupportsRefresh(t *testing.T) {
-	s := NewBearerTokenStrategy(nil)
+	s := NewBearerTokenStrategy()
 	if s.SupportsRefresh() {
 		t.Error("SupportsRefresh() should return false for BearerTokenStrategy")
 	}
 }
 
 func TestBearerTokenStrategy_Authenticate_WithToken(t *testing.T) {
-	s := NewBearerTokenStrategy(nil)
-	config := map[string]interface{}{
+	s := NewBearerTokenStrategy()
+	config := map[string]any{
 		"token": "my-static-bearer-token",
 	}
 
@@ -56,8 +56,8 @@ func TestBearerTokenStrategy_Authenticate_WithToken(t *testing.T) {
 }
 
 func TestBearerTokenStrategy_Authenticate_EmptyToken(t *testing.T) {
-	s := NewBearerTokenStrategy(nil)
-	config := map[string]interface{}{
+	s := NewBearerTokenStrategy()
+	config := map[string]any{
 		"token": "",
 	}
 
@@ -68,8 +68,8 @@ func TestBearerTokenStrategy_Authenticate_EmptyToken(t *testing.T) {
 }
 
 func TestBearerTokenStrategy_Authenticate_MissingToken(t *testing.T) {
-	s := NewBearerTokenStrategy(nil)
-	config := map[string]interface{}{}
+	s := NewBearerTokenStrategy()
+	config := map[string]any{}
 
 	_, err := s.Authenticate(context.Background(), config)
 	if err == nil {
@@ -78,7 +78,7 @@ func TestBearerTokenStrategy_Authenticate_MissingToken(t *testing.T) {
 }
 
 func TestBearerTokenStrategy_ApplyAuth_SetsHeader(t *testing.T) {
-	s := NewBearerTokenStrategy(nil)
+	s := NewBearerTokenStrategy()
 	tokenInfo := &TokenInfo{
 		AccessToken: "test-bearer-value",
 		TokenType:   "Bearer",
@@ -97,7 +97,7 @@ func TestBearerTokenStrategy_ApplyAuth_SetsHeader(t *testing.T) {
 }
 
 func TestBearerTokenStrategy_ApplyAuth_NilTokenInfo(t *testing.T) {
-	s := NewBearerTokenStrategy(nil)
+	s := NewBearerTokenStrategy()
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/api", nil)
 	err := s.ApplyAuth(req, nil, nil)
 	if err == nil {
@@ -110,7 +110,7 @@ func TestBearerTokenStrategy_ApplyAuth_NilTokenInfo(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestApplyAuthentication_AuthTypeNone(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, newMockCache(), nil)
+	manager := NewMultiTenantAuthManager(nil, newMockCache())
 
 	tenantCtx := &TenantContext{
 		TenantHash:  "abc123def456abc1",
@@ -119,7 +119,7 @@ func TestApplyAuthentication_AuthTypeNone(t *testing.T) {
 	}
 	authConfig := AuthConfig{
 		Type:   AuthTypeNone,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/api", nil)
@@ -135,7 +135,7 @@ func TestApplyAuthentication_AuthTypeNone(t *testing.T) {
 }
 
 func TestApplyAuthentication_BearerWithStaticToken(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, newMockCache(), nil)
+	manager := NewMultiTenantAuthManager(nil, newMockCache())
 
 	tenantCtx := &TenantContext{
 		TenantHash:  "abc123def456abc1",
@@ -144,7 +144,7 @@ func TestApplyAuthentication_BearerWithStaticToken(t *testing.T) {
 	}
 	authConfig := AuthConfig{
 		Type: AuthTypeBearer,
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"token": "static-bearer-token",
 		},
 	}
@@ -163,11 +163,11 @@ func TestApplyAuthentication_BearerWithStaticToken(t *testing.T) {
 }
 
 func TestApplyAuthentication_NilTenantContext(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, newMockCache(), nil)
+	manager := NewMultiTenantAuthManager(nil, newMockCache())
 
 	authConfig := AuthConfig{
 		Type:   AuthTypeNone,
-		Config: map[string]interface{}{},
+		Config: map[string]any{},
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/api", nil)
@@ -190,7 +190,7 @@ func TestApplyAuthentication_NilTenantContext(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestExtractTenantFromToken_EmptyToken_UsesNoAuth(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, newMockCache(), nil)
+	manager := NewMultiTenantAuthManager(nil, newMockCache())
 
 	tenantCtx, err := manager.ExtractTenantFromToken("")
 	if err != nil {
@@ -207,7 +207,7 @@ func TestExtractTenantFromToken_EmptyToken_UsesNoAuth(t *testing.T) {
 func TestExtractTenantFromToken_BearerPrefix_Stripped(t *testing.T) {
 	// With no DB, the code hashes the token after stripping the prefix.
 	// Both "Bearer mytoken" and "mytoken" should produce the same tenant hash.
-	manager := NewMultiTenantAuthManager(nil, newMockCache(), nil)
+	manager := NewMultiTenantAuthManager(nil, newMockCache())
 
 	tc1, err := manager.ExtractTenantFromToken("Bearer mytoken")
 	if err != nil {
@@ -227,7 +227,7 @@ func TestExtractTenantFromToken_BearerPrefix_Stripped(t *testing.T) {
 
 func TestExtractTenantFromToken_NoDB_HashesToken(t *testing.T) {
 	// Without a DB, the fallback path hashes the token using SHA-256.
-	manager := NewMultiTenantAuthManager(nil, newMockCache(), nil)
+	manager := NewMultiTenantAuthManager(nil, newMockCache())
 
 	tenantCtx, err := manager.ExtractTenantFromToken("some-api-key-value")
 	if err != nil {
@@ -243,7 +243,7 @@ func TestExtractTenantFromToken_NoDB_HashesToken(t *testing.T) {
 }
 
 func TestExtractTenantFromToken_NoDB_DifferentTokensDifferentHashes(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, newMockCache(), nil)
+	manager := NewMultiTenantAuthManager(nil, newMockCache())
 
 	tc1, err := manager.ExtractTenantFromToken("token-alpha")
 	if err != nil {
@@ -261,7 +261,7 @@ func TestExtractTenantFromToken_NoDB_DifferentTokensDifferentHashes(t *testing.T
 }
 
 func TestExtractTenantFromAuthCode_NoDB_ReturnsError(t *testing.T) {
-	manager := NewMultiTenantAuthManager(nil, newMockCache(), nil)
+	manager := NewMultiTenantAuthManager(nil, newMockCache())
 
 	_, err := manager.ExtractTenantFromAuthCode("some-auth-code")
 	if err == nil {
@@ -299,9 +299,9 @@ func TestOAuth2DeviceFlowStrategy_Authenticate_ReturnsDeviceCodeError(t *testing
 	}))
 	defer server.Close()
 
-	strategy := NewOAuth2DeviceFlowStrategy(server.Client(), nil)
+	strategy := NewOAuth2DeviceFlowStrategy(server.Client())
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"clientId":         "test-client-id",
 		"authorizationURL": server.URL + "/device",
 		"tokenURL":         server.URL + "/token",
@@ -359,8 +359,8 @@ func TestOAuth2DeviceFlowStrategy_Authenticate_ReturnsDeviceCodeError(t *testing
 }
 
 func TestOAuth2DeviceFlowStrategy_Authenticate_MissingClientID(t *testing.T) {
-	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient, nil)
-	config := map[string]interface{}{
+	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient)
+	config := map[string]any{
 		"authorizationURL": "http://example.com/device",
 		"tokenURL":         "http://example.com/token",
 	}
@@ -375,8 +375,8 @@ func TestOAuth2DeviceFlowStrategy_Authenticate_MissingClientID(t *testing.T) {
 }
 
 func TestOAuth2DeviceFlowStrategy_Authenticate_MissingAuthorizationURL(t *testing.T) {
-	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient, nil)
-	config := map[string]interface{}{
+	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient)
+	config := map[string]any{
 		"clientId": "test-client",
 		"tokenURL": "http://example.com/token",
 	}
@@ -387,15 +387,15 @@ func TestOAuth2DeviceFlowStrategy_Authenticate_MissingAuthorizationURL(t *testin
 	}
 }
 
-func TestOAuth2DeviceFlowStrategy_GetAuthType(t *testing.T) {
-	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient, nil)
-	if strategy.GetAuthType() != AuthTypeOAuth2Device {
-		t.Errorf("GetAuthType() = %v, want %v", strategy.GetAuthType(), AuthTypeOAuth2Device)
+func TestOAuth2DeviceFlowStrategy_Type(t *testing.T) {
+	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient)
+	if strategy.Type() != AuthTypeOAuth2Device {
+		t.Errorf("Type() = %v, want %v", strategy.Type(), AuthTypeOAuth2Device)
 	}
 }
 
 func TestOAuth2DeviceFlowStrategy_SupportsRefresh(t *testing.T) {
-	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient, nil)
+	strategy := NewOAuth2DeviceFlowStrategy(http.DefaultClient)
 	if !strategy.SupportsRefresh() {
 		t.Error("SupportsRefresh() should return true for OAuth2DeviceFlowStrategy")
 	}

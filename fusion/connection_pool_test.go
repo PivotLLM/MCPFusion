@@ -95,7 +95,7 @@ func liveGoroutineCount() int {
 //  2. The goroutine count has not grown unboundedly.
 //  3. A fresh request made after the load run still succeeds (pool healthy).
 func TestConnectionPool_SequentialLoad(t *testing.T) {
-	const total = 200 // total requests to send
+	const total = 200    // total requests to send
 	const errorEvery = 7 // inject a 5xx every N-th request
 
 	var requestCount atomic.Int64
@@ -113,10 +113,13 @@ func TestConnectionPool_SequentialLoad(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "pool-test.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 
@@ -151,7 +154,7 @@ func TestConnectionPool_SequentialLoad(t *testing.T) {
 	}
 
 	// Pool health check: one final request must succeed after all the errors.
-	_, err := tool.Handler(withTestContext(map[string]any{}))
+	_, err = tool.Handler(withTestContext(map[string]any{}))
 	if err != nil {
 		t.Errorf("post-load health check failed — connection pool may be exhausted: %v", err)
 	}
@@ -169,10 +172,13 @@ func TestConnectionPool_ConcurrentLoad(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "pool-test.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 
@@ -237,10 +243,13 @@ func TestConnectionPool_RetryBodyDrain(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "pool-test.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 
@@ -258,7 +267,7 @@ func TestConnectionPool_RetryBodyDrain(t *testing.T) {
 			errorRequests, err)
 	}
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(result), &parsed); err != nil {
 		t.Fatalf("unexpected response after pool drain test: %v", err)
 	}
@@ -278,11 +287,11 @@ func TestConnectionPool_MixedErrorLoad(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := requestCount.Add(1)
-		switch {
-		case n%errorEvery == 0:
+		switch n % errorEvery {
+		case 0:
 			w.WriteHeader(http.StatusBadGateway)
 			_, _ = fmt.Fprint(w, `{"error":"bad gateway"}`)
-		case n%errorEvery == 1:
+		case 1:
 			w.WriteHeader(http.StatusTooManyRequests)
 			_, _ = fmt.Fprint(w, `{"error":"rate limited"}`)
 		default:
@@ -292,10 +301,13 @@ func TestConnectionPool_MixedErrorLoad(t *testing.T) {
 	}))
 	defer server.Close()
 
-	f := New(
+	f, err := New(
 		WithJSONConfigData([]byte(poolTestConfig(server.URL)), "pool-test.json"),
 		WithLogger(mlogger.NewMemoryLogger()),
 	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
 	tools := f.RegisterTools()
 	tool := findTool(t, tools, "pooltest_ping")
 

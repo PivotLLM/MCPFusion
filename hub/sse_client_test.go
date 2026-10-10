@@ -29,7 +29,7 @@ func TestNewSSEClient_DefaultBackoff(t *testing.T) {
 		BaseURL:    "http://localhost:9999/sse",
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	require.NotNil(t, c)
 
 	assert.Equal(t, time.Second, c.backoff.currentDelay,
@@ -53,7 +53,7 @@ func TestNewSSEClient_CustomRetryConfig(t *testing.T) {
 		},
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	require.NotNil(t, c)
 
 	assert.Equal(t, 500*time.Millisecond, c.backoff.baseDelay,
@@ -76,7 +76,7 @@ func TestNewSSEClient_PartialRetryConfig(t *testing.T) {
 		},
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	require.NotNil(t, c)
 
 	assert.Equal(t, 2*time.Second, c.backoff.baseDelay,
@@ -99,7 +99,7 @@ func TestSSEClient_Manager_ReturnsNonNil(t *testing.T) {
 		BaseURL:    "http://localhost:9999/sse",
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	mgr := c.Manager()
 	require.NotNil(t, mgr, "Manager() must return a non-nil MCPClientManager")
 }
@@ -118,7 +118,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "bearer token",
 			auth: fusion.AuthConfig{
 				Type:   fusion.AuthTypeBearer,
-				Config: map[string]interface{}{"token": "my-secret-token"},
+				Config: map[string]any{"token": "my-secret-token"},
 			},
 			expected: map[string]string{
 				"Authorization": "Bearer my-secret-token",
@@ -128,7 +128,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "basic auth",
 			auth: fusion.AuthConfig{
 				Type: fusion.AuthTypeBasic,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"username": "admin",
 					"password": "hunter2",
 				},
@@ -141,7 +141,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "api_key default header",
 			auth: fusion.AuthConfig{
 				Type:   fusion.AuthTypeAPIKey,
-				Config: map[string]interface{}{"apiKey": "key-12345"},
+				Config: map[string]any{"apiKey": "key-12345"},
 			},
 			expected: map[string]string{
 				"X-API-Key": "key-12345",
@@ -151,7 +151,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "api_key custom header name",
 			auth: fusion.AuthConfig{
 				Type: fusion.AuthTypeAPIKey,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"apiKey":     "key-67890",
 					"headerName": "X-Custom-Auth",
 				},
@@ -178,7 +178,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "bearer missing token",
 			auth: fusion.AuthConfig{
 				Type:   fusion.AuthTypeBearer,
-				Config: map[string]interface{}{},
+				Config: map[string]any{},
 			},
 			expected: map[string]string{},
 		},
@@ -186,7 +186,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "bearer empty token",
 			auth: fusion.AuthConfig{
 				Type:   fusion.AuthTypeBearer,
-				Config: map[string]interface{}{"token": ""},
+				Config: map[string]any{"token": ""},
 			},
 			expected: map[string]string{},
 		},
@@ -194,7 +194,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "basic missing username",
 			auth: fusion.AuthConfig{
 				Type: fusion.AuthTypeBasic,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"password": "secret",
 				},
 			},
@@ -204,7 +204,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "basic empty username",
 			auth: fusion.AuthConfig{
 				Type: fusion.AuthTypeBasic,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"username": "",
 					"password": "secret",
 				},
@@ -215,7 +215,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "api_key missing key",
 			auth: fusion.AuthConfig{
 				Type:   fusion.AuthTypeAPIKey,
-				Config: map[string]interface{}{},
+				Config: map[string]any{},
 			},
 			expected: map[string]string{},
 		},
@@ -223,7 +223,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "api_key empty key",
 			auth: fusion.AuthConfig{
 				Type:   fusion.AuthTypeAPIKey,
-				Config: map[string]interface{}{"apiKey": ""},
+				Config: map[string]any{"apiKey": ""},
 			},
 			expected: map[string]string{},
 		},
@@ -239,7 +239,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 			name: "basic password only encoded correctly",
 			auth: fusion.AuthConfig{
 				Type: fusion.AuthTypeBasic,
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"username": "user",
 					"password": "",
 				},
@@ -259,7 +259,7 @@ func TestSSEClient_BuildAuthHeaders(t *testing.T) {
 				BaseURL:    "http://localhost:9999/sse",
 				Auth:       tc.auth,
 			}
-			c := NewSSEClient(cfg, newTestLogger(t))
+			c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 			headers := c.buildAuthHeaders()
 			assert.Equal(t, tc.expected, headers)
 		})
@@ -278,7 +278,7 @@ func TestSSEClient_Connect_InvalidURL(t *testing.T) {
 		BaseURL:    "http://127.0.0.1:0/nonexistent-sse-endpoint",
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -298,7 +298,7 @@ func TestSSEClient_Close_NeverConnected(t *testing.T) {
 		BaseURL:    "http://localhost:9999/sse",
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 	assert.NotPanics(t, func() {
 		err := c.Close()
 		assert.NoError(t, err, "Close on a never-connected client should not error")
@@ -322,7 +322,7 @@ func TestSSEClient_RunWithReconnect_ContextCancellation(t *testing.T) {
 		},
 	}
 
-	c := NewSSEClient(cfg, newTestLogger(t))
+	c := NewSSEClient(cfg, WithLogger(newTestLogger(t)))
 
 	ctx, cancel := context.WithCancel(context.Background())
 
