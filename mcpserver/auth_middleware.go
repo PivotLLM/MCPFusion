@@ -575,7 +575,7 @@ func (am *AuthMiddleware) SimpleMiddleware(next http.Handler) http.Handler {
 
 		// Log after handler returns so MCP hook fields are populated
 		if am.logger != nil {
-			am.logger.InfoFields(record.Fields()...)
+			am.logger.InfoFields("request", record.Fields()...)
 		}
 	})
 }

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -433,13 +434,19 @@ func TestValidateParameter_String(t *testing.T) {
 	}
 
 	// Too short
-	if err := fusion.validateParameter(param, "hi"); err == nil {
+	err = fusion.validateParameter(param, "hi")
+	if err == nil {
 		t.Error("Expected error for string too short")
+	} else if !strings.Contains(err.Error(), "string length 2 is less than minimum 3") {
+		t.Errorf("Unexpected too-short message: %v", err)
 	}
 
 	// Too long
-	if err := fusion.validateParameter(param, "verylongstring"); err == nil {
+	err = fusion.validateParameter(param, "verylongstring")
+	if err == nil {
 		t.Error("Expected error for string too long")
+	} else if !strings.Contains(err.Error(), "string length 14 exceeds maximum 10") {
+		t.Errorf("Unexpected too-long message: %v", err)
 	}
 
 	// Invalid pattern

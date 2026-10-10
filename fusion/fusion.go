@@ -1403,8 +1403,12 @@ func (f *Fusion) validateParameter(param *ParameterConfig, value any) error {
 
 			// Length validation
 			if !validation.IsValidLength(strValue) {
-				message := fmt.Sprintf("string length must be between %d and %d (actual: %d)",
-					validation.MinLength, validation.MaxLength, len(strValue))
+				var message string
+				if validation.MinLength != nil && len(strValue) < *validation.MinLength {
+					message = fmt.Sprintf("string length %d is less than minimum %d", len(strValue), *validation.MinLength)
+				} else {
+					message = fmt.Sprintf("string length %d exceeds maximum %d", len(strValue), *validation.MaxLength)
+				}
 				if f.logger != nil {
 					f.logger.Errorf("Parameter %s validation failed: %s", param.Name, message)
 				}

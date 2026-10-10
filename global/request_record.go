@@ -28,7 +28,7 @@ type requestRecordKeyType struct{}
 var RequestRecordKey = requestRecordKeyType{}
 
 // Fields returns the record as alternating key-value pairs suitable for
-// structured logging (e.g. logger.InfoFields(record.Fields()...)).
+// structured logging (e.g. logger.InfoFields("request", record.Fields()...)).
 func (r *RequestRecord) Fields() []any {
 	fields := []any{
 		"method", r.Method,

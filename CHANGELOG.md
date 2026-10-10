@@ -3,7 +3,31 @@
 Breaking changes to exported identifiers, signatures or behaviour, for the
 applications that import MCPFusion packages.
 
-## Unreleased
+## 0.4.6
+
+### Dependencies
+
+- Requires Go 1.27.2.
+- `github.com/tenebris-tech/mlogger` v0.0.5: the `*Fields` methods now take a
+  message first (`InfoFields(msg string, args ...any)`). `global.Logger`
+  implementations must be updated to match.
+- `github.com/mark3labs/mcp-go` v1.2.1 (was v0.55.1).
+- `github.com/PivotLLM/toolspec` v0.4.0.
+
+### Log format
+
+- Per-request log lines now begin with `request` before the key=value fields
+  (`request method=… path=…`).
+
+### Error strings
+
+String length validation errors now state which limit was exceeded and its
+value (previously the limits were printed as pointer addresses):
+
+- `string length must be between %d and %d (actual: %d)`
+  → `string length %d is less than minimum %d` or `string length %d exceeds maximum %d`
+
+## 0.4.5
 
 ### Identity and behaviour
 
