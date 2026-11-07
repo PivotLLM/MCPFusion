@@ -125,3 +125,62 @@ func TestWriteFile_MissingDir(t *testing.T) {
 		t.Error("WriteFile into a missing folder: want error, got nil")
 	}
 }
+
+func TestChmodCreatedDir_SymlinkSwapRefused(t *testing.T) {
+	narrowUmask(t)
+	root := t.TempDir()
+	victim := filepath.Join(root, "victim")
+	if err := os.Mkdir(victim, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "new")
+	if err := os.Symlink(victim, path); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := chmodCreatedDir(path, 0o777); err == nil {
+		t.Fatal("chmodCreatedDir on a symlink: want error, got nil")
+	}
+	if got := perm(t, victim); got != 0o700 {
+		t.Errorf("symlink target mode = %o, want 700 (unchanged)", got)
+	}
+}
+
+func TestChmodCreatedDir_FileRefused(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "f")
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := chmodCreatedDir(path, 0o777); err == nil {
+		t.Fatal("chmodCreatedDir on a file: want error, got nil")
+	}
+	if got := perm(t, path); got != 0o600 {
+		t.Errorf("file mode = %o, want 600 (unchanged)", got)
+	}
+}
+
+func TestMkdirAll_ConcurrentCreateLeftAlone(t *testing.T) {
+	narrowUmask(t)
+	target := filepath.Join(t.TempDir(), "racy")
+	orig := mkdir
+	t.Cleanup(func() { mkdir = orig })
+	mkdir = func(name string, mode fs.FileMode) error {
+		if name == target {
+			// Another process wins the race and creates the folder first.
+			if err := os.Mkdir(name, 0o700); err != nil {
+				return err
+			}
+			if err := os.Chmod(name, 0o711); err != nil {
+				return err
+			}
+		}
+		return orig(name, mode)
+	}
+
+	if err := MkdirAll(target, 0o770); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if got := perm(t, target); got != 0o711 {
+		t.Errorf("concurrently created folder mode = %o, want 711 (left alone)", got)
+	}
+}

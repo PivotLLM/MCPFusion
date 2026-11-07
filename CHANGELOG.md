@@ -3,6 +3,16 @@
 Breaking changes to exported identifiers, signatures or behaviour, for the
 applications that import MCPFusion packages.
 
+## 0.4.9
+
+### Security
+
+- Folders created by `fusion` and `hub` when saving downloaded content now get
+  their mode through a descriptor opened on the new folder, not by path. If a
+  symlink or another entry replaces the folder between its creation and the
+  mode change, the save fails instead of changing the permissions of whatever
+  the path now points to.
+
 ## 0.4.8
 
 ### Fixed
