@@ -36,6 +36,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
@@ -122,6 +123,11 @@ type Fusion struct {
 	// downloadDir is the directory where binary responses are saved.
 	// If empty, binary responses return an informational message only.
 	downloadDir string
+
+	// dirMode and fileMode are the permissions for directories and files
+	// created when saving binary responses.
+	dirMode  fs.FileMode
+	fileMode fs.FileMode
 
 	// authCommandName is the CLI command name shown in auth setup instructions
 	// (default "fusion-auth"). Embedding hosts (e.g. ClawEh) override it via
@@ -310,6 +316,22 @@ func WithExternalURL(url string) Option {
 func WithDownloadDir(dir string) Option {
 	return optionFunc(func(f *Fusion) {
 		f.downloadDir = dir
+	})
+}
+
+// WithFileModes sets the permissions for directories and files created when
+// saving binary responses. The defaults are global.DefaultDirMode (0750) and
+// global.DefaultFileMode (0640). A zero value leaves that mode at its default.
+// The modes are subject to the process umask and are not applied to a
+// directory that already exists.
+func WithFileModes(dir, file fs.FileMode) Option {
+	return optionFunc(func(f *Fusion) {
+		if dir != 0 {
+			f.dirMode = dir
+		}
+		if file != 0 {
+			f.fileMode = file
+		}
 	})
 }
 
@@ -524,6 +546,8 @@ func New(options ...Option) (*Fusion, error) {
 	}
 
 	fusion := &Fusion{
+		dirMode:  global.DefaultDirMode,
+		fileMode: global.DefaultFileMode,
 		httpClient: &http.Client{
 			Transport: transport,
 			Timeout:   global.HTTPDefaultClientTimeout,

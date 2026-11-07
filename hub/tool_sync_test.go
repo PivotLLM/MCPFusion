@@ -7,10 +7,17 @@ package hub
 
 import (
 	"context"
+	"encoding/base64"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
+	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConvertDownstreamTool(t *testing.T) {
@@ -182,4 +189,65 @@ func TestDiffTools(t *testing.T) {
 		assert.Equal(t, []string{"add"}, diff.Added)
 		assert.Equal(t, []string{"remove"}, diff.Removed)
 	})
+}
+
+func TestWithFileModes(t *testing.T) {
+	tests := []struct {
+		name     string
+		opts     []HubOption
+		wantDir  fs.FileMode
+		wantFile fs.FileMode
+	}{
+		{"defaults", nil, global.DefaultDirMode, global.DefaultFileMode},
+		{"both set", []HubOption{WithFileModes(0700, 0600)}, 0700, 0600},
+		{"zero dir keeps default", []HubOption{WithFileModes(0, 0600)}, global.DefaultDirMode, 0600},
+		{"zero file keeps default", []HubOption{WithFileModes(0700, 0)}, 0700, global.DefaultFileMode},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := append([]HubOption{WithDownloadDir("/tmp/x")}, tt.opts...)
+			h := NewHubProvider(nil, opts...)
+			got := h.makeGetOpts()(context.Background())
+			assert.Equal(t, tt.wantDir, got.DirMode)
+			assert.Equal(t, tt.wantFile, got.FileMode)
+		})
+	}
+}
+
+// TestFormatCallToolResult_ImageFileModes verifies saved images use the modes
+// in FormatOptions, and that zero modes fall back to the defaults.
+// 0700/0600 are unaffected by any usual umask.
+func TestFormatCallToolResult_ImageFileModes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permissions not applicable on Windows")
+	}
+	img := mcp.NewImageContent(base64.StdEncoding.EncodeToString([]byte("png")), "image/png")
+	result := &mcp.CallToolResult{Content: []mcp.Content{img}}
+
+	dlDir := filepath.Join(t.TempDir(), "dl")
+	out := FormatCallToolResult(result, &FormatOptions{DownloadDir: dlDir, TenantHash: "t1", DirMode: 0700, FileMode: 0600})
+	assert.Contains(t, out, "Image saved:")
+
+	saveDir := filepath.Join(dlDir, "t1")
+	di, err := os.Stat(saveDir)
+	require.NoError(t, err)
+	assert.Equal(t, fs.FileMode(0700), di.Mode().Perm())
+
+	entries, err := os.ReadDir(saveDir)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	fi, err := entries[0].Info()
+	require.NoError(t, err)
+	assert.Equal(t, fs.FileMode(0600), fi.Mode().Perm())
+
+	// Zero modes must not create unusable (mode 0) directories or files.
+	dlDir2 := filepath.Join(t.TempDir(), "dl")
+	out = FormatCallToolResult(result, &FormatOptions{DownloadDir: dlDir2})
+	assert.Contains(t, out, "Image saved:")
+	entries, err = os.ReadDir(dlDir2)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	fi, err = entries[0].Info()
+	require.NoError(t, err)
+	assert.NotZero(t, fi.Mode().Perm()&0600, "saved file should be owner-readable/writable")
 }

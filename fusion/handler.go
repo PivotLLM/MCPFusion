@@ -875,13 +875,13 @@ func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, c
 			saveDir = dlDir
 		}
 
-		if err := os.MkdirAll(saveDir, 0750); err != nil {
+		if err := os.MkdirAll(saveDir, h.fusion.dirMode); err != nil {
 			return "", fmt.Errorf("failed to create download directory %s: %w", saveDir, err)
 		}
 
 		filePath := filepath.Join(saveDir, filename)
 
-		if err := os.WriteFile(filePath, body, 0640); err != nil {
+		if err := os.WriteFile(filePath, body, h.fusion.fileMode); err != nil {
 			return "", fmt.Errorf("failed to write download to %s: %w", filePath, err)
 		}
 
