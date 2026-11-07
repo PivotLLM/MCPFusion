@@ -3,6 +3,16 @@
 Breaking changes to exported identifiers, signatures or behaviour, for the
 applications that import MCPFusion packages.
 
+## 0.4.8
+
+### Fixed
+
+- The modes set by `fusion.WithFileModes`, `hub.WithFileModes` and
+  `hub.FormatOptions.DirMode`/`FileMode` are now applied exactly, whatever the
+  process umask. Previously the umask narrowed them (0770/0660 became
+  0750/0640 under umask 022), so a group-writable configuration did not take
+  effect. Folders that already exist are still left as they are.
+
 ## 0.4.7
 
 ### Added

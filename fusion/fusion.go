@@ -322,8 +322,8 @@ func WithDownloadDir(dir string) Option {
 // WithFileModes sets the permissions for directories and files created when
 // saving binary responses. The defaults are global.DefaultDirMode (0750) and
 // global.DefaultFileMode (0640). A zero value leaves that mode at its default.
-// The modes are subject to the process umask and are not applied to a
-// directory that already exists.
+// The modes are applied exactly, whatever the process umask, to every
+// directory and file created; a directory that already exists is left as is.
 func WithFileModes(dir, file fs.FileMode) Option {
 	return optionFunc(func(f *Fusion) {
 		if dir != 0 {
