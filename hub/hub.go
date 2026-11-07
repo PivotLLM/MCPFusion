@@ -74,6 +74,8 @@ func WithDownloadDir(dir string) HubOption {
 // saving image content from hub tool responses. The defaults are
 // global.DefaultDirMode (0750) and global.DefaultFileMode (0640). A zero value
 // leaves that mode at its default.
+// The modes are subject to the process umask and are not applied to a
+// directory that already exists.
 func WithFileModes(dir, file fs.FileMode) HubOption {
 	return hubOptionFunc(func(h *HubProvider) {
 		if dir != 0 {
@@ -477,10 +479,10 @@ func (h *HubProvider) periodicRefresh(refreshCtx context.Context, serviceKey str
 // downloadDir at the time makeGetOpts is called.
 func (h *HubProvider) makeGetOpts() func(ctx context.Context) *FormatOptions {
 	dir := h.downloadDir
-	dirMode, fileMode := h.dirMode, h.fileMode
 	if dir == "" {
 		return nil
 	}
+	dirMode, fileMode := h.dirMode, h.fileMode
 	return func(ctx context.Context) *FormatOptions {
 		var tenantHash string
 		if tc, ok := ctx.Value(global.TenantContextKey).(*fusion.TenantContext); ok && tc != nil {
