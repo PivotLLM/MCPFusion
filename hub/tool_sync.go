@@ -13,13 +13,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
+	"github.com/PivotLLM/MCPFusion/internal/fileperm"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -189,7 +189,7 @@ func saveImageContent(raw map[string]any, opts *FormatOptions) (string, error) {
 	if fileMode == 0 {
 		fileMode = global.DefaultFileMode
 	}
-	if err := os.MkdirAll(saveDir, dirMode); err != nil {
+	if err := fileperm.MkdirAll(saveDir, dirMode); err != nil {
 		return "", fmt.Errorf("mkdir: %w", err)
 	}
 
@@ -203,7 +203,7 @@ func saveImageContent(raw map[string]any, opts *FormatOptions) (string, error) {
 	)
 	filePath := filepath.Join(saveDir, filename)
 
-	if err := os.WriteFile(filePath, imgBytes, fileMode); err != nil {
+	if err := fileperm.WriteFile(filePath, imgBytes, fileMode); err != nil {
 		return "", fmt.Errorf("write: %w", err)
 	}
 
