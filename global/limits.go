@@ -5,7 +5,18 @@
 
 package global
 
-import "time"
+import (
+	"io/fs"
+	"time"
+)
+
+// Default permissions for directories and files created when saving
+// downloaded content. Hosts override them with fusion.WithFileModes and
+// hub.WithFileModes.
+const (
+	DefaultDirMode  fs.FileMode = 0750
+	DefaultFileMode fs.FileMode = 0640
+)
 
 // HTTP transport connection pool limits.
 // These control the shared http.Transport used by all outbound API calls.

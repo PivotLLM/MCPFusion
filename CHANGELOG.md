@@ -3,6 +3,17 @@
 Breaking changes to exported identifiers, signatures or behaviour, for the
 applications that import MCPFusion packages.
 
+## 0.4.7
+
+### Added
+
+- `fusion.WithFileModes(dir, file fs.FileMode)` and
+  `hub.WithFileModes(dir, file fs.FileMode)` set the permissions for
+  directories and files created when saving downloaded content. Defaults are
+  0750 and 0640 (`global.DefaultDirMode`, `global.DefaultFileMode`), as
+  before; a zero value keeps the default.
+- `hub.FormatOptions` gains `DirMode` and `FileMode`; zero means the default.
+
 ## 0.4.6
 
 ### Dependencies

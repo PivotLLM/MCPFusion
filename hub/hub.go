@@ -8,6 +8,7 @@ package hub
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -40,6 +41,8 @@ type HubProvider struct {
 	tokenCounter    int64 // atomic counter for unique downstream progress tokens (int64 overflow is not a practical concern)
 	sharedCollector *metrics.Collector
 	downloadDir     string // directory for saving image/binary content from tool results; empty = disabled
+	dirMode         fs.FileMode
+	fileMode        fs.FileMode
 }
 
 // HubOption configures a HubProvider.
@@ -67,12 +70,29 @@ func WithDownloadDir(dir string) HubOption {
 	})
 }
 
+// WithFileModes sets the permissions for directories and files created when
+// saving image content from hub tool responses. The defaults are
+// global.DefaultDirMode (0750) and global.DefaultFileMode (0640). A zero value
+// leaves that mode at its default.
+func WithFileModes(dir, file fs.FileMode) HubOption {
+	return hubOptionFunc(func(h *HubProvider) {
+		if dir != 0 {
+			h.dirMode = dir
+		}
+		if file != 0 {
+			h.fileMode = file
+		}
+	})
+}
+
 // NewHubProvider creates a new HubProvider with the given hub service configurations.
 func NewHubProvider(configs map[string]*fusion.ServiceConfig, opts ...HubOption) *HubProvider {
 	h := &HubProvider{
 		configs:        configs,
 		clients:        make(map[string]hubClient),
 		refreshCancels: make(map[string]context.CancelFunc),
+		dirMode:        global.DefaultDirMode,
+		fileMode:       global.DefaultFileMode,
 	}
 	for _, opt := range opts {
 		opt.applyToHub(h)
@@ -457,6 +477,7 @@ func (h *HubProvider) periodicRefresh(refreshCtx context.Context, serviceKey str
 // downloadDir at the time makeGetOpts is called.
 func (h *HubProvider) makeGetOpts() func(ctx context.Context) *FormatOptions {
 	dir := h.downloadDir
+	dirMode, fileMode := h.dirMode, h.fileMode
 	if dir == "" {
 		return nil
 	}
@@ -468,6 +489,8 @@ func (h *HubProvider) makeGetOpts() func(ctx context.Context) *FormatOptions {
 		return &FormatOptions{
 			DownloadDir: dir,
 			TenantHash:  tenantHash,
+			DirMode:     dirMode,
+			FileMode:    fileMode,
 		}
 	}
 }

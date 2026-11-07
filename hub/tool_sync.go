@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -32,8 +33,10 @@ type ToolDiff struct {
 // FormatOptions controls optional post-processing of tool results.
 // A nil FormatOptions disables all post-processing (safe default).
 type FormatOptions struct {
-	DownloadDir string // directory to save binary/image content; empty = disable
-	TenantHash  string // subdirectory name within DownloadDir; empty = save directly in DownloadDir
+	DownloadDir string      // directory to save binary/image content; empty = disable
+	TenantHash  string      // subdirectory name within DownloadDir; empty = save directly in DownloadDir
+	DirMode     fs.FileMode // permissions for created directories; zero = global.DefaultDirMode
+	FileMode    fs.FileMode // permissions for saved files; zero = global.DefaultFileMode
 }
 
 // ConvertDownstreamTool converts a downstream MCP tool into a global.ToolDefinition
@@ -179,7 +182,14 @@ func saveImageContent(raw map[string]any, opts *FormatOptions) (string, error) {
 	if opts.TenantHash != "" {
 		saveDir = filepath.Join(opts.DownloadDir, opts.TenantHash)
 	}
-	if err := os.MkdirAll(saveDir, 0750); err != nil {
+	dirMode, fileMode := opts.DirMode, opts.FileMode
+	if dirMode == 0 {
+		dirMode = global.DefaultDirMode
+	}
+	if fileMode == 0 {
+		fileMode = global.DefaultFileMode
+	}
+	if err := os.MkdirAll(saveDir, dirMode); err != nil {
 		return "", fmt.Errorf("mkdir: %w", err)
 	}
 
@@ -193,7 +203,7 @@ func saveImageContent(raw map[string]any, opts *FormatOptions) (string, error) {
 	)
 	filePath := filepath.Join(saveDir, filename)
 
-	if err := os.WriteFile(filePath, imgBytes, 0640); err != nil {
+	if err := os.WriteFile(filePath, imgBytes, fileMode); err != nil {
 		return "", fmt.Errorf("write: %w", err)
 	}
 
