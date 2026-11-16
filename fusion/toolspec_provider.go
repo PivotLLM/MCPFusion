@@ -16,7 +16,7 @@ import (
 
 // ToolSpecDefinitions converts every tool RegisterTools produces (endpoint tools,
 // <service>_auth_setup tools, and command_* tools) into transport-neutral
-// toolspec.ToolDefinition values for an embedded host (e.g. ClawEh).
+// toolspec.ToolDefinition values for a host application.
 //
 // tenant is the caller's tenant hash: the underlying fusion handlers require a
 // *TenantContext in the call context even for auth:none endpoints (handler.go

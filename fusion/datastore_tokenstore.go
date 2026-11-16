@@ -29,7 +29,7 @@ const (
 )
 
 // dataStoreTokenStore adapts a generic toolspec.DataStore (3-method opaque KV) to
-// the TokenStore contract the fusion auth path needs. Embedded hosts (e.g. ClawEh)
+// the TokenStore contract the fusion auth path needs. Host applications
 // implement only DataStore; this adapter owns all fusion-specific encoding so the
 // host never learns about OAuth tokens, credentials, or auth codes.
 //
@@ -212,7 +212,7 @@ func (a *dataStoreTokenStore) CreateAuthCode(tenantHash, service string, ttl tim
 }
 
 // ValidateAuthCode looks up an auth code and enforces expiry on read. It does NOT
-// consume the code on success: the auth utility (fusion-auth / claw-auth) completes
+// consume the code on success: the auth utility (fusion-auth or the host's auth helper) completes
 // a multi-request flow — ping, then GET the service config, then POST the token —
 // each call re-presenting the same code as its bearer. Deleting on first validation
 // would 401 every call after the first (the observed embedded-host failure). The

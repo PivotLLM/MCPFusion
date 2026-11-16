@@ -17,7 +17,7 @@ import (
 // manager and database cache read and write. The concrete *db.DB (bbolt) used by
 // standalone MCPFusion already satisfies it, so passing *db.DB where a TokenStore
 // is expected is a type widening with no behavior change. Embedded callers
-// (e.g. ClawEh) can instead supply a toolspec.DataStore-backed implementation
+// (a host application) can instead supply a toolspec.DataStore-backed implementation
 // via WithDataStore, keeping them free of the full db.Database surface.
 type TokenStore interface {
 	// OAuth token management
