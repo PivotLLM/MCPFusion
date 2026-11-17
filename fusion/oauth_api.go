@@ -18,8 +18,8 @@ import (
 )
 
 // oauthAPIHandler serves the OAuth token-management HTTP endpoints that the
-// fusion-auth / claw-auth utilities call. It is constructed from the engine so
-// an embedding host (e.g. ClawEh) can mount the exact same endpoints without
+// fusion-auth utility (or a host's auth helper) calls. It is constructed from
+// the engine so a host application can mount the exact same endpoints without
 // importing the standalone mcpserver package. All state (token store, service
 // config, logger) is read from the engine, keeping this handler dependency-free
 // beyond the engine itself.

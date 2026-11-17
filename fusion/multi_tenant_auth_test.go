@@ -483,7 +483,7 @@ func TestInvalidateToken_NilTenantContext(t *testing.T) {
 
 // TestNewMultiTenantAuthManager_RegistersAllDefaultStrategies guards against the
 // regression where user_credentials and oauth2_external were registered only in
-// the standalone binary, so embedded hosts (e.g. ClawEh) rejected services using
+// the standalone binary, so host applications rejected services using
 // them with "unsupported authentication type". The embedded manager must expose
 // the full canonical strategy set.
 func TestNewMultiTenantAuthManager_RegistersAllDefaultStrategies(t *testing.T) {

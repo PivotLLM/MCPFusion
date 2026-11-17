@@ -3,6 +3,13 @@
 Breaking changes to exported identifiers, signatures or behaviour, for the
 applications that import MCPFusion packages.
 
+## 0.4.10
+
+### Changed
+
+- `configs/wxus.json` now sends `MCPFusion (https://github.com/PivotLLM/MCPFusion)`
+  as its default `User-Agent` to Nominatim and the National Weather Service.
+
 ## 0.4.9
 
 ### Security

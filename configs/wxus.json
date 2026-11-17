@@ -90,7 +90,7 @@
               "type": "string",
               "required": false,
               "location": "header",
-              "default": "tenebris-claw",
+              "default": "MCPFusion (https://github.com/PivotLLM/MCPFusion)",
               "static": true
             },
             {
@@ -159,7 +159,7 @@
               "type": "string",
               "required": false,
               "location": "header",
-              "default": "tenebris-claw",
+              "default": "MCPFusion (https://github.com/PivotLLM/MCPFusion)",
               "static": true
             },
             {
@@ -242,7 +242,7 @@
               "type": "string",
               "required": false,
               "location": "header",
-              "default": "tenebris-claw",
+              "default": "MCPFusion (https://github.com/PivotLLM/MCPFusion)",
               "static": true
             },
             {
@@ -325,7 +325,7 @@
               "type": "string",
               "required": false,
               "location": "header",
-              "default": "tenebris-claw",
+              "default": "MCPFusion (https://github.com/PivotLLM/MCPFusion)",
               "static": true
             },
             {
@@ -408,7 +408,7 @@
               "type": "string",
               "required": false,
               "location": "header",
-              "default": "tenebris-claw",
+              "default": "MCPFusion (https://github.com/PivotLLM/MCPFusion)",
               "static": true
             },
             {
@@ -482,7 +482,7 @@
               "type": "string",
               "required": false,
               "location": "header",
-              "default": "tenebris-claw",
+              "default": "MCPFusion (https://github.com/PivotLLM/MCPFusion)",
               "static": true
             },
             {
@@ -536,7 +536,7 @@
               "type": "string",
               "required": false,
               "location": "header",
-              "default": "tenebris-claw",
+              "default": "MCPFusion (https://github.com/PivotLLM/MCPFusion)",
               "static": true
             },
             {
@@ -619,7 +619,7 @@
               "type": "string",
               "required": false,
               "location": "header",
-              "default": "tenebris-claw",
+              "default": "MCPFusion (https://github.com/PivotLLM/MCPFusion)",
               "static": true
             },
             {

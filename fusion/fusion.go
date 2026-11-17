@@ -130,8 +130,8 @@ type Fusion struct {
 	fileMode fs.FileMode
 
 	// authCommandName is the CLI command name shown in auth setup instructions
-	// (default "fusion-auth"). Embedding hosts (e.g. ClawEh) override it via
-	// WithAuthCommandName so the utility name matches their distribution.
+	// (default "fusion-auth"). A host application overrides it via
+	// WithAuthCommandName so the utility name matches its distribution.
 	authCommandName string
 }
 
@@ -343,7 +343,7 @@ func WithDatabase(database db.Database) Option {
 }
 
 // WithDataStore wires stateful multi-tenant auth on top of a generic
-// toolspec.DataStore, for embedded hosts (e.g. ClawEh) that provide only the
+// toolspec.DataStore, for host applications that provide only the
 // 3-method DataStore KV rather than a full *db.DB. It builds a DataStore-backed
 // TokenStore, a database cache, and a multi-tenant auth manager from it, so
 // embedded callers get persistent OAuth tokens and auth codes without importing
@@ -466,7 +466,7 @@ func WithAllowDestructive(allow bool) Option {
 }
 
 // WithAuthCommandName sets the CLI command name shown in auth setup instructions
-// (default "fusion-auth"). Embedding hosts override it, e.g. "claw-auth", so the
+// (default "fusion-auth"). A host application overrides it, e.g. "host-auth", so the
 // generated command matches the utility they ship. An empty name is ignored.
 func WithAuthCommandName(name string) Option {
 	return optionFunc(func(f *Fusion) {

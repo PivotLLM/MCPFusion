@@ -113,7 +113,7 @@ func defaultAuthHTTPClient() *http.Client {
 // manager (NewMultiTenantAuthManager), and the multi-tenant fusion path all draw
 // from it, so an embedded host gets exactly the same auth types as the binary.
 // Previously user_credentials and oauth2_external were registered only in main.go,
-// so embedders (e.g. ClawEh) rejected services using them with "unsupported
+// so host applications rejected services using them with "unsupported
 // authentication type".
 func defaultStrategies(httpClient *http.Client, logger global.Logger) []AuthStrategy {
 	return []AuthStrategy{
