@@ -6,7 +6,7 @@ require (
 	github.com/PivotLLM/toolspec v0.4.1
 	github.com/itchyny/gojq v0.12.20
 	github.com/joho/godotenv v1.5.1
-	github.com/mark3labs/mcp-go v1.5.0
+	github.com/mark3labs/mcp-go v1.6.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tenebris-tech/mlogger v0.0.5
 	go.etcd.io/bbolt v1.5.0
