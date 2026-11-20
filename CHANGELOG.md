@@ -3,6 +3,39 @@
 Breaking changes to exported identifiers, signatures or behaviour, for the
 applications that import MCPFusion packages.
 
+## 0.4.11
+
+### Changed
+
+- **A JSON response over the response size limit is shortened, not refused.**
+  A response larger than `fusion.WithMaxResponseBytes` (1 MB by default) used
+  to be replaced whole by the text `Response too large (...)`, so one long
+  text value, such as the HTML body of an e-mail, made its whole record
+  unreadable. The longest text values are now cut, longest first, until the
+  response fits. The result is valid JSON: every key, number, list element
+  and object is as the API returned it, each cut value ends with
+  ` ... [truncated: first N of M characters]`, and a response that is a JSON
+  object gets a `_truncated` member (`note`, `limit_bytes`, `original_bytes`,
+  and `fields` with each cut value's `path`, `original_chars` and
+  `kept_chars`; at most 50, the rest counted in `more_fields`). A response
+  that is a JSON list keeps its shape and has only the markers. Nothing is
+  ever dropped: a response that is too large because it holds many records
+  is still refused, with the text `Response too large (..., even with its
+  long text values shortened. Request fewer records or fields and try
+  again.`. Callers that matched the old refusal text for a single large
+  record now get JSON instead; `text` and `binary` responses are unchanged.
+- `configs/microsoft365.json`: `mail_read_message` now always asks Microsoft
+  Graph for the message body as plain text (a static `Prefer:
+  outlook.body-content-type="text"` header), so `body.content` is text and
+  `body.contentType` is `text`, not HTML. A caller that needs the HTML must
+  use its own copy of the config without that parameter.
+
+### Added
+
+- `configs/microsoft365.json`: `mail_folder_messages` takes `$orderby`
+  (exposed as `orderby`), with the same values as `mail_read_inbox` and no
+  default, so a folder can be listed oldest first and paged with `$skip`.
+
 ## 0.4.10
 
 ### Changed

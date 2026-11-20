@@ -449,7 +449,9 @@ func WithSharedCollector(c *metrics.Collector) Option {
 }
 
 // WithMaxResponseBytes sets a limit on the size of responses returned to callers.
-// Responses exceeding this limit are replaced with an informational message.
+// A JSON response exceeding this limit has its longest text values shortened
+// until it fits (truncate.go); one that still does not fit, such as a list
+// of too many records, is replaced with an informational message.
 // A value of 0 disables the limit. Default is global.DefaultMaxResponseBytes (1 MB).
 func WithMaxResponseBytes(n int) Option {
 	return optionFunc(func(f *Fusion) {

@@ -814,21 +814,33 @@ func (h *HTTPHandler) handleResponse(ctx context.Context, resp *http.Response, c
 		}
 
 		// Convert back to JSON string
-		result, err := json.MarshalIndent(data, "", "  ")
+		result, err := marshalResponse(data)
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal response: %w", err)
 		}
 
-		// Enforce response size limit against the final (post-transform) output.
-		if h.fusion.MaxResponseBytes() > 0 && len(result) > h.fusion.MaxResponseBytes() {
-			if h.fusion.logger != nil {
-				h.fusion.logger.Warningf("Response size %d bytes exceeds limit of %d bytes [%s]",
-					len(result), h.fusion.MaxResponseBytes(), correlationID)
+		// Enforce response size limit against the final (post-transform) output:
+		// shorten its long text values until it fits (truncate.go), and refuse
+		// it only when it is too large for another reason, such as too many
+		// records.
+		if limit := h.fusion.MaxResponseBytes(); limit > 0 && len(result) > limit {
+			fitted, cut, ok := fitResponse(data, limit, len(result))
+			if !ok {
+				if h.fusion.logger != nil {
+					h.fusion.logger.Warningf("Response size %d bytes exceeds limit of %d bytes and cannot be shortened [%s]",
+						len(result), limit, correlationID)
+				}
+				return fmt.Sprintf(
+					"Response too large (%d bytes, limit %d bytes), even with its long text values shortened. "+
+						"Request fewer records or fields and try again.",
+					len(result), limit,
+				), nil
 			}
-			return fmt.Sprintf(
-				"Response too large (%d bytes, limit %d bytes). Request fewer records or fields and try again.",
-				len(result), h.fusion.MaxResponseBytes(),
-			), nil
+			if h.fusion.logger != nil {
+				h.fusion.logger.Warningf("Response size %d bytes exceeds limit of %d bytes: %d text value(s) shortened, %d bytes returned [%s]",
+					len(result), limit, len(cut), len(fitted), correlationID)
+			}
+			result = fitted
 		}
 
 		return string(result), nil

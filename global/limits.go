@@ -62,7 +62,8 @@ const (
 // the final output size limit is enforced.
 //
 // DefaultMaxResponseBytes is the default limit on the final (post-transform)
-// response string returned to MCP clients.  Operators can override this with
+// response string returned to MCP clients. A JSON response over it has its
+// longest text values shortened to fit; see fusion/truncate.go.  Operators can override this with
 // WithMaxResponseBytes().
 const (
 	MaxResponseBodyReadBytes = 50 * 1024 * 1024 // 50 MB — upstream body read cap

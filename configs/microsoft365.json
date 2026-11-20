@@ -587,6 +587,22 @@
               "location": "query"
             },
             {
+              "name": "$orderby",
+              "alias": "orderby",
+              "description": "Sort order for results. When $filter is also given, Microsoft Graph requires the sorted property to be in the filter (for example a receivedDateTime filter with a receivedDateTime sort).",
+              "type": "string",
+              "required": false,
+              "location": "query",
+              "enum": [
+                "lastModifiedDateTime desc",
+                "lastModifiedDateTime asc",
+                "receivedDateTime desc",
+                "receivedDateTime asc",
+                "subject asc",
+                "subject desc"
+              ]
+            },
+            {
               "name": "$skip",
               "alias": "skip",
               "description": "Number of items to skip (for pagination offset)",
@@ -604,7 +620,7 @@
         {
           "id": "mail_read_message",
           "name": "Read Mail Message",
-          "description": "Read a single email message by ID. To read multiple emails, call this tool multiple times with different IDs.",
+          "description": "Read a single email message by ID. The body is returned as plain text. To read multiple emails, call this tool multiple times with different IDs.",
           "method": "GET",
           "path": "/me/messages/{id}",
           "parameters": [
@@ -622,6 +638,15 @@
               "type": "string",
               "required": false,
               "location": "query"
+            },
+            {
+              "name": "Prefer",
+              "description": "Return the message body as plain text, not HTML.",
+              "type": "string",
+              "required": false,
+              "location": "header",
+              "default": "outlook.body-content-type=\"text\"",
+              "static": true
             }
           ],
           "response": {

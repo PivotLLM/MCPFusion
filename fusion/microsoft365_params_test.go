@@ -6,6 +6,7 @@
 package fusion
 
 import (
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -85,4 +86,68 @@ func TestMicrosoft365ToolGeneration(t *testing.T) {
 	}
 
 	t.Logf("Successfully generated %d tools with MCP-compliant parameters", len(tools))
+}
+
+// m365Endpoint returns the endpoint id of the shipped Microsoft 365 config.
+func m365Endpoint(t *testing.T, id string) *EndpointConfig {
+	t.Helper()
+	config, err := LoadConfigFromFile("../configs/microsoft365.json")
+	if err != nil {
+		t.Fatalf("load microsoft365.json: %v", err)
+	}
+	for _, svc := range config.Services {
+		for i := range svc.Endpoints {
+			if svc.Endpoints[i].ID == id {
+				return &svc.Endpoints[i]
+			}
+		}
+	}
+	t.Fatalf("endpoint %s not found", id)
+	return nil
+}
+
+// mail_read_message always asks Microsoft Graph for a plain-text body, which
+// is far smaller than the HTML one, and does not offer the header to callers.
+func TestMicrosoft365ReadMessageAsksForTextBody(t *testing.T) {
+	ep := m365Endpoint(t, "mail_read_message")
+	mapper := NewMapper()
+	for name, args := range map[string]map[string]any{
+		"no arguments":         {"id": "m1"},
+		"a caller's own value": {"id": "m1", "Prefer": `outlook.body-content-type="html"`},
+	} {
+		req, err := http.NewRequest(http.MethodGet, "https://graph.microsoft.com/v1.0/me/messages/m1", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := mapper.ApplyHeaders(req, ep.Parameters, args); err != nil {
+			t.Fatalf("%s: ApplyHeaders: %v", name, err)
+		}
+		if got := req.Header.Get("Prefer"); got != `outlook.body-content-type="text"` {
+			t.Errorf("%s: Prefer = %q", name, got)
+		}
+	}
+	for name := range mapper.ConvertToMCPParameters(ep.Parameters) {
+		if strings.EqualFold(name, "Prefer") {
+			t.Errorf("the static Prefer header is offered as a tool parameter")
+		}
+	}
+}
+
+// mail_folder_messages can be sorted and paged like the inbox tool.
+func TestMicrosoft365FolderMessagesSortAndPage(t *testing.T) {
+	ep := m365Endpoint(t, "mail_folder_messages")
+	have := map[string]ParameterConfig{}
+	for _, p := range ep.Parameters {
+		have[p.Name] = p
+	}
+	for _, name := range []string{"$top", "$skip", "$filter", "$orderby"} {
+		if _, ok := have[name]; !ok {
+			t.Errorf("mail_folder_messages has no %s parameter", name)
+		}
+	}
+	// No default order: Graph refuses a sort on a property the filter does
+	// not name, so a default would break calls that filter on something else.
+	if p := have["$orderby"]; p.Default != nil || p.Required {
+		t.Errorf("$orderby = %+v; want optional with no default", p)
+	}
 }
