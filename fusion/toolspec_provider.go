@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/toolspec"
+	"go.bison9.com/agent/toolspec"
 )
 
 // ToolSpecDefinitions converts every tool RegisterTools produces (endpoint tools,

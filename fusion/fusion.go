@@ -54,8 +54,8 @@ import (
 	"github.com/PivotLLM/MCPFusion/global"
 	"github.com/PivotLLM/MCPFusion/metrics"
 	"github.com/PivotLLM/MCPFusion/providers/health"
-	"github.com/PivotLLM/toolspec"
 	"github.com/joho/godotenv"
+	"go.bison9.com/agent/toolspec"
 )
 
 // Ensure Fusion implements the required interfaces

@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/toolspec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.bison9.com/agent/toolspec"
 )
 
 // newToolSpecTestFusion builds a Fusion whose single auth:none service targets

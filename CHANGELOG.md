@@ -3,6 +3,18 @@
 Breaking changes to exported identifiers, signatures or behaviour, for the
 applications that import MCPFusion packages.
 
+## 0.4.13
+
+### Dependencies
+
+- **Breaking:** the `toolspec` package moved, unchanged in API, from
+  `github.com/PivotLLM/toolspec` to `go.bison9.com/agent/toolspec` (module
+  `go.bison9.com/agent`). The `toolspec` types in MCPFusion's API, such as the
+  `toolspec.DataStore` taken by `NewDataStoreTokenStore`, now come from the new
+  path, so importers must switch their own imports to
+  `go.bison9.com/agent/toolspec`.
+- Requires Go 1.27.4.
+
 ## 0.4.11
 
 ### Changed

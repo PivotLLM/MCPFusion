@@ -15,7 +15,7 @@ import (
 
 	"github.com/PivotLLM/MCPFusion/db"
 	"github.com/PivotLLM/MCPFusion/global"
-	"github.com/PivotLLM/toolspec"
+	"go.bison9.com/agent/toolspec"
 )
 
 // DataStore collection names. A host that partitions by collection (a table,
