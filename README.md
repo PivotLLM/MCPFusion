@@ -1,3 +1,8 @@
+# Moved
+
+This project has moved to: https://github.com/BisonNine/mcpfusion
+
+
 # MCPFusion
 
 ---
